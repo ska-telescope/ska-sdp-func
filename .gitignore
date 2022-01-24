@@ -1,0 +1,11 @@
+*.DS_Store
+.vscode/
+
+# Build directories
+/release/
+/debug/
+/build/
+
+# Documentation build directories
+/docs/doxygen/
+/docs/build/
