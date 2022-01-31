@@ -58,6 +58,7 @@ endif()
 if (CUDA_FOUND)
     add_definitions(-DSDP_HAVE_CUDA)
 endif()
+find_package(OpenMP QUIET)
 
 # Set compiler options.
 include(compiler_options)
@@ -66,6 +67,7 @@ enable_testing()
 # List of source files.
 set(libname ska_sdp_func)
 set(${libname}_SRC
+    src/dft/sdp_dft.cpp
     src/logging/sdp_logging.c
     src/mem/sdp_mem.c
     src/utility/sdp_device_wrapper.cpp
@@ -75,6 +77,7 @@ set(${libname}_SRC
 if (CUDA_FOUND)
     # Add kernel sources.
     list(APPEND ${libname}_SRC
+        src/dft/sdp_dft.cu
         src/vector_func/sdp_vector_add.cu
     )
     set(CUDA_GENERATED_OUTPUT_DIR
@@ -91,6 +94,10 @@ set_target_properties(${libname} PROPERTIES
 add_executable(test_vector_add tests/test_vector_add.cpp)
 target_link_libraries(test_vector_add ${libname})
 add_test(test_vector_add test_vector_add)
+
+add_executable(test_dft tests/test_dft.cpp)
+target_link_libraries(test_dft ${libname})
+add_test(test_dft test_dft)
 
 install(TARGETS ${libname}
     ARCHIVE DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries

@@ -16,6 +16,7 @@ SDP Processing Function Library
   :maxdepth: 1
 
   proc_func_vector
+  proc_func_dft
 
 
 Indices and tables

@@ -115,7 +115,6 @@ sdp_Mem* sdp_mem_create_copy(
         sdp_MemLocation location,
         sdp_Error* status)
 {
-    if (*status) return 0;
     sdp_Mem* mem = sdp_mem_create(src->type, location, src->num_elements, status);
     if (!mem || *status) return mem;
     sdp_mem_copy_contents(mem, src, 0, 0, src->num_elements, status);

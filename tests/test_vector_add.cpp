@@ -19,7 +19,7 @@
 // Quick version for now, just to get something running.
 
 template<typename T>
-void check_vectors(
+void check_results(
         const char* test_name,
         int num_elements,
         const sdp_Mem* a,
@@ -72,9 +72,10 @@ int main()
     sdp_vector_add(num_elements, a, b, out1, &status);
 
     // Check results.
-    check_vectors<double>("CPU vector add", num_elements, a, b, out1, &status);
+    check_results<double>("CPU vector add", num_elements, a, b, out1, &status);
     sdp_mem_free(out1);
 
+#ifdef SDP_HAVE_CUDA
     // Copy test data to GPU.
     sdp_Mem* a_gpu = sdp_mem_create_copy(a, SDP_MEM_GPU, &status);
     sdp_Mem* b_gpu = sdp_mem_create_copy(b, SDP_MEM_GPU, &status);
@@ -91,9 +92,11 @@ int main()
     sdp_mem_free(out_gpu);
 
     // Check results.
-    check_vectors<double>("GPU vector add", num_elements, a, b, out2, &status);
+    check_results<double>("GPU vector add", num_elements, a, b, out2, &status);
+    sdp_mem_free(out2);
+#endif
+
     sdp_mem_free(a);
     sdp_mem_free(b);
-    sdp_mem_free(out2);
     return status ? EXIT_FAILURE : EXIT_SUCCESS;
 }

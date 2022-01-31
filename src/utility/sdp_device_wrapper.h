@@ -82,9 +82,14 @@ struct sdp_CudaKernelRegistrar
  * This allows the kernel to be called without needing to compile host code
  * with nvcc. It should be placed in the same source file as the kernel,
  * after it has been defined.
+ *
+ * The macro takes a single argument, which is simply the name of the kernel.
+ * (It is implemented as a variadic macro to allow for templated kernels
+ * that take multiple template parameters, where the commas between type names
+ * would otherwise cause problems.)
  */
-#define SDP_CUDA_KERNEL(NAME) \
-    static sdp_CudaKernelRegistrar M_CAT(r_, __LINE__)(#NAME, (const void*) &NAME);
+#define SDP_CUDA_KERNEL(...) \
+    static sdp_CudaKernelRegistrar M_CAT(r_, __LINE__)(#__VA_ARGS__, (const void*) & __VA_ARGS__); // NOLINT
 
 #endif /* __cplusplus */
 
