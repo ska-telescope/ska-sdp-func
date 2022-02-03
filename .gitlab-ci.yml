@@ -23,11 +23,10 @@ build-test-debug:
     - cmake ../ -DCOVERAGE_REPORT=ON -DCUDA_ARCH=6.1
   script:
     - make -j
-    - ./apps/oskar_system_info
-    - make coverage
+    #- make coverage
   after_script:
-    - mv debug/coverage.xml build/reports/code-coverage.xml
-    - mv debug/coverage/ ./
+    #- mv debug/coverage.xml build/reports/code-coverage.xml
+    #- mv debug/coverage/ ./
   artifacts:
     paths:
       - build/
@@ -53,7 +52,7 @@ build-test-release:
     - make -j
     - ctest --output-junit unit-tests.xml
   after_script:
-    - mv release/unit-tests.xml build/reports/
+    - mv unit-tests.xml build/reports/
   artifacts:
     paths:
       - build/
@@ -74,7 +73,7 @@ linting:
     - run-clang-tidy -quiet '^(?:(?!extern/|test/).)*$\r?\n?' > clang-tidy.out
     - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
   after_script:
-    - mv release/linting.xml build/reports/
+    - mv linting.xml build/reports/
   artifacts:
     paths:
       - build/
