@@ -37,6 +37,9 @@ build-test-debug:
 build-test-release:
   stage: build and test
   tags: [k8srunner-gpu]
+  variables:
+    FLAGS: '-al release'
+    LS_CMD: 'ls "$FLAGS"'
   before_script:
     - *ready_reports
     # We need CMake >= 3.21.0 for the --output-junit option on CTest.
@@ -53,7 +56,8 @@ build-test-release:
     - ctest --output-junit unit-tests.xml
   after_script:
     - echo $(pwd)
-    - mv unit-tests.xml build/reports/
+    - 'eval "$LS_CMD"'
+    - mv release/unit-tests.xml build/reports/
   artifacts:
     paths:
       - build/
