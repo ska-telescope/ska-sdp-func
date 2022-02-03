@@ -38,8 +38,7 @@ build-test-release:
   stage: build and test
   tags: [k8srunner-gpu]
   variables:
-    FLAGS: '-al release'
-    LS_CMD: 'ls "$FLAGS"'
+    LS_CMD: 'ls -l release'
   before_script:
     - *ready_reports
     # We need CMake >= 3.21.0 for the --output-junit option on CTest.
