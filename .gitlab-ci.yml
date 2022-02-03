@@ -52,6 +52,7 @@ build-test-release:
     - make -j
     - ctest --output-junit unit-tests.xml
   after_script:
+    - echo $(pwd)
     - mv unit-tests.xml build/reports/
   artifacts:
     paths:
@@ -73,6 +74,7 @@ linting:
     - run-clang-tidy -quiet '^(?:(?!extern/|test/).)*$\r?\n?' > clang-tidy.out
     - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
   after_script:
+    - echo $(pwd)
     - mv linting.xml build/reports/
   artifacts:
     paths:
@@ -85,6 +87,7 @@ build-docs:
     - DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential cmake 
     - DEBIAN_FRONTEND=noninteractive apt-get -y install python3 python3-sphinx python3-pip doxygen
     - pip3 install breathe
+    - pip3 install sphinx-rtd-theme
     - mkdir build-docs
   script:
     - make doc_html
