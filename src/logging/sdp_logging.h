@@ -40,7 +40,7 @@ extern "C" {
 #define SOURCE_PATH_SIZE 0
 #endif
 
-#define FILENAME (__FILE__ + SOURCE_PATH_SIZE)
+#define FILENAME ((__FILE__) + SOURCE_PATH_SIZE)
 
 void sdp_log_message(
         const char* level,
