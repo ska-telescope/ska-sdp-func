@@ -1,7 +1,7 @@
 image: nvidia/cuda:11.3.0-devel-ubuntu20.04
 
 stages:
-  #- build and test
+  - build and test
   - doc
   - publish
 
