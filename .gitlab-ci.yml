@@ -59,9 +59,7 @@ build-test-release:
   script:
     - make -j
     - ctest --output-junit unit-tests.xml
-  after_script:
-    - echo $(pwd)
-    - 'eval "$LS_CMD"'
+  after_script:    
     - mv release/unit-tests.xml build/reports/
   artifacts:
     paths:
@@ -74,7 +72,13 @@ linting:
   before_script:
     - *ready_reports
     - DEBIAN_FRONTEND=noninteractive apt-get -y update
-    - DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential cmake clang-tidy
+    - DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential clang-tidy gpg wget
+    - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+    - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+    - DEBIAN_FRONTEND=noninteractive apt-get -y update
+    - rm /usr/share/keyrings/kitware-archive-keyring.gpg
+    - apt-get -y install kitware-archive-keyring
+    - apt-get -y install cmake
     - mkdir release
     - cd release/
     - cmake ../ -DCUDA_ARCH=6.1 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -84,7 +88,7 @@ linting:
     - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
   after_script:
     - echo $(pwd)
-    - mv linting.xml build/reports/
+    - mv release/linting.xml build/reports/
   artifacts:
     paths:
       - build/
