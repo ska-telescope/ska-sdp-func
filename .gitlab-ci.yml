@@ -102,6 +102,8 @@ linting:
 
 build-docs:
   stage: doc
+  variables:
+    LS_CMD: 'ls -l *'
   before_script:
     - DEBIAN_FRONTEND=noninteractive apt-get -y update
     - DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential cmake 
@@ -112,6 +114,8 @@ build-docs:
   script:
     - make doc_html
   after_script:
+    - echo $(pwd)
+    - 'eval "$LS_CMD"'
     - mv docs/build/html/ build-docs/
   artifacts:
     paths:
