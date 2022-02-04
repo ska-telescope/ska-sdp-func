@@ -1,7 +1,7 @@
 image: nvidia/cuda:11.3.0-devel-ubuntu20.04
 
 stages:
-  - build and test
+  #- build and test
   - doc
   - publish
 
@@ -44,8 +44,6 @@ build-test-debug:
 build-test-release:
   stage: build and test
   tags: [k8srunner-gpu]
-  variables:
-    LS_CMD: 'ls -l release'
   before_script:
     - *ready_reports
     # We need CMake >= 3.21.0 for the --output-junit option on CTest.
@@ -103,7 +101,8 @@ linting:
 build-docs:
   stage: doc
   variables:
-    LS_CMD: 'ls -l *'
+    LS_CMD: 'ls -l docs/build/html/'
+    LS_CMD2: 'ls -l build-docs/docs/build/html/'
   before_script:
     - DEBIAN_FRONTEND=noninteractive apt-get -y update
     - DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential cmake 
@@ -117,6 +116,7 @@ build-docs:
     - echo $(pwd)
     - 'eval "$LS_CMD"'
     - mv docs/build/html/ build-docs/
+    - 'eval "$LS_CMD2"'
   artifacts:
     paths:
       - build-docs/docs/build/html/
