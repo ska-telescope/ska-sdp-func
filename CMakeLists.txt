@@ -64,6 +64,26 @@ find_package(OpenMP QUIET)
 include(compiler_options)
 enable_testing()
 
+if (CMAKE_BUILD_TYPE MATCHES Debug AND COVERAGE_REPORT)
+    message(STATUS "INFO: Adding code coverage build target")
+    include(CodeCoverage)
+    set(COVERAGE_EXCLUDES
+        "${PROJECT_BINARY_DIR}/*"
+        "${PROJECT_SOURCE_DIR}/apps/*"
+        "${PROJECT_SOURCE_DIR}/extern/*"
+        "${PROJECT_SOURCE_DIR}/gui/*"
+        "${PROJECT_SOURCE_DIR}/.*/test/.*"
+        "${PROJECT_SOURCE_DIR}/*/test/*"
+        ".*.h"
+        "*.h"
+        "/usr/*"
+        "/Applications/*"
+        "/Users/*/Qt/*"
+    )
+    append_coverage_compiler_flags()
+    setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest)
+endif()
+
 # List of source files.
 set(libname ska_sdp_func)
 set(${libname}_SRC
