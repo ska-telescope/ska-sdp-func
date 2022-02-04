@@ -100,9 +100,6 @@ linting:
 
 build-docs:
   stage: doc
-  variables:
-    LS_CMD: 'ls -l docs/build/html/'
-    LS_CMD2: 'ls -l build-docs/docs/build/html/'
   before_script:
     - DEBIAN_FRONTEND=noninteractive apt-get -y update
     - DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential cmake 
@@ -113,10 +110,7 @@ build-docs:
   script:
     - make doc_html
   after_script:
-    - echo $(pwd)
-    - 'eval "$LS_CMD"'
     - cp -r  docs/build/html/ build-docs/docs/build
-    - 'eval "$LS_CMD2"'
   artifacts:
     paths:
       - build-docs/docs/build/html/
