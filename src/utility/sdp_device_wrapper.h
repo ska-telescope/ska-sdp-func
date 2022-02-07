@@ -7,8 +7,8 @@
  * @file sdp_device_wrapper.h
  */
 
-#include "sdp_errors.h"
-#include "stddef.h"
+#include "utility/sdp_errors.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,9 +40,9 @@ extern "C" {
  */
 void sdp_launch_cuda_kernel(
         const char* name,
-        const size_t num_blocks[3],
-        const size_t num_threads[3],
-        size_t shared_mem_bytes,
+        const uint64_t num_blocks[3],
+        const uint64_t num_threads[3],
+        uint64_t shared_mem_bytes,
         void* stream,
         const void** args,
         sdp_Error* status);

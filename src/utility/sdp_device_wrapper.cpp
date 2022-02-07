@@ -4,14 +4,14 @@
 #include <cuda_runtime_api.h>
 #endif
 
-#include "logging/sdp_logging.h"
 #include "utility/sdp_device_wrapper.h"
+#include "utility/sdp_logging.h"
 
 void sdp_launch_cuda_kernel(
         const char* name,
-        const size_t num_blocks[3],
-        const size_t num_threads[3],
-        size_t shared_mem_bytes,
+        const uint64_t num_blocks[3],
+        const uint64_t num_threads[3],
+        uint64_t shared_mem_bytes,
         void* stream,
         const void** args,
         sdp_Error* status)
@@ -33,7 +33,7 @@ void sdp_launch_cuda_kernel(
         (void)stream;
         cudaError_t cuda_error = cudaLaunchKernel(iter->second,
                 num_blocks_, num_threads_, const_cast<void**>(args),
-                shared_mem_bytes, 0);
+                (size_t) shared_mem_bytes, 0);
         SDP_LOG_DEBUG("Running CUDA kernel '%s'", name);
         if (cuda_error != cudaSuccess)
         {

@@ -5,6 +5,8 @@
 /release/
 /debug/
 /build/
+__pycache__/
+
 
 # Documentation build directories
 /docs/doxygen/

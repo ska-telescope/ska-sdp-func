@@ -3,27 +3,27 @@
 #include <cmath>
 #include <complex>
 
-#include "dft/sdp_dft.h"
-#include "logging/sdp_logging.h"
+#include "func/dft/sdp_dft.h"
 #include "utility/sdp_device_wrapper.h"
+#include "utility/sdp_logging.h"
 
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 template<
-        typename FLUX_TYPE,
         typename DIR_TYPE,
+        typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
 >
-void dft_point_v00(
+static void dft_point_v00(
         const int num_components,
         const int num_pols,
         const int num_channels,
         const int num_baselines,
         const int num_times,
-        const std::complex<FLUX_TYPE> *const __restrict__ source_fluxes,
         const DIR_TYPE *const __restrict__ source_directions,
+        const std::complex<FLUX_TYPE> *const __restrict__ source_fluxes,
         const UVW_TYPE *const __restrict__ uvw_lambda,
         std::complex<VIS_TYPE> *__restrict__ vis
 )
@@ -88,14 +88,9 @@ void dft_point_v00(
 }
 
 
-void sdp_dft_point_v00(
-        int num_components,
-        int num_pols,
-        int num_channels,
-        int num_baselines,
-        int num_times,
-        const sdp_Mem* source_fluxes,
+static void check_params(
         const sdp_Mem* source_directions,
+        const sdp_Mem* source_fluxes,
         const sdp_Mem* uvw_lambda,
         sdp_Mem* vis,
         sdp_Error* status
@@ -111,16 +106,96 @@ void sdp_dft_point_v00(
         SDP_LOG_ERROR("Memory location mismatch");
         return;
     }
-    if (num_pols != 4 && num_pols != 1)
+    if (sdp_mem_is_read_only(vis))
     {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("Number of polarisations should be 4 or 1");
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Visibility data must be writable.");
         return;
     }
-    if (location == SDP_MEM_CPU)
+    if (!sdp_mem_is_c_contiguous(source_fluxes) ||
+            !sdp_mem_is_c_contiguous(source_directions) ||
+            !sdp_mem_is_c_contiguous(uvw_lambda) ||
+            !sdp_mem_is_c_contiguous(vis))
     {
-        if (sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("All arrays must be C contiguous");
+        return;
+    }
+    if (!sdp_mem_is_complex(source_fluxes))
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Source flux values must be complex");
+        return;
+    }
+    if (!sdp_mem_is_complex(vis))
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Visibility values must be complex");
+        return;
+    }
+    const int64_t num_times      = sdp_mem_shape_dim(vis, 0);
+    const int64_t num_baselines  = sdp_mem_shape_dim(vis, 1);
+    const int64_t num_channels   = sdp_mem_shape_dim(vis, 2);
+    const int64_t num_pols       = sdp_mem_shape_dim(vis, 3);
+    const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
+    if (num_pols != 4 && num_pols != 1)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("The number of polarisations should be 4 or 1");
+        return;
+    }
+    if (sdp_mem_shape_dim(source_directions, 1) != 3)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("The source_directions array must have shape "
+                "[num_components, 3] (expected [%d, 3])", num_components);
+        return;
+    }
+    if (sdp_mem_shape_dim(source_fluxes, 0) != num_components ||
+            sdp_mem_shape_dim(source_fluxes, 1) != num_channels ||
+            sdp_mem_shape_dim(source_fluxes, 2) != num_pols)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("The source_fluxes array must have shape "
+                "[num_components, num_channels, num_pols] "
+                "(expected [%d, %d, %d])",
+                num_components, num_channels, num_pols);
+        return;
+    }
+    if (sdp_mem_shape_dim(uvw_lambda, 0) != num_times ||
+            sdp_mem_shape_dim(uvw_lambda, 1) != num_baselines ||
+            sdp_mem_shape_dim(uvw_lambda, 2) != num_channels ||
+            sdp_mem_shape_dim(uvw_lambda, 3) != 3)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("The uvw_lamda array must have shape "
+                "[num_times, num_baselines, num_channels, 3] "
+                "(expected [%d, %d, %d, 3])",
+                num_times, num_baselines, num_channels);
+        return;
+    }
+}
+
+
+void sdp_dft_point_v00(
+        const sdp_Mem* source_directions,
+        const sdp_Mem* source_fluxes,
+        const sdp_Mem* uvw_lambda,
+        sdp_Mem* vis,
+        sdp_Error* status
+)
+{
+    check_params(source_directions, source_fluxes, uvw_lambda, vis, status);
+    if (*status) return;
+    const int num_times      = (int)sdp_mem_shape_dim(vis, 0);
+    const int num_baselines  = (int)sdp_mem_shape_dim(vis, 1);
+    const int num_channels   = (int)sdp_mem_shape_dim(vis, 2);
+    const int num_pols       = (int)sdp_mem_shape_dim(vis, 3);
+    const int num_components = (int)sdp_mem_shape_dim(source_directions, 0);
+    if (sdp_mem_location(vis) == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(uvw_lambda) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
         {
@@ -130,14 +205,14 @@ void sdp_dft_point_v00(
                 num_channels,
                 num_baselines,
                 num_times,
-                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
                 (const double*)sdp_mem_data_const(source_directions),
+                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
                 (const double*)sdp_mem_data_const(uvw_lambda),
                 (std::complex<double>*)sdp_mem_data(vis)
             );
         }
-        else if (sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+        else if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(uvw_lambda) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
         {
@@ -147,8 +222,8 @@ void sdp_dft_point_v00(
                 num_channels,
                 num_baselines,
                 num_times,
-                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
                 (const double*)sdp_mem_data_const(source_directions),
+                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
                 (const double*)sdp_mem_data_const(uvw_lambda),
                 (std::complex<float>*)sdp_mem_data(vis)
             );
@@ -159,28 +234,28 @@ void sdp_dft_point_v00(
             SDP_LOG_ERROR("Unsupported data type(s)");
         }
     }
-    else
+    else if (sdp_mem_location(vis) == SDP_MEM_GPU)
     {
-        const size_t num_threads[] = {128, 2, 2};
-        const size_t num_blocks[] = {
+        const uint64_t num_threads[] = {128, 2, 2};
+        const uint64_t num_blocks[] = {
             (num_baselines + num_threads[0] - 1) / num_threads[0],
             (num_channels + num_threads[1] - 1) / num_threads[1],
             (num_times + num_threads[2] - 1) / num_threads[2]
         };
         const char* kernel_name = 0;
-        if (sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+        if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(uvw_lambda) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "dft_point_v00<double2, double3, double3, double2>";
+            kernel_name = "dft_point_v00<double3, double2, double3, double2>";
         }
-        else if (sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+        else if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(uvw_lambda) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
         {
-            kernel_name = "dft_point_v00<double2, double3, double3, float2>";
+            kernel_name = "dft_point_v00<double3, double2, double3, float2>";
         }
         else
         {
@@ -193,8 +268,8 @@ void sdp_dft_point_v00(
                 &num_channels,
                 &num_baselines,
                 &num_times,
-                sdp_mem_gpu_buffer_const(source_fluxes, status),
                 sdp_mem_gpu_buffer_const(source_directions, status),
+                sdp_mem_gpu_buffer_const(source_fluxes, status),
                 sdp_mem_gpu_buffer_const(uvw_lambda, status),
                 sdp_mem_gpu_buffer(vis, status)
         };

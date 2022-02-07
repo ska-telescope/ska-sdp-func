@@ -8,8 +8,8 @@
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 template<
-        typename FLUX_TYPE2,
         typename DIR_TYPE3,
+        typename FLUX_TYPE2,
         typename UVW_TYPE3,
         typename VIS_TYPE2
 >
@@ -19,8 +19,8 @@ __global__ void dft_point_v00(
         const int num_channels,
         const int num_baselines,
         const int num_times,
-        const FLUX_TYPE2 *const __restrict__ source_fluxes,
         const DIR_TYPE3 *const __restrict__ source_directions,
+        const FLUX_TYPE2 *const __restrict__ source_fluxes,
         const UVW_TYPE3 *const __restrict__ uvw_lambda,
         VIS_TYPE2 *__restrict__ vis
 )
@@ -90,5 +90,5 @@ __global__ void dft_point_v00(
     }
 }
 
-SDP_CUDA_KERNEL(dft_point_v00<double2, double3, double3, double2>)
-SDP_CUDA_KERNEL(dft_point_v00<double2, double3, double3, float2>)
+SDP_CUDA_KERNEL(dft_point_v00<double3, double2, double3, double2>)
+SDP_CUDA_KERNEL(dft_point_v00<double3, double2, double3, float2>)

@@ -7,7 +7,7 @@
  * @file sdp_dft.h
  */
 
-#include "mem/sdp_mem.h"
+#include "utility/sdp_mem.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,38 +29,28 @@ extern "C" {
  *
  * Array dimensions are as follows, from slowest to fastest varying:
  *
- * - @p source_fluxes is 3D and complex-valued, with shape:
- *   - [ @p num_components, @p num_channels, @p num_pols ]
- *
  * - @p source_directions is 2D and real-valued, with shape:
- *   - [ @p num_components, 3 ]
+ *   - [ num_components, 3 ]
+ *
+ * - @p source_fluxes is 3D and complex-valued, with shape:
+ *   - [ num_components, num_channels, num_pols ]
  *
  * - @p uvw_lambda is 4D and real-valued, with shape:
- *   - [ @p num_times, @p num_baselines, @p num_channels, 3 ]
+ *   - [ num_times, num_baselines, num_channels, 3 ]
  *
  * - @p vis is 4D and complex-valued, with shape:
- *   - [ @p num_times, @p num_baselines, @p num_channels, @p num_pols ]
+ *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
- * @param num_components Number of point sources.
- * @param num_pols Number of polarisations - must be 4 or 1.
- * @param num_channels Number of frequency channels.
- * @param num_baselines Number of baselines.
- * @param num_times Number of time samples.
- * @param source_fluxes Complex source fluxes. Dimensions as above.
  * @param source_directions Source direction cosines. Dimensions as above.
+ * @param source_fluxes Complex source fluxes. Dimensions as above.
  * @param uvw_lambda Baseline (u,v,w) coordinates, in wavelengths.
  *                   Dimensions as above.
  * @param vis Output complex visibilities. Dimensions as above.
  * @param status Error status.
  */
 void sdp_dft_point_v00(
-        int num_components,
-        int num_pols,
-        int num_channels,
-        int num_baselines,
-        int num_times,
-        const sdp_Mem* source_fluxes,
         const sdp_Mem* source_directions,
+        const sdp_Mem* source_fluxes,
         const sdp_Mem* uvw_lambda,
         sdp_Mem* vis,
         sdp_Error* status);

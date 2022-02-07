@@ -10,18 +10,13 @@
 #include <cstdlib>
 #include <vector>
 
-#include "logging/sdp_logging.h"
-#include "mem/sdp_mem.h"
-#include "vector_func/sdp_vector_add.h"
-
-// This should be rewritten to use a proper unit-testing framework,
-// like googletest.
-// Quick version for now, just to get something running.
+#include "func/vector/sdp_vector_add.h"
+#include "utility/sdp_logging.h"
+#include "utility/sdp_mem.h"
 
 template<typename T>
 void check_results(
         const char* test_name,
-        int num_elements,
         const sdp_Mem* a,
         const sdp_Mem* b,
         const sdp_Mem* out,
@@ -35,7 +30,8 @@ void check_results(
     const T* a_data = (const T*)sdp_mem_data_const(a);
     const T* b_data = (const T*)sdp_mem_data_const(b);
     const T* out_data = (const T*)sdp_mem_data_const(out);
-    for (int i = 0; i < num_elements; ++i)
+    const int64_t num_elements = sdp_mem_num_elements(a);
+    for (int64_t i = 0; i < num_elements; ++i)
     {
         const T expected = a_data[i] + b_data[i];
         assert(fabs(out_data[i] - expected) < 1e-5);
@@ -48,11 +44,11 @@ int main()
 {
     // Generate some test data.
     // Use C++ vectors as an example of externally-managed memory.
-    const int num_elements = 10;
+    const int64_t num_elements = 10;
     std::vector<double> vec_a(num_elements);
     std::vector<double> vec_b(num_elements);
     std::vector<double> vec_out(num_elements);
-    for (int i = 0; i < num_elements; ++i)
+    for (int64_t i = 0; i < num_elements; ++i)
     {
         vec_a[i] = rand() / (double)RAND_MAX;
         vec_b[i] = rand() / (double)RAND_MAX;
@@ -61,29 +57,30 @@ int main()
     // Wrap pointers to externally-managed memory.
     const sdp_MemType type = SDP_MEM_DOUBLE;
     sdp_Error status = SDP_SUCCESS;
-    sdp_Mem* a = sdp_mem_create_from_raw(
-            vec_a.data(), type, SDP_MEM_CPU, num_elements, &status);
-    sdp_Mem* b = sdp_mem_create_from_raw(
-            vec_b.data(), type, SDP_MEM_CPU, num_elements, &status);
-    sdp_Mem* out1 = sdp_mem_create_from_raw(
-            vec_out.data(), type, SDP_MEM_CPU, num_elements, &status);
+    sdp_Mem* a = sdp_mem_create_wrapper(
+            vec_a.data(), type, SDP_MEM_CPU, 1, &num_elements, 0, &status);
+    sdp_Mem* b = sdp_mem_create_wrapper(
+            vec_b.data(), type, SDP_MEM_CPU, 1, &num_elements, 0, &status);
+    sdp_Mem* out1 = sdp_mem_create_wrapper(
+            vec_out.data(), type, SDP_MEM_CPU, 1, &num_elements, 0, &status);
 
     // Call CPU version of processing function.
-    sdp_vector_add(num_elements, a, b, out1, &status);
+    sdp_vector_add(a, b, out1, &status);
 
     // Check results.
-    check_results<double>("CPU vector add", num_elements, a, b, out1, &status);
+    check_results<double>("CPU vector add", a, b, out1, &status);
     sdp_mem_free(out1);
 
 #ifdef SDP_HAVE_CUDA
     // Copy test data to GPU.
     sdp_Mem* a_gpu = sdp_mem_create_copy(a, SDP_MEM_GPU, &status);
     sdp_Mem* b_gpu = sdp_mem_create_copy(b, SDP_MEM_GPU, &status);
-    sdp_Mem* out_gpu = sdp_mem_create(type, SDP_MEM_GPU, num_elements, &status);
+    sdp_Mem* out_gpu = sdp_mem_create(type, SDP_MEM_GPU,
+            1, &num_elements, &status);
     sdp_mem_clear_contents(out_gpu, &status);
 
     // Call GPU version of processing function.
-    sdp_vector_add(num_elements, a_gpu, b_gpu, out_gpu, &status);
+    sdp_vector_add(a_gpu, b_gpu, out_gpu, &status);
     sdp_mem_free(a_gpu);
     sdp_mem_free(b_gpu);
 
@@ -92,7 +89,7 @@ int main()
     sdp_mem_free(out_gpu);
 
     // Check results.
-    check_results<double>("GPU vector add", num_elements, a, b, out2, &status);
+    check_results<double>("GPU vector add", a, b, out2, &status);
     sdp_mem_free(out2);
 #endif
 

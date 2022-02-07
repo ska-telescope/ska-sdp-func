@@ -11,16 +11,16 @@
 #include <cstdlib>
 #include <vector>
 
-#include "logging/sdp_logging.h"
-#include "mem/sdp_mem.h"
-#include "dft/sdp_dft.h"
+#include "func/dft/sdp_dft.h"
+#include "utility/sdp_logging.h"
+#include "utility/sdp_mem.h"
 
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 template<
-        typename FLUX_TYPE,
         typename DIR_TYPE,
+        typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
 >
@@ -31,8 +31,8 @@ void check_results(
         int num_channels,
         int num_baselines,
         int num_times,
-        const std::complex<FLUX_TYPE> *const __restrict__ source_fluxes,
         const DIR_TYPE *const __restrict__ source_directions,
+        const std::complex<FLUX_TYPE> *const __restrict__ source_fluxes,
         const UVW_TYPE *const __restrict__ uvw_lambda,
         const std::complex<VIS_TYPE> *const __restrict__ vis,
         sdp_Error* status)
@@ -107,85 +107,59 @@ void check_results(
 int main()
 {
     // Generate some test data.
-    // Use C++ vectors as an example of externally-managed memory.
     const int num_components = 20;
     const int num_pols = 4;
     const int num_channels = 10;
     const int num_baselines = 351;
     const int num_times = 10;
-    std::vector<std::complex<double> > source_fluxes_vec(
-        num_components * num_channels * num_pols);
-    std::vector<double> source_directions_vec(num_components * 3);
-    std::vector<double> uvw_lambda_vec(
-        num_times * num_baselines * num_channels * 3);
-    std::vector<std::complex<double> > vis_vec(
-        num_times * num_baselines * num_channels * num_pols);
-    srand(1);
-    for (size_t i = 0; i < source_fluxes_vec.size(); ++i)
-    {
-        source_fluxes_vec[i] = std::complex<double>(
-                rand() / (double)RAND_MAX, rand() / (double)RAND_MAX);
-    }
-    for (size_t i = 0; i < source_directions_vec.size(); ++i)
-    {
-        source_directions_vec[i] = rand() / (double)RAND_MAX;
-    }
-    for (size_t i = 0; i < uvw_lambda_vec.size(); ++i)
-    {
-        uvw_lambda_vec[i] = rand() / (double)RAND_MAX;
-    }
-
-    // Wrap pointers to externally-managed memory.
     sdp_Error status = SDP_SUCCESS;
-    sdp_Mem* source_fluxes = sdp_mem_create_from_raw(
-            source_fluxes_vec.data(), SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
-            source_fluxes_vec.size(), &status);
-    sdp_Mem* source_directions = sdp_mem_create_from_raw(
-            source_directions_vec.data(), SDP_MEM_DOUBLE, SDP_MEM_CPU,
-            source_directions_vec.size(), &status);
-    sdp_Mem* uvw_lambda = sdp_mem_create_from_raw(
-            uvw_lambda_vec.data(), SDP_MEM_DOUBLE, SDP_MEM_CPU,
-            uvw_lambda_vec.size(), &status);
-    sdp_Mem* vis = sdp_mem_create_from_raw(
-            vis_vec.data(), SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
-            vis_vec.size(), &status);
+    int64_t source_dirs_shape[] = {num_components, 3};
+    int64_t source_flux_shape[] = {num_components, num_channels, num_pols};
+    int64_t uvw_shape[] = {num_times, num_baselines, num_channels, 3};
+    int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
+    sdp_Mem* source_dirs = sdp_mem_create(
+            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, source_dirs_shape, &status);
+    sdp_Mem* source_flux = sdp_mem_create(
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
+            3, source_flux_shape, &status);
+    sdp_Mem* uvw = sdp_mem_create(
+            SDP_MEM_DOUBLE, SDP_MEM_CPU, 4, uvw_shape, &status);
+    sdp_Mem* vis = sdp_mem_create(
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 4, vis_shape, &status);
+    sdp_mem_random_fill(source_dirs, &status);
+    sdp_mem_random_fill(source_flux, &status);
+    sdp_mem_random_fill(uvw, &status);
 
     // Call CPU version of processing function.
-    sdp_dft_point_v00(
-            num_components, num_pols, num_channels, num_baselines, num_times,
-            source_fluxes, source_directions, uvw_lambda, vis,
-            &status);
+    sdp_dft_point_v00(source_dirs, source_flux, uvw, vis, &status);
 
     // Check results.
     check_results("CPU DFT",
             num_components, num_pols, num_channels, num_baselines, num_times,
-            (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
-            (const double*)sdp_mem_data_const(source_directions),
-            (const double*)sdp_mem_data_const(uvw_lambda),
+            (const double*)sdp_mem_data_const(source_dirs),
+            (const std::complex<double>*)sdp_mem_data_const(source_flux),
+            (const double*)sdp_mem_data_const(uvw),
             (const std::complex<double>*)sdp_mem_data_const(vis),
             &status);
     sdp_mem_free(vis);
 
 #ifdef SDP_HAVE_CUDA
     // Copy test data to GPU.
-    sdp_Mem* source_fluxes_gpu = sdp_mem_create_copy(
-            source_fluxes, SDP_MEM_GPU, &status);
-    sdp_Mem* source_directions_gpu = sdp_mem_create_copy(
-            source_directions, SDP_MEM_GPU, &status);
-    sdp_Mem* uvw_lambda_gpu = sdp_mem_create_copy(
-            uvw_lambda, SDP_MEM_GPU, &status);
+    sdp_Mem* source_dirs_gpu = sdp_mem_create_copy(
+            source_dirs, SDP_MEM_GPU, &status);
+    sdp_Mem* source_flux_gpu = sdp_mem_create_copy(
+            source_flux, SDP_MEM_GPU, &status);
+    sdp_Mem* uvw_gpu = sdp_mem_create_copy(uvw, SDP_MEM_GPU, &status);
     sdp_Mem* vis_gpu = sdp_mem_create(
-            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, vis_vec.size(), &status);
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, 4, vis_shape, &status);
     sdp_mem_clear_contents(vis_gpu, &status);
 
     // Call GPU version of processing function.
     sdp_dft_point_v00(
-            num_components, num_pols, num_channels, num_baselines, num_times,
-            source_fluxes_gpu, source_directions_gpu, uvw_lambda_gpu, vis_gpu,
-            &status);
-    sdp_mem_free(source_fluxes_gpu);
-    sdp_mem_free(source_directions_gpu);
-    sdp_mem_free(uvw_lambda_gpu);
+            source_dirs_gpu, source_flux_gpu, uvw_gpu, vis_gpu, &status);
+    sdp_mem_free(source_flux_gpu);
+    sdp_mem_free(source_dirs_gpu);
+    sdp_mem_free(uvw_gpu);
 
     // Copy GPU output back to host for checking.
     sdp_Mem* vis2 = sdp_mem_create_copy(vis_gpu, SDP_MEM_CPU, &status);
@@ -194,16 +168,16 @@ int main()
     // Check results.
     check_results("GPU DFT",
             num_components, num_pols, num_channels, num_baselines, num_times,
-            (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
-            (const double*)sdp_mem_data_const(source_directions),
-            (const double*)sdp_mem_data_const(uvw_lambda),
+            (const double*)sdp_mem_data_const(source_dirs),
+            (const std::complex<double>*)sdp_mem_data_const(source_flux),
+            (const double*)sdp_mem_data_const(uvw),
             (const std::complex<double>*)sdp_mem_data_const(vis2),
             &status);
     sdp_mem_free(vis2);
 #endif
 
-    sdp_mem_free(source_fluxes);
-    sdp_mem_free(source_directions);
-    sdp_mem_free(uvw_lambda);
+    sdp_mem_free(source_dirs);
+    sdp_mem_free(source_flux);
+    sdp_mem_free(uvw);
     return status ? EXIT_FAILURE : EXIT_SUCCESS;
 }

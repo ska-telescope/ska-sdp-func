@@ -23,12 +23,12 @@ The following example registers two versions of a simple templated kernel:
    template<typename T>
    __global__
    void vector_add (
-       const int num_elements,
+       const int64_t num_elements,
        const T *const __restrict__ input_a,
        const T *const __restrict__ input_b,
        T *__restrict__ output)
    {
-       const int i = blockDim.x * blockIdx.x + threadIdx.x;
+       const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
        if (i < num_elements)
        {
            output[i] = input_a[i] + input_b[i];

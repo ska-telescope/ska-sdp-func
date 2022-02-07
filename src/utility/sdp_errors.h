@@ -4,6 +4,10 @@
 #define SKA_SDP_PROC_FUNC_ERRORS_H_
 
 /**
+ * @file sdp_errors.h
+ */
+
+/**
  * @brief Processing function library error codes.
  */
 enum sdp_Error

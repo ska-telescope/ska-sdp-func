@@ -14,6 +14,11 @@ import os
 import subprocess
 import sys
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath(os.path.join("..", "..", "python")))
+
+
+def setup(app):
+    app.add_css_file('css/custom.css')
 
 
 # -- Project information -----------------------------------------------------
@@ -62,9 +67,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'sphinx_rtd_theme'
 
 html_context = {
-    'favicon': 'img/favicon.ico',
-    'logo': 'img/logo.jpg',
-    'theme_logo_only' : True
+    "favicon": "img/favicon_mono.ico",
+    "logo": "img/logo.png",
+    "theme_logo_only" : True,
+    "conf_py_path": "/src/",  # Path in the checkout to the docs root
 }
 
 html_static_path = ["_static"]
@@ -81,7 +87,7 @@ latex_elements = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_static_path = ["_static"]
 
 pygments_style = 'sphinx'
 autodoc_member_order = 'bysource'

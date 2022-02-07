@@ -4,7 +4,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "logging/sdp_logging.h"
+#include "utility/sdp_logging.h"
 
 // Minimal SKA-compatible logging function.
 void sdp_log_message(

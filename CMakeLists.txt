@@ -69,16 +69,9 @@ if (CMAKE_BUILD_TYPE MATCHES Debug AND COVERAGE_REPORT)
     include(CodeCoverage)
     set(COVERAGE_EXCLUDES
         "${PROJECT_BINARY_DIR}/*"
-        "${PROJECT_SOURCE_DIR}/apps/*"
-        "${PROJECT_SOURCE_DIR}/extern/*"
-        "${PROJECT_SOURCE_DIR}/gui/*"
-        "${PROJECT_SOURCE_DIR}/.*/test/.*"
-        "${PROJECT_SOURCE_DIR}/*/test/*"
         ".*.h"
         "*.h"
         "/usr/*"
-        "/Applications/*"
-        "/Users/*/Qt/*"
     )
     append_coverage_compiler_flags()
     setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest)
@@ -87,18 +80,18 @@ endif()
 # List of source files.
 set(libname ska_sdp_func)
 set(${libname}_SRC
-    src/dft/sdp_dft.cpp
-    src/logging/sdp_logging.c
-    src/mem/sdp_mem.c
+    src/func/dft/sdp_dft.cpp
+    src/func/vector/sdp_vector_add.cpp
     src/utility/sdp_device_wrapper.cpp
-    src/vector_func/sdp_vector_add.cpp
+    src/utility/sdp_logging.c
+    src/utility/sdp_mem.c
 )
 
 if (CUDA_FOUND)
     # Add kernel sources.
     list(APPEND ${libname}_SRC
-        src/dft/sdp_dft.cu
-        src/vector_func/sdp_vector_add.cu
+        src/func/dft/sdp_dft.cu
+        src/func/vector/sdp_vector_add.cu
     )
     set(CUDA_GENERATED_OUTPUT_DIR
         ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${libname}.dir/src)
@@ -111,6 +104,7 @@ set_target_properties(${libname} PROPERTIES
     SOVERSION ${SDP_FUNC_VERSION}
     VERSION ${SDP_FUNC_VERSION})
 
+# Tests.
 add_executable(test_vector_add tests/test_vector_add.cpp)
 target_link_libraries(test_vector_add ${libname})
 add_test(test_vector_add test_vector_add)

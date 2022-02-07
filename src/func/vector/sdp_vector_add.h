@@ -7,26 +7,24 @@
  * @file sdp_vector_add.h
  */
 
-#include "mem/sdp_mem.h"
+#include "utility/sdp_mem.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief Adds two vectors together, element-wise.
+ * @brief Simple example to add two vectors, element-wise.
  *
- * @param num_elements Number of elements to add.
- * @param a First input vector.
- * @param b Second input vector.
- * @param out Output vector.
+ * @param input_a First input vector.
+ * @param input_b Second input vector.
+ * @param output Output vector.
  * @param status Error status.
  */
 void sdp_vector_add(
-        int num_elements,
-        const sdp_Mem* a,
-        const sdp_Mem* b,
-        sdp_Mem* out,
+        const sdp_Mem* input_a,
+        const sdp_Mem* input_b,
+        sdp_Mem* output,
         sdp_Error* status);
 
 #ifdef __cplusplus
