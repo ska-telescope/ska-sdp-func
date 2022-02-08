@@ -129,7 +129,7 @@ sdp_Mem* sdp_mem_create_wrapper(
     int64_t num_elements = 1;
     for (int32_t i = num_dims - 1; i >= 0; --i)
     {
-        if (mem->stride[i] != num_elements * element_size)
+        if (sdp_mem_stride_dim(mem, i) != num_elements * element_size)
         {
             mem->is_c_contiguous = 0;
         }
@@ -186,7 +186,7 @@ void sdp_mem_copy_contents(
 #ifdef SDP_HAVE_CUDA
     cudaError_t cuda_error = cudaSuccess;
 #endif
-    if (*status || !dst || !src) return;
+    if (*status || !dst || !src || !dst->data || !src->data) return;
     if (src->num_elements == 0 || num_elements == 0) return;
     const int64_t element_size = sdp_mem_type_size(src->type);
     const int64_t start_dst   = element_size * offset_dst;
@@ -334,6 +334,7 @@ void sdp_mem_random_fill(sdp_Mem* mem, sdp_Error* status)
         float* data = (float*) mem->data;
         for (int64_t i = 0; i < num_elements; ++i)
         {
+            // NOLINTNEXTLINE: rand() is not a problem for our use case.
             data[i] = (float)rand() / (float)RAND_MAX;
         }
     }
@@ -342,6 +343,7 @@ void sdp_mem_random_fill(sdp_Mem* mem, sdp_Error* status)
         double* data = (double*) mem->data;
         for (int64_t i = 0; i < num_elements; ++i)
         {
+            // NOLINTNEXTLINE: rand() is not a problem for our use case.
             data[i] = (double)rand() / (double)RAND_MAX;
         }
     }
@@ -367,14 +369,12 @@ void sdp_mem_set_read_only(sdp_Mem* mem, int32_t value)
 
 int64_t sdp_mem_shape_dim(const sdp_Mem* mem, int32_t dim)
 {
-    return (!mem || !mem->data || dim < 0 || dim >= mem->num_dims) ? 0 :
-            mem->shape[dim];
+    return (!mem || dim < 0 || dim >= mem->num_dims) ? 0 : mem->shape[dim];
 }
 
 int64_t sdp_mem_stride_dim(const sdp_Mem* mem, int32_t dim)
 {
-    return (!mem || !mem->data || dim < 0 || dim >= mem->num_dims) ? 0 :
-            mem->stride[dim];
+    return (!mem || dim < 0 || dim >= mem->num_dims) ? 0 : mem->stride[dim];
 }
 
 sdp_MemType sdp_mem_type(const sdp_Mem* mem)
