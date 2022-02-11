@@ -1,8 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-from .utility.error import Error
-from .utility.lib import Lib
-from .utility.mem import Mem
+from .utility import Error, Lib, Mem
 
 def dft_point_v00(source_directions, source_fluxes, uvw_lambda, vis):
     """Basic prediction of visibilities from point sources using a DFT.

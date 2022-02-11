@@ -7,9 +7,16 @@ SDP Processing Function Library
   :maxdepth: 1
 
   install
+
+.. toctree::
+  :caption: Developer guide
+  :maxdepth: 1
+
+  adding_new_functions
   mem
   kernels
   errors
+  logging
 
 .. toctree::
   :caption: C processing functions

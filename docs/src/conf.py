@@ -44,6 +44,7 @@ extensions = [
 # Set Breathe configuration (uses Doxygen XML output).
 breathe_projects = { "ska-sdp-func": os.path.join("..", "doxygen", "xml")}
 breathe_default_project = "ska-sdp-func"
+breathe_show_enumvalue_initializer = True
 
 cpp_index_common_prefix = ['sdp_']
 

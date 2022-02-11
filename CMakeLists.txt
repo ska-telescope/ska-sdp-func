@@ -4,6 +4,30 @@ if (APPLE)
 endif()
 project(SDP_FUNC CXX C)
 
+# Library name.
+set(libname ska_sdp_func)
+
+# List of C and C++ source files.
+set(${libname}_SRC
+    src/func/dft/sdp_dft.cpp
+    src/func/vector/sdp_vector_add.cpp
+    src/utility/sdp_device_wrapper.cpp
+    src/utility/sdp_logging.c
+    src/utility/sdp_mem.c
+)
+
+# List of CUDA kernel source files.
+set(${libname}_CUDA_SRC
+    src/func/dft/sdp_dft.cu
+    src/func/vector/sdp_vector_add.cu
+)
+
+# List of tests to build, in the "tests" directory.
+set(${libname}_TESTS
+    test_dft
+    test_vector_add
+)
+
 # Project version.
 set(SDP_FUNC_VERSION_ID "0x000000")
 set(SDP_FUNC_VERSION_MAJOR 0)
@@ -77,41 +101,26 @@ if (CMAKE_BUILD_TYPE MATCHES Debug AND COVERAGE_REPORT)
     setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest)
 endif()
 
-# List of source files.
-set(libname ska_sdp_func)
-set(${libname}_SRC
-    src/func/dft/sdp_dft.cpp
-    src/func/vector/sdp_vector_add.cpp
-    src/utility/sdp_device_wrapper.cpp
-    src/utility/sdp_logging.c
-    src/utility/sdp_mem.c
-)
-
+# Build library using list of source files.
 if (CUDA_FOUND)
-    # Add kernel sources.
-    list(APPEND ${libname}_SRC
-        src/func/dft/sdp_dft.cu
-        src/func/vector/sdp_vector_add.cu
-    )
+    # Add CUDA kernel sources.
+    list(APPEND ${libname}_SRC ${${libname}_CUDA_SRC})
     set(CUDA_GENERATED_OUTPUT_DIR
         ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${libname}.dir/src)
     cuda_add_library(${libname} ${${libname}_SRC})
 else()
     add_library(${libname} ${${libname}_SRC})
 endif()
-
 set_target_properties(${libname} PROPERTIES
     SOVERSION ${SDP_FUNC_VERSION}
     VERSION ${SDP_FUNC_VERSION})
 
-# Tests.
-add_executable(test_vector_add tests/test_vector_add.cpp)
-target_link_libraries(test_vector_add ${libname})
-add_test(test_vector_add test_vector_add)
-
-add_executable(test_dft tests/test_dft.cpp)
-target_link_libraries(test_dft ${libname})
-add_test(test_dft test_dft)
+# Build tests.
+foreach(test ${${libname}_TESTS})
+    add_executable(${test} tests/${test}.cpp)
+    target_link_libraries(${test} ${libname})
+    add_test(${test} ${test})
+endforeach()
 
 install(TARGETS ${libname}
     ARCHIVE DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries

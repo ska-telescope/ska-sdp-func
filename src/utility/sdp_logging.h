@@ -3,6 +3,10 @@
 #ifndef SKA_SDP_PROC_FUNC_LOGGING_H_
 #define SKA_SDP_PROC_FUNC_LOGGING_H_
 
+/**
+ * @file sdp_logging.h
+ */
+
 #include <stdio.h>
 
 #ifdef __cplusplus
@@ -16,22 +20,38 @@ extern "C" {
  * As required, macros are used to insert the file and line number
  * from where the log was called.
  */
+
+/**
+ * @brief Writes a log message to stderr, with severity "CRITICAL".
+ */
 #define SDP_LOG_CRITICAL(...) \
         sdp_log_message(\
                 "CRITICAL", stderr, __func__, FILENAME, __LINE__, __VA_ARGS__)
 
+/**
+ * @brief Writes a log message to stderr, with severity "ERROR".
+ */
 #define SDP_LOG_ERROR(...) \
         sdp_log_message(\
                 "ERROR", stderr, __func__, FILENAME, __LINE__, __VA_ARGS__)
 
+/**
+ * @brief Writes a log message to stderr, with severity "WARNING".
+ */
 #define SDP_LOG_WARNING(...) \
         sdp_log_message(\
                 "WARNING", stderr, __func__, FILENAME, __LINE__, __VA_ARGS__)
 
+/**
+ * @brief Writes a log message to stdout, with severity "INFO".
+ */
 #define SDP_LOG_INFO(...) \
         sdp_log_message(\
                 "INFO", stdout, __func__, FILENAME, __LINE__, __VA_ARGS__)
 
+/**
+ * @brief Writes a log message to stdout, with severity "DEBUG".
+ */
 #define SDP_LOG_DEBUG(...) \
         sdp_log_message(\
                 "DEBUG", stdout, __func__, FILENAME, __LINE__, __VA_ARGS__)

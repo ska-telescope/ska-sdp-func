@@ -1,8 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-from .utility.error import Error
-from .utility.lib import Lib
-from .utility.mem import Mem
+from .utility import Error, Lib, Mem
 
 def vector_add(input_a, input_b, output):
     """

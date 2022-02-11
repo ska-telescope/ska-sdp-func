@@ -39,6 +39,8 @@ The following example registers two versions of a simple templated kernel:
    SDP_CUDA_KERNEL(vector_add<double>)
 
 
+Include the header *"utility/sdp_device_wrapper.h"* to use these functions.
+
 .. doxygengroup:: device_func
    :content-only:
 

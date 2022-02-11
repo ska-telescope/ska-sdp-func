@@ -20,7 +20,11 @@ CheckOptions:
       value: 'lower_case'
     - key: readability-identifier-naming.GlobalFunctionCase
       value: 'lower_case'
+    - key: readability-identifier-naming.GlobalFunctionPrefix
+      value: 'sdp_'
     - key: readability-identifier-naming.StructCase
       value: 'CamelCase'
+    - key: readability-identifier-naming.StructPrefix
+      value: 'sdp_'
     - key: readability-function-size.StatementThreshold
       value: 300

@@ -339,3 +339,7 @@ p.feedback-response {
     margin-right: 10px;
   }
 }
+
+.highlight * {
+  font-family: monospace;
+}
