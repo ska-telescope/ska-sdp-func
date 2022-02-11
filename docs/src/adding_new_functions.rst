@@ -44,15 +44,15 @@ In C or C++
    - If an :cpp:enum:`sdp_Error` error code is passed to the function,
      check it first, and only proceed if it is zero.
 
-   - After making the necessary checks on the function arguments, pull the
-     pointer to the start of each array out of each wrapper using
-     :cpp:func:`sdp_mem_data`, and cast to the appropriate pointer type.
-
-   - If an error is encountered while making the checks, set the error
+   - If a problem is encountered while making the checks, set the error
      code passed to the function, report a suitable message, and return.
      Errors can be reported using :any:`SDP_LOG_ERROR`, which takes a
      printf-style format string and arguments, and automatically adds the
      required fields needed to comply with the SKA logging standard.
+
+   - After making the necessary checks on the function arguments, pull the
+     pointer to the start of each array out of each wrapper using
+     :cpp:func:`sdp_mem_data`, and cast to the appropriate pointer type.
 
    - It may be convenient to call other private functions in the file to
      implement the algorithm, which could (for example) use C++ templates
@@ -65,7 +65,10 @@ In C or C++
 
 2. Write a header file to expose the public function prototype.
 
-   - Save the header in the same location in the repository as the source file.
+   - Save the header in the same location in the repository as the source file,
+     and remember to ``#include`` it there.
+     The ``#include`` should use the relative path to the header in quotes,
+     but omit the top-level ``src/`` prefix.
 
    - Document the function and its arguments in the header,
      using Doxygen-style comments.
@@ -175,10 +178,13 @@ processing functions without needlessly copying data.
    to add the Python function. In many cases you may want to simply create a
    new Python source file.
 
-   - At the top of the file, import the Python utility classes:
+   - At the top of the file, import the Python utility classes.
+     It may be necessary to ``import ctypes`` as well, depending on the
+     parameters needed by the function.
 
      .. code-block:: Python
 
+        import ctypes
         from .utility import Error, Lib, Mem
 
    - Declare a Python function, giving it a suitable name and specifying
@@ -244,7 +250,7 @@ processing functions without needlessly copying data.
      .. code-block:: Python
 
         lib_func(
-            42,
+            ctypes.c_int(42),
             mem_input_a.handle(),
             mem_output.handle(),
             error_status.handle()
@@ -274,10 +280,10 @@ processing functions without needlessly copying data.
 
 3. Write a Python unit test to check the operation of the Python function.
 
-   - For it to be found by ``py.test``, the test file should be named
+   - For it to be found by ``pytest``, the test file should be named
      ``test_<function_name>.py``, and placed in the ``tests`` directory.
      Inside the file, create a Python function with a name starting
-     with ``test_``, which will be found automatically by ``py.test``.
+     with ``test_``, which will be found automatically by ``pytest``.
      |br|
 
 4. Re-install and re-test the library. From the repository root:
@@ -285,7 +291,48 @@ processing functions without needlessly copying data.
    .. code-block:: bash
 
       pip3 install .
-      py.test
+      pytest
+
+
+Updating Documentation
+======================
+
+Descriptions from the Doxygen comments and Python docstrings should be
+included in the Sphinx documentation, so they can be found easily.
+
+1. Find (or create) an appropriate reStructuredText file inside
+   the ``docs/src/`` directory.
+   Processing functions are currently documented in
+   ``proc_func_<function_name>.rst`` files.
+
+2. In the file, use the Sphinx directives from Breathe
+   (e.g. ``doxygenfunction``) to document the C function using the
+   Doxygen comments, and ``autofunction`` to document the Python function
+   using the Python docstring.
+   As an example, the source of the :ref:`vector_functions` page currently
+   looks like this:
+
+   .. code-block:: rst
+
+      .. _vector_functions:
+
+      ****************
+      Vector Functions
+      ****************
+
+      C/C++
+      =====
+
+      .. doxygenfunction:: sdp_vector_add
+
+
+      Python
+      ======
+
+      .. autofunction:: ska.sdp.func.vector_add
+
+   - Remember to update the ``index.rst`` file to add the page to the table
+     of contents, if necessary.
 
 
 Worked Example
@@ -304,3 +351,7 @@ For the Python wrapper:
 
 1. The wrapper function is in ``python/ska/sdp/func/vector.py``
 2. The Python test is in ``tests/test_vector_add.py``
+
+For the documentation:
+
+1. The reStructuredText markup is in ``docs/src/proc_func_vector.rst``

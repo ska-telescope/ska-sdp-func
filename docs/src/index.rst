@@ -19,18 +19,11 @@ SDP Processing Function Library
   logging
 
 .. toctree::
-  :caption: C processing functions
+  :caption: Processing functions
   :maxdepth: 1
 
-  c_proc_func_dft
-  c_proc_func_vector
-
-.. toctree::
-  :caption: Python processing functions
-  :maxdepth: 1
-
-  py_proc_func_dft
-  py_proc_func_vector
+  proc_func_dft
+  proc_func_vector
 
 
 Indices and tables

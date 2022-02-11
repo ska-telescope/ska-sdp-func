@@ -50,7 +50,7 @@ from the top-level directory:
 
   .. code-block:: bash
 
-     py.test
+     pytest
 
 Uninstalling
 ------------
