@@ -1,6 +1,5 @@
 # SKA SDP Processing Function Library
 
-Documentation can be built using Sphinx by running ``make html`` from
-inside the ``docs`` directory.
+Current documentation can be viewed at:
 
-Both Doxygen and the Breathe extension for Sphinx need to be installed first.
+- <https://ska-telescope.gitlab.io/sdp/ska-sdp-func>
