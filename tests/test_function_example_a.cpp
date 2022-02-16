@@ -10,34 +10,9 @@
 #include <cstdlib>
 #include <vector>
 
-#include "func/function_a/sdp_function_a.h"
+#include "func/function_example_a/sdp_function_example_a.h"
 #include "utility/sdp_logging.h"
 #include "utility/sdp_mem.h"
-
-template<typename T>
-static void check_results(
-        const char* test_name,
-        const sdp_Mem* a,
-        const sdp_Mem* b,
-        const sdp_Mem* out,
-        const sdp_Error* status)
-{
-    if (*status)
-    {
-        SDP_LOG_ERROR("%s: Test failed (error signalled)", test_name);
-        return;
-    }
-    const T* a_data = (const T*)sdp_mem_data_const(a);
-    const T* b_data = (const T*)sdp_mem_data_const(b);
-    const T* out_data = (const T*)sdp_mem_data_const(out);
-    const int64_t num_elements = sdp_mem_num_elements(a);
-    for (int64_t i = 0; i < num_elements; ++i)
-    {
-        const T expected = a_data[i] + b_data[i];
-        assert(fabs(out_data[i] - expected) < 1e-5);
-    }
-    SDP_LOG_INFO("%s: Test passed", test_name);
-}
 
 static void run_and_check(
         const char* test_name,
@@ -60,9 +35,9 @@ static void run_and_check(
 
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
-    sdp_FunctionA* func_a_plan = sdp_function_a_create_plan(par_a, par_b, par_c, status);
-    sdp_function_a_exec(func_a_plan, output, status);
-    sdp_function_a_free_plan(func_a_plan);
+    sdp_FunctionExampleA* func_a_plan = sdp_function_example_a_create_plan(par_a, par_b, par_c, status);
+    sdp_function_example_a_exec(func_a_plan, output, status);
+    sdp_function_example_a_free_plan(func_a_plan);
 
     sdp_mem_ref_dec(output);
 

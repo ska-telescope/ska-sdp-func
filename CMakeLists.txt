@@ -11,7 +11,7 @@ set(libname ska_sdp_func)
 set(${libname}_SRC
     src/func/dft/sdp_dft.cpp
     src/func/vector/sdp_vector_add.cpp
-    src/func/function_a/sdp_function_a.cpp
+    src/func/function_example_a/sdp_function_example_a.cpp
     src/utility/sdp_device_wrapper.cpp
     src/utility/sdp_logging.c
     src/utility/sdp_mem.c
@@ -27,7 +27,7 @@ set(${libname}_CUDA_SRC
 set(${libname}_TESTS
     test_dft
     test_vector_add
-    test_function_a
+    test_function_example_a
 )
 
 # Project version.

@@ -1,10 +1,10 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#ifndef SKA_SDP_PROC_FUNC_FUNCTION_A_H_
-#define SKA_SDP_PROC_FUNC_FUNCTION_A_H_
+#ifndef SKA_SDP_PROC_FUNC_FUNCTION_EXAMPLE_A_H_
+#define SKA_SDP_PROC_FUNC_FUNCTION_EXAMPLE_A_H_
 
 /**
- * @file sdp_function_a.h
+ * @file sdp_function_example_a.h
  */
 
 #include "utility/sdp_mem.h"
@@ -14,8 +14,8 @@ extern "C" {
 #endif
 
 /* Forward-declare structure handles for private implementation. */
-struct sdp_FunctionA;
-typedef struct sdp_FunctionA sdp_FunctionA;
+struct sdp_FunctionExampleA;
+typedef struct sdp_FunctionExampleA sdp_FunctionExampleA;
 
 /**
  * @brief Creates processing function A.
@@ -24,9 +24,9 @@ typedef struct sdp_FunctionA sdp_FunctionA;
  * @param b Value of b.
  * @param c Value of c.
  * @param status Error status.
- * @return sdp_FunctionA* Handle to processing function.
+ * @return sdp_FunctionExampleA* Handle to processing function.
  */
-sdp_FunctionA* sdp_function_a_create_plan(
+sdp_FunctionExampleA* sdp_function_example_a_create_plan(
         int a,
         int b,
         float c,
@@ -41,8 +41,8 @@ sdp_FunctionA* sdp_function_a_create_plan(
  * @param output Output vector.
  * @param status Error status.
  */
-void sdp_function_a_exec(
-        sdp_FunctionA* plan,
+void sdp_function_example_a_exec(
+        sdp_FunctionExampleA* plan,
         sdp_Mem* output,
         sdp_Error* status
     );
@@ -52,7 +52,7 @@ void sdp_function_a_exec(
  *
  * @param handle Handle to processing function.
  */
-void sdp_function_a_free_plan(sdp_FunctionA* handle);
+void sdp_function_example_a_free_plan(sdp_FunctionExampleA* handle);
 
 #ifdef __cplusplus
 }

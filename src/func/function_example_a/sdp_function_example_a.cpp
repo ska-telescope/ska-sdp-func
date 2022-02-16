@@ -1,10 +1,10 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include "func/function_a/sdp_function_a.h"
+#include "func/function_example_a/sdp_function_example_a.h"
 #include "utility/sdp_device_wrapper.h"
 #include "utility/sdp_logging.h"
 
-struct sdp_FunctionA
+struct sdp_FunctionExampleA
 {
     int a;
     int b;
@@ -12,7 +12,7 @@ struct sdp_FunctionA
     float* workarea;
 };
 
-sdp_FunctionA* sdp_function_a_create_plan(
+sdp_FunctionExampleA* sdp_function_example_a_create_plan(
         int a,
         int b,
         float c,
@@ -23,21 +23,21 @@ sdp_FunctionA* sdp_function_a_create_plan(
     if (a == 10)
     {
         *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Error creating sdp_FunctionA (parameter 'a' cannot be 10)");
+        SDP_LOG_ERROR("Error creating sdp_FunctionExampleA (parameter 'a' cannot be 10)");
         return NULL;
     }
-    sdp_FunctionA* plan = (sdp_FunctionA*) calloc(1, sizeof(sdp_FunctionA));
+    sdp_FunctionExampleA* plan = (sdp_FunctionExampleA*) calloc(1, sizeof(sdp_FunctionExampleA));
     plan->a = a;
     plan->b = b;
     plan->c = c;
     plan->workarea = (float*) calloc(a * b, sizeof(float));
-    SDP_LOG_INFO("Created sdp_FunctionA");
+    SDP_LOG_INFO("Created sdp_FunctionExampleA");
     return plan;
 }
 
 
-void sdp_function_a_exec(
-    sdp_FunctionA* plan,
+void sdp_function_example_a_exec(
+    sdp_FunctionExampleA* plan,
     sdp_Mem *output,
     sdp_Error* status
 )
@@ -82,10 +82,10 @@ void sdp_function_a_exec(
     }
 }
 
-void sdp_function_a_free_plan(sdp_FunctionA* plan)
+void sdp_function_example_a_free_plan(sdp_FunctionExampleA* plan)
 {
     if (!plan) return;
     free(plan->workarea);
     free(plan);
-    SDP_LOG_INFO("Destroyed sdp_FunctionA");
+    SDP_LOG_INFO("Destroyed sdp_FunctionExampleA");
 }
