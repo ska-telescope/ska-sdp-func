@@ -18,6 +18,11 @@ struct sdp_FunctionExampleA;
 typedef struct sdp_FunctionExampleA sdp_FunctionExampleA;
 
 /**
+ * @defgroup FunctionA_func
+ * @{
+ */
+
+/**
  * @brief Creates processing function A.
  *
  * @param a Value of a.
@@ -34,11 +39,10 @@ sdp_FunctionExampleA* sdp_function_example_a_create_plan(
     );
 
 /**
- * @brief Dummy function to demonstrate a function utilising a plan.
+ * @brief Demonstrate a function utilising a plan.
  *
- * @param input_a First input vector.
- * @param input_b Second input vector.
- * @param output Output vector.
+ * @param plan Handle to processing function.
+ * @param output Output buffer.
  * @param status Error status.
  */
 void sdp_function_example_a_exec(
@@ -53,6 +57,8 @@ void sdp_function_example_a_exec(
  * @param handle Handle to processing function.
  */
 void sdp_function_example_a_free_plan(sdp_FunctionExampleA* handle);
+
+/** @} */ /* End group FunctionA_func. */
 
 #ifdef __cplusplus
 }

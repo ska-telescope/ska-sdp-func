@@ -1,10 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import numpy
-try:
-    import cupy
-except ImportError:
-    cupy = None
 
 from ska.sdp.func import FunctionExampleA
 
@@ -20,5 +16,3 @@ def test_function_example_a():
     # Run function_example_a
     output_vector = numpy.zeros(a*b, dtype=numpy.float32)
     function_example_a.exec(output_vector)
-
-    print("Got to the end so it must work...")

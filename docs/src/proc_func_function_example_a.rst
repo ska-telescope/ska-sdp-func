@@ -1,16 +1,20 @@
 .. _example_functions:
 
-****************
+*****************
 Example Functions
-****************
+*****************
 
 C/C++
 =====
 
-.. doxygenfunction:: sdp_function_example_a
+.. doxygengroup:: FunctionA_func
+   :content-only:
 
 
 Python
 ======
 
-.. autofunction:: ska.sdp.func.FunctionExampleA
+.. autoclass:: ska.sdp.func.FunctionExampleA
+   :members:
+   :special-members: __init__
+   :exclude-members: Handle, handle, handle_type
