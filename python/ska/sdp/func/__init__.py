@@ -4,3 +4,4 @@
 
 from .dft import dft_point_v00
 from .vector import vector_add
+from .flagger import rfi_flagger

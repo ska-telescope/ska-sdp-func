@@ -11,6 +11,7 @@ set(libname ska_sdp_func)
 set(${libname}_SRC
     src/func/dft/sdp_dft.cpp
     src/func/vector/sdp_vector_add.cpp
+    src/func/rfi/sdp_rfi_flagger.cpp
     src/utility/sdp_device_wrapper.cpp
     src/utility/sdp_logging.c
     src/utility/sdp_mem.c
@@ -20,6 +21,7 @@ set(${libname}_SRC
 set(${libname}_CUDA_SRC
     src/func/dft/sdp_dft.cu
     src/func/vector/sdp_vector_add.cu
+    src/func/rfi/sdp_rfi_flagger.cu
 )
 
 # List of tests to build, in the "tests" directory.
