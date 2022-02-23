@@ -28,8 +28,6 @@ void sdp_rfi_flagger(
 	       	const sdp_Mem* sequence,
 	       	const sdp_Mem* thresholds,
 		sdp_Mem*  flags,
-		sdp_Mem*  block,
-		sdp_Mem*  flags_on_block,
         	sdp_Error* status);
 
 #ifdef __cplusplus

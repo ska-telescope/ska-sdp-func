@@ -27,16 +27,12 @@ def rfi_flagger(vis,sequence,thresholds,flags):
     """
 
     mem_vis = Mem(vis)
-    mem_block = Mem(vis)
     mem_sequence = Mem(sequence)
     mem_thresholds = Mem(thresholds)
     mem_flags = Mem(flags)
-    mem_flags_on_block = Mem(flags)
     error_status = Error()
     lib_rfi_flagger = Lib.handle().sdp_rfi_flagger
     lib_rfi_flagger.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
@@ -48,8 +44,6 @@ def rfi_flagger(vis,sequence,thresholds,flags):
         mem_sequence.handle(),
         mem_thresholds.handle(),
         mem_flags.handle(),
-        mem_block.handle(),
-        mem_flags_on_block.handle(),
         error_status.handle()
     )
     error_status.check()

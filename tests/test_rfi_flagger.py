@@ -31,9 +31,13 @@ def test_rfi_flagger():
     vis_data = vis.getcol('DATA', start_row,num_rows )
     rfi_data = rfi.getcol('DATA', start_row,num_rows)
     spectrogram = abs(vis_data + rfi_data)
-    flags = np.zeros([num_rows, num_freqs, num_polarisations], dtype=np.int32)
+    tmpspec=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[2],np.shape(spectrogram)[1]),dtype=np.float32)
+    flags=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[2],np.shape(spectrogram)[1]),dtype=np.int32)
 
-    spectrogram_gpu=cupy.asarray(spectrogram)
+    for i in range(np.shape(spectrogram)[0]):
+        tmpspec[i]=np.transpose(spectrogram[i])
+
+    spectrogram_gpu=cupy.asarray(tmpspec)
     sequence_gpu=cupy.asarray(sequence_lengths)
     threshold_gpu=cupy.asarray(thresholds)
     flags_gpu=cupy.asarray(flags)

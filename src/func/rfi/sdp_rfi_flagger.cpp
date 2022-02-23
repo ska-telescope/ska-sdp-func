@@ -8,8 +8,6 @@ static void check_params(
 	       	const sdp_Mem* sequence,
 	       	const sdp_Mem* thresholds,
 		sdp_Mem*  flags,
-		sdp_Mem*  block,
-		sdp_Mem*  flags_on_block,
         	sdp_Error* status)
 {
     if (*status) return;
@@ -18,20 +16,6 @@ static void check_params(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("output flags must be writable.");
-        return;
-    }
-
-    if (sdp_mem_is_read_only(block))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("block must be writable.");
-        return;
-    }
-
-    if (sdp_mem_is_read_only(flags_on_block))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Flags on block must be writable.");
         return;
     }
 
@@ -48,22 +32,19 @@ void sdp_rfi_flagger(
 	       	const sdp_Mem* sequence,
 	       	const sdp_Mem* thresholds,
 		sdp_Mem*  flags,
-		sdp_Mem*  block,
-		sdp_Mem*  flags_on_block,
         	sdp_Error* status)
 {
 
-    check_params(vis,sequence,thresholds,flags,block,flags_on_block,status);	
+    check_params(vis,sequence,thresholds,flags,status);	
     const sdp_MemType type = sdp_mem_type(vis);
     const sdp_MemLocation location = sdp_mem_location(vis);
     if (*status) return;
 
-    const int num_baselines  = 21;
-    const int num_times      = (int)(sdp_mem_shape_dim(vis, 0)/num_baselines);
-    const int num_channels   = (int)sdp_mem_shape_dim(vis, 1);
-    const int num_pols       = (int)sdp_mem_shape_dim(vis, 2);
+    const int num_times      = (int)(sdp_mem_shape_dim(vis, 0))*21;
+    const int num_channels   = (int)sdp_mem_shape_dim(vis, 2);
     const int seqlen 	     = (int)sdp_mem_shape_dim(sequence, 0);
-
+    
+    printf("Num time:%d\tNum_channels:%d\n",num_times,num_channels);
 
     if (location == SDP_MEM_GPU)
     {
@@ -89,16 +70,11 @@ void sdp_rfi_flagger(
         const void* args[] = {
                 &num_times,
 		&num_channels,
-		&num_baselines,
-		&num_pols,
 		&seqlen,
 		sdp_mem_gpu_buffer_const(sequence,status),
                 sdp_mem_gpu_buffer_const(vis, status),
                 sdp_mem_gpu_buffer_const(thresholds, status),
-		sdp_mem_gpu_buffer(block,status),
 		sdp_mem_gpu_buffer(flags,status),
-		sdp_mem_gpu_buffer(flags_on_block,status)
-		
         };
         
 	sdp_launch_cuda_kernel(kernel_name,num_blocks, num_threads, 0, 0, args, status);
