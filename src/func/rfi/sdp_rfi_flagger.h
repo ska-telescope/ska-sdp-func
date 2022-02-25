@@ -18,8 +18,8 @@ extern "C" {
  * @brief Simple example 
  *
  * @param vis Spectrograms from the visibility data.
- * @param sequence The length of continious channels used for flagging
- * @param threshold The thresholds used for flaggig
+ * @param sequence The length of continuous channels used for flagging
+ * @param thresholds The thresholds used for flagging
  * @param flags	The output flags are stored in flags.
  * @param status Error status.
  */

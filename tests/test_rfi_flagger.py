@@ -15,22 +15,19 @@ def threshold_calc(initial_value, rho, seq_lengths):
     return thresholds
 
 def test_rfi_flagger():
-    vis = tbl.table("/home/ajay/work/gpu/data/20_sources_with_screen/aa0.5_ms.MS")
-    rfi = tbl.table("/home/ajay/work/gpu/data/aa05_low_rfi_84chans.ms")
     num_freqs=200
+    num_baselines=21
+    num_times=5040
     num_polarisations=4
     num_seq_len = 6
     sequence_lengths = np.array([1, 2, 4, 8, 16, 32], dtype=np.int32)
     rho1 = 1.5
+
+    spectrogram = np.random.random_sample(
+        [num_times, num_freqs, num_polarisations]) 
     initial_threshold=20
     thresholds = threshold_calc(initial_threshold, rho1, sequence_lengths)
-    start_row=0
 
-
-    num_rows = vis.nrows()
-    vis_data = vis.getcol('DATA', start_row,num_rows )
-    rfi_data = rfi.getcol('DATA', start_row,num_rows)
-    spectrogram = abs(vis_data + rfi_data)
     tmpspec=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[2],np.shape(spectrogram)[1]),dtype=np.float32)
     flags=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[2],np.shape(spectrogram)[1]),dtype=np.int32)
 
