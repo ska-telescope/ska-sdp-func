@@ -3,11 +3,12 @@
 #include "utility/sdp_device_wrapper.h"
 
 template<typename T>
-__global__ void rfi_flagger(const  int num_time,
+__global__ void rfi_flagger(
+		const  int num_time,
 		const  int num_freqs,
 		const int seqlen,
 		const int* sequence_lengths,
-	       	const T* const __restrict__ spectrogram,
+		const T* const __restrict__ spectrogram,
 		const T*const __restrict__ thresholds,
 		int*  flags)
 {
