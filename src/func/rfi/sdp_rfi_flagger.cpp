@@ -3,6 +3,8 @@
 #include "func/rfi/sdp_rfi_flagger.h"
 #include "utility/sdp_device_wrapper.h"
 #include "utility/sdp_logging.h"
+#include "sdp_rfi_flagger_config.cuh"
+
 static void check_params(
 	       	const sdp_Mem* vis,
 	       	const sdp_Mem* sequence,
@@ -101,7 +103,7 @@ void sdp_rfi_flagger(
 
     else if (type == SDP_MEM_FLOAT)
     {
-        kernel_name = "rfi_flagger<float>";
+        kernel_name = "rfi_flagger<float,RFI_flagger_params>";
     }
     else
     {

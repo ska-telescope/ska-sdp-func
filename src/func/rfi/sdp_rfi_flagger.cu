@@ -1,8 +1,9 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
   
 #include "utility/sdp_device_wrapper.h"
+#include "sdp_rfi_flagger_config.cuh"
 
-template<typename T>
+template<typename T, class const_params>
 __global__ void rfi_flagger(
 		const  int num_time,
 		const  int num_freqs,
@@ -19,8 +20,8 @@ __global__ void rfi_flagger(
 	
     	did=blockIdx.x *num_freqs + threadIdx.x; 
 
-	__shared__ float block[256];
-	__shared__ int s_flags[256];
+	__shared__ float block[const_params::nThreads];
+	__shared__ int s_flags[const_params::nThreads];
 
 	if(threadIdx.x<num_freqs)
 	{
@@ -66,5 +67,5 @@ __global__ void rfi_flagger(
 	}
 }
 
-SDP_CUDA_KERNEL(rfi_flagger<float>)
+SDP_CUDA_KERNEL(rfi_flagger<float,RFI_flagger_params>)
 	
