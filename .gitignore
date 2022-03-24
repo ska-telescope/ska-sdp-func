@@ -1,12 +1,14 @@
 *.DS_Store
 .vscode/
+.venv/
 
 # Build directories
 /release/
 /debug/
 /build/
+/dist/
 __pycache__/
-
+*.egg-info/
 
 # Documentation build directories
 /docs/doxygen/

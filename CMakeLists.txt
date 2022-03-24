@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 if (APPLE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum macOS version")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
 endif()
 project(SDP_FUNC CXX C)
 
@@ -110,12 +110,17 @@ if (CUDA_FOUND)
     set(CUDA_GENERATED_OUTPUT_DIR
         ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${libname}.dir/src)
     cuda_add_library(${libname} ${${libname}_SRC})
+    target_link_libraries(${libname} ${CUDA_CUFFT_LIBRARIES})
 else()
     add_library(${libname} ${${libname}_SRC})
 endif()
-set_target_properties(${libname} PROPERTIES
-    SOVERSION ${SDP_FUNC_VERSION}
-    VERSION ${SDP_FUNC_VERSION})
+if (NOT DEFINED PYTHON_EXECUTABLE)
+    set_target_properties(${libname} PROPERTIES
+        SOVERSION ${SDP_FUNC_VERSION}
+        VERSION ${SDP_FUNC_VERSION})
+else()
+    message(STATUS "Building for Python: ${PYTHON_EXECUTABLE}")
+endif()
 
 # Build tests.
 foreach(test ${${libname}_TESTS})
