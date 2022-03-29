@@ -1,5 +1,4 @@
 from ska.sdp.func import rfi_flagger
-import casacore.tables as tbl
 import numpy as np
 try:
     import cupy
