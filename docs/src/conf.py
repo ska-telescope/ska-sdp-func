@@ -14,7 +14,8 @@ import os
 import subprocess
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath(os.path.join("..", "..", "python")))
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "python"))
 
 
 def setup(app):

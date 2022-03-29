@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 if (APPLE)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum macOS version")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
 endif()
 project(SDP_FUNC CXX C)
 
@@ -12,6 +12,7 @@ set(${libname}_SRC
     src/func/dft/sdp_dft.cpp
     src/func/vector/sdp_vector_add.cpp
     src/func/rfi/sdp_rfi_flagger.cpp
+    src/func/function_example_a/sdp_function_example_a.cpp
     src/utility/sdp_device_wrapper.cpp
     src/utility/sdp_logging.c
     src/utility/sdp_mem.c
@@ -28,6 +29,7 @@ set(${libname}_CUDA_SRC
 set(${libname}_TESTS
     test_dft
     test_vector_add
+    test_function_example_a
 )
 
 # Project version.
@@ -110,12 +112,17 @@ if (CUDA_FOUND)
     set(CUDA_GENERATED_OUTPUT_DIR
         ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${libname}.dir/src)
     cuda_add_library(${libname} ${${libname}_SRC})
+    target_link_libraries(${libname} ${CUDA_CUFFT_LIBRARIES})
 else()
     add_library(${libname} ${${libname}_SRC})
 endif()
-set_target_properties(${libname} PROPERTIES
-    SOVERSION ${SDP_FUNC_VERSION}
-    VERSION ${SDP_FUNC_VERSION})
+if (NOT DEFINED PYTHON_EXECUTABLE)
+    set_target_properties(${libname} PROPERTIES
+        SOVERSION ${SDP_FUNC_VERSION}
+        VERSION ${SDP_FUNC_VERSION})
+else()
+    message(STATUS "Building for Python: ${PYTHON_EXECUTABLE}")
+endif()
 
 # Build tests.
 foreach(test ${${libname}_TESTS})
