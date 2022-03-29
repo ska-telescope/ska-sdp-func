@@ -24,15 +24,19 @@ def test_rfi_flagger():
     rho1 = 1.5
 
     spectrogram = np.random.random_sample(
-        [num_times, num_freqs, num_polarisations]) 
+        [num_times,num_baselines,num_freqs, num_polarisations]) 
     initial_threshold=20
     thresholds = threshold_calc(initial_threshold, rho1, sequence_lengths)
-
-    tmpspec=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[2],np.shape(spectrogram)[1]),dtype=np.float32)
-    flags=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[2],np.shape(spectrogram)[1]),dtype=np.int32)
+    flags=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[1],np.shape(spectrogram)[2],np.shape(spectrogram)[3]),dtype=np.int32)
+    rfi_flagger(spectrogram,sequence_lengths,thresholds,flags)
+    #GPU testing
+    tmpspec=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[1],np.shape(spectrogram)[3],np.shape(spectrogram)[2]),dtype=np.float32)
+    flags=np.zeros((np.shape(spectrogram)[0],np.shape(spectrogram)[1],np.shape(spectrogram)[3],np.shape(spectrogram)[2]),dtype=np.float32)
 
     for i in range(np.shape(spectrogram)[0]):
-        tmpspec[i]=np.transpose(spectrogram[i])
+        for j in range(np.shape(spectrogram)[1]):
+            tmpspec[i][j]=np.transpose(spectrogram[i][j])
+
 
     spectrogram_gpu=cupy.asarray(tmpspec)
     sequence_gpu=cupy.asarray(sequence_lengths)
@@ -41,3 +45,7 @@ def test_rfi_flagger():
 
     rfi_flagger(spectrogram_gpu,sequence_gpu,threshold_gpu,flags_gpu)
     flags=cupy.asnumpy(flags_gpu)
+
+
+if __name__== "__main__":
+    test_rfi_flagger()

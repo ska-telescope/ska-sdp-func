@@ -30,38 +30,185 @@ static void check_params(
         return;
     }
     
-    if (vis_location != SDP_MEM_GPU)
+    if (vis_location == SDP_MEM_GPU)
+    {
+
+    	if (sequence_location != SDP_MEM_GPU)
+    	{
+        	*status = SDP_ERR_RUNTIME;
+        	SDP_LOG_ERROR("sequences must be in GPU memory");
+        	return;
+    	}
+
+   	if (thresholds_location != SDP_MEM_GPU)
+    	{
+        	*status = SDP_ERR_RUNTIME;
+        	SDP_LOG_ERROR("thresholds must be in GPU memory");
+        	return;
+    	}
+
+    	if (flags_location != SDP_MEM_GPU)
+    	{
+        	*status = SDP_ERR_RUNTIME;
+        	SDP_LOG_ERROR("flags must be in GPU memory");
+        	return;
+    	}
+    }
+    else  if (vis_location == SDP_MEM_CPU)
+    {
+
+    	if (sequence_location != SDP_MEM_CPU)
+    	{
+        	*status = SDP_ERR_RUNTIME;
+        	SDP_LOG_ERROR("sequences must be in CPU memory");
+        	return;
+    	}
+
+   	if (thresholds_location != SDP_MEM_CPU)
+    	{
+        	*status = SDP_ERR_RUNTIME;
+        	SDP_LOG_ERROR("thresholds must be in CPU memory");
+        	return;
+    	}
+
+    	if (flags_location != SDP_MEM_CPU)
+    	{
+        	*status = SDP_ERR_RUNTIME;
+        	SDP_LOG_ERROR("flags must be in CPU memory");
+        	return;
+    	}
+    }
+    else
     {
 
         *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("vis data must be in GPU memory");
+        SDP_LOG_ERROR("Unknown memory location for visibility data.");
         return;
     }
 
-    if (sequence_location != SDP_MEM_GPU)
-    {
+}
 
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("sequences must be in GPU memory");
-        return;
+
+void write_flags_to_the_slice_array(
+				const uint64_t num_freqs, 
+				const uint64_t num_baselines, 
+				const uint64_t num_polarisation, 
+				const uint64_t num_time,
+                                const int baseline_id, 
+				const int polarisation_id, 
+				int* flags_on_the_block, 
+				int* flags
+)
+{
+
+    for (uint64_t i = 0; i < num_time; i++){
+        for (uint64_t j = 0; j < num_freqs; j++){
+            flags[i * num_freqs * num_baselines * num_polarisation + baseline_id * num_freqs * num_polarisation
+            + j * num_polarisation + polarisation_id] = flags_on_the_block[i * num_freqs + j];
+        }
     }
 
-    if (thresholds_location != SDP_MEM_GPU)
-    {
+}
 
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("thresholds must be in GPU memory");
-        return;
+
+void sum_threshold_on_block(
+		const float* thresholds, 
+		const uint64_t seqlen, 
+		const int* sequence_lengths, 
+		float *block,
+		const uint64_t num_freqs,
+		const uint64_t num_time,
+		int *flags_on_block, 
+		const int freq_or_time
+)
+{
+    float current_threshold = 0;
+    float sum = 0;
+    uint64_t current_seqlen = 0;
+    if (!freq_or_time){
+        for (uint64_t k = 0; k < seqlen; k++){
+            current_seqlen = sequence_lengths[k];
+            current_threshold = thresholds[k] * current_seqlen;
+            for (uint64_t j = 0; j < num_freqs; j++){
+                for (uint64_t i = 0; i < num_time - current_seqlen; i++){
+                    sum = 0;
+                    for (uint64_t m = 0; m < current_seqlen; m++){
+
+
+                        sum = sum + block[(i + m) * num_freqs + j];
+                    }
+                 if (sum > current_threshold){
+                        for (uint64_t m = 0; m < current_seqlen; m++){
+                            flags_on_block[(i + m) * num_freqs + j] = 1;
+                        }
+                    } 
+                }
+            }
+
+        }
+    } else if (freq_or_time){
+        for (uint64_t k = 0; k < seqlen; k++){
+            current_seqlen = sequence_lengths[k];
+            current_threshold = thresholds[k] * current_seqlen;
+            for (uint64_t i = 0; i < num_time; i++){
+                for (uint64_t j = 0; j < num_freqs - current_seqlen; j++){
+                    sum = 0;
+                    for (uint64_t m = 0; m < current_seqlen; m++){
+                        if (flags_on_block[i * num_freqs + j + m] == 1){
+                            block[i * num_freqs + j + m] = thresholds[k];
+                        }
+                        sum = sum + block[i * num_freqs + j + m];
+                    }
+
+                    if (sum > current_threshold){
+                        for (uint64_t m = 0; m < current_seqlen; m++){
+                            flags_on_block[i  * num_freqs + j + m] = 1;
+                        }
+                    }
+                }
+            }
+
+        }
     }
 
-    if (flags_location != SDP_MEM_GPU)
-    {
+}
 
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("flags must be in GPU memory");
-        return;
+template<typename TCPU>
+void  rfi_flagger(
+		const uint64_t num_time,
+		const uint64_t num_freqs,
+		const uint64_t seqlen,
+		const uint64_t num_polarisations,
+		const uint64_t num_baselines,
+		const int* sequence_lengths,
+	       	const TCPU* const __restrict__ spectrogram,
+		const TCPU*const __restrict__ thresholds,
+		int*  flags
+)
+{
+
+    for (uint64_t m = 0; m < num_baselines; m++){
+        for (uint64_t k = 0; k < num_polarisations; k++){
+            float* block = new TCPU[num_time * num_freqs];
+            int* flags_on_the_block = new int[num_time * num_freqs];
+            for (uint64_t i = 0; i < num_freqs * num_time; i++){
+                flags_on_the_block[i] = 0;
+            }
+            for (uint64_t i = 0; i < num_time; i++){
+                for (uint64_t j = 0; j < num_freqs; j++){
+                    block[i * num_freqs + j] =  spectrogram[i * num_freqs * num_polarisations
+                                            * num_baselines + m * num_freqs * num_polarisations + j * num_polarisations + k];
+
+
+	  	}
+            }
+
+            sum_threshold_on_block(thresholds, seqlen, sequence_lengths, block, num_freqs, num_time, flags_on_the_block, false);
+            write_flags_to_the_slice_array(num_freqs, num_baselines, num_polarisations, num_time, m, k, flags_on_the_block, flags);
+            delete[] block;
+            delete[] flags_on_the_block;
+        }
     }
-
 }
 void sdp_rfi_flagger(
 	       	const sdp_Mem* vis,
@@ -71,52 +218,76 @@ void sdp_rfi_flagger(
         	sdp_Error* status)
 {
 
-
     const sdp_MemType type = sdp_mem_type(vis);
     const sdp_MemLocation location = sdp_mem_location(vis);
     const sdp_MemLocation sequence_location = sdp_mem_location(sequence);
     const sdp_MemLocation thresholds_location = sdp_mem_location(thresholds);
     const sdp_MemLocation flags_location = sdp_mem_location(flags);
-    
-
 
     check_params(vis,sequence,thresholds,location,sequence_location,thresholds_location,flags_location,flags,status);	
     if (*status) return;
 
-    const uint64_t num_baselines  = 21;
-    const uint64_t num_times      = (uint64_t)(sdp_mem_shape_dim(vis, 0))*num_baselines;
+
+
+
+    const uint64_t num_times      = (uint64_t)(sdp_mem_shape_dim(vis, 0));
+    const uint64_t num_baselines  = (uint64_t)(sdp_mem_shape_dim(vis, 1));
     const uint64_t num_channels   = (uint64_t)sdp_mem_shape_dim(vis, 2);
+    const uint64_t num_polarisations = (uint64_t)(sdp_mem_shape_dim(vis, 3));
     const uint64_t seqlen 	     = (uint64_t)sdp_mem_shape_dim(sequence, 0);
     
 
-    const uint64_t num_threads[] = {256, 1, 1};
-    const uint64_t num_blocks[] = {
-            (num_times + num_threads[0] - 1) / num_threads[0], 1, 1
-    };
-    const char* kernel_name = 0;
-    if (type == SDP_MEM_DOUBLE)
-    {
-        kernel_name = "rfi_flagger<double>";
-    }
+    if (location == SDP_MEM_GPU){
 
-    else if (type == SDP_MEM_FLOAT)
-    {
-        kernel_name = "rfi_flagger<float>";
+    	const uint64_t num_threads[] = {256, 1, 1};
+    	const uint64_t num_blocks[] = {
+            	(num_times + num_threads[0] - 1) / num_threads[0], 1, 1
+    	};
+    	const char* kernel_name = 0;
+    	if (type == SDP_MEM_DOUBLE)
+    	{
+        	kernel_name = "rfi_flagger<double>";
+    	}
+   	else if (type == SDP_MEM_FLOAT)
+    	{
+        	kernel_name = "rfi_flagger<float>";
+    	}
+    	else
+    	{
+        	*status = SDP_ERR_DATA_TYPE;
+        	SDP_LOG_ERROR("Unsupported data type");
+    	}
+    	const void* args[] = {
+        	&num_times,
+    		&num_channels,
+    		&seqlen,
+    		sdp_mem_gpu_buffer_const(sequence,status),
+            	sdp_mem_gpu_buffer_const(vis, status),
+            	sdp_mem_gpu_buffer_const(thresholds, status),
+    		sdp_mem_gpu_buffer(flags,status),
+    	};
+    
+    	sdp_launch_cuda_kernel(kernel_name,num_blocks, num_threads, 0, 0, args, status);
+    }
+    else if (location == SDP_MEM_CPU){
+	rfi_flagger(
+		num_times,
+		num_channels,
+		seqlen,
+		num_polarisations,
+		num_baselines,
+		(const int*)sdp_mem_data_const(sequence),
+	       	(const float*)sdp_mem_data_const(vis),
+		(const float*)sdp_mem_data_const(thresholds),
+		(int*)sdp_mem_data(flags)
+	);
+	   
     }
     else
     {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Unsupported data type");
+
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Unknown memory location for visibility data.");
+        return;
     }
-    const void* args[] = {
-            &num_times,
-    	&num_channels,
-    	&seqlen,
-    	sdp_mem_gpu_buffer_const(sequence,status),
-            sdp_mem_gpu_buffer_const(vis, status),
-            sdp_mem_gpu_buffer_const(thresholds, status),
-    	sdp_mem_gpu_buffer(flags,status),
-    };
-    
-    sdp_launch_cuda_kernel(kernel_name,num_blocks, num_threads, 0, 0, args, status);
 }
