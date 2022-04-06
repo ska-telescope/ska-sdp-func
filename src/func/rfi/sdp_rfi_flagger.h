@@ -5,7 +5,7 @@
 #define SKA_SDP_PROC_FUNC_RFI_FLAGGER_H_
 
 /**
- * @file sdp_vector_add.h
+ * @file sdp_rfi_flagger.h
  */
 
 #include "utility/sdp_mem.h"

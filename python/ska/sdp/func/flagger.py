@@ -12,9 +12,25 @@ def rfi_flagger(vis,sequence,thresholds,flags):
     and with the same length and data type.
     Computation is performed either on the CPU or GPU as appropriate.
 
+    
+    Array dimensions must be as follows:
+
+    * ``vis`` is 4D and complex-valued, with shape:
+
+        * [ num_times, num_baselines, num_channels, num_pols ]
+      
+    * ``sequence`` is 1D and real valued, with shape:
+        *[num_seq_len]
+
+    * ``thresholds`` is 1D and real valued, with shape:
+        *[num_seq_len]
+
+    * ``flags`` is 4D and integer-valued, with shape:
+        * [ num_times, num_baselines, num_channels, num_pols ]
+
     :param vis: Visibility data.
     :type vis: numpy.ndarray or cupy.ndarray
-
+     
     :param sequence: The length of continious channels used for flagging.
     :type sequence: numpy.ndarray or cupy.ndarray
 
