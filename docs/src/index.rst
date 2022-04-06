@@ -23,6 +23,7 @@ SDP Processing Function Library
   :maxdepth: 1
 
   proc_func_dft
+  proc_func_function_example_a
   proc_func_vector
 
 
