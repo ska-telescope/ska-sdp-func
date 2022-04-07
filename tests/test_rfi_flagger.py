@@ -15,7 +15,7 @@ def threshold_calc(initial_value, rho, seq_lengths):
 def test_rfi_flagger():
     num_freqs=200
     num_baselines=21
-    num_times=5040
+    num_times=240
     num_polarisations=4
     num_seq_len = 6
     sequence_lengths = np.array([1, 2, 4, 8, 16, 32], dtype=np.int32)
@@ -27,17 +27,23 @@ def test_rfi_flagger():
     thresholds = threshold_calc(initial_threshold, rho1, sequence_lengths)
     flags=np.zeros(spectrogram.shape,dtype=np.int32)
     rfi_flagger(spectrogram,sequence_lengths,thresholds,flags)
+    print("Number of zero flags (CPU): ", np.count_nonzero(flags == 0))
+    print("Number of nonzero flags (CPU): ", np.count_nonzero(flags != 0))
 
-    flags=np.zeros(spectrogram.shape,dtype=np.int32)
+
     #GPU testing
     if cupy:
+        flags_copy=np.zeros(spectrogram.shape,dtype=np.int32)
         spectrogram_gpu=cupy.asarray(spectrogram)
         sequence_gpu=cupy.asarray(sequence_lengths)
         threshold_gpu=cupy.asarray(thresholds)
         flags_gpu=cupy.asarray(flags)
 
         rfi_flagger(spectrogram_gpu,sequence_gpu,threshold_gpu,flags_gpu)
-        flags=cupy.asnumpy(flags_gpu)
-
+        flags_copy=cupy.asnumpy(flags_gpu)
+        print("Number of zero flags (GPU): ", np.count_nonzero(flags_copy == 0))
+        print("Number of nonzero flags (GPU): ", np.count_nonzero(flags_copy != 0))
+        
+        np.testing.assert_array_equal(flags,flags_copy)
 if __name__== "__main__":
     test_rfi_flagger()

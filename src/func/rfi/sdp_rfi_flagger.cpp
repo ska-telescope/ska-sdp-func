@@ -181,7 +181,7 @@ void sdp_rfi_flagger(
 
 
     const uint64_t num_baselines  = (uint64_t)(sdp_mem_shape_dim(vis, 1));
-    const uint64_t num_times      = (uint64_t)(sdp_mem_shape_dim(vis, 0)/num_baselines);
+    const uint64_t num_times      = (uint64_t)(sdp_mem_shape_dim(vis, 0));
     const uint64_t num_channels   = (uint64_t)sdp_mem_shape_dim(vis, 2);
     const uint64_t num_polarisations = (uint64_t)(sdp_mem_shape_dim(vis, 3));
     const uint64_t seqlen 	     = (uint64_t)sdp_mem_shape_dim(sequence, 0);

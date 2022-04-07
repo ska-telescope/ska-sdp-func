@@ -9,11 +9,11 @@ template<
 	typename visType2
 >
 __global__ void rfi_flagger(
-		const int num_time,
-		const int num_baselines,
-		const int num_polarisations,
-		const int num_freqs,
-		const int seqlen,
+		const uint64_t num_time,
+		const uint64_t num_baselines,
+		const uint64_t num_polarisations,
+		const uint64_t num_freqs,
+		const uint64_t seqlen,
 		const int* sequence_lengths,
 		const visType2* const __restrict__ visibilities,
 		const inType* const __restrict__ thresholds,
