@@ -5,15 +5,6 @@
 # include your own private variables for custom deployment configuration
 -include PrivateRules.mak
 
-# Set default docker registry user.
-ifeq ($(strip $(DOCKER_REGISTRY_USER)),)
-	DOCKER_REGISTRY_USER=ci-cd
-endif
-
-ifeq ($(strip $(DOCKER_REGISTRY_HOST)),)
-	DOCKER_REGISTRY_HOST=artefact.skao.int
-endif
-
 .DEFAULT_GOAL := help
 
 clean:
@@ -26,18 +17,14 @@ clean:
 SHELL = /bin/bash
 .SHELLFLAGS = -o pipefail -c
 
-all: build test lint docs
+all: build test lint
 
-.PHONY: all test lint doc_html
+.PHONY: all test lint
 
 lint:
 # outputs linting.xml
 	cd build && ../scripts/run-clang-tidy/run-clang-tidy_nocolor -quiet '^(?:(?!extern/|test/).)*$\r?\n?' > clang-tidy.out && \
         cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
-
-doc_html:  ## build docs
-# Outputs docs/build/html
-	$(MAKE) -C docs html
 
 test:
 	cd build && ctest --output-junit unit-tests.xml
