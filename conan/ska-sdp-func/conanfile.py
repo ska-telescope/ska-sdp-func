@@ -2,13 +2,10 @@ from conans import ConanFile, CMake
 
 class RegexConan(ConanFile):
     name = "ska-sdp-func"
-    version = "0.1.0"
+    version = "0.0.1"
     settings = "os", "arch", "compiler", "build_type"
-    generators = "cmake_find_package", "virtualenv"
+    generators = "cmake"
         
-#    def requirements(self):
-#        self.requires("boost/1.74.0@")    # -> depend on boost 1.74.0
-
     def export_sources(self):
         self.copy("src/*")                 # -> copies all .cpp files from working dir to a "source" dir
         self.copy("cmake/*")                 # -> copies cmake files from working dir to a "source" dir
@@ -22,6 +19,8 @@ class RegexConan(ConanFile):
         cmake.test()                       # cmake --build . --target=test
 
     def package(self):
+        self.copy("MANIFEST.skao.int", src="src")
         cmake = CMake(self)                # For CMake projects which define an install target, leverage it
         cmake.install()                    # cmake --build . --target=install 
                                            # sets CMAKE_INSTALL_PREFIX = <appropriate directory in conan cache>
+                                   
