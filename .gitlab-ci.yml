@@ -1,125 +1,47 @@
+# ICRAR - International Centre for Radio Astronomy Research
+# (c) UWA - The University of Western Australia, 2019
+# Copyright by UWA (in the framework of the ICRAR)
+# All rights reserved
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+# MA 02111-1307  USA
+
+image: $SKA_K8S_TOOLS_DOCKER_BUILDER_IMAGE
+
 variables:
-  DEBIAN_FRONTEND: "noninteractive"
-  CUDA_ARCH: "6.1"
+  GIT_SUBMODULE_STRATEGY: recursive
 
 stages:
-  - build and test
-  - doc
-  - publish
+- build
+- publish
+- pages
 
-.reports: &ready_reports
-  - mkdir -p build/reports/
-
-build-test-debug:
-  stage: build and test
-  image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
-  before_script:
-    - *ready_reports
-    - apt-get -y update
-    - apt-get -y install build-essential cmake lcov python3
-    - nvidia-smi
-    - mkdir debug
-    - cd debug/
-    - cmake ../ -DCOVERAGE_REPORT=ON -DCUDA_ARCH=$CUDA_ARCH
-  script:
-    - make -j
-    - make coverage
-  after_script:
-    - mv debug/coverage.xml build/reports/code-coverage.xml
-    - mv debug/coverage/ ./
-  artifacts:
-    paths:
-      - build/
-      - coverage/
-    reports:
-      cobertura: build/reports/code-coverage.xml
-
-build-test-release:
-  stage: build and test
-  image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
-  before_script:
-    - *ready_reports
-    # We need CMake >= 3.21.0 for the --output-junit option on CTest.
-    - apt-get -y update
-    - apt-get -y install build-essential gpg wget
-    - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-    - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
-    - apt-get -y update
-    - rm /usr/share/keyrings/kitware-archive-keyring.gpg
-    - apt-get -y install kitware-archive-keyring
-    - apt-get -y install cmake
-    - cmake --version
-    - nvidia-smi
-    - mkdir release
-    - cd release/
-    - cmake ../ -DCUDA_ARCH=$CUDA_ARCH
-  script:
-    - make -j
-    - ctest --output-junit unit-tests.xml
-  after_script:
-    - mv release/unit-tests.xml build/reports/
-  artifacts:
-    paths:
-      - build/
-    reports:
-      junit: build/reports/unit-tests.xml
-
-linting:
-  stage: build and test
-  image: ubuntu:20.04
-  before_script:
-    - *ready_reports
-    - apt-get -y update
-    - apt-get -y install build-essential clang-tidy cmake
-    - mkdir release
-    - cd release/
-    - cmake ../ -DCUDA_ARCH=$CUDA_ARCH -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-  script:
-    - echo "Running lint check"
-    - run-clang-tidy -quiet > clang-tidy.out
-    - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
-  after_script:
-    - mv release/linting.xml build/reports/
-  artifacts:
-    paths:
-      - build/
-
-build-docs:
-  stage: doc
-  image: ubuntu:20.04
-  before_script:
-    - apt-get -y update
-    - apt-get -y install build-essential cmake doxygen python3-sphinx python3-pip
-    - pip3 install breathe numpy sphinx-rtd-theme
-    - mkdir -p build-docs/docs/build
-  script:
-    - make -C docs html
-  after_script:
-    - cp -r  docs/build/html/ build-docs/docs/build
-  artifacts:
-    paths:
-      - build-docs/docs/build/html/
-    expire_in: 3600 seconds
-
-pages:
-  stage: publish
-  image: alpine
-  dependencies:
-    - build-docs
-    - build-test-debug
-  script:
-    - rm -rf public
-    - mkdir -p public
-    - mv coverage/ public/
-    - mv build-docs/docs/build/html/* public/
-  artifacts:
-    paths:
-      - public
-
-# Create Gitlab CI badges from CI metrics
-# https://developer.skao.int/en/latest/tools/continuousintegration.html#automated-collection-of-ci-health-metrics-as-part-of-the-ci-pipeline
+# Include CI templates
 include:
+# Docs pages
   - project: 'ska-telescope/templates-repository'
-    file: 'gitlab-ci/includes/post_step.yml'
+    file: 'gitlab-ci/includes/docs.gitlab-ci.yml'
+
+# .post step finalisers eg: badges
+  - project: 'ska-telescope/templates-repository'
+    file: 'gitlab-ci/includes/finaliser.gitlab-ci.yml' 
+
+# Conan
+  - project: 'ska-telescope/templates-repository'
+    file: 'gitlab-ci/includes/conan.gitlab-ci.yml'
+
+# changelog release page
+  - project: 'ska-telescope/templates-repository'
+    file: 'gitlab-ci/includes/changelog.gitlab-ci.yml'
