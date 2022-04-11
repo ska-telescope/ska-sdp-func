@@ -4,11 +4,33 @@ variables:
   CUDA_ARCH: "6.1"
 
 stages:
+  - lint
   - build and test
   - publish
+  - pages
 
 .reports: &ready_reports
   - mkdir -p build/reports/
+
+linting:
+  stage: lint
+  image: ubuntu:20.04
+  before_script:
+    - *ready_reports
+    - apt-get -y update
+    - apt-get -y install build-essential clang-tidy cmake
+    - mkdir release
+    - cd release/
+    - cmake ../ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  script:
+    - echo "Running lint check"
+    - run-clang-tidy -quiet > clang-tidy.out
+    - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
+  after_script:
+    - mv release/linting.xml build/reports/
+  artifacts:
+    paths:
+      - build/
 
 build-test-debug:
   stage: build and test
@@ -65,26 +87,6 @@ build-test-release:
       - build/
     reports:
       junit: build/reports/unit-tests.xml
-
-linting:
-  stage: build and test
-  image: ubuntu:20.04
-  before_script:
-    - *ready_reports
-    - apt-get -y update
-    - apt-get -y install build-essential clang-tidy cmake
-    - mkdir release
-    - cd release/
-    - cmake ../ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-  script:
-    - echo "Running lint check"
-    - run-clang-tidy -quiet > clang-tidy.out
-    - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
-  after_script:
-    - mv release/linting.xml build/reports/
-  artifacts:
-    paths:
-      - build/
 
 pages:
   stage: publish
