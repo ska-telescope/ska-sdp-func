@@ -23,4 +23,8 @@ class RegexConan(ConanFile):
         cmake = CMake(self)                # For CMake projects which define an install target, leverage it
         cmake.install()                    # cmake --build . --target=install 
                                            # sets CMAKE_INSTALL_PREFIX = <appropriate directory in conan cache>
-                                   
+        self.copy("*.h", dst="include", src="src")
+        self.copy("*.a", dst="lib", keep_path=False)
+                                      
+    def package_info(self):
+        self.cpp_info.libs = ["SKASDPFuncPackage"]                                   
