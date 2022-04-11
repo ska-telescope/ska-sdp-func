@@ -1,6 +1,6 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include "utility/sdp_device_wrapper.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
 template<typename T>
 __global__

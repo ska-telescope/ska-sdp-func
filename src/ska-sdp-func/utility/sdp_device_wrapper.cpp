@@ -4,8 +4,8 @@
 #include <cuda_runtime_api.h>
 #endif
 
-#include "utility/sdp_device_wrapper.h"
-#include "utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 void sdp_launch_cuda_kernel(
         const char* name,

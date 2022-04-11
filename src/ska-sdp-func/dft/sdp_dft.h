@@ -7,7 +7,7 @@
  * @file sdp_dft.h
  */
 
-#include "utility/sdp_mem.h"
+#include "ska-sdp-func/utility/sdp_mem.h"
 
 #ifdef __cplusplus
 extern "C" {

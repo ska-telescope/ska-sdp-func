@@ -120,13 +120,13 @@ class CMakeBuild(build_ext):
         )
 
 setup(
-    name="ska-sdp-func",
+    name="ska_sdp_func",
     version="0.0.0",
     description="SKA SDP Processing Function Library (Python bindings)",
     ext_modules=[CMakeExtension("ska_sdp_func")],
     cmdclass={"build_ext": CMakeBuild},
-    packages=setuptools.find_namespace_packages(where="python", include=["ska.*"]),
-    package_dir={"": "python"},
+    packages=setuptools.find_namespace_packages(where="src", include=["ska.*"]),
+    package_dir={"": "src"},
     include_package_data=True,
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

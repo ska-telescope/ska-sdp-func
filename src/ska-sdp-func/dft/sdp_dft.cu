@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "utility/sdp_device_wrapper.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)

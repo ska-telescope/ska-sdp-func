@@ -9,18 +9,18 @@ set(libname ska_sdp_func)
 
 # List of C and C++ source files.
 set(${libname}_SRC
-    src/func/dft/sdp_dft.cpp
-    src/func/vector/sdp_vector_add.cpp
-    src/func/function_example_a/sdp_function_example_a.cpp
-    src/utility/sdp_device_wrapper.cpp
-    src/utility/sdp_logging.c
-    src/utility/sdp_mem.c
+    src/ska-sdp-func/dft/sdp_dft.cpp
+    src/ska-sdp-func/vector/sdp_vector_add.cpp
+    src/ska-sdp-func/function_example_a/sdp_function_example_a.cpp
+    src/ska-sdp-func/utility/sdp_device_wrapper.cpp
+    src/ska-sdp-func/utility/sdp_logging.c
+    src/ska-sdp-func/utility/sdp_mem.c
 )
 
 # List of CUDA kernel source files.
 set(${libname}_CUDA_SRC
-    src/func/dft/sdp_dft.cu
-    src/func/vector/sdp_vector_add.cu
+    src/ska-sdp-func/dft/sdp_dft.cu
+    src/ska-sdp-func/vector/sdp_vector_add.cu
 )
 
 # List of tests to build, in the "tests" directory.
@@ -133,4 +133,9 @@ install(TARGETS ${libname}
     ARCHIVE DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
     LIBRARY DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
     RUNTIME DESTINATION ${SDP_FUNC_BIN_INSTALL_DIR} COMPONENT runtime
+)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/src/ska-sdp-func"
+    DESTINATION ${SDP_FUNC_INCLUDE_INSTALL_DIR}
+    COMPONENT headers
+    FILES_MATCHING REGEX "(.*h)|(.*hpp)"
 )

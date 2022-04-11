@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "utility/sdp_mem.h"
-#include "utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cuda_runtime_api.h>
