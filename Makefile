@@ -37,6 +37,9 @@ SKA_SDP_FUNC_DATA = $(CURRENT_DIR)/data
 -include .make/docs.mk
 -include .make/k8s.mk
 -include .make/base.mk
+-include .make/make.mk
+-include .make/help.mk
+-include .make/release.mk
 
 .DEFAULT_GOAL := help
 
