@@ -1,4 +1,5 @@
 # simple makefile to simplify repetitive build env management tasks under posix
+
 PYTHON ?= python3
 PYLINT ?= pylint
 MAKE_DBG ?= ""
@@ -32,6 +33,10 @@ endif
 SKA_SDP_FUNC_DATA = $(CURRENT_DIR)/data
 
 -include PrivateRules.mak
+-include .make/conan.mk
+-include .make/docs.mk
+-include .make/k8s.mk
+-include .make/base.mk
 
 .DEFAULT_GOAL := help
 
