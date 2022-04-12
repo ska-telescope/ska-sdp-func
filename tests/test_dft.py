@@ -6,7 +6,7 @@ try:
 except ImportError:
     cupy = None
 
-from ska.sdp.func import dft_point_v00
+from ska_sdp_func import dft_point_v00
 
 def reference_dft(directions, fluxes, uvw_lambda):
     num_times, num_baselines, num_channels, _ = uvw_lambda.shape
