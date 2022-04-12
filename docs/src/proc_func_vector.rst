@@ -13,4 +13,4 @@ C/C++
 Python
 ======
 
-.. autofunction:: ska.sdp.func.vector_add
+.. autofunction:: ska_sdp_func.vector_add

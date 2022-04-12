@@ -7,7 +7,8 @@ printf-style format string and arguments.
 This automatically adds the required fields needed to comply with the
 SKA logging standard.
 
-Include the header *"utility/sdp_logging.h"* to use these functions.
+Include the header *"ska-sdp-func/utility/sdp_logging.h"* to use
+these functions.
 
 .. doxygendefine:: SDP_LOG_CRITICAL
 

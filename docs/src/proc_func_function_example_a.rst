@@ -14,7 +14,7 @@ C/C++
 Python
 ======
 
-.. autoclass:: ska.sdp.func.FunctionExampleA
+.. autoclass:: ska_sdp_func.FunctionExampleA
    :members:
    :special-members: __init__
    :exclude-members: Handle, handle, handle_type

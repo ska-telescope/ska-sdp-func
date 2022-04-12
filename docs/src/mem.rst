@@ -20,7 +20,7 @@ structure, which is an opaque type in order to keep all its members private.
 The functions are all exported using a simple C interface so they can be used
 from any environment (and further wrapped, if deemed necessary).
 
-Include the header *"utility/sdp_mem.h"* to use these functions.
+Include the header *"ska-sdp-func/utility/sdp_mem.h"* to use these functions.
 
 .. doxygengroup:: Mem_struct
    :content-only:
