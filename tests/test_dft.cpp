@@ -11,9 +11,9 @@
 #include <cstdlib>
 #include <vector>
 
-#include "func/dft/sdp_dft.h"
-#include "utility/sdp_logging.h"
-#include "utility/sdp_mem.h"
+#include "ska-sdp-func/dft/sdp_dft.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem.h"
 
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)

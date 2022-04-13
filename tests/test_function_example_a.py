@@ -2,7 +2,7 @@
 
 import numpy
 
-from ska.sdp.func import FunctionExampleA
+from ska_sdp_func import FunctionExampleA
 
 
 def test_function_example_a():

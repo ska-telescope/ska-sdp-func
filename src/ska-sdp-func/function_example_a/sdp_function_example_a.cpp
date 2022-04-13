@@ -1,8 +1,8 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include "func/function_example_a/sdp_function_example_a.h"
-#include "utility/sdp_device_wrapper.h"
-#include "utility/sdp_logging.h"
+#include "ska-sdp-func/function_example_a/sdp_function_example_a.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 struct sdp_FunctionExampleA
 {

@@ -1,8 +1,8 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include "func/vector/sdp_vector_add.h"
-#include "utility/sdp_device_wrapper.h"
-#include "utility/sdp_logging.h"
+#include "ska-sdp-func/vector/sdp_vector_add.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 template<typename T>
 static void sdp_vector_add(

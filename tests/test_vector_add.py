@@ -6,7 +6,7 @@ try:
 except ImportError:
     cupy = None
 
-from ska.sdp.func import vector_add
+from ska_sdp_func import vector_add
 
 
 def test_vector_add():

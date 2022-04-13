@@ -18,7 +18,7 @@ The following example registers two versions of a simple templated kernel:
 
 .. code-block:: CUDA
 
-   #include "utility/sdp_device_wrapper.h"
+   #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
    template<typename T>
    __global__
@@ -39,7 +39,8 @@ The following example registers two versions of a simple templated kernel:
    SDP_CUDA_KERNEL(vector_add<double>)
 
 
-Include the header *"utility/sdp_device_wrapper.h"* to use these functions.
+Include the header *"ska-sdp-func/utility/sdp_device_wrapper.h"* to use
+these functions.
 
 .. doxygengroup:: device_func
    :content-only:

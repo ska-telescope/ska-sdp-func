@@ -10,9 +10,9 @@
 #include <cstdlib>
 #include <vector>
 
-#include "func/function_example_a/sdp_function_example_a.h"
-#include "utility/sdp_logging.h"
-#include "utility/sdp_mem.h"
+#include "ska-sdp-func/function_example_a/sdp_function_example_a.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem.h"
 
 static void run_and_check(
         const char* test_name,

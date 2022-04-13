@@ -10,9 +10,9 @@
 #include <cstdlib>
 #include <vector>
 
-#include "func/vector/sdp_vector_add.h"
-#include "utility/sdp_logging.h"
-#include "utility/sdp_mem.h"
+#include "ska-sdp-func/vector/sdp_vector_add.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem.h"
 
 template<typename T>
 static void check_results(

@@ -17,7 +17,8 @@ In C or C++
 1. Create a new file and write the function in C or C++.
 
    - The file should be saved in a suitable place in the repository
-     under ``src/func`` - please create a new subdirectory here if necessary.
+     under ``src/ska-sdp-func`` - please create a new subdirectory here if
+     necessary.
      The naming convention is ``sdp_<function_name>.cpp`` or
      ``sdp_<function_name>.c`` (where ``<function_name>`` should be replaced
      with something appropriate).
@@ -88,7 +89,7 @@ In C or C++
        *       (Change this to match the name of the header file)
        */
 
-      #include "utility/sdp_mem.h"
+      #include "ska-sdp-func/utility/sdp_mem.h"
 
       #ifdef __cplusplus
       extern "C" {
@@ -174,7 +175,7 @@ it to be used easily from Python scripts. A utility class is provided which can
 wrap either numpy arrays or cupy arrays, passing them directly to our
 processing functions without needlessly copying data.
 
-1. Inside the directory ``python/ska/sdp/func/``, find an appropriate place
+1. Inside the directory ``src/ska_sdp_func/``, find an appropriate place
    to add the Python function. In many cases you may want to simply create a
    new Python source file.
 
@@ -264,19 +265,19 @@ processing functions without needlessly copying data.
         error_status.check()
 
 2. If you want to expose the function directly under the Python module
-   ``ska.sdp.func``, use a local import in the file
-   ``python/ska/sdp/func/__init__.py`` - the function can then be used by
+   ``ska_sdp_func``, use a local import in the file
+   ``src/ska_sdp_func/__init__.py`` - the function can then be used by
    importing it as follows:
 
    .. code-block:: Python
 
-      from ska.sdp.func import <function name>
+      from ska_sdp_func import <function_name>
 
    Otherwise, the name of the file will need to be specified as well:
 
    .. code-block:: Python
 
-      from ska.sdp.func.<file_name> import <function name>
+      from ska_sdp_func.<file_name> import <function_name>
 
 3. Write a Python unit test to check the operation of the Python function.
 
@@ -329,7 +330,7 @@ included in the Sphinx documentation, so they can be found easily.
       Python
       ======
 
-      .. autofunction:: ska.sdp.func.vector_add
+      .. autofunction:: ska_sdp_func.vector_add
 
    - Remember to update the ``index.rst`` file to add the page to the table
      of contents, if necessary.
@@ -342,14 +343,14 @@ For a very simple example of how to implement a function both in C++ and call
 it from Python, see the code for the ``sdp_vector_add`` function and its
 wrapper:
 
-1. The C++ implementation is at ``src/func/vector/sdp_vector_add.cpp``
-2. The C header is at ``src/func/vector/sdp_vector_add.h``
-3. The CUDA kernel is at ``src/func/vector/sdp_vector_add.cu``
+1. The C++ implementation is at ``src/ska-sdp-func/vector/sdp_vector_add.cpp``
+2. The C header is at ``src/ska-sdp-func/vector/sdp_vector_add.h``
+3. The CUDA kernel is at ``src/ska-sdp-func/vector/sdp_vector_add.cu``
 4. The C++ unit test is at ``tests/test_vector_add.cpp``
 
 For the Python wrapper:
 
-1. The wrapper function is in ``python/ska/sdp/func/vector.py``
+1. The wrapper function is in ``src/ska_sdp_func/vector.py``
 2. The Python test is in ``tests/test_vector_add.py``
 
 For the documentation:

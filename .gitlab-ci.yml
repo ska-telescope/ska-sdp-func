@@ -1,14 +1,36 @@
 variables:
+  GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
   CUDA_ARCH: "6.1"
 
 stages:
+  - lint
   - build and test
-  - doc
   - publish
+  - pages
 
 .reports: &ready_reports
   - mkdir -p build/reports/
+
+linting:
+  stage: lint
+  image: ubuntu:20.04
+  before_script:
+    - *ready_reports
+    - apt-get -y update
+    - apt-get -y install build-essential clang-tidy cmake
+    - mkdir release
+    - cd release/
+    - cmake ../ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+  script:
+    - echo "Running lint check"
+    - run-clang-tidy -quiet > clang-tidy.out
+    - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
+  after_script:
+    - mv release/linting.xml build/reports/
+  artifacts:
+    paths:
+      - build/
 
 build-test-debug:
   stage: build and test
@@ -66,60 +88,25 @@ build-test-release:
     reports:
       junit: build/reports/unit-tests.xml
 
-linting:
-  stage: build and test
-  image: ubuntu:20.04
-  before_script:
-    - *ready_reports
-    - apt-get -y update
-    - apt-get -y install build-essential clang-tidy cmake
-    - mkdir release
-    - cd release/
-    - cmake ../ -DCUDA_ARCH=$CUDA_ARCH -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-  script:
-    - echo "Running lint check"
-    - run-clang-tidy -quiet > clang-tidy.out
-    - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
-  after_script:
-    - mv release/linting.xml build/reports/
-  artifacts:
-    paths:
-      - build/
-
-build-docs:
-  stage: doc
-  image: ubuntu:20.04
-  before_script:
-    - apt-get -y update
-    - apt-get -y install build-essential cmake doxygen python3-sphinx python3-pip
-    - pip3 install breathe numpy sphinx-rtd-theme
-    - mkdir -p build-docs/docs/build
-  script:
-    - make -C docs html
-  after_script:
-    - cp -r  docs/build/html/ build-docs/docs/build
-  artifacts:
-    paths:
-      - build-docs/docs/build/html/
-    expire_in: 3600 seconds
-
 pages:
   stage: publish
   image: alpine
   dependencies:
-    - build-docs
     - build-test-debug
   script:
     - rm -rf public
     - mkdir -p public
     - mv coverage/ public/
-    - mv build-docs/docs/build/html/* public/
   artifacts:
     paths:
       - public
 
-# Create Gitlab CI badges from CI metrics
-# https://developer.skao.int/en/latest/tools/continuousintegration.html#automated-collection-of-ci-health-metrics-as-part-of-the-ci-pipeline
+# Include CI templates
 include:
-  - project: 'ska-telescope/templates-repository'
-    file: 'gitlab-ci/includes/post_step.yml'
+  # Docs pages
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/docs-pages.gitlab-ci.yml"
+
+  # .post step finalisers eg: badges
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/finaliser.gitlab-ci.yml"

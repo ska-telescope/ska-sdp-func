@@ -13,4 +13,4 @@ C/C++
 Python
 ======
 
-.. autofunction:: ska.sdp.func.dft_point_v00
+.. autofunction:: ska_sdp_func.dft_point_v00

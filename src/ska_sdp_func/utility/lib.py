@@ -16,7 +16,7 @@ class Lib:
     name = "libska_sdp_func"
     env_name = "SKA_SDP_FUNC_LIB_DIR"
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    package_root = os.path.join(this_dir, "..", "..", "..", "..")
+    package_root = os.path.join(this_dir, "..", "..")
     search_dirs = [".", package_root, "/usr/local/lib"]
     lib = None
     mutex = threading.Lock()
