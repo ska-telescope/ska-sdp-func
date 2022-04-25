@@ -74,7 +74,7 @@ static void run_and_check(
 
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
-    sdp_rfi_flagger(visibilities_in, thresholds_in, flags_in, max_sequence_length, output_status);
+    sdp_sum_threshold_rfi_flagger(visibilities_in, thresholds_in, flags_in, max_sequence_length, output_status);
     sdp_mem_ref_dec(visibilities_in);
     sdp_mem_ref_dec(thresholds_in);
 

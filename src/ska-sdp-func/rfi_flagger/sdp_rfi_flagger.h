@@ -30,7 +30,7 @@ extern "C" {
  * @param max_sequence_length Size of the window.
  * @param status Error status.
  */
-void sdp_rfi_flagger(
+void sdp_sum_threshold_rfi_flagger(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
         sdp_Mem* flags,

@@ -76,7 +76,7 @@ static void check_params(
 }
 
 template<typename TCPU>
-void  rfi_flagger(
+void  sum_threshold_rfi_flagger(
         int*  flags,
         const std::complex<TCPU>* const __restrict__ visibilities,
         const TCPU* const __restrict__ thresholds,
@@ -90,7 +90,7 @@ void  rfi_flagger(
 }
 
 
-void sdp_rfi_flagger(
+void sdp_sum_threshold_rfi_flagger(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
         sdp_Mem* flags,
@@ -107,7 +107,7 @@ void sdp_rfi_flagger(
     
     if (sdp_mem_location(vis) == SDP_MEM_CPU) {
         if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT){
-            rfi_flagger(
+            sum_threshold_rfi_flagger(
                 (int*) sdp_mem_data(flags),
                 (const std::complex<float>*) sdp_mem_data_const(vis),
                 (const float*) sdp_mem_data_const(thresholds),
@@ -119,7 +119,7 @@ void sdp_rfi_flagger(
             );
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE) {
-            rfi_flagger(
+            sum_threshold_rfi_flagger(
                 (int*) sdp_mem_data(flags),
                 (const std::complex<double>*) sdp_mem_data_const(vis),
                 (const double*) sdp_mem_data_const(thresholds),
