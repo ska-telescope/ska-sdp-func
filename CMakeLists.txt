@@ -9,6 +9,7 @@ set(libname ska_sdp_func)
 
 # List of C and C++ source files.
 set(${libname}_SRC
+    src/ska-sdp-func/rfi_flagger/sdp_rfi_flagger.cpp
     src/ska-sdp-func/dft/sdp_dft.cpp
     src/ska-sdp-func/vector/sdp_vector_add.cpp
     src/ska-sdp-func/function_example_a/sdp_function_example_a.cpp
@@ -25,6 +26,7 @@ set(${libname}_CUDA_SRC
 
 # List of tests to build, in the "tests" directory.
 set(${libname}_TESTS
+    test_rfi_flagger
     test_dft
     test_vector_add
     test_function_example_a
