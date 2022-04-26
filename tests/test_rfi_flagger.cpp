@@ -22,14 +22,65 @@ using std::complex;
 
 static void check_results(
         const char* test_name,
+        int *flags,
+        int *predicted_flags,
+        uint64_t num_elements,
         const sdp_Error* status)
 {
     if (*status) {
         SDP_LOG_ERROR("%s: Test failed (error signalled)", test_name);
         return;
     }
+    
+    uint64_t wrong_flags = 0;
+    for(uint64_t f = 0; f < num_elements; f++) {
+        if(flags[f] != predicted_flags[f]) wrong_flags++;
+    }
+    assert(wrong_flags == 0);
     SDP_LOG_INFO("%s: Test passed", test_name);
 }
+
+template<typename input_type>
+void threshold_calc(
+        input_type *thresholds, 
+        double initial_value, 
+        double rho, 
+        int num_sequence_el)
+{
+    for(int f=0; f<num_sequence_el; f++){
+        double m = pow( rho, std::log2( (double) (1<<f) ) );
+        thresholds[f] = (input_type) (initial_value / m);
+    }
+}
+
+template<typename input_type>
+void data_preparation(
+        std::complex<input_type> *visibilities, 
+        int *predicted_flags, 
+        input_type *thresholds, 
+        uint64_t num_timesamples, 
+        uint64_t num_channels,
+        uint64_t num_baselines,
+        uint64_t num_polarisations,
+        int num_RFI_spikes)
+{
+    uint64_t timesample_block_size = num_channels*num_polarisations*num_baselines;
+    uint64_t baseline_block_size = num_channels*num_polarisations;
+    uint64_t frequency_block_size = num_polarisations;
+    
+    double threshold = thresholds[0];
+    for(int s = 0; s < num_RFI_spikes; s++){
+        int time = (uint64_t) (((double) rand() / (double) RAND_MAX)*(num_timesamples - 1));
+        int freq = (uint64_t) (((double) rand() / (double) RAND_MAX)*(num_channels - 1));
+        for(uint64_t b = 0; b < num_baselines; b++){
+            uint64_t pos = time*timesample_block_size + b*baseline_block_size + freq*frequency_block_size + 0;
+            std::complex<input_type> ctemp(threshold + 0.01, 0);
+            visibilities[pos] = ctemp;
+            predicted_flags[pos] = 1;
+        }
+    }
+}
+
 
 static void run_and_check(
         const char* test_name,
@@ -46,22 +97,59 @@ static void run_and_check(
 {
     sdp_Error status = SDP_SUCCESS;
     // Generate some test data.
-    const uint64_t num_timesamples     = 100;
-    const uint64_t num_baselines       = 15;
-    const uint64_t num_channels        = 128;
+    const uint64_t num_timesamples     = 1000;
+    const uint64_t num_baselines       = 21;
+    const uint64_t num_channels        = 200;
     const uint64_t num_polarisations   = 4;
-    const uint64_t max_sequence_length = 32;
+    const uint64_t max_sequence_length = 1;
     const uint64_t num_sequence_el     = (uint64_t) (log(max_sequence_length)/log(2)) + 1;
+    int num_RFI_spikes = 20;
+    double rho = 1.5;
+    double initial_threshold = 20.0;
     
     int64_t visibilities_shape[] = {num_timesamples, num_baselines, num_channels, num_polarisations};
     int64_t threshold_shape[] = {num_sequence_el};
     sdp_Mem* visibilities = sdp_mem_create(visibilities_type, SDP_MEM_CPU, 4, visibilities_shape, &status);
+    sdp_Mem* predicted_flags = sdp_mem_create(SDP_MEM_INT, SDP_MEM_CPU, 4, visibilities_shape, &status);
     sdp_Mem* flags = sdp_mem_create(flags_type, SDP_MEM_CPU, 4, visibilities_shape, &status);
     sdp_Mem* thresholds = sdp_mem_create(threshold_type, SDP_MEM_CPU, 1, threshold_shape, &status);
     
-    sdp_mem_random_fill(visibilities, &status);
-    sdp_mem_random_fill(thresholds, &status);
+    sdp_mem_clear_contents(visibilities, &status);
+    sdp_mem_clear_contents(thresholds, &status);
+    sdp_mem_clear_contents(predicted_flags, &status);
     sdp_mem_clear_contents(flags, &status);
+    
+    // Prepare data for the test
+    // Thresholds
+    if(threshold_type == SDP_MEM_FLOAT) {
+        threshold_calc((float *) sdp_mem_data(thresholds), initial_threshold, rho, num_sequence_el);
+    } else if (threshold_type == SDP_MEM_DOUBLE){
+        threshold_calc((double *) sdp_mem_data(thresholds), initial_threshold, rho, num_sequence_el);
+    }
+    // Visibilities and predicted flags
+    if(visibilities_type == SDP_MEM_COMPLEX_FLOAT && threshold_type == SDP_MEM_FLOAT) {
+        data_preparation(
+            (std::complex<float> *) sdp_mem_data(visibilities), 
+            (int *) sdp_mem_data(predicted_flags), 
+            (float *) sdp_mem_data(thresholds), 
+            num_timesamples, 
+            num_channels,
+            num_baselines,
+            num_polarisations,
+            num_RFI_spikes
+        );
+    } else if(visibilities_type == SDP_MEM_COMPLEX_DOUBLE && threshold_type == SDP_MEM_DOUBLE) {
+        data_preparation(
+            (std::complex<double> *) sdp_mem_data(visibilities), 
+            (int *) sdp_mem_data(predicted_flags), 
+            (double *) sdp_mem_data(thresholds), 
+            num_timesamples, 
+            num_channels,
+            num_baselines,
+            num_polarisations,
+            num_RFI_spikes
+        );
+    }
 
     // Copy inputs to specified location.
     sdp_Mem* visibilities_in = sdp_mem_create_copy(visibilities, visibilities_location, &status);
@@ -84,7 +172,13 @@ static void run_and_check(
 
     // Check output only if test is expected to pass.
     if (expect_pass) {
-        check_results(test_name, output_status);
+        uint64_t num_elements = num_timesamples*num_baselines*num_channels*num_polarisations;
+        check_results(
+            test_name, 
+            (int *) sdp_mem_data(flags_out), 
+            (int *)sdp_mem_data(predicted_flags), num_elements, 
+            output_status
+        );
     }
     sdp_mem_ref_dec(flags_out);
 }
