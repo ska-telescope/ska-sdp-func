@@ -125,7 +125,7 @@ void sum_threshold_on_block(
                      }
                     sum = sum + block[(i + m) * num_channels + j];
                 }
-             if (sum > current_threshold){
+                if (sum > current_threshold){
                     for (uint64_t m = 0; m < current_seqlen; m++){
                         flags_on_block[(i + m) * num_channels + j] = 1;
                     }
