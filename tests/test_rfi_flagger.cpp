@@ -22,8 +22,8 @@ using std::complex;
 
 static void check_results(
         const char* test_name,
-        int *flags,
-        int *predicted_flags,
+        const int *flags,
+        const int *predicted_flags,
         uint64_t num_elements,
         const sdp_Error* status)
 {
@@ -41,7 +41,7 @@ static void check_results(
 }
 
 template<typename input_type>
-void threshold_calc(
+static void threshold_calc(
         input_type *thresholds, 
         double initial_value, 
         double rho, 
@@ -54,7 +54,7 @@ void threshold_calc(
 }
 
 template<typename input_type>
-void data_preparation(
+static void data_preparation(
         std::complex<input_type> *visibilities, 
         int *predicted_flags, 
         input_type *thresholds, 
@@ -70,7 +70,9 @@ void data_preparation(
     
     double threshold = thresholds[0];
     for(int s = 0; s < num_RFI_spikes; s++){
+        // NOLINTNEXTLINE: rand() is not a problem for our use case.
         int time = (uint64_t) (((double) rand() / (double) RAND_MAX)*(num_timesamples - 1));
+        // NOLINTNEXTLINE: rand() is not a problem for our use case.
         int freq = (uint64_t) (((double) rand() / (double) RAND_MAX)*(num_channels - 1));
         for(uint64_t b = 0; b < num_baselines; b++){
             uint64_t pos = time*timesample_block_size + b*baseline_block_size + freq*frequency_block_size + 0;
@@ -102,7 +104,7 @@ static void run_and_check(
     const uint64_t num_channels        = 200;
     const uint64_t num_polarisations   = 4;
     const uint64_t max_sequence_length = 1;
-    const uint64_t num_sequence_el     = (uint64_t) (log(max_sequence_length)/log(2)) + 1;
+    const int num_sequence_el     = (int) (log(max_sequence_length)/log(2)) + 1;
     int num_RFI_spikes = 20;
     double rho = 1.5;
     double initial_threshold = 20.0;

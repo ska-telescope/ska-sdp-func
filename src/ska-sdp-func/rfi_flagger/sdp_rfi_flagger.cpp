@@ -76,7 +76,7 @@ static void check_params(
 }
 
 
-void write_flags_to_the_slice_array(
+static void write_flags_to_the_slice_array(
         const uint64_t num_channels, 
         const uint64_t num_baselines, 
         const uint64_t num_polarisations, 
@@ -100,7 +100,7 @@ void write_flags_to_the_slice_array(
 
 
 template<typename TCPU>
-void sum_threshold_on_block(
+static void sum_threshold_on_block(
         const TCPU* thresholds, 
         const uint64_t seqlen, 
         const int* sequence_lengths, 
@@ -120,9 +120,9 @@ void sum_threshold_on_block(
             for (uint64_t i = 0; i < num_timesamples - current_seqlen; i++) {
                 sum = 0;
                 for (uint64_t m = 0; m < current_seqlen; m++){
-                     if (flags_on_block[(i + m) * num_channels + j] == 1) {
-                         block[(i + m) * num_channels + j] = thresholds[k];
-                     }
+                    if (flags_on_block[(i + m) * num_channels + j] == 1) {
+                        block[(i + m) * num_channels + j] = thresholds[k];
+                    }
                     sum = sum + block[(i + m) * num_channels + j];
                 }
                 if (sum > current_threshold){
@@ -138,7 +138,7 @@ void sum_threshold_on_block(
 
 
 template<typename TCPU>
-void  sum_threshold_rfi_flagger(
+static void  sum_threshold_rfi_flagger(
         int*  flags,
         const std::complex<TCPU>* const __restrict__ visibilities,
         const TCPU* const __restrict__ thresholds,
