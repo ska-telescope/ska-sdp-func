@@ -51,7 +51,7 @@ static void run_and_check(
     const uint64_t num_channels        = 128;
     const uint64_t num_polarisations   = 4;
     const uint64_t max_sequence_length = 32;
-    const uint64_t num_sequence_el     = (uint64_t) (log(max_sequence_length)/log(2));
+    const uint64_t num_sequence_el     = (uint64_t) (log(max_sequence_length)/log(2)) + 1;
     
     int64_t visibilities_shape[] = {num_timesamples, num_baselines, num_channels, num_polarisations};
     int64_t threshold_shape[] = {num_sequence_el};
