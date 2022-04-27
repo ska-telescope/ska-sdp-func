@@ -7,10 +7,10 @@ class RegexConan(ConanFile):
     generators = "cmake"
         
     def export_sources(self):
-        self.copy("src/*")                 # -> copies all .cpp files from working dir to a "source" dir
-        self.copy("cmake/*")                 # -> copies cmake files from working dir to a "source" dir
-        self.copy("tests/*")                 # -> copies tests files from working dir to a "source" dir
-        self.copy("CMakeLists.txt")        # -> copies CMakeLists.txt from working dir to a "source" dir
+        self.copy("src/*", src="../..")                 # -> copies all .cpp files from working dir to a "source" dir
+        self.copy("cmake/*", src="../..")                 # -> copies cmake files from working dir to a "source" dir
+        self.copy("tests/*", src="../..")                 # -> copies tests files from working dir to a "source" dir
+        self.copy("CMakeLists.txt", src="../..")        # -> copies CMakeLists.txt from working dir to a "source" dir
 
     def build(self):
         cmake = CMake(self)                # CMake helper auto-formats CLI arguments for CMake
