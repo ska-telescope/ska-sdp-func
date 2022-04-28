@@ -110,7 +110,8 @@ if (CUDA_FOUND)
     set(CUDA_GENERATED_OUTPUT_DIR
         ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${libname}.dir/src)
     cuda_add_library(${libname} ${${libname}_SRC})
-    target_link_libraries(${libname} ${CUDA_CUFFT_LIBRARIES})
+    # Add the next line back when/if we actually need cuFFT.
+    # target_link_libraries(${libname} ${CUDA_CUFFT_LIBRARIES})
 else()
     add_library(${libname} ${${libname}_SRC})
 endif()
