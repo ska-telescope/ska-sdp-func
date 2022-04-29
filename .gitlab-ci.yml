@@ -60,7 +60,7 @@ build-python-wheels:
 build-test-debug:
   stage: build and test
   image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
+  tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
     - apt-get -y update
@@ -85,7 +85,7 @@ build-test-debug:
 build-test-release:
   stage: build and test
   image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
+  tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
     # We need CMake >= 3.21.0 for the --output-junit option on CTest.
