@@ -99,18 +99,18 @@ static void write_flags_to_the_slice_array(
 }
 
 
-template<typename TCPU>
+template<typename FP>
 static void sum_threshold_on_block(
-        const TCPU* thresholds, 
+        const FP* thresholds, 
         const uint64_t seqlen, 
         const int* sequence_lengths, 
-        TCPU *block,
+        FP *block,
         const uint64_t num_channels,
         const uint64_t num_timesamples,
         int *flags_on_block)
 {
-    float current_threshold = 0;
-    float sum = 0;
+    FP current_threshold = 0;
+    FP sum = 0;
     uint64_t current_seqlen = 0;
     
     for (uint64_t k = 0; k < seqlen; k++) {
@@ -137,11 +137,11 @@ static void sum_threshold_on_block(
 }
 
 
-template<typename TCPU>
+template<typename FP>
 static void  sum_threshold_rfi_flagger(
         int*  flags,
-        const std::complex<TCPU>* const __restrict__ visibilities,
-        const TCPU* const __restrict__ thresholds,
+        const std::complex<FP>* const __restrict__ visibilities,
+        const FP* const __restrict__ thresholds,
         const uint64_t num_timesamples,
         const uint64_t num_baselines,
         const uint64_t num_channels,
@@ -158,7 +158,7 @@ static void  sum_threshold_rfi_flagger(
     }
     
     
-    TCPU *block = new TCPU[num_timesamples*num_channels];
+    FP *block = new FP[num_timesamples*num_channels];
     int* flags_on_the_block = new int[num_timesamples*num_channels];
     for (uint64_t m = 0; m < num_baselines; m++){
         for (uint64_t k = 0; k < num_polarisations; k++){
@@ -169,7 +169,7 @@ static void  sum_threshold_rfi_flagger(
             for (uint64_t i = 0; i < num_timesamples; i++){
                 for (uint64_t j = 0; j < num_channels; j++){
                     uint64_t pos = i*timesample_block_size + m*baseline_block_size + j*frequency_block_size + k;
-                    std::complex<TCPU>temp =  visibilities[pos];
+                    std::complex<FP>temp =  visibilities[pos];
                     block[i*num_channels + j] =  std::abs(temp);
                 }
             }
@@ -231,21 +231,6 @@ void sdp_sum_threshold_rfi_flagger(
             SDP_LOG_ERROR("Unsupported data type");
         }
     }
-    //else if (sdp_mem_location(vis) == SDP_MEM_GPU) {
-    //    const char* kernel_name = 0;
-    //    if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE) {
-    //        kernel_name = "rfi_flagger<double,double2>";
-    //    }
-    //    else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT) {
-    //        kernel_name = "rfi_flagger<float,float2>";
-    //    }
-    //    else {
-    //        *status = SDP_ERR_DATA_TYPE;
-    //        SDP_LOG_ERROR("Unsupported data type");
-    //    }
-    //    
-    //    
-    //}
     else {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("Unknown memory location for visibility data.");

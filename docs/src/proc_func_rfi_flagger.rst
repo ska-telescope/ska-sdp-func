@@ -1,4 +1,4 @@
-.. _dft_functions:
+.. _rfi_flagger_functions:
 
 *************
 RFI flagger Functions
