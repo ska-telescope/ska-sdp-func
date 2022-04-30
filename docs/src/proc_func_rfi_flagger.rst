@@ -1,16 +1,16 @@
 .. _rfi_flagger_functions:
 
-*************
-RFI flagger Functions
-*************
+*********************
+RFI Flagger Functions
+*********************
 
 C/C++
 =====
 
-.. doxygengroup:: rfi_flagger_func
+.. doxygengroup:: rfi_flag_func
    :content-only:
 
 Python
 ======
 
-.. autofunction:: ska_sdp_func.sdp_rfi_flagger
+.. autofunction:: ska_sdp_func.sum_threshold_rfi_flagger

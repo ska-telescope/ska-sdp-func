@@ -1,7 +1,7 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
-  CUDA_ARCH: "6.1"
+  CUDA_ARCH: "7.0"
 
 stages:
   - lint
@@ -11,6 +11,13 @@ stages:
 
 .reports: &ready_reports
   - mkdir -p build/reports/
+
+.add-cuda-key: &cuda_key
+  - rm /etc/apt/sources.list.d/cuda.list
+  - apt-key del 7fa2af80
+  - apt-get update && apt-get install -y --no-install-recommends wget
+  - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+  - dpkg -i cuda-keyring_1.0-1_all.deb
 
 linting:
   stage: lint
@@ -34,10 +41,11 @@ linting:
 
 build-test-debug:
   stage: build and test
-  image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
+  image: nvidia/cuda:11.6.0-devel-ubuntu20.04
+  tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
+    - *cuda_key
     - apt-get -y update
     - apt-get -y install build-essential cmake lcov python3
     - nvidia-smi
@@ -59,10 +67,11 @@ build-test-debug:
 
 build-test-release:
   stage: build and test
-  image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
+  image: nvidia/cuda:11.6.0-devel-ubuntu20.04
+  tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
+    - *cuda_key
     # We need CMake >= 3.21.0 for the --output-junit option on CTest.
     - apt-get -y update
     - apt-get -y install build-essential gpg wget

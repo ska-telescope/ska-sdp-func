@@ -1,10 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import numpy
-try:
-    import cupy
-except ImportError:
-    cupy = None
 
 from ska_sdp_func import sum_threshold_rfi_flagger
 
@@ -35,20 +31,22 @@ def test_rfi_flagger():
     num_sequence_el = 1
     sequence_lengths = numpy.array([1], dtype=numpy.int32)
     rho1 = 1.5
-    
-    #initiate thresholds
+
+    # Initialise thresholds
     initial_threshold = 20
     thresholds = threshold_calc(initial_threshold, rho1, sequence_lengths)
-    
-    #initiate numpy arrays
-    spectrogram = numpy.zeros([num_timesamples, num_baselines, num_channels, num_polarisations]) + 0j
+
+    # Initialise numpy arrays
+    spectrogram = numpy.zeros(
+            [num_timesamples, num_baselines, num_channels, num_polarisations]) + 0j
     flags_by_algo = numpy.zeros(spectrogram.shape, dtype=numpy.int32)
     flags_as_expected = numpy.zeros(spectrogram.shape, dtype=numpy.int32)
-    
-    data_preparation(spectrogram, flags_as_expected, thresholds[0], num_timesamples, num_channels, num_samples, num_baselines)
+
+    data_preparation(
+            spectrogram, flags_as_expected, thresholds[0],
+            num_timesamples, num_channels, num_samples, num_baselines)
     sum_threshold_rfi_flagger(spectrogram, thresholds, flags_by_algo, max_sequence_length)
 
     print(numpy.sum(flags_by_algo), "   ", numpy.sum(flags_as_expected))
     numpy.testing.assert_array_equal(flags_by_algo, flags_as_expected)
     print("test passed!")
-    
