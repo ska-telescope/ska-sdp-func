@@ -16,12 +16,14 @@ set(${libname}_SRC
     src/ska-sdp-func/utility/sdp_logging.c
     src/ska-sdp-func/utility/sdp_mem.c
 	src/ska-sdp-func/gridder/sdp_gridder.cpp	
+	src/ska-sdp-func/gridder/nifty_utils.cpp	
 )
 
 # List of CUDA kernel source files.
 set(${libname}_CUDA_SRC
     src/ska-sdp-func/dft/sdp_dft.cu
     src/ska-sdp-func/vector/sdp_vector_add.cu
+	src/ska-sdp-func/gridder/sdp_cuda_nifty_gridder_kernels.cu
 )
 
 # List of tests to build, in the "tests" directory.

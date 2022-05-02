@@ -12,7 +12,7 @@ except ImportError:
 
 from ska_sdp_func import Gridder
 
-def test_gridder_plan():
+def atest_gridder_plan():
     print(" ")  # just for separation of debug output
     print(" ")
 
@@ -133,12 +133,14 @@ def test_gridder():
         uvw_gpu = cupy.asarray(uvw)
         weight_gpu = cupy.asarray(weight)
 
+        do_wstacking = False
+
         print(vis_gpu.dtype)
         print(freqs_gpu)
         print(uvw_gpu)
 
         # Create gridder
-        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, pixsize_rad, pixsize_rad, epsilon, False)
+        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, pixsize_rad, pixsize_rad, epsilon, do_wstacking)
 
         # Run gridder
         dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)

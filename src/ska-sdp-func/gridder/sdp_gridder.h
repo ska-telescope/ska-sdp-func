@@ -39,6 +39,7 @@ sdp_Gridder* sdp_gridder_create_plan(
 		const float pixsize_x_rad, 
 		const float pixsize_y_rad, 
 		const float epsilon,
+		const bool do_wstacking,
         sdp_Error* status
     );
 

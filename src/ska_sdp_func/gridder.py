@@ -41,7 +41,8 @@ class Gridder:
             ctypes.c_float,  # 5
             ctypes.c_float,
             ctypes.c_float,
-            Error.handle_type()  # 8
+            ctypes.c_bool,
+            Error.handle_type()  # 9
         ]
         self._handle = function_create(
             mem_uvw.handle(),
@@ -51,7 +52,8 @@ class Gridder:
             ctypes.c_float(pixsize_x_rad),  # 5
             ctypes.c_float(pixsize_y_rad),
             ctypes.c_float(epsilon),
-            error_status.handle() # 8
+            ctypes.c_bool(do_wstacking),
+            error_status.handle() # 9
         )
         error_status.check()
 
