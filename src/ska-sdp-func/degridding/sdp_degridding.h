@@ -16,10 +16,7 @@ extern "C" {
 /**
  * @brief Degrid visibilities. 
  * 
- * @param grid input grid data 
- * @param x_size Number of samples on X axis
- * @param y_size Number of samples on y axis
- * @param z_size Number of samples on z axis
+ * @param grid Input grid data 
  * @param u0 Index of first coordinate on U axis
  * @param v0 Index of first coordinate on V axis
  * @param w0 Index of first coordinate on W axis
@@ -37,20 +34,17 @@ extern "C" {
  */
 void sdp_degridding(
         const sdp_Mem* grid,
-        const int64_t x_size,
-        const int64_t y_size,
-        const int64_t z_size,
         const int64_t u0,
         const int64_t v0, 
         const int64_t w0,
         const int64_t theta,
         const int64_t wstep, 
         const sdp_Mem* uv_kernel,
-        const int64_t uv_kernal_stride,
-        const int64_t uv_kernal_oversampling,
+        const int64_t uv_kernel_stride,
+        const int64_t uv_kernel_oversampling,
         const sdp_Mem* w_kernel,
-        const int64_t w_kernal_stride,
-        const int64_t w_kernal_oversampling,
+        const int64_t w_kernel_stride,
+        const int64_t w_kernel_oversampling,
         const bool conjugate, 
         sdp_Mem* vis_out,
         sdp_Error* status);
