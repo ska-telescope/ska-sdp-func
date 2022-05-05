@@ -22,40 +22,28 @@ typedef struct sdp_Fft sdp_Fft;
  */
 
 /**
- * @enum sdp_FftType
+ * @brief Creates a plan for FFTs using the supplied input and output buffers.
  *
- * @brief Enumerator to specify the type of FFT to perform.
- */
-enum sdp_FftType
-{
-    //! Complex-to-complex type.
-    SDP_FFT_C2C = 0
-};
-
-/**
- * @brief Creates a plan for FFTs.
+ * The number of dimensions used for the FFT is specified using the
+ * @p num_dims_fft parameter. If this is less than the number of dimensions
+ * in the arrays, then the FFT batch size is assumed to be the size of the
+ * first (slowest varying) dimension.
  *
  * This wraps cuFFT, so only GPU FFTs are currently supported.
  *
- * @param precision The enumerated precision for the FFT (single or double).
- * @param location The enumerated location for the FFT (CPU or GPU).
- * @param fft_type The enumerated FFT type.
- * @param num_dims The number of dimensions for the FFT.
- * @param dim_size The size of each dimension.
- * @param batch_size The batch size.
+ * @param input Input data.
+ * @param output Output data.
+ * @param num_dims_fft The number of dimensions for the FFT.
  * @param is_forward Set true if FFT should be "forward", false for "inverse".
  * @param status Error status.
  *
  * @return sdp_Fft* Handle to FFT plan.
  */
 sdp_Fft* sdp_fft_create(
-        sdp_MemType precision,
-        sdp_MemLocation location,
-        sdp_FftType fft_type,
-        int num_dims,
-        const int64_t* dim_size,
-        int batch_size,
-        int is_forward,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        int32_t num_dims_fft,
+        int32_t is_forward,
         sdp_Error* status);
 
 /**

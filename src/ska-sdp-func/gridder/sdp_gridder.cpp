@@ -317,15 +317,14 @@ void sdp_gridder_exec(
 
     // Create the empty grid.
 	// THIS SHOULD BE DONE IN THE PLAN!!
-    size_t num_w_grid_stack_cells = grid_size * grid_size * num_w_grids_batched;
-	int64_t w_grid_stack_shape[] = {grid_size, grid_size, num_w_grids_batched};
+    //size_t num_w_grid_stack_cells = grid_size * grid_size * num_w_grids_batched;
+	int64_t w_grid_stack_shape[] = {grid_size, grid_size};
     sdp_Mem* d_w_grid_stack = sdp_mem_create(
-            vis_type, SDP_MEM_GPU, 3, w_grid_stack_shape, status);
+            vis_type, SDP_MEM_GPU, 2, w_grid_stack_shape, status);
 			
    // Create the FFT plan.
-    const int64_t fft_dims[] = {grid_size, grid_size};
-    sdp_Fft* fft = sdp_fft_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, SDP_FFT_C2C,
-            2, fft_dims, num_w_grids_batched, 0, status);
+    //const int64_t fft_dims[] = {grid_size, grid_size};
+    sdp_Fft* fft = sdp_fft_create(d_w_grid_stack, d_w_grid_stack, 2, 0, status);
 
     // Create the FFT plan.
     // const int fft_dims[] = {grid_size, grid_size};

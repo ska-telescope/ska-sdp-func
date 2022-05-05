@@ -282,6 +282,20 @@ int32_t sdp_mem_is_c_contiguous(const sdp_Mem* mem);
 int32_t sdp_mem_is_complex(const sdp_Mem* mem);
 
 /**
+ * @brief Returns true if the metadata between two objects is consistent.
+ *
+ * Checks are done on the data type, number of dimensions,
+ * strides, and dimension sizes.
+ *
+ * @param mem1 Handle to first memory block.
+ * @param mem2 Handle to second memory block.
+ * @param check_location If true, check the data locations also match.
+ * @return True if memory blocks have matching meta-data.
+ */
+int32_t sdp_mem_is_matching(const sdp_Mem* mem1, const sdp_Mem* mem2,
+        int32_t check_location);
+
+/**
  * @brief Returns true if the read-only flag is set.
  *
  * @param mem Handle to memory block.

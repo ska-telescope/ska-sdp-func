@@ -297,6 +297,20 @@ int32_t sdp_mem_is_complex(const sdp_Mem* mem)
             (mem->type & SDP_MEM_COMPLEX) == SDP_MEM_COMPLEX;
 }
 
+int32_t sdp_mem_is_matching(const sdp_Mem* mem1, const sdp_Mem* mem2,
+        int32_t check_location)
+{
+    if (mem1->type != mem2->type) return 0;
+    if (check_location && (mem1->location != mem2->location)) return 0;
+    if (mem1->num_dims != mem2->num_dims) return 0;
+    for (int32_t i = 0; i < mem1->num_dims; ++i)
+    {
+        if (mem1->shape[i] != mem2->shape[i]) return 0;
+        if (mem1->stride[i] != mem2->stride[i]) return 0;
+    }
+    return 1;
+}
+
 int32_t sdp_mem_is_read_only(const sdp_Mem* mem)
 {
     return (!mem || !mem->data) ? 1 : mem->is_read_only;
