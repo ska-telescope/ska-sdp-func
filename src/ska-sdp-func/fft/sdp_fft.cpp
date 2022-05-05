@@ -12,64 +12,134 @@
 
 struct sdp_Fft
 {
-    sdp_MemType precision;
-    sdp_MemLocation location;
-    sdp_FftType fft_type;
+    sdp_Mem* input;
+    sdp_Mem* output;
     int num_dims;
     int batch_size;
     int is_forward;
     int cufft_plan;
 };
 
+static void check_params(
+        const sdp_Mem* input,
+        const sdp_Mem* output,
+        int32_t num_dims_fft,
+        sdp_Error* status)
+{
+    if (*status) return;
+    if (sdp_mem_is_read_only(output))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Output array is read-only");
+        return;
+    }
+    if (sdp_mem_location(input) != sdp_mem_location(output))
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+        SDP_LOG_ERROR("Input and output arrays must be in the same location");
+        return;
+    }
+    if (sdp_mem_num_dims(input) != sdp_mem_num_dims(output))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Input and output arrays must have the same "
+                "number of dimensions");
+        return;
+    }
+    if (!sdp_mem_is_c_contiguous(input) || !sdp_mem_is_c_contiguous(output))
+    {
+        // TODO: Remove this restriction.
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("All arrays must be C-contiguous");
+        return;
+    }
+    if (sdp_mem_is_complex(input) && sdp_mem_is_complex(output))
+    {
+        for (int32_t i = 0; i < sdp_mem_num_dims(input); ++i)
+        {
+            if (sdp_mem_shape_dim(input, i) != sdp_mem_shape_dim(output, i))
+            {
+                *status = SDP_ERR_RUNTIME;
+                SDP_LOG_ERROR("Inconsistent array dimension sizes");
+                return;
+            }
+        }
+    }
+    if (num_dims_fft != sdp_mem_num_dims(input) &&
+            num_dims_fft != sdp_mem_num_dims(input) - 1)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Number of FFT dimensions must be equal to "
+                "or one smaller than the number of array dimensions");
+        return;
+    }
+}
+
 
 sdp_Fft* sdp_fft_create(
-        sdp_MemType precision,
-        sdp_MemLocation location,
-        sdp_FftType fft_type,
-        int num_dims,
-        const int64_t* dim_size,
-        int batch_size,
-        int is_forward,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        int32_t num_dims_fft,
+        int32_t is_forward,
         sdp_Error* status)
 {
     sdp_Fft* fft = 0;
     int cufft_plan = 0;
-    if (location == SDP_MEM_GPU)
+    int batch_size = 1;
+    check_params(input, output, num_dims_fft, status);
+    if (*status) return fft;
+    if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
 #ifdef SDP_HAVE_CUDA
+        int idist = 0, istride = 0, odist = 0, ostride = 0;
+        const int64_t type_size_in = sdp_mem_type_size(sdp_mem_type(input));
+        const int64_t type_size_out = sdp_mem_type_size(sdp_mem_type(output));
+        const int32_t num_dims = sdp_mem_num_dims(input);
+        const int32_t last_dim = num_dims - 1;
         cufftType cufft_type = CUFFT_C2C;
-        if (fft_type == SDP_FFT_C2C)
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            if (precision == SDP_MEM_DOUBLE)
-            {
-                cufft_type = CUFFT_Z2Z;
-            }
-            else if (precision == SDP_MEM_FLOAT)
-            {
-                cufft_type = CUFFT_C2C;
-            }
-            else
-            {
-                *status = SDP_ERR_DATA_TYPE;
-                SDP_LOG_ERROR("Unsupported precision for SDP_FFT_C2C");
-                return fft;
-            }
+            cufft_type = CUFFT_Z2Z;
+        }
+        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            cufft_type = CUFFT_C2C;
         }
         else
         {
-            *status = SDP_ERR_RUNTIME;
-            SDP_LOG_ERROR("Unsupported FFT type");
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data types");
             return fft;
         }
-        int* dim_size_copy = (int*) calloc(num_dims, sizeof(int));
-        for (int i = 0; i < num_dims; ++i) dim_size_copy[i] = dim_size[i];
-        int total_elements = 1;
-        for (int i = 0; i < num_dims; ++i) total_elements *= (int) dim_size[i];
+        int* dim_size = (int*) calloc(num_dims_fft, sizeof(int));
+        int* inembed = (int*) calloc(num_dims_fft, sizeof(int));
+        int* onembed = (int*) calloc(num_dims_fft, sizeof(int));
+        for (int i = 0; i < num_dims_fft; ++i)
+        {
+            dim_size[i] = sdp_mem_shape_dim(input, i + num_dims - num_dims_fft);
+
+            // Set default values for inembed and onembed to dimension sizes.
+            // TODO: This will need to be changed for non-standard strides.
+            inembed[i] = dim_size[i];
+            onembed[i] = dim_size[i];
+        }
+        if (num_dims != num_dims_fft)
+        {
+            batch_size = sdp_mem_shape_dim(input, 0);
+        }
+        istride = sdp_mem_stride_dim(input, last_dim) / type_size_in;
+        ostride = sdp_mem_stride_dim(output, last_dim) / type_size_out;
+        idist = sdp_mem_stride_dim(input, 0) / type_size_in;
+        odist = sdp_mem_stride_dim(output, 0) / type_size_out;
         const cufftResult error = cufftPlanMany(
-                &cufft_plan, num_dims, dim_size_copy,
-                0, 1, total_elements, 0, 1, total_elements,
+                &cufft_plan, num_dims_fft, dim_size,
+                inembed, istride, idist, onembed, ostride, odist,
                 cufft_type, batch_size);
-        free(dim_size_copy);
+        free(onembed);
+        free(inembed);
+        free(dim_size);
         if (error != CUFFT_SUCCESS)
         {
             *status = SDP_ERR_RUNTIME;
@@ -92,10 +162,11 @@ sdp_Fft* sdp_fft_create(
     if (!*status)
     {
         fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
-        fft->precision = precision;
-        fft->location = location;
-        fft->fft_type = fft_type;
-        fft->num_dims = num_dims;
+        sdp_mem_ref_inc(input);
+        sdp_mem_ref_inc(output);
+        fft->input = input;
+        fft->output = output;
+        fft->num_dims = num_dims_fft;
         fft->batch_size = batch_size;
         fft->is_forward = is_forward;
         fft->cufft_plan = cufft_plan;
@@ -104,51 +175,40 @@ sdp_Fft* sdp_fft_create(
 }
 
 
-void sdp_fft_exec(sdp_Fft* fft, sdp_Mem* input, sdp_Mem* output,
+void sdp_fft_exec(
+        sdp_Fft* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
         sdp_Error* status)
 {
     if (*status || !fft || !input || !output) return;
-    if (sdp_mem_is_read_only(output))
+    check_params(input, output, fft->num_dims, status);
+    if (*status) return;
+    if (!sdp_mem_is_matching(fft->input, input, 1) ||
+            !sdp_mem_is_matching(fft->output, output, 1))
     {
         *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Output array is read-only");
+        SDP_LOG_ERROR("Arrays do not match those used for FFT plan creation");
         return;
     }
-    if (sdp_mem_location(input) != fft->location ||
-            sdp_mem_location(output) != fft->location)
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("FFT plan and arrays must be in the same location");
-        return;
-    }
-    if (fft->location == SDP_MEM_GPU)
+    if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
 #ifdef SDP_HAVE_CUDA
         cufftResult error = CUFFT_SUCCESS;
         const int fft_dir = fft->is_forward ? CUFFT_FORWARD : CUFFT_INVERSE;
-        if (fft->fft_type == SDP_FFT_C2C)
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
         {
-            if (fft->precision == SDP_MEM_FLOAT &&
-                    sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
-                    sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
-            {
-                error = cufftExecC2C(fft->cufft_plan,
-                        (cufftComplex*)sdp_mem_data(input),
-                        (cufftComplex*)sdp_mem_data(output), fft_dir);
-            }
-            else if (fft->precision == SDP_MEM_DOUBLE &&
-                    sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
-                    sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
-            {
-                error = cufftExecZ2Z(fft->cufft_plan,
-                        (cufftDoubleComplex*)sdp_mem_data(input),
-                        (cufftDoubleComplex*)sdp_mem_data(output), fft_dir);
-            }
-            else
-            {
-                *status = SDP_ERR_DATA_TYPE;
-                SDP_LOG_ERROR("Inconsistent data type(s) for SDP_FFT_C2C.");
-            }
+            error = cufftExecC2C(fft->cufft_plan,
+                    (cufftComplex*)sdp_mem_data(input),
+                    (cufftComplex*)sdp_mem_data(output), fft_dir);
+        }
+        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            error = cufftExecZ2Z(fft->cufft_plan,
+                    (cufftDoubleComplex*)sdp_mem_data(input),
+                    (cufftDoubleComplex*)sdp_mem_data(output), fft_dir);
         }
         if (error != CUFFT_SUCCESS)
         {
@@ -161,11 +221,6 @@ void sdp_fft_exec(sdp_Fft* fft, sdp_Mem* input, sdp_Mem* output,
                 "without CUDA support");
 #endif
     }
-    else
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Unsupported FFT location");
-    }
 }
 
 
@@ -173,10 +228,12 @@ void sdp_fft_free(sdp_Fft* fft)
 {
     if (!fft) return;
 #ifdef SDP_HAVE_CUDA
-    if (fft->location == SDP_MEM_GPU)
+    if (sdp_mem_location(fft->input) == SDP_MEM_GPU)
     {
         cufftDestroy(fft->cufft_plan);
     }
 #endif
+    sdp_mem_ref_dec(fft->input);
+    sdp_mem_ref_dec(fft->output);
     free(fft);
 }
