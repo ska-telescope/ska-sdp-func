@@ -267,10 +267,10 @@ void sdp_gridder_exec(
     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
     const int npix_y = (int)sdp_mem_shape_dim(dirty_image, 1);  // this should be the same as checked by check_params()
 	
-    int start_row = 0;
+    //int start_row = 0;
     size_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
 
-    const double upsampling = 2.0;
+    //const double upsampling = 2.0;
     const int image_size = npix_x;
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
@@ -291,7 +291,7 @@ void sdp_gridder_exec(
     beta *= support; 
 	
     //const int max_rows_per_chunk = 2000000 / num_chan;
-    const int max_rows_per_chunk = plan->num_rows;
+    //const int max_rows_per_chunk = plan->num_rows;
     const int chunk_size = plan->num_rows;
     const int num_w_grids_batched = 1; // fixed, don't change this!!
     const int coord_type = sdp_mem_type(uvw);
@@ -396,7 +396,7 @@ void sdp_gridder_exec(
 			const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
 			for (size_t i = 1185039 - 5; i <= 1185039 + 5; i++)
 			{			
-				printf("test_grid[%i] = [%e, %e]\n", i, real(test_grid[i]), imag(test_grid[i]));
+				printf("test_grid[%li] = [%e, %e]\n", i, real(test_grid[i]), imag(test_grid[i]));
 			}
 			
 			int start_w_grid = batch;
@@ -419,26 +419,17 @@ void sdp_gridder_exec(
 			
 			sdp_mem_free(h_w_grid_stack);
 		}
-		
-		
-		if (0)
- 		{
-			// printf("Trying here...");
-			// mem_copy_contents(im, d_w_grid_stack, 0, 0, (npix_x*2 * npix_y*2), status);  // AG for testing (comment out otherwise)
-			// printf("success!!\n");
-		}
-
+			
         // Perform 2D FFT on each bound w grid
 		sdp_fft_exec(fft, d_w_grid_stack, d_w_grid_stack, status);
-        //fft_exec(fft, d_w_grid_stack, d_w_grid_stack, 0, status);
 		
-		if (1) // write out w-grids
+		if (1) // write out w-images
 		{
 			sdp_Mem* h_w_image_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
 			const std::complex<double>* test_image = (const std::complex<double>*)sdp_mem_data_const(h_w_image_stack);
 			for (size_t i = 1185039 - 5; i <= 1185039 + 5; i++)
 			{			
-				printf("test_image[%i] = [%e, %e]\n", i, real(test_image[i]), imag(test_image[i]));
+				printf("test_image[%li] = [%e, %e]\n", i, real(test_image[i]), imag(test_image[i]));
 			}
 			
 			int start_w_grid = batch;
@@ -461,9 +452,7 @@ void sdp_gridder_exec(
 			
 			sdp_mem_free(h_w_image_stack);
 		}
-		
-		
-/*
+				
         // Perform phase shift on a "chunk" of planes and sum into single real plane
         {
             const char* k = dbl_vis ?
@@ -477,25 +466,52 @@ void sdp_gridder_exec(
 			const bool do_FFT_shift = true;
 			const bool do_wstacking = false;
             const void* args[] = {
-                mem_buffer(d_dirty_image),
+                sdp_mem_gpu_buffer(dirty_image, status),
                 &image_size,
                 dbl_vis ?
                     (const void*)&pixel_size : (const void*)&pixel_size_f,
-                mem_buffer_const(d_w_grid_stack),
+                //mem_buffer_const(d_w_grid_stack),
+                sdp_mem_gpu_buffer_const(d_w_grid_stack, status),
                 &grid_size,
                 &grid_start_w,
                 &num_w_grids_subset,
                 dbl_vis ?
-                    (const void*)&inv_w_scale : (const void*)&inv_w_scale_f,
+                    (const void*)&plan->inv_w_scale : (const void*)&plan->inv_w_scale_f,
                 dbl_vis ?
-                    (const void*)&min_plane_w : (const void*)&min_plane_w_f,
+                    (const void*)&plan->min_plane_w : (const void*)&plan->min_plane_w_f,
 				&do_FFT_shift,
 				&do_wstacking
             };
-            launch_kernel(k, num_blocks, num_threads, 0, 0, args, status);
+            sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
         }
- */
 	}	
+	
+	if (1) // write out dirty_image
+	{
+		sdp_Mem* h_dirty_image = sdp_mem_create_copy(dirty_image, SDP_MEM_CPU, status);
+		const double* test_image = (const double*)sdp_mem_data_const(h_dirty_image);
+		for (size_t i = 524288 - 5; i <= 524288 + 5; i++)
+		{			
+			printf("test_image[%li] = [%e]\n", i, test_image[i]);
+		}
+		
+		char file_name_buffer[257];
+		uint32_t num_dirty_image_pixels = image_size * image_size;
+		for(int i = 0; i < num_w_grids_batched; i++)
+		{
+			// build file name, ie: my/folder/path/w_grid_123.bin
+			//snprintf(file_name_buffer, 257, "%s/cw_grid_%d.bin", config->data_output_folder, start_w_grid++);
+			snprintf(file_name_buffer, 257, "dirty_image.bin");
+			printf("Writing image to file: %s ...\n", file_name_buffer);
+			FILE *f = fopen(file_name_buffer, "wb");
+
+			fwrite(test_image, sizeof(double), num_dirty_image_pixels, f);
+			
+			fclose(f);
+		}
+		
+		sdp_mem_free(h_dirty_image);
+	}
 	
     // Free FFT plan and data.
     sdp_fft_free(fft);	

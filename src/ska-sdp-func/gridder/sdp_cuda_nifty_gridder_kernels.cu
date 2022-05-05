@@ -6,6 +6,10 @@
 
 #define KERNEL_SUPPORT_BOUND 16
 
+#ifndef PI
+#define PI 3.1415926535897931
+#endif
+
 template<typename FP>
 __device__ __forceinline__ void my_atomic_add(FP* addr, FP value);
 
@@ -34,7 +38,6 @@ __device__ __forceinline__ void my_atomic_add(double* addr, double value)
 #endif
 }
 
-
 /**********************************************************************
  * Calculates the exponential of semicircle
  * Note the parameter x must be normalised to be in range [-1,1]
@@ -57,8 +60,30 @@ __device__ VFP exp_semicircle(const VFP beta, const VFP x)
 	return ((xx > VFP(1.0)) ? VFP(0.0) : exp(beta*(sqrt(VFP(1.0) - xx) - VFP(1.0))));
 }
 
+/**********************************************************************
+ * Calculates complex phase shift for applying to each
+ * w layer (note: w layer = iFFT(w grid))
+ * Note: l and m are expected to be in the range  [-0.5, 0.5]
+ **********************************************************************/
+template<typename FP, typename FP2>
+__device__ FP2 phase_shift(const FP w, const FP l, const FP m, const FP signage)
+{
+    FP2 phasor;
+    const FP sos = l*l + m*m;
+    const FP nm1 = (-sos) / (sqrt(FP(1.0) - sos) + FP(1.0));
+    const FP x = FP(2.0) * FP(PI) * w * nm1;
+    const FP xn = FP(1.0) / (nm1 + FP(1.0));
+    // signage = -1.0 if gridding, 1.0 if degridding
+    sincos(signage * x, &phasor.y, &phasor.x);
+    phasor.x *= xn;
+    phasor.y *= xn;
+    return phasor;
+} 
 
-
+/**********************************************************************
+ * Performs the gridding (or degridding) of visibilities across a subset of w planes
+ * Parallelised so each CUDA thread processes a single visibility
+ **********************************************************************/
 template<typename VFP, typename VFP2, typename FP, typename FP2, typename FP3>
 __global__ void sdp_cuda_nifty_gridder_gridding_2d(
     const int                                num_vis_rows,
@@ -226,6 +251,114 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d(
     }
 }
 
+/**********************************************************************
+ * Applies the w screen phase shift and accumulation of each w layer onto dirty image
+ * Parallelised so each CUDA thread processes one pixel in each quadrant of the dirty image
+ **********************************************************************/
+template<typename FP, typename FP2>
+__global__ void apply_w_screen_and_sum(
+    FP* __restrict__ dirty_image, // INPUT & OUTPUT: real plane for accumulating phase corrected w layers across batches
+    const uint image_size, // one dimensional size of image plane (grid_size / sigma), assumed square
+    const FP pixel_size, // converts pixel index (x, y) to normalised image coordinate (l, m) where l, m between -0.5 and 0.5
+    const FP2* const __restrict__ w_grid_stack, // INPUT: flat array containing 2D computed w layers (w layer = iFFT(w grid))
+    const uint grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
+    const int grid_start_w, // index of first w grid in current subset stack
+    const uint num_w_grids_subset, // number of w grids bound in current subset stack
+    const FP inv_w_scale, // inverse of scaling factor for converting w coord to signed w grid index
+    const FP min_plane_w, // w coordinate of smallest w plane
+    const bool perform_shift_fft,  // flag to (equivalently) rearrange each grid so origin is at lower-left corner for FFT
+	const bool do_wstacking
+)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    const uint half_image_size = image_size / 2;
+	
+    if(i <= (int)half_image_size && j <= (int)half_image_size)  // allow extra in negative x and y directions, for asymmetric image centre
+    {
+        // Init pixel sums for the four quadrants
+        FP pixel_sum_pos_pos = 0.0;
+        FP pixel_sum_pos_neg = 0.0;
+        FP pixel_sum_neg_pos = 0.0;
+        FP pixel_sum_neg_neg = 0.0;
+
+        const int origin_offset_grid_centre = (int)(grid_size/2); // offset of origin (in w layer) along l or m axes
+        const int grid_index_offset_image_centre = origin_offset_grid_centre*((int)grid_size) + origin_offset_grid_centre;
+
+        for (int grid_coord_w=grid_start_w; grid_coord_w < grid_start_w + (int)num_w_grids_subset; grid_coord_w++)
+        {
+            FP l = pixel_size * (FP)i;
+            FP m = pixel_size * (FP)j;
+			
+			FP2 shift;
+			if (do_wstacking)
+			{
+				FP w = (FP)grid_coord_w * inv_w_scale + min_plane_w; 
+				shift = phase_shift<FP, FP2>(w, l, m, FP(-1.0));
+			}
+			else
+			{
+				shift.x = 1.0;
+				shift.y = 0.0;
+			}
+			
+            int grid_index_offset_w = (grid_coord_w-grid_start_w)*((int)(grid_size*grid_size));
+            int grid_index_image_centre = grid_index_offset_w + grid_index_offset_image_centre;
+            
+            // Calculate the real component of the complex w layer value multiplied by the complex phase shift
+			// Note w_grid_stack presumed to be larger than dirty_image (sigma > 1) so has extra pixels around boundary
+            FP2 w_layer_pos_pos = w_grid_stack[grid_index_image_centre + j*((int)grid_size) + i];
+            pixel_sum_pos_pos += w_layer_pos_pos.x*shift.x - w_layer_pos_pos.y*shift.y;
+            FP2 w_layer_pos_neg = w_grid_stack[grid_index_image_centre - j*((int)grid_size) + i];
+            pixel_sum_pos_neg += w_layer_pos_neg.x*shift.x - w_layer_pos_neg.y*shift.y;
+            FP2 w_layer_neg_pos = w_grid_stack[grid_index_image_centre + j*((int)grid_size) - i];
+            pixel_sum_neg_pos += w_layer_neg_pos.x*shift.x - w_layer_neg_pos.y*shift.y;
+            FP2 w_layer_neg_neg = w_grid_stack[grid_index_image_centre - j*((int)grid_size) - i];
+            pixel_sum_neg_neg += w_layer_neg_neg.x*shift.x - w_layer_neg_neg.y*shift.y;
+        }
+
+        // Equivalently rearrange each grid so origin is at lower-left corner for FFT
+        bool odd_grid_coordinate = ((i+j) & 1) != 0;
+        if(perform_shift_fft && odd_grid_coordinate)
+        {
+            pixel_sum_pos_pos = -pixel_sum_pos_pos;
+            pixel_sum_pos_neg = -pixel_sum_pos_neg;
+            pixel_sum_neg_pos = -pixel_sum_neg_pos;
+            pixel_sum_neg_neg = -pixel_sum_neg_neg;
+        }
+
+        // Add the four pixel sums to the dirty image taking care to be within bounds for positive x and y quadrants
+        const int origin_offset_image_centre = (int)half_image_size; // offset of origin (in dirty image) along l or m axes
+        const int image_index_offset_image_centre = origin_offset_image_centre*((int)image_size) + origin_offset_image_centre;
+
+        // Special cases along centre or edges of image
+        if(i < (int)half_image_size && j < (int)half_image_size)
+        {
+			dirty_image[image_index_offset_image_centre + j*((int)image_size) + i] += pixel_sum_pos_pos;
+        }
+        if(i > 0 && j < (int)half_image_size)
+        {
+            // Special case along centre of image doesn't update four pixels
+            dirty_image[image_index_offset_image_centre + j*((int)image_size) - i] += pixel_sum_neg_pos;
+        }
+        if(j > 0 && i < (int)half_image_size)
+        {
+            // Special case along centre of image doesn't update four pixels
+            dirty_image[image_index_offset_image_centre - j*((int)image_size) + i] += pixel_sum_pos_neg;
+        }
+        if(i > 0 && j > 0)
+        {
+            // Special case along centre of image doesn't update four pixels
+            dirty_image[image_index_offset_image_centre - j*((int)image_size) - i] += pixel_sum_neg_neg;
+        }
+    }
+}
+
+// register kernels
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>)
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  double, double2, double3>)
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  float,  float2,  float3>)
+
+SDP_CUDA_KERNEL(apply_w_screen_and_sum<double, double2>)
+SDP_CUDA_KERNEL(apply_w_screen_and_sum<float, float2>)
+
