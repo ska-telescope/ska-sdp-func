@@ -116,12 +116,10 @@ include:
   - project: "ska-telescope/templates-repository"
     file: "gitlab-ci/includes/docs-pages.gitlab-ci.yml"
 
-# Conan
-  - project: 'ska-telescope/templates-repository'
-    file: 'gitlab-ci/includes/conan.gitlab-ci.yml'
-    
-    
-
+  # Conan
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/conan.gitlab-ci.yml"
+        
   # .post step finalisers eg: badges
   - project: "ska-telescope/templates-repository"
     file: "gitlab-ci/includes/finaliser.gitlab-ci.yml"
