@@ -5,6 +5,7 @@ variables:
 
 stages:
   - lint
+  - build
   - build and test
   - publish
   - pages
@@ -39,6 +40,30 @@ linting:
     paths:
       - build/
 
+build-python-wheels:
+  stage: build
+  image: quay.io/pypa/manylinux2014_x86_64
+  before_script:
+    - yum install -y yum-utils
+    - yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo
+    - yum clean all
+    - yum install -y cuda-nvcc-11-4 cuda-cudart-devel-11-4 libcufft-devel-11-4
+  script:
+    - for PYBIN in /opt/python/cp*/bin; do
+        "${PYBIN}/pip" wheel . --no-deps -w temp-wheels;
+      done
+    - for whl in temp-wheels/*.whl; do
+        auditwheel repair "$whl" -w wheelhouse;
+      done
+  rules:
+    - exists:
+        - pyproject.toml
+        - setup.py
+  artifacts:
+    paths:
+      - wheelhouse/
+    expire_in: 3600 seconds
+
 build-test-debug:
   stage: build and test
   image: nvidia/cuda:11.6.0-devel-ubuntu20.04
@@ -62,10 +87,8 @@ build-test-debug:
     paths:
       - build/
       - coverage/
-  reports:
-    coverage_report:
-      coverage_format: cobertura
-      path: build/reports/code-coverage.xml
+    reports:
+      cobertura: build/reports/code-coverage.xml
 
 build-test-release:
   stage: build and test
@@ -111,6 +134,32 @@ pages:
   artifacts:
     paths:
       - public
+
+python-publish-to-car:
+  stage: publish
+  image: quay.io/pypa/manylinux2014_x86_64
+  allow_failure: true
+  dependencies:
+    - build-python-wheels
+  before_script:
+    - python3.10 -m pip install twine
+  script:
+    - python3.10 -m twine upload --username ${CAR_PYPI_USERNAME} --password ${CAR_PYPI_PASSWORD} --repository-url ${CAR_PYPI_REPOSITORY_URL} wheelhouse/*
+  rules:
+    - if: '$CI_COMMIT_TAG'
+
+python-publish-to-gitlab:
+  stage: publish
+  image: quay.io/pypa/manylinux2014_x86_64
+  allow_failure: true
+  dependencies:
+    - build-python-wheels
+  before_script:
+    - python3.10 -m pip install twine
+  script:
+    - python3.10 -m twine upload --username gitlab-ci-token --password ${CI_JOB_TOKEN} --repository-url https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/pypi wheelhouse/*
+  rules:
+    - if: '$CI_COMMIT_TAG'
 
 # Include CI templates
 include:
