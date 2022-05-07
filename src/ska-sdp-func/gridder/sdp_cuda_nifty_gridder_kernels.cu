@@ -84,10 +84,13 @@ __device__ VFP exp_semicircle(const VFP beta, const VFP x)
 	
 	if(0)
 	{
-		printf("xx is %.16f\n", xx);
-		printf("1 - xx is %.16f\n", VFP(1.0) - xx);
-		printf("sqrt(1 - xx) is %.16f\n", sqrt(VFP(1.0) - xx));
-		printf("sqrt(1 - xx) - 1 is %.16f\n", sqrt(VFP(1.0) - xx) - VFP(1.0));
+		printf("x is %.16e\n", x);
+		printf("xx is %.16e\n", xx);
+		printf("1 - xx is %.16e\n", VFP(1.0) - xx);
+		printf("sqrt(1 - xx) is %.16e\n", sqrt(VFP(1.0) - xx));
+		printf("sqrt(1 - xx) - 1 is %.16e\n", sqrt(VFP(1.0) - xx) - VFP(1.0));
+		printf("beta*(sqrt(1 - xx) - 1) is %.16e\n", beta*(sqrt(VFP(1.0) - xx) - VFP(1.0)));
+		printf("exp(beta*(sqrt(1 - xx) - 1)) is %.16e\n", exp(beta*(sqrt(VFP(1.0) - xx) - VFP(1.0))));
 	}
 	
 	return ((xx > VFP(1.0)) ? VFP(0.0) : exp(beta*(sqrt(VFP(1.0) - xx) - VFP(1.0))));
@@ -147,6 +150,8 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d(
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows) 
     	return;
 
+    //if (i_vis > 0) return;  // AG Debug
+
     //if (i_chan > 2 || i_row > 5) // AG Debug
     //if (i_row > 0) // AG Debug
     //	return;
@@ -186,6 +191,12 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d(
 	
 	if (i_vis == -1)
 	{
+		printf("inv_wavelength is %.12e\n", inv_wavelength);
+		printf("uv_scale is %.12e\n", uv_scale);
+		printf("pos_u, pos_v is [%.12e, %.12e]\n", pos_u, pos_v);
+	}
+	if (i_vis == -1)
+	{
 		printf("grid_w_min   is %i\n", grid_w_min);
 		printf("grid_w_max   is %i\n", grid_w_max);
 		printf("grid_start_w is %i\n", grid_start_w);
@@ -201,18 +212,34 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d(
 
     // Calculate kernel values along u and v directions for this uvw
     VFP inv_half_support = (VFP)1.0 / (VFP)half_support;
+	//printf("inv_half_support is %.12e\n", inv_half_support);  // AG debug
     // bound above the maximum possible support when precalculating kernel values
     VFP kernel_u[KERNEL_SUPPORT_BOUND], kernel_v[KERNEL_SUPPORT_BOUND];
     for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
     {
         kernel_u[grid_u - grid_u_min] = exp_semicircle(beta,
                 (VFP)(grid_u - pos_u) * inv_half_support);
+
+		if (i_vis == -1)
+		{
+			printf("grid_u, pos_u is [%i, %.12e]\n", grid_u, pos_u);
+			printf("(VFP)(grid_u - pos_u) is %.12e\n", (VFP)(grid_u - pos_u));
+			printf("(VFP)(grid_u - pos_u) * inv_half_support is %.12e\n", (VFP)(grid_u - pos_u) * inv_half_support);
+			printf("kernel_u[%i] is %.12e\n", grid_u, kernel_u[grid_u - grid_u_min]);
+		}
     }
     for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
     {
         kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
                 (VFP)(grid_v - pos_v) * inv_half_support);
+
+		if (i_vis == -1)
+		{
+			printf("kernel_v[%i] is %.12e\n", grid_v, kernel_v[grid_v - grid_v_min]);
+		}
     }
+
+
 
     // Iterate through each w-grid
     const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
@@ -425,9 +452,8 @@ __global__ void conv_corr_and_scaling(
 
 		if ((i == 0 && j == 0))  // AG
 		{
-			printf("At [%4i, %4i], [l, m] = [%.16e, %.16e], [cfu[i], cfv[j]] = [%.16f, %.16f]\n",
-					// i, j, conv_corr_kernel[i]*conv_corr_norm_factor, conv_corr_kernel[j]*conv_corr_norm_factor); // AG
-					i, j, l, m, conv_corr_kernel[i], conv_corr_kernel[j]); // AG
+			//printf("At [%4i, %4i], [l, m] = [%.16e, %.16e], [cfu[i], cfv[j]] = [%.16f, %.16f]\n",
+				//	i, j, l, m, conv_corr_kernel[i], conv_corr_kernel[j]); // AG
 		}
 
 		// if ((i == 0 && j == 0)  || (i == half_image_size && j == half_image_size))  // AG

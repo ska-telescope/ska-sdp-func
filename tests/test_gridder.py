@@ -27,6 +27,8 @@ def atest_gridder_plan():
     pixsize_deg = 1.94322419749866394E-02
     pixsize_rad = pixsize_deg * np.pi / 180.0
 
+    print("pixsize_rad is %.12e" % pixsize_rad)
+
     epsilon = 1e-5
 
     # Run gridder test on GPU, using cupy arrays.

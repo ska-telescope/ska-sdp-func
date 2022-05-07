@@ -36,9 +36,9 @@ sdp_Gridder* sdp_gridder_create_plan(
         const sdp_Mem* freq_hz,  // in Hz
         const sdp_Mem* vis,
         const sdp_Mem* weight,
-		const float pixsize_x_rad, 
-		const float pixsize_y_rad, 
-		const float epsilon,
+		const double pixsize_x_rad, 
+		const double pixsize_y_rad, 
+		const double epsilon,
 		const bool do_wstacking,
         sdp_Error* status
     );

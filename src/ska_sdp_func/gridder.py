@@ -38,9 +38,9 @@ class Gridder:
             Mem.handle_type(),
             Mem.handle_type(),
             Mem.handle_type(),
-            ctypes.c_float,  # 5
-            ctypes.c_float,
-            ctypes.c_float,
+            ctypes.c_double,  # 5
+            ctypes.c_double,
+            ctypes.c_double,
             ctypes.c_bool,
             Error.handle_type()  # 9
         ]
@@ -49,9 +49,9 @@ class Gridder:
             mem_freq.handle(),
             mem_vis.handle(),
             mem_weight.handle(),
-            ctypes.c_float(pixsize_x_rad),  # 5
-            ctypes.c_float(pixsize_y_rad),
-            ctypes.c_float(epsilon),
+            ctypes.c_double(pixsize_x_rad),  # 5
+            ctypes.c_double(pixsize_y_rad),
+            ctypes.c_double(epsilon),
             ctypes.c_bool(do_wstacking),
             error_status.handle() # 9
         )

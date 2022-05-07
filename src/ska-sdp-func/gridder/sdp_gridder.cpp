@@ -16,9 +16,9 @@ struct sdp_Gridder
     // const sdp_Mem* freq_hz;  // in Hz
     // const sdp_Mem* vis;
     // const sdp_Mem* weight;
-	float pixsize_x_rad; 
-	float pixsize_y_rad;
-	float epsilon;
+	double pixsize_x_rad; 
+	double pixsize_y_rad;
+	double epsilon;
 	bool do_wstacking;
 	int num_rows;
 	int num_chan;
@@ -170,8 +170,8 @@ void sdp_gridder_check_plan(
 
 	if (1)
 	{
-		SDP_LOG_DEBUG("  plan->pixsize_x_rad is %e", plan->pixsize_x_rad);
-		SDP_LOG_DEBUG("  plan->pixsize_y_rad is %e", plan->pixsize_y_rad);
+		SDP_LOG_DEBUG("  plan->pixsize_x_rad is %.12e", plan->pixsize_x_rad);
+		SDP_LOG_DEBUG("  plan->pixsize_y_rad is %.12e", plan->pixsize_y_rad);
 		SDP_LOG_DEBUG("  plan->epsilon is %e",       plan->epsilon);
 
 		SDP_LOG_DEBUG("  plan->workarea is %p",      plan->workarea);
@@ -197,9 +197,9 @@ sdp_Gridder* sdp_gridder_create_plan(
         const sdp_Mem* freq_hz,  // in Hz
         const sdp_Mem* vis,
         const sdp_Mem* weight,
-		const float pixsize_x_rad, 
-		const float pixsize_y_rad, 
-		const float epsilon,
+		const double pixsize_x_rad, 
+		const double pixsize_y_rad, 
+		const double epsilon,
 		bool do_wstacking,
         sdp_Error* status)
 {
@@ -287,7 +287,7 @@ void sdp_gridder_exec(
 	//CalculateSupportAndBeta(upsampling, epsilon, support, beta, *status);
 
 	SDP_LOG_DEBUG("support is %i", support);
-	SDP_LOG_DEBUG("beta is %e", beta);
+	SDP_LOG_DEBUG("beta is %.12e", beta);
     beta *= support; 
 	
     //const int max_rows_per_chunk = 2000000 / num_chan;
@@ -313,6 +313,9 @@ void sdp_gridder_exec(
 		SDP_LOG_DEBUG("image_size is %i", image_size);
 		SDP_LOG_DEBUG("num_total_w_grids is %i", plan->num_total_w_grids);
 		SDP_LOG_DEBUG("min_plane_w is %e", plan->min_plane_w);
+		SDP_LOG_DEBUG("uv_scale is %.12e", uv_scale);
+		SDP_LOG_DEBUG("uv_scale_f is %.12e", uv_scale_f);
+		SDP_LOG_DEBUG("dbl_coord is %i", dbl_coord);		
 	}
 
     // Create the empty grid.
@@ -390,13 +393,13 @@ void sdp_gridder_exec(
 		
 		SDP_LOG_DEBUG("Finished gridding batch %i of %i batches.",  batch, total_w_grid_batches);
 		
-		if (0) // write out w-grids
+		if (1) // write out w-grids
 		{
 			sdp_Mem* h_w_grid_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
 			const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
 			for (size_t i = 1185039 - 5; i <= 1185039 + 5; i++)
 			{			
-				printf("test_grid[%li] = [%e, %e]\n", i, real(test_grid[i]), imag(test_grid[i]));
+				//printf("test_grid[%li] = [%e, %e]\n", i, real(test_grid[i]), imag(test_grid[i]));
 			}
 			
 			int start_w_grid = batch;
