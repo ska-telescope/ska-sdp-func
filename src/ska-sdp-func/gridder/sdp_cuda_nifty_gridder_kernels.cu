@@ -39,6 +39,39 @@ __device__ __forceinline__ void my_atomic_add(double* addr, double value)
 }
 
 /**********************************************************************
+* Evaluates the convolutional correction C(k) in one dimension.
+* As the exponential of semicircle gridding kernel psi(u,v,w) is separable its Fourier
+* transform Fourier(psi)(l,m,n) is likewise separable into one-dimensional components C(l)C(m)C(n).
+* As psi is even and zero outside its support the convolutional correction is given by:
+*   C(k) = 2\integral_{0}^{supp/2} psi(u)cos(2\pi ku) du = supp\integral_{0}^{1}psi(supp*x)cos(\pi*k*supp*x) dx by change of variables
+* This integral from 0 to 1 can be numerically approximated via a 2p-node Gauss-Legendre quadrature, as recommended 
+* in equation 3.10 of ‘A Parallel Non-uniform Fast Fourier Transform Library Based on an “Exponential of Semicircle” Kernel’
+* by Barnett, Magland, Klintenberg and only using the p positive nodes):
+*   C(k) ~ Sum_{i=1}^{p} weight_i*psi(supp*node_i)*cos(\pi*k*supp*node_i)
+* Note this convolutional correction is not normalised, 
+* but is normalised during use in convolution correction by C(0) to get max of 1
+**********************************************************************/
+template<typename FP>
+ __device__ FP conv_corr(
+    const FP support,
+    const FP k,
+    const FP* const __restrict__ quadrature_kernel,
+    const FP* const __restrict__ quadrature_nodes,
+    const FP* const __restrict__ quadrature_weights
+)
+{
+    FP correction = 0.0;
+    uint p = (uint)(ceil(FP(1.5)*support + FP(2.0)));
+
+    for (uint i = 0; i < p; i++)
+        correction += quadrature_kernel[i] *
+                cos(PI * k * support * quadrature_nodes[i]) *
+                quadrature_weights[i];
+
+    return correction*support;
+}
+
+/**********************************************************************
  * Calculates the exponential of semicircle
  * Note the parameter x must be normalised to be in range [-1,1]
  * Source Paper: A parallel non-uniform fast Fourier transform library based on an "exponential of semicircle" kernel
@@ -354,6 +387,95 @@ __global__ void apply_w_screen_and_sum(
     }
 }
 
+/**********************************************************************
+ * Performs convolution correction and final scaling of dirty image
+ * using precalculated and runtime calculated correction values.
+ * See conv_corr device function for more details
+ * Note precalculated convolutional correction for (l, m) are normalised to max of 1,
+ * but value for n is calculated at runtime, therefore normalised at runtime by C(0)
+ **********************************************************************/
+template<typename FP>
+__global__ void conv_corr_and_scaling(
+    FP *dirty_image,
+    const uint image_size,
+    const FP pixel_size,
+    const uint support,
+    const FP conv_corr_norm_factor,
+    const FP *conv_corr_kernel,
+    const FP inv_w_range,
+    const FP inv_w_scale,
+    const FP* const __restrict__ quadrature_kernel,
+    const FP* const __restrict__ quadrature_nodes,
+    const FP* const __restrict__ quadrature_weights,
+    const bool solving,
+	const bool do_wstacking
+)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    const uint half_image_size = image_size / 2;
+
+    if(i <= (int)half_image_size && j <= (int)half_image_size)
+    {
+        FP l = pixel_size * i;
+        FP m = pixel_size * j;
+        FP n = sqrt(FP(1.0)-l*l-m*m) - FP(1.0);
+        FP l_conv = conv_corr_kernel[i];
+        FP m_conv = conv_corr_kernel[j];
+
+		if ((i == 0 && j == 0))  // AG
+		{
+			printf("At [%4i, %4i], [l, m] = [%.16e, %.16e], [cfu[i], cfv[j]] = [%.16f, %.16f]\n",
+					// i, j, conv_corr_kernel[i]*conv_corr_norm_factor, conv_corr_kernel[j]*conv_corr_norm_factor); // AG
+					i, j, l, m, conv_corr_kernel[i], conv_corr_kernel[j]); // AG
+		}
+
+		// if ((i == 0 && j == 0)  || (i == half_image_size && j == half_image_size))  // AG
+		// {
+			// printf("At [%4i, %4i], [cfu[i], cfv[j]] = [%.16f, %.16f]\n",
+					// i, j, conv_corr_kernel[i]*conv_corr_norm_factor, conv_corr_kernel[j]*conv_corr_norm_factor); // AG
+		// }
+
+        FP n_conv = conv_corr((FP)support, n * inv_w_scale,
+                quadrature_kernel, quadrature_nodes, quadrature_weights);
+        n_conv *= (conv_corr_norm_factor * conv_corr_norm_factor);
+
+        // Note: scaling (everything after division) does not appear to be present in reference NIFTY code
+        // so it may need to be removed if testing this code against the reference code
+        // repo: https://gitlab.mpcdf.mpg.de/ift/nifty_gridder
+		FP correction = do_wstacking ? (l_conv * m_conv * n_conv) : (l_conv * m_conv * conv_corr_norm_factor * conv_corr_norm_factor); 
+		// correction /= ((n + FP(1.0)) * inv_w_range); // see above note
+
+        if(solving)
+            //correction = FP(1.0)/(correction*weight_channel_product);
+            correction = FP(1.0)/(correction);
+		else
+            correction = FP(1.0)/(correction);
+
+        // Going to need offsets to stride from pixel to pixel for this thread
+        const int origin_offset_image_centre = (int)half_image_size; // offset of origin (in dirty image) along l or m axes
+        const int image_index_offset_image_centre = origin_offset_image_centre*((int)image_size) + origin_offset_image_centre;
+
+		if(i < (int)half_image_size && j < (int)half_image_size)
+		{
+			dirty_image[image_index_offset_image_centre + j*((int)image_size) + i] *= correction; 
+		}
+        // Special cases along centre of image doesn't update four pixels
+        if(i > 0 && j < (int)half_image_size)
+		{
+            dirty_image[image_index_offset_image_centre + j*((int)image_size) - i] *= correction; 
+		}
+        if(j > 0 && i < (int)half_image_size)
+		{
+            dirty_image[image_index_offset_image_centre - j*((int)image_size) + i] *= correction; 
+		}
+        if(i > 0 && j > 0)
+		{
+            dirty_image[image_index_offset_image_centre - j*((int)image_size) - i] *= correction; 
+		}
+    }
+}
+
 // register kernels
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>)
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  double, double2, double3>)
@@ -361,4 +483,7 @@ SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  float,  floa
 
 SDP_CUDA_KERNEL(apply_w_screen_and_sum<double, double2>)
 SDP_CUDA_KERNEL(apply_w_screen_and_sum<float, float2>)
+
+SDP_CUDA_KERNEL(conv_corr_and_scaling<double>)
+SDP_CUDA_KERNEL(conv_corr_and_scaling<float>)
 

@@ -143,6 +143,63 @@ void generate_gauss_legendre_conv_kernel(
     }
 }
 
+
+void calculate_gauss_legendre_arrays()
+{
+
+/*
+    // Convert precision if required.
+    void *p_quadrature_kernel, *p_quadrature_nodes, *p_quadrature_weights;
+    void *p_conv_corr_kernel;
+    int mem_type;
+    if (dbl_vis)
+    {
+        mem_type = MEM_DOUBLE;
+        p_quadrature_kernel = quadrature_kernel;
+        p_quadrature_nodes = quadrature_nodes;
+        p_quadrature_weights = quadrature_weights;
+        p_conv_corr_kernel = conv_corr_kernel;
+    }
+    else
+    {
+        // Cast to float.
+        mem_type = MEM_FLOAT;
+        p_quadrature_kernel  = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
+        p_quadrature_nodes   = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
+        p_quadrature_weights = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
+        p_conv_corr_kernel   = calloc(image_size / 2 + 1, sizeof(float));
+        for (int i = 0; i < QUADRATURE_SUPPORT_BOUND; ++i)
+        {
+            ((float*)p_quadrature_kernel)[i] = (float)(quadrature_kernel[i]);
+            ((float*)p_quadrature_nodes)[i] = (float)(quadrature_nodes[i]);
+            ((float*)p_quadrature_weights)[i] = (float)(quadrature_weights[i]);
+        }
+        for (int i = 0; i < image_size / 2 + 1; ++i)
+            ((float*)p_conv_corr_kernel)[i] = (float)(conv_corr_kernel[i]);
+        free(quadrature_kernel);
+        free(quadrature_nodes);
+        free(quadrature_weights);
+        free(conv_corr_kernel);
+    }
+    Mem* h_quadrature_kernel = mem_create_alias_from_raw(p_quadrature_kernel,
+            mem_type, MEM_CPU, QUADRATURE_SUPPORT_BOUND, status);
+    Mem* h_quadrature_nodes = mem_create_alias_from_raw(p_quadrature_nodes,
+            mem_type, MEM_CPU, QUADRATURE_SUPPORT_BOUND, status);
+    Mem* h_quadrature_weights = mem_create_alias_from_raw(p_quadrature_weights,
+            mem_type, MEM_CPU, QUADRATURE_SUPPORT_BOUND, status);
+    Mem* h_conv_corr_kernel = mem_create_alias_from_raw(p_conv_corr_kernel,
+            mem_type, MEM_CPU, image_size / 2 + 1, status);
+
+    // Copy arrays to GPU.
+    Mem* d_quadrature_kernel = wrapper.mem_create_copy(h_quadrature_kernel, MEM_GPU, status);
+    Mem* d_quadrature_nodes = wrapper.mem_create_copy(h_quadrature_nodes, MEM_GPU, status);
+    Mem* d_quadrature_weights = wrapper.mem_create_copy(h_quadrature_weights, MEM_GPU, status);
+    Mem* d_conv_corr_kernel = wrapper.mem_create_copy(h_conv_corr_kernel, MEM_GPU, status);
+*/
+}
+
+
+
 int good_size_complex(int n)
 {
 	if (n<=12) return n;
