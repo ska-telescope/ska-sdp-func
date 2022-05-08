@@ -39,6 +39,8 @@ sdp_Gridder* sdp_gridder_create_plan(
 		const double pixsize_x_rad, 
 		const double pixsize_y_rad, 
 		const double epsilon,
+		const double min_abs_w, 
+		const double max_abs_w, 
 		const bool do_wstacking,
         sdp_Error* status
     );

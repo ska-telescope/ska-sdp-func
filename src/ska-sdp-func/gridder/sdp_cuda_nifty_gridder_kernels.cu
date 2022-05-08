@@ -502,6 +502,24 @@ __global__ void conv_corr_and_scaling(
     }
 }
 
+template<typename T>
+void get_w_range(const int num_rows, const T* uvw, const int num_chan, const T* freq_hz,
+        double& min_abs_w, double& max_abs_w)
+{
+    for (int i = 0; i < num_rows; ++i)
+    {
+        const double abs_w = std::fabs(uvw[3 * i + 2]);
+        if (abs_w < min_abs_w) min_abs_w = abs_w;
+        if (abs_w > max_abs_w) max_abs_w = abs_w;
+    }
+
+	double fscaleMin = freq_hz[0         ]/299792458.0;
+	double fscaleMax = freq_hz[num_chan-1]/299792458.0;
+	
+	min_abs_w *= fscaleMin;
+	max_abs_w *= fscaleMax;	
+}
+
 // register kernels
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>)
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  double, double2, double3>)
@@ -512,4 +530,7 @@ SDP_CUDA_KERNEL(apply_w_screen_and_sum<float, float2>)
 
 SDP_CUDA_KERNEL(conv_corr_and_scaling<double>)
 SDP_CUDA_KERNEL(conv_corr_and_scaling<float>)
+
+SDP_CUDA_KERNEL(get_w_range<double>)
+SDP_CUDA_KERNEL(get_w_range<float>)
 

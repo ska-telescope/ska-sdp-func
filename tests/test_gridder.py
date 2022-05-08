@@ -12,6 +12,11 @@ except ImportError:
 
 from ska_sdp_func import Gridder
 
+
+def rrmse(x, y):
+    return np.linalg.norm(x - y)/np.linalg.norm(y)
+
+
 def atest_gridder_plan():
     print(" ")  # just for separation of debug output
     print(" ")
@@ -107,6 +112,57 @@ def atest_gridder_plan():
 
         # don't know how to test contiguity
         # don't know how to test read-only from python
+
+
+def test_get_w_range():
+
+    print(" ")  # just for separation of debug output
+    print(" ")
+
+    # load dataset
+    test_data = np.load("tests/test_data/vla_d_3_chan.npz")
+    freq_hz = test_data["freqs"]
+    uvw = test_data["uvw"]
+
+    print(freq_hz)
+    print(freq_hz.dtype)
+
+    true_min_abs_w = np.amin(np.abs(uvw[:, 2]))*freq_hz[0]/299792458.0
+    true_max_abs_w = np.amax(np.abs(uvw[:, 2]))*freq_hz[-1]/299792458.0
+
+    print("min_abs_w is %.12e" % true_min_abs_w)
+    print("max_abs_w is %.12e" % true_max_abs_w)
+
+    # test with numpy arguments
+    print("testing numpy arguments...")
+    min_abs_w, max_abs_w = Gridder.get_w_range(uvw, freq_hz)
+    # print(rrmse(min_abs_w, true_min_abs_w))
+    # print(rrmse(max_abs_w, true_max_abs_w))
+    assert(rrmse(min_abs_w, true_min_abs_w) < 1e-15)
+    assert(rrmse(max_abs_w, true_max_abs_w) < 1e-15)
+
+    # Run gridder test on GPU, using cupy arrays.
+    if cupy:
+        freq_hz_gpu = cupy.asarray(freq_hz)
+        uvw_gpu = cupy.asarray(uvw)
+
+        # print(type(uvw_gpu))
+        # print(type(freq_hz_gpu))
+
+        # test with cupy arguments
+        print("testing cupy arguments...")
+        min_abs_w, max_abs_w = Gridder.get_w_range(uvw_gpu, freq_hz_gpu)
+        # print(rrmse(min_abs_w, true_min_abs_w))
+        # print(rrmse(max_abs_w, true_max_abs_w))
+        assert (rrmse(min_abs_w, true_min_abs_w) < 1e-15)
+        assert (rrmse(max_abs_w, true_max_abs_w) < 1e-15)
+
+    # test with bad arguments
+    print("testing bad arguments...")
+    min_abs_w, max_abs_w = Gridder.get_w_range(None, None)
+    assert(min_abs_w == -1)
+    assert(max_abs_w == -1)
+
 
 def test_gridder():
 

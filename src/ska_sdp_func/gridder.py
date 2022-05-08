@@ -2,6 +2,13 @@
 
 import ctypes
 from .utility import Error, Lib, Mem
+import numpy as np
+
+try:
+    import cupy
+    print("All good!")
+except ImportError:
+    cupy = None
 
 class Gridder:
     """Processing function example A.
@@ -31,6 +38,14 @@ class Gridder:
         mem_weight = Mem(weight)
         error_status = Error()
 
+        # check types consistent here???
+
+        if do_wstacking:
+            min_abs_w, max_abs_w = Gridder.get_w_range(uvw, freq_hz)
+        else:
+            min_abs_w = 0
+            max_abs_w = 0
+
         function_create = Lib.handle().sdp_gridder_create_plan
         function_create.restype = Gridder.handle_type()
         function_create.argtypes = [
@@ -41,8 +56,10 @@ class Gridder:
             ctypes.c_double,  # 5
             ctypes.c_double,
             ctypes.c_double,
-            ctypes.c_bool,
-            Error.handle_type()  # 9
+            ctypes.c_double,
+            ctypes.c_double,
+            ctypes.c_bool,    # 10
+            Error.handle_type()
         ]
         self._handle = function_create(
             mem_uvw.handle(),
@@ -52,8 +69,10 @@ class Gridder:
             ctypes.c_double(pixsize_x_rad),  # 5
             ctypes.c_double(pixsize_y_rad),
             ctypes.c_double(epsilon),
-            ctypes.c_bool(do_wstacking),
-            error_status.handle() # 9
+            ctypes.c_double(min_abs_w),
+            ctypes.c_double(max_abs_w),
+            ctypes.c_bool(do_wstacking),  # 10
+            error_status.handle()
         )
         error_status.check()
 
@@ -74,6 +93,24 @@ class Gridder:
         :rtype: ctypes.POINTER(FunctionExampleA.Handle)
         """
         return self._handle
+
+    @staticmethod
+    def get_w_range(uvw, freq_hz):
+
+        if type(uvw) == np.ndarray:
+            min_abs_w = np.amin(np.abs(uvw[:, 2]))
+            max_abs_w = np.amax(np.abs(uvw[:, 2]))
+        elif cupy and type(uvw) == cupy.ndarray:
+            min_abs_w = cupy.amin(cupy.abs(uvw[:, 2]))
+            max_abs_w = cupy.amax(cupy.abs(uvw[:, 2]))
+        else:
+            print("bad type!!")
+            return -1, -1
+
+        min_abs_w *= freq_hz[ 0] / 299792458.0
+        max_abs_w *= freq_hz[-1] / 299792458.0
+
+        return min_abs_w, max_abs_w
 
     @staticmethod
     def handle_type():

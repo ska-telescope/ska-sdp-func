@@ -200,6 +200,8 @@ sdp_Gridder* sdp_gridder_create_plan(
 		const double pixsize_x_rad, 
 		const double pixsize_y_rad, 
 		const double epsilon,
+		const double min_abs_w, 
+		const double max_abs_w, 
 		bool do_wstacking,
         sdp_Error* status)
 {
@@ -220,6 +222,64 @@ sdp_Gridder* sdp_gridder_create_plan(
 
 	if (plan->do_wstacking)
 	{
+		// double min_abs_w = 1e10, max_abs_w = -1e10;
+		
+		// if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
+			// get_w_range<double>(
+				// num_rows, (const double*) mem_ptr_const(uvw),
+				// num_chan, (const double*) mem_ptr_const(freq_hz),
+					// min_abs_w, max_abs_w);
+		// else
+			// get_w_range<float>(
+				// num_rows, (const float*) mem_ptr_const(uvw),
+				// num_chan, (const float*) mem_ptr_const(freq_hz),
+					// min_abs_w, max_abs_w);
+
+		// // Determine range of w-values.
+        // {
+            // const char* k = 0;
+			// if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
+				// k = "get_w_range<double>";
+			// else if (sdp_mem_type(uvw) == SDP_MEM_FLOAT)
+				// k = "get_w_range<float>";
+			
+            // if (dbl_vis && dbl_coord)
+                // k = "sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>";
+            // else if (!dbl_vis && dbl_coord)
+                // k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, double, double2, double3>";
+            // else if (!dbl_vis && !dbl_coord)
+                // k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, float, float2, float3>";
+            // if (k)
+            // {
+                // num_threads[0] = 1;
+                // num_threads[1] = 256;
+                // num_blocks[0] = (plan->num_chan + num_threads[0] - 1) / num_threads[0];
+                // num_blocks[1] = (chunk_size + num_threads[1] - 1) / num_threads[1];
+                // const bool solving = 1;
+                // const void* args[] = {
+                    // &chunk_size,
+                    // &plan->num_chan,
+                    // sdp_mem_gpu_buffer_const(vis, status),
+                    // sdp_mem_gpu_buffer_const(weight, status),
+                    // sdp_mem_gpu_buffer_const(uvw, status),
+                    // sdp_mem_gpu_buffer_const(freq_hz, status),
+                    // sdp_mem_gpu_buffer(d_w_grid_stack, status),
+                    // &grid_size,
+                    // &grid_start_w,
+                    // &num_w_grids_subset,
+                    // &support,
+                    // dbl_vis ? (const void*)&beta : (const void*)&beta_f,
+                    // dbl_coord ?
+                        // (const void*)&uv_scale : (const void*)&uv_scale_f,
+                    // dbl_coord ?
+                        // (const void*)&plan->w_scale : (const void*)&plan->w_scale_f,
+                    // dbl_coord ?
+                        // (const void*)&plan->min_plane_w : (const void*)&plan->min_plane_w_f,
+                    // &solving
+                // };
+                // sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
+            // }
+        // }
 	}
 	else
 	{
