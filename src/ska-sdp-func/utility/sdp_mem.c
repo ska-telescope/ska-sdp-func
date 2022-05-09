@@ -138,6 +138,14 @@ sdp_Mem* sdp_mem_create_wrapper(
     return mem;
 }
 
+sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src)
+{
+    sdp_Error status = SDP_SUCCESS;
+    sdp_Mem* mem = sdp_mem_create_wrapper(src->data, src->type, src->location,
+            src->num_dims, src->shape, src->stride, &status);
+    return mem;
+}
+
 sdp_Mem* sdp_mem_create_copy(
         const sdp_Mem* src,
         sdp_MemLocation location,
