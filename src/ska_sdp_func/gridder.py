@@ -17,7 +17,7 @@ class Gridder:
         pass
 
     def __init__(self, uvw, freq, vis, weight, pixsize_x_rad, pixsize_y_rad, epsilon: float,
-             do_wstacking: bool):
+             do_wstacking: bool, dirty_image):
         """Creates processing function A.
 
         :param par_a: Value of a.
@@ -29,13 +29,13 @@ class Gridder:
         :param par_c: Value of c.
         :type par_c: float
         """
-        print("BITB")
 
         self._handle = None
         mem_uvw = Mem(uvw)
         mem_freq = Mem(freq)
         mem_vis = Mem(vis)
         mem_weight = Mem(weight)
+        mem_dirty_image = Mem(dirty_image)
         error_status = Error()
 
         # check types consistent here???
@@ -59,6 +59,7 @@ class Gridder:
             ctypes.c_double,
             ctypes.c_double,
             ctypes.c_bool,    # 10
+            Mem.handle_type(),
             Error.handle_type()
         ]
         self._handle = function_create(
@@ -72,6 +73,7 @@ class Gridder:
             ctypes.c_double(min_abs_w),
             ctypes.c_double(max_abs_w),
             ctypes.c_bool(do_wstacking),  # 10
+            mem_dirty_image.handle(),
             error_status.handle()
         )
         error_status.check()
@@ -123,11 +125,11 @@ class Gridder:
         """
         return ctypes.POINTER(Gridder.Handle)
 
-    def exec(self, uvw, freq, vis, weight, output):
+    def exec(self, uvw, freq, vis, weight, dirty_image):
         """Demonstrate a function utilising a plan.
 
-        :param output: Output buffer.
-        :type output: numpy.ndarray
+        :param dirty_image: Output buffer.
+        :type dirty_image: numpy.ndarray
         """
         if self._handle is None:
             raise RuntimeError("Function plan not ready")
@@ -136,7 +138,7 @@ class Gridder:
         mem_freq = Mem(freq)
         mem_vis = Mem(vis)
         mem_weight = Mem(weight)
-        mem_output = Mem(output)
+        mem_dirty_image = Mem(dirty_image)
         error_status = Error()
         function_exec = Lib.handle().sdp_gridder_exec
         function_exec.argtypes = [
@@ -154,7 +156,7 @@ class Gridder:
             mem_vis.handle(),
             mem_weight.handle(),
             self._handle,
-            mem_output.handle(),
+            mem_dirty_image.handle(),
             error_status.handle()
         )
         error_status.check()

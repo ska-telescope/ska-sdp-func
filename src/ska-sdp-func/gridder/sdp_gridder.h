@@ -42,6 +42,7 @@ sdp_Gridder* sdp_gridder_create_plan(
 		const double min_abs_w, 
 		const double max_abs_w, 
 		const bool do_wstacking,
+        const sdp_Mem* dirty_image,
         sdp_Error* status
     );
 

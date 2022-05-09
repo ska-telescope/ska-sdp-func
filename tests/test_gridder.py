@@ -1,7 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import numpy as np
-from ska_sdp_func.utility import Error
 import pytest
 
 try:
@@ -10,6 +9,7 @@ try:
 except ImportError:
     cupy = None
 
+from ska_sdp_func.utility import Error
 from ska_sdp_func import Gridder
 
 
@@ -36,6 +36,8 @@ def atest_gridder_plan():
 
     epsilon = 1e-5
 
+    dirty_image = np.zeros([imSize, imSize], dtype=np.float64)
+
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
         print("hi!!")
@@ -43,6 +45,7 @@ def atest_gridder_plan():
         freqs_gpu = cupy.asarray(freqs)
         uvw_gpu = cupy.asarray(uvw)
         weight_gpu = cupy.asarray(weight)
+        dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)
 
         ## tests for plan creation
 
@@ -87,8 +90,6 @@ def atest_gridder_plan():
         # Create gridder, need to create a valid gridder!
         gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, pixsize_rad, pixsize_rad, epsilon, False)
 
-        dirty_image = np.zeros([imSize, imSize], dtype=np.float64)
-        dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)
         gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
 
         # this checks that sdp_gridder_check_inputs() is being called, but could do exhaustive checking like above...
@@ -185,22 +186,21 @@ def test_gridder():
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
-        print("hi!!")
         vis_gpu = cupy.asarray(vis)
         freqs_gpu = cupy.asarray(freqs)
         uvw_gpu = cupy.asarray(uvw)
         weight_gpu = cupy.asarray(weight)
+        dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)
 
         do_wstacking = False
 
-        print(vis_gpu.dtype)
-        print(freqs_gpu)
-        print(uvw_gpu)
+        # print(vis_gpu.dtype)
+        # print(freqs_gpu)
+        # print(uvw_gpu)
+        # print(dirty_image_gpu)
 
         # Create gridder
-        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, pixsize_rad, pixsize_rad, epsilon, do_wstacking)
+        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, pixsize_rad, pixsize_rad, epsilon, do_wstacking, dirty_image_gpu)
 
         # Run gridder
-        dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)
-        print(dirty_image_gpu)
         gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
