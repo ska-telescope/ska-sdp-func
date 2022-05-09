@@ -16,7 +16,7 @@ class Gridder:
     class Handle(ctypes.Structure):
         pass
 
-    def __init__(self, uvw, freq, vis, weight, pixsize_x_rad, pixsize_y_rad, epsilon: float,
+    def __init__(self, uvw, freq_hz, vis, weight, pixsize_x_rad, pixsize_y_rad, epsilon: float,
              do_wstacking: bool, dirty_image):
         """Creates processing function A.
 
@@ -32,7 +32,7 @@ class Gridder:
 
         self._handle = None
         mem_uvw = Mem(uvw)
-        mem_freq = Mem(freq)
+        mem_freq_hz = Mem(freq_hz)
         mem_vis = Mem(vis)
         mem_weight = Mem(weight)
         mem_dirty_image = Mem(dirty_image)
@@ -64,7 +64,7 @@ class Gridder:
         ]
         self._handle = function_create(
             mem_uvw.handle(),
-            mem_freq.handle(),
+            mem_freq_hz.handle(),
             mem_vis.handle(),
             mem_weight.handle(),
             ctypes.c_double(pixsize_x_rad),  # 5

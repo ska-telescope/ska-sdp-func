@@ -5,7 +5,7 @@ import pytest
 
 try:
     import cupy
-    print("All good!")
+    print("cupy imported successfully.")
 except ImportError:
     cupy = None
 
@@ -165,7 +165,7 @@ def test_get_w_range():
     assert(max_abs_w == -1)
 
 
-def test_gridder():
+def test_gridder_2D():
 
     print(" ")  # just for separation of debug output
     print(" ")
@@ -204,3 +204,60 @@ def test_gridder():
 
         # Run gridder
         gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
+
+        # Check output
+        dirty_image = cupy.asnumpy(dirty_image_gpu)
+        # np.save("tests/test_data/dirty_image_1024_.npy", dirty_image)
+        test_output = np.load("tests/test_data/dirty_image_1024_2D_DP.npy")
+        this_RRMSE = rrmse(dirty_image, test_output)
+        print("RRMSE of dirty images is %e" % this_RRMSE)
+        assert (this_RRMSE < 1e-14)
+
+
+def test_gridder_3D():
+
+    print(" ")  # just for separation of debug output
+    print(" ")
+
+    # load dataset
+    test_data = np.load("tests/test_data/vla_d_3_chan.npz")
+    vis = test_data["vis"]
+    freqs = test_data["freqs"]
+    uvw = test_data["uvw"]
+    weight = np.ones(vis.shape)
+    # parameters
+    imSize = 1024
+    pixsize_deg = 1.94322419749866394E-02
+    pixsize_rad = pixsize_deg * np.pi / 180.0
+    print(pixsize_rad)
+
+    epsilon = 1e-5
+
+    # Run gridder test on GPU, using cupy arrays.
+    if cupy:
+        vis_gpu = cupy.asarray(vis)
+        freqs_gpu = cupy.asarray(freqs)
+        uvw_gpu = cupy.asarray(uvw)
+        weight_gpu = cupy.asarray(weight)
+        dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)
+
+        do_wstacking = True
+
+        # print(vis_gpu.dtype)
+        # print(freqs_gpu)
+        # print(uvw_gpu)
+        # print(dirty_image_gpu)
+
+        # Create gridder
+        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, pixsize_rad, pixsize_rad, epsilon, do_wstacking, dirty_image_gpu)
+
+        # Run gridder
+        gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
+
+        # Check output
+        dirty_image = cupy.asnumpy(dirty_image_gpu)
+        # np.save("tests/test_data/dirty_image_1024_.npy", dirty_image)
+        test_output = np.load("tests/test_data/dirty_image_1024_3D_DP.npy")
+        this_RRMSE = rrmse(dirty_image, test_output)
+        print("RRMSE of dirty images is %e" % this_RRMSE)
+        assert (this_RRMSE < 1e-14)

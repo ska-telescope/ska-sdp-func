@@ -183,19 +183,21 @@ void sdp_gridder_check_outputs(
     }
 }
 
-void sdp_gridder_check_plan(
+
+void sdp_gridder_log_plan(
 		sdp_Gridder* plan,
         sdp_Error* status)
 {
-    if (*status) return;
-
 	if (1)
 	{
 		SDP_LOG_DEBUG("  plan->pixsize_x_rad is %.12e", plan->pixsize_x_rad);
 		SDP_LOG_DEBUG("  plan->pixsize_y_rad is %.12e", plan->pixsize_y_rad);
 		SDP_LOG_DEBUG("  plan->epsilon is %e",       	plan->epsilon);
-		SDP_LOG_DEBUG("  plan->min_abs_w is %e",       	plan->max_abs_w);
+		SDP_LOG_DEBUG("  plan->min_abs_w is %e",       	plan->min_abs_w);
 		SDP_LOG_DEBUG("  plan->max_abs_w is %e",       	plan->max_abs_w);
+		SDP_LOG_DEBUG("  plan->min_plane_w is %e",       	plan->min_plane_w);
+		SDP_LOG_DEBUG("  plan->max_plane_w is %e",       	plan->max_plane_w);
+		// SDP_LOG_DEBUG("  plan-> is %e",       	plan->);
 
 		SDP_LOG_DEBUG("  plan->workarea is %p",      plan->workarea);
 		
@@ -204,6 +206,14 @@ void sdp_gridder_check_plan(
 		// SDP_LOG_DEBUG("  plan->vis's     location is %i", sdp_mem_location(plan->vis));
 		// SDP_LOG_DEBUG("  plan->weight's  location is %i", sdp_mem_location(plan->weight));		
 	}
+}
+
+void sdp_gridder_check_plan(
+		sdp_Gridder* plan,
+        sdp_Error* status)
+{
+	sdp_gridder_log_plan(plan, status);
+    if (*status) return;
 
 	if (plan->pixsize_x_rad != plan->pixsize_y_rad)
     {
@@ -402,12 +412,24 @@ void sdp_gridder_exec(
         // Perform gridding on a "chunk" of w grids
         {
             const char* k = 0;
-            if (dbl_vis && dbl_coord)
-                k = "sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>";
-            else if (!dbl_vis && dbl_coord)
-                k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, double, double2, double3>";
-            else if (!dbl_vis && !dbl_coord)
-                k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, float, float2, float3>";
+			if (plan->do_wstacking)
+			{
+				if (dbl_vis && dbl_coord)
+					k = "sdp_cuda_nifty_gridder_gridding_3d<double, double2, double, double2, double3>";
+				else if (!dbl_vis && dbl_coord)
+					k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, double, double2, double3>";
+				else if (!dbl_vis && !dbl_coord)
+					k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, float, float2, float3>";
+			}
+			else
+			{
+				if (dbl_vis && dbl_coord)
+					k = "sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>";
+				else if (!dbl_vis && dbl_coord)
+					k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, double, double2, double3>";
+				else if (!dbl_vis && !dbl_coord)
+					k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, float, float2, float3>";
+			}
             if (k)
             {
                 num_threads[0] = 1;
@@ -439,7 +461,7 @@ void sdp_gridder_exec(
 		
 		SDP_LOG_DEBUG("Finished gridding batch %i of %i batches.",  batch, total_w_grid_batches);
 		
-		if (1) // write out w-grids
+		if (0) // write out w-grids
 		{
 			sdp_Mem* h_w_grid_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
 			const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
@@ -513,7 +535,7 @@ void sdp_gridder_exec(
             num_blocks[0] = (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
             num_blocks[1] = (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
 			const bool do_FFT_shift = true;
-			const bool do_wstacking = false;
+			// const bool do_wstacking = false;
             const void* args[] = {
                 sdp_mem_gpu_buffer(dirty_image, status),
                 &plan->image_size,
@@ -527,7 +549,7 @@ void sdp_gridder_exec(
                 dbl_vis ?
                     (const void*)&plan->min_plane_w : (const void*)&plan->min_plane_w_f,
 				&do_FFT_shift,
-				&do_wstacking
+				&plan->do_wstacking
             };
             sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
         }
@@ -674,7 +696,7 @@ void sdp_gridder_exec(
         num_blocks[0] = (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
         num_blocks[1] = (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
 		const bool solving = true;
-		const bool do_wstacking = false;
+		// const bool do_wstacking = false;
         const void* args[] = {
             sdp_mem_gpu_buffer(dirty_image, status),
             &plan->image_size,
@@ -690,7 +712,7 @@ void sdp_gridder_exec(
             sdp_mem_gpu_buffer_const(d_quadrature_nodes, status),
             sdp_mem_gpu_buffer_const(d_quadrature_weights, status),
 			&solving,
-			&do_wstacking
+			&plan->do_wstacking
         };
         sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
     }
