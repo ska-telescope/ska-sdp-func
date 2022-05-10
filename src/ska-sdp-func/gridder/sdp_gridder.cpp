@@ -717,13 +717,17 @@ void sdp_gridder_exec(
         sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
     }
 
-	if (1) // write out dirty_image
+	if (0) // write out dirty_image
 	{
 		sdp_Mem* h_dirty_image = sdp_mem_create_copy(dirty_image, SDP_MEM_CPU, status);
-		const double* test_image = (const double*)sdp_mem_data_const(h_dirty_image);
+		const void* test_image = (const void*)sdp_mem_data_const(h_dirty_image);
+		
 		for (size_t i = 524288 - 5; i <= 524288 + 5; i++)
-		{			
-			// printf("test_image[%li] = [%e]\n", i, test_image[i]);
+		{	
+			if (sdp_mem_type(h_dirty_image) == SDP_MEM_DOUBLE)
+				printf("test_image[%li] = [%e]\n", i, ((const double*)test_image)[i]);
+			else
+				printf("test_image[%li] = [%e]\n", i, ((const float*)test_image)[i]);
 		}
 		
 		char file_name_buffer[257];
@@ -736,7 +740,10 @@ void sdp_gridder_exec(
 			printf("Writing image to file: %s ...\n", file_name_buffer);
 			FILE *f = fopen(file_name_buffer, "wb");
 
-			fwrite(test_image, sizeof(double), num_dirty_image_pixels, f);
+			if (sdp_mem_type(h_dirty_image) == SDP_MEM_DOUBLE)
+				fwrite(test_image, sizeof(double), num_dirty_image_pixels, f);
+			else
+				fwrite(test_image, sizeof(float), num_dirty_image_pixels, f);
 			
 			fclose(f);
 		}
