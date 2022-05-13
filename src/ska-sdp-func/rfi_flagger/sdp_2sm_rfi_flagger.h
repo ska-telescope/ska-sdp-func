@@ -1,3 +1,5 @@
+/* See the LICENSE file at the top-level directory of this distribution. */
+
 #ifndef SDP_FUNC_SDP_2SM_RFI_FLAGGER_H
 #define SDP_FUNC_SDP_2SM_RFI_FLAGGER_H
 
@@ -28,14 +30,22 @@ extern "C" {
  *
  * - @p flags is 4D and integer-valued, with the same shape as @p vis .
  *
- * - @p max_sequence_length is the maximum length of the sum performed
- *   by the algorithm.
- *
  * @param vis Complex valued visibilities. Dimensions as above.
  * @param thresholds thresholds for first and second order estimate (extrapolation-based) methods .
  * @param flags Output flags. Dimensions as above.
  * @param status Error status.
  */
+void sdp_twosm_rfi_flagger(
+        const sdp_Mem* vis,
+        const sdp_Mem* thresholds,
+        sdp_Mem* flags,
+        sdp_Error* status);
+
+/** @} */ /* End group rfi_flag_func. */
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif //SDP_FUNC_SDP_2SM_RFI_FLAGGER_H
