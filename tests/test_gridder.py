@@ -165,7 +165,7 @@ def test_get_w_range():
     assert(max_abs_w == -1)
 
 
-def run_gridder(do_single, do_w_stacking):
+def run_ms2dirty(do_single, do_w_stacking):
 
     print(" ")  # just for separation of debug output
     print(" ")
@@ -205,11 +205,11 @@ def run_gridder(do_single, do_w_stacking):
         # print(dirty_image_gpu)
 
         # Create gridder
-        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, pixel_size_rad, pixel_size_rad,
-                          epsilon, do_w_stacking, dirty_image_gpu)
+        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu, pixel_size_rad, pixel_size_rad,
+                          epsilon, do_w_stacking)
 
         # Run gridder
-        gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
+        gridder.ms2dirty(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
 
         # Check output
         dirty_image = cupy.asnumpy(dirty_image_gpu)
@@ -233,21 +233,111 @@ def run_gridder(do_single, do_w_stacking):
         return this_rrmse, pass_threshold
 
 
-def test_gridder_sp_2d():
-    this_rrmse, pass_threshold = run_gridder(do_single=True, do_w_stacking=False)
+def run_dirty2ms(do_single, do_w_stacking):
+
+    print(" ")  # just for separation of debug output
+    print(" ")
+
+    # load dataset
+    test_data = np.load("tests/test_data/vla_d_3_chan.npz")
+    freqs = test_data["freqs"]
+    uvw = test_data["uvw"]
+    num_vis = uvw.shape[0]
+    num_chan = freqs.shape[0]
+    weight = np.ones([num_vis, num_chan])
+
+    if do_single:
+        freqs = freqs.astype(np.float32)
+        uvw = uvw.astype(np.float32)
+        weight = weight.astype(np.float32)
+
+    if do_single:
+        if do_w_stacking:
+            dirty_image = np.load("tests/test_data/dirty_image_1024_3D_SP.npy")
+        else:
+            dirty_image = np.load("tests/test_data/dirty_image_1024_2D_SP.npy")
+    else:
+        if do_w_stacking:
+            dirty_image = np.load("tests/test_data/dirty_image_1024_3D_DP.npy")
+        else:
+            dirty_image = np.load("tests/test_data/dirty_image_1024_2D_DP.npy")
+
+    # parameters
+    im_size = 1024
+    pixel_size_deg = 1.94322419749866394E-02
+    pixel_size_rad = pixel_size_deg * np.pi / 180.0
+    print(pixel_size_rad)
+
+    epsilon = 1e-5
+
+    # Run gridder test on GPU, using cupy arrays.
+    if cupy:
+        freqs_gpu = cupy.asarray(freqs)
+        uvw_gpu = cupy.asarray(uvw)
+        weight_gpu = cupy.asarray(weight)
+        dirty_image_gpu = cupy.asarray(dirty_image)
+
+        if do_single:
+            vis_gpu = cupy.zeros([uvw_gpu.shape[0], freqs_gpu.shape[0]], np.complex64)
+        else:
+            vis_gpu = cupy.zeros([uvw_gpu.shape[0], freqs_gpu.shape[0]], np.complex128)
+
+        # print(vis_gpu.dtype)
+        # print(vis_gpu.shape)
+        # print(freqs_gpu)
+        # print(uvw_gpu)
+        # print(dirty_image_gpu)
+
+        # Create gridder
+        gridder = Gridder(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu, pixel_size_rad, pixel_size_rad,
+                          epsilon, do_w_stacking)
+
+        # Run gridder
+        gridder.dirty2ms(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
+
+        # Check output
+        dirty_image = cupy.asnumpy(dirty_image_gpu)
+        # np.save("tests/test_data/dirty_image_1024_3D_SP.npy", dirty_image)
+        if do_single:
+            pass_threshold = 1e-5
+            if do_w_stacking:
+                test_output = np.load("tests/test_data/dirty_image_1024_3D_SP.npy")
+            else:
+                test_output = np.load("tests/test_data/dirty_image_1024_2D_SP.npy")
+        else:
+            pass_threshold = 1e-14
+            if do_w_stacking:
+                test_output = np.load("tests/test_data/dirty_image_1024_3D_DP.npy")
+            else:
+                test_output = np.load("tests/test_data/dirty_image_1024_2D_DP.npy")
+
+        this_rrmse = rrmse(dirty_image, test_output)
+        print("RRMSE of dirty images is %e" % this_rrmse)
+
+        return this_rrmse, pass_threshold
+
+
+def test_ms2dirty_sp_2d():
+    this_rrmse, pass_threshold = run_ms2dirty(do_single=True, do_w_stacking=False)
     assert (this_rrmse < pass_threshold)
 
 
-def test_gridder_dp_2d():
-    this_rrmse, pass_threshold = run_gridder(do_single=False, do_w_stacking=False)
+def test_ms2dirty_dp_2d():
+    this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=False)
     assert (this_rrmse < pass_threshold)
 
 
-def test_gridder_sp_3d():
-    this_rrmse, pass_threshold = run_gridder(do_single=True, do_w_stacking=True)
+def test_ms2dirty_sp_3d():
+    this_rrmse, pass_threshold = run_ms2dirty(do_single=True, do_w_stacking=True)
     assert (this_rrmse < pass_threshold)
 
 
-def test_gridder_dp_3d():
-    this_rrmse, pass_threshold = run_gridder(do_single=False, do_w_stacking=True)
+def test_ms2dirty_dp_3d():
+    this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=True)
     assert (this_rrmse < pass_threshold)
+
+
+def test_dirty2ms_dp_2d():
+    this_rrmse, pass_threshold = run_dirty2ms(do_single=False, do_w_stacking=False)
+    assert (this_rrmse < pass_threshold)
+

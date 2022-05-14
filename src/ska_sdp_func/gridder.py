@@ -16,8 +16,8 @@ class Gridder:
     class Handle(ctypes.Structure):
         pass
 
-    def __init__(self, uvw, freq_hz, vis, weight, pixsize_x_rad, pixsize_y_rad, epsilon: float,
-             do_wstacking: bool, dirty_image):
+    def __init__(self, uvw, freq_hz, vis, weight, dirty_image, pixsize_x_rad, pixsize_y_rad, epsilon: float,
+             do_wstacking: bool):
         """Creates processing function A.
 
         :param par_a: Value of a.
@@ -53,13 +53,13 @@ class Gridder:
             Mem.handle_type(),
             Mem.handle_type(),
             Mem.handle_type(),
-            ctypes.c_double,  # 5
+            Mem.handle_type(),  # 5
             ctypes.c_double,
             ctypes.c_double,
             ctypes.c_double,
             ctypes.c_double,
-            ctypes.c_bool,    # 10
-            Mem.handle_type(),
+            ctypes.c_double,  # 10
+            ctypes.c_bool,
             Error.handle_type()
         ]
         self._handle = function_create(
@@ -67,13 +67,13 @@ class Gridder:
             mem_freq_hz.handle(),
             mem_vis.handle(),
             mem_weight.handle(),
+            mem_dirty_image.handle(),
             ctypes.c_double(pixsize_x_rad),  # 5
             ctypes.c_double(pixsize_y_rad),
             ctypes.c_double(epsilon),
             ctypes.c_double(min_abs_w),
             ctypes.c_double(max_abs_w),
             ctypes.c_bool(do_wstacking),  # 10
-            mem_dirty_image.handle(),
             error_status.handle()
         )
         error_status.check()
@@ -125,7 +125,7 @@ class Gridder:
         """
         return ctypes.POINTER(Gridder.Handle)
 
-    def exec(self, uvw, freq, vis, weight, dirty_image):
+    def ms2dirty(self, uvw, freq, vis, weight, dirty_image):
         """Demonstrate a function utilising a plan.
 
         :param dirty_image: Output buffer.
@@ -140,14 +140,14 @@ class Gridder:
         mem_weight = Mem(weight)
         mem_dirty_image = Mem(dirty_image)
         error_status = Error()
-        function_exec = Lib.handle().sdp_gridder_exec
+        function_exec = Lib.handle().sdp_gridder_ms2dirty
         function_exec.argtypes = [
             Mem.handle_type(),
             Mem.handle_type(),
             Mem.handle_type(),
             Mem.handle_type(),
-            Gridder.handle_type(),
             Mem.handle_type(),
+            Gridder.handle_type(),
             Error.handle_type()
         ]
         function_exec(
@@ -155,8 +155,45 @@ class Gridder:
             mem_freq.handle(),
             mem_vis.handle(),
             mem_weight.handle(),
-            self._handle,
             mem_dirty_image.handle(),
+            self._handle,
+            error_status.handle()
+        )
+        error_status.check()
+
+    def dirty2ms(self, uvw, freq, vis, weight, dirty_image):
+        """Demonstrate a function utilising a plan.
+
+        :param dirty_image: Input dirty image.
+        :param vis: output buffer
+        :type dirty_image: numpy.ndarray
+        """
+        if self._handle is None:
+            raise RuntimeError("Function plan not ready")
+
+        mem_uvw = Mem(uvw)
+        mem_freq = Mem(freq)
+        mem_vis = Mem(vis)
+        mem_weight = Mem(weight)
+        mem_dirty_image = Mem(dirty_image)
+        error_status = Error()
+        function_exec = Lib.handle().sdp_gridder_dirty2ms
+        function_exec.argtypes = [
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Gridder.handle_type(),
+            Error.handle_type()
+        ]
+        function_exec(
+            mem_uvw.handle(),
+            mem_freq.handle(),
+            mem_vis.handle(),
+            mem_weight.handle(),
+            mem_dirty_image.handle(),
+            self._handle,
             error_status.handle()
         )
         error_status.check()

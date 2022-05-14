@@ -36,13 +36,13 @@ sdp_Gridder* sdp_gridder_create_plan(
         const sdp_Mem* freq_hz,  // in Hz
         const sdp_Mem* vis,
         const sdp_Mem* weight,
+        const sdp_Mem* dirty_image,
 		const double pixsize_x_rad, 
 		const double pixsize_y_rad, 
 		const double epsilon,
 		const double min_abs_w, 
 		const double max_abs_w, 
 		const bool do_wstacking,
-        const sdp_Mem* dirty_image,
         sdp_Error* status
     );
 
@@ -53,13 +53,23 @@ sdp_Gridder* sdp_gridder_create_plan(
  * @param output Output buffer.
  * @param status Error status.
  */
-void sdp_gridder_exec(
+void sdp_gridder_ms2dirty(
 		const sdp_Mem* uvw,
-		const sdp_Mem* freq_hz,  // in Hz
+		const sdp_Mem* freq_hz,
 		const sdp_Mem* vis,
 		const sdp_Mem* weight,
+		      sdp_Mem *dirty_image,
 		sdp_Gridder* plan,
-		sdp_Mem *output,
+		sdp_Error* status
+    );
+
+void sdp_gridder_dirty2ms(
+		const sdp_Mem* uvw,
+		const sdp_Mem* freq_hz,
+			  sdp_Mem* vis,
+		const sdp_Mem* weight,
+		const sdp_Mem *dirty_image,
+		sdp_Gridder* plan,
 		sdp_Error* status
     );
 
