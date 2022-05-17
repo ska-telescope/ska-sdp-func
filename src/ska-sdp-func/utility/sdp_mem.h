@@ -171,7 +171,15 @@ sdp_Mem* sdp_mem_create_wrapper(
         sdp_Error* status);
 
 /**
- * @brief Create a copy of a memory block in the specified location.
+ * @brief Create a shallow copy, or an alias, of a block's metadata.
+ *
+ * @param src Handle to source memory block.
+ * @return ::sdp_Mem* Handle to aliased memory.
+ */
+sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src);
+
+/**
+ * @brief Create a deep copy of a memory block in the specified location.
  *
  * @param src Handle to source memory block.
  * @param location Enumerated memory location for destination.
@@ -280,6 +288,20 @@ int32_t sdp_mem_is_c_contiguous(const sdp_Mem* mem);
  * @return True if data type is complex.
  */
 int32_t sdp_mem_is_complex(const sdp_Mem* mem);
+
+/**
+ * @brief Returns true if the metadata between two objects is consistent.
+ *
+ * Checks are done on the data type, number of dimensions,
+ * strides, and dimension sizes.
+ *
+ * @param mem1 Handle to first memory block.
+ * @param mem2 Handle to second memory block.
+ * @param check_location If true, check the data locations also match.
+ * @return True if memory blocks have matching meta-data.
+ */
+int32_t sdp_mem_is_matching(const sdp_Mem* mem1, const sdp_Mem* mem2,
+        int32_t check_location);
 
 /**
  * @brief Returns true if the read-only flag is set.
