@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 if (APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
 endif()
@@ -123,6 +123,11 @@ if (NOT DEFINED PYTHON_EXECUTABLE)
         VERSION ${SDP_FUNC_VERSION})
 else()
     message(STATUS "Building for Python: ${PYTHON_EXECUTABLE}")
+endif()
+
+# Add OpenMP compiler flags if found.
+if (OpenMP_CXX_FOUND)
+    target_link_libraries(${libname} PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 # Build tests.
