@@ -128,7 +128,7 @@ endif()
 
 # Add OpenMP compiler flags if found.
 if (OpenMP_CXX_FOUND)
-    target_link_libraries(${libname} PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(${libname} OpenMP::OpenMP_CXX)
 endif()
 
 # Build tests.
