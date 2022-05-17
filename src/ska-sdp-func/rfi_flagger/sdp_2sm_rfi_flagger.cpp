@@ -70,22 +70,69 @@ static void twosm_rfi_flagger(
     uint64_t channel_block = num_pols;
 
 
-    float dv_between_minustwo_and_one = 0;
-    float dv_between_minusthree_and_two = 0;
-    float second_dv = 0;
-    float predicted_value = 0;
+    double dv_between_minustwo_and_one = 0;
+    double dv_between_minusthree_and_two = 0;
+    double dv_between_cur_one = 0;
+    double diff_expl_vis = 0;
+    double second_dv = 0;
+    double extrapolated_dv = 0;
+    double extrapolated_val = 0;
+    double tol_margin_expl = 0;
+    double tol_margin_2sm = 0;
 
     for (uint16_t b = 0; b < num_baselines; b++){
         for (uint16_t c = 0; c < num_channels; c++){
-            for (uint16_t t = 3; t < num_timesamples; t++){
+            for (uint16_t t = 3; t < num_timesamples; t++) {
                 uint16_t pos_current = t * timesample_block + b * baseline_block + c * channel_block;
                 uint16_t pos_minusone = (t - 1) * timesample_block + b * baseline_block + c * channel_block;
                 uint16_t pos_minustwo = (t - 2) * timesample_block + b * baseline_block + c * channel_block;
                 uint16_t pos_minusthree = (t - 3) * timesample_block + b * baseline_block + c * channel_block;
+                double vis0 = std::abs(visibilities[pos_current]);
+//                double vis1 = std::abs(visibilities[pos_minusone]);
+//                double vis2 = std::abs(visibilities[pos_minustwo]);
+//                double vis3 = std::abs(visibilities[pos_minusthree]);
+                dv_between_cur_one = std::abs(visibilities[pos_current]) - std::abs(visibilities[pos_minusone]);
                 dv_between_minustwo_and_one = std::abs(visibilities[pos_minusone]) - std::abs(visibilities[pos_minustwo]);
                 dv_between_minusthree_and_two = std::abs(visibilities[pos_minustwo]) - std::abs(visibilities[pos_minusthree]);
                 second_dv = dv_between_minustwo_and_one - dv_between_minusthree_and_two;
-                
+                extrapolated_dv = second_dv + dv_between_minustwo_and_one;
+                extrapolated_val = std::abs(visibilities[pos_minusone]) + extrapolated_dv;
+                diff_expl_vis = extrapolated_val - vis0;
+                tol_margin_expl = thresholds[1] * extrapolated_val;
+                if ((diff_expl_vis > tol_margin_expl) | (-tol_margin_expl < diff_expl_vis < tol_margin_expl & flags[pos_minusone] ==1)){
+                    for (uint16_t p = 0; p < num_pols; p++){
+                        flags[pos_current + p] = 1;
+                    }
+                }
+                if (diff_expl_vis < -tol_margin_expl & flags[pos_minusone] == 0){
+                    int i = 0;
+                    int pos = pos_minusone;
+                    while (flags[pos] == 0 & t > i){
+                        for (uint16_t p = 0; p < num_pols; p++){
+                            flags[pos_current + p] = 1;
+                        }
+                        i = i + 1;
+                        pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
+                    }
+                }
+                if ((dv_between_cur_one > tol_margin_2sm) | (-tol_margin_2sm < dv_between_cur_one < tol_margin_2sm & flags[pos_minusone] == 1)){
+                    for (uint16_t p = 0; p < num_pols; p++){
+                        flags[pos_current + p] = 1;
+                    }
+                }
+                if (dv_between_cur_one < tol_margin_2sm & flags[pos_minusone] == 0){
+                    int i = 0;
+                    int pos = pos_minusone;
+                    while (flags[pos] == 0 & t > i){
+                        for (uint16_t p = 0; p < num_pols; p++){
+                            flags[pos_current + p] = 1;
+                        }
+                        i = i + 1;
+                        pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
+                    }
+                }
+
+
             }
         }
     }

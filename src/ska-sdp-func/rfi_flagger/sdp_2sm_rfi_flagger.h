@@ -5,7 +5,7 @@
 
 /**
 * @file sdp_2sm_rfi_flagger.h
-*/
+ */
 
 #include "ska-sdp-func/utility/sdp_mem.h"
 
@@ -47,5 +47,4 @@ void sdp_twosm_rfi_flagger(
 }
 #endif
 
-
-#endif //SDP_FUNC_SDP_2SM_RFI_FLAGGER_H
+#endif
