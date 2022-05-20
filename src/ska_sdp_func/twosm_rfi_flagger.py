@@ -4,7 +4,7 @@ import ctypes
 from .utility import Error, Lib, Mem
 
 
-def twosm_rfi_flagger(vis, thresholds, flags):
+def twosm_rfi_flagger(vis, thresholds, antennas, flags):
     """
     Basic RFI flagger based on sum-threshold algorithm.
 
@@ -16,18 +16,19 @@ def twosm_rfi_flagger(vis, thresholds, flags):
 
     * ``thresholds`` is 1D and real-valued.
 
-      * The size of the array is n, where 2^(n-1) = ``max_sequence_length``.
+      * The size of the array is 2``.
+
+    * ``antennas`` is 1D and integer.
+
+      * The size of the array is 2``.
 
     * ``flags`` is 4D and integer-valued, with the same shape as ``vis``.
-
-    * ``max_sequence_length`` is the maximum length of the sum performed
-      by the algorithm.
 
     :param vis: Complex valued visibilities. Dimensions as above.
     :type vis: numpy.ndarray
 
-    :param thresholds: List of thresholds, one for each sequence length.
-    :type thresholds: numpy.ndarray
+    :param thresholds: Thresholds for first-order two-state machine model and
+    extrapolation-based method
 
     :param flags: Output flags. Dimensions as above.
     :type flags: numpy.ndarray
@@ -37,10 +38,12 @@ def twosm_rfi_flagger(vis, thresholds, flags):
     """
     mem_vis = Mem(vis)
     mem_thresholds = Mem(thresholds)
+    mem_antennas = Mem(antennas)
     mem_flags = Mem(flags)
     error_status = Error()
     lib_rfi_flagger = Lib.handle().sdp_2sm_rfi_flagger
     lib_rfi_flagger.argtypes = [
+        Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
@@ -49,6 +52,7 @@ def twosm_rfi_flagger(vis, thresholds, flags):
     lib_rfi_flagger(
         mem_vis.handle(),
         mem_thresholds.handle(),
+        mem_antennas.handle(),
         mem_flags.handle(),
         error_status.handle()
     )

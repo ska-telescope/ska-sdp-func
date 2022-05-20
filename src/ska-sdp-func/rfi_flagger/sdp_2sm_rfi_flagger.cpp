@@ -10,6 +10,7 @@
 static void check_params(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
+        const sdp_Mem* antennas,
         sdp_Mem* flags,
         sdp_Error* status)
 {
@@ -22,6 +23,7 @@ static void check_params(
     }
     if (!sdp_mem_is_c_contiguous(vis) ||
         !sdp_mem_is_c_contiguous(thresholds) ||
+        !sdp_mem_is_c_contiguous(antennas)||
         !sdp_mem_is_c_contiguous(flags))
     {
         *status = SDP_ERR_RUNTIME;
@@ -47,7 +49,8 @@ static void check_params(
         return;
     }
     if (sdp_mem_location(vis) != sdp_mem_location(thresholds) ||
-        sdp_mem_location(vis) != sdp_mem_location(flags))
+        sdp_mem_location(vis) != sdp_mem_location(flags) ||
+        sdp_mem_location(vis) != sdp_mem_location(antennas))
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("All arrays must be in the same memory location.");
@@ -60,11 +63,13 @@ static void twosm_rfi_flagger(
         int* flags,
         const std::complex<FP>* visibilities,
         const FP* thresholds,
+        const int* antennas,
         const uint64_t num_timesamples,
-        const uint64_t num_baselines,
+        const uint64_t num_antennas,
         const uint64_t num_channels,
         const uint64_t num_pols)
 {
+    uint64_t num_baselines = num_antennas * (num_antennas + 1)/2;
     uint64_t timesample_block = num_channels * num_pols * num_baselines;
     uint64_t baseline_block = num_channels * num_pols;
     uint64_t channel_block = num_pols;
@@ -80,7 +85,8 @@ static void twosm_rfi_flagger(
     double tol_margin_expl = 0;
     double tol_margin_2sm = 0;
 
-    for (uint16_t b = 0; b < num_baselines; b++){
+    for (uint16_t a = 0; a < num_antennas; a++){
+        uint16_t b = antennas[a];
         for (uint16_t c = 0; c < num_channels; c++){
             for (uint16_t t = 3; t < num_timesamples; t++) {
                 uint16_t pos_current = t * timesample_block + b * baseline_block + c * channel_block;
@@ -99,39 +105,53 @@ static void twosm_rfi_flagger(
                 extrapolated_val = std::abs(visibilities[pos_minusone]) + extrapolated_dv;
                 diff_expl_vis = extrapolated_val - vis0;
                 tol_margin_expl = thresholds[1] * extrapolated_val;
-                if ((diff_expl_vis > tol_margin_expl) | (-tol_margin_expl < diff_expl_vis < tol_margin_expl & flags[pos_minusone] ==1)){
-                    for (uint16_t p = 0; p < num_pols; p++){
-                        flags[pos_current + p] = 1;
-                    }
-                }
-                if (diff_expl_vis < -tol_margin_expl & flags[pos_minusone] == 0){
-                    int i = 0;
-                    int pos = pos_minusone;
-                    while (flags[pos] == 0 & t > i){
-                        for (uint16_t p = 0; p < num_pols; p++){
-                            flags[pos_current + p] = 1;
+                if (flags[pos_current] != 1){
+                    if ((diff_expl_vis > tol_margin_expl) | (-tol_margin_expl < diff_expl_vis < tol_margin_expl & flags[pos_minusone] ==1)){
+                        for (uint16_t b = 0; b < num_baselines; b++){
+                            for (uint16_t p = 0; p < num_pols; p++){
+                                uint16_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
+                                flags[pos] = 1;
+                            }
                         }
-                        i = i + 1;
-                        pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
                     }
-                }
-                if ((dv_between_cur_one > tol_margin_2sm) | (-tol_margin_2sm < dv_between_cur_one < tol_margin_2sm & flags[pos_minusone] == 1)){
-                    for (uint16_t p = 0; p < num_pols; p++){
-                        flags[pos_current + p] = 1;
-                    }
-                }
-                if (dv_between_cur_one < tol_margin_2sm & flags[pos_minusone] == 0){
-                    int i = 0;
-                    int pos = pos_minusone;
-                    while (flags[pos] == 0 & t > i){
-                        for (uint16_t p = 0; p < num_pols; p++){
-                            flags[pos_current + p] = 1;
+                    if (diff_expl_vis < -tol_margin_expl & flags[pos_minusone] == 0){
+                        int i = 0;
+                        int pos = pos_minusone;
+                        while (flags[pos] == 0 & t > i){
+                            for (uint16_t b = 0; b < num_baselines; b++){
+                                for (uint16_t p = 0; p < num_pols; p++){
+                                    uint16_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
+                                    flags[pos] = 1;
+                                }
+                            }
+                            i = i + 1;
+                            pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
                         }
-                        i = i + 1;
-                        pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
                     }
-                }
+                    if ((dv_between_cur_one > tol_margin_2sm) | (-tol_margin_2sm < dv_between_cur_one < tol_margin_2sm & flags[pos_minusone] == 1)){
+                        for (uint16_t b = 0; b < num_baselines; b++){
+                            for (uint16_t p = 0; p < num_pols; p++){
+                                uint16_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
+                                flags[pos] = 1;
+                            }
+                        }
+                    }
+                    if (dv_between_cur_one < tol_margin_2sm & flags[pos_minusone] == 0){
+                        int i = 0;
+                        int pos = pos_minusone;
+                        while (flags[pos] == 0 & t > i){
+                            for (uint16_t b = 0; b < num_baselines; b++){
+                                for (uint16_t p = 0; p < num_pols; p++){
+                                    uint16_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
+                                    flags[pos] = 1;
+                                }
+                            }
+                            i = i + 1;
+                            pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
+                        }
+                    }
 
+                }
 
             }
         }
@@ -143,16 +163,18 @@ static void twosm_rfi_flagger(
 void sdp_twosm_rfi_flagger(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
+        const sdp_Mem* antennas,
         sdp_Mem* flags,
         sdp_Error* status)
 {
-    check_params(vis, thresholds, flags, status);
+    check_params(vis, thresholds, antennas, flags, status);
     if (*status) return;
 
     const uint64_t num_timesamples   = (uint64_t) sdp_mem_shape_dim(vis, 0);
-    const uint64_t num_baselines     = (uint64_t) sdp_mem_shape_dim(vis, 1);
     const uint64_t num_channels      = (uint64_t) sdp_mem_shape_dim(vis, 2);
     const uint64_t num_pols          = (uint64_t) sdp_mem_shape_dim(vis, 3);
+    const uint64_t num_antennas      = (uint64_t) sdp_mem_shape_dim(antennas, 0);
+
 
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
@@ -164,8 +186,9 @@ void sdp_twosm_rfi_flagger(
                     (int*) sdp_mem_data(flags),
                     (const std::complex<float>*) sdp_mem_data_const(vis),
                     (const float*) sdp_mem_data_const(thresholds),
+                    (const int*) sdp_mem_data_const(antennas),
                     num_timesamples,
-                    num_baselines,
+                    num_antennas,
                     num_channels,
                     num_pols
             );
@@ -178,8 +201,9 @@ void sdp_twosm_rfi_flagger(
                     (int*) sdp_mem_data(flags),
                     (const std::complex<double>*) sdp_mem_data_const(vis),
                     (const double*) sdp_mem_data_const(thresholds),
+                    (const int*) sdp_mem_data_const(antennas),
                     num_timesamples,
-                    num_baselines,
+                    num_antennas,
                     num_channels,
                     num_pols
             );
