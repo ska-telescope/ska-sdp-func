@@ -13,3 +13,7 @@ __pycache__/
 # Documentation build directories
 /docs/doxygen/
 /docs/build/
+
+# Test data
+*.bin
+tests/test_data/

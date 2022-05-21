@@ -10,14 +10,15 @@ try:
 except ImportError:
     cupy = None
 
+
 class Gridder:
     """Processing function example A.
     """
     class Handle(ctypes.Structure):
         pass
 
-    def __init__(self, uvw, freq_hz, vis, weight, dirty_image, pixsize_x_rad, pixsize_y_rad, epsilon: float,
-             do_wstacking: bool):
+    def __init__(self, uvw, freq_hz, vis, weight, dirty_image, pixel_size_x_rad, pixel_size_y_rad, epsilon: float,
+                 do_w_stacking: bool):
         """Creates processing function A.
 
         :param par_a: Value of a.
@@ -40,7 +41,7 @@ class Gridder:
 
         # check types consistent here???
 
-        if do_wstacking:
+        if do_w_stacking:
             min_abs_w, max_abs_w = Gridder.get_w_range(uvw, freq_hz)
         else:
             min_abs_w = 0
@@ -68,12 +69,12 @@ class Gridder:
             mem_vis.handle(),
             mem_weight.handle(),
             mem_dirty_image.handle(),
-            ctypes.c_double(pixsize_x_rad),  # 5
-            ctypes.c_double(pixsize_y_rad),
+            ctypes.c_double(pixel_size_x_rad),  # 5
+            ctypes.c_double(pixel_size_y_rad),
             ctypes.c_double(epsilon),
             ctypes.c_double(min_abs_w),
             ctypes.c_double(max_abs_w),
-            ctypes.c_bool(do_wstacking),  # 10
+            ctypes.c_bool(do_w_stacking),  # 10
             error_status.handle()
         )
         error_status.check()

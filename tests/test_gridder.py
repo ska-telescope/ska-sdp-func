@@ -317,27 +317,32 @@ def run_dirty2ms(do_single, do_w_stacking):
         return this_rrmse, pass_threshold
 
 
-def test_ms2dirty_sp_2d():
+def atest_ms2dirty_sp_2d():
     this_rrmse, pass_threshold = run_ms2dirty(do_single=True, do_w_stacking=False)
     assert (this_rrmse < pass_threshold)
 
 
-def test_ms2dirty_dp_2d():
+def atest_ms2dirty_dp_2d():
     this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=False)
     assert (this_rrmse < pass_threshold)
 
 
-def test_ms2dirty_sp_3d():
+def atest_ms2dirty_sp_3d():
     this_rrmse, pass_threshold = run_ms2dirty(do_single=True, do_w_stacking=True)
     assert (this_rrmse < pass_threshold)
 
 
-def test_ms2dirty_dp_3d():
+def atest_ms2dirty_dp_3d():
     this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=True)
     assert (this_rrmse < pass_threshold)
 
 
-def test_dirty2ms_dp_2d():
+def test_dirty2ms_sp_2d():
+    this_rrmse, pass_threshold = run_dirty2ms(do_single=True, do_w_stacking=False)
+    assert (this_rrmse < pass_threshold)
+
+
+def atest_dirty2ms_dp_2d():
     this_rrmse, pass_threshold = run_dirty2ms(do_single=False, do_w_stacking=False)
     assert (this_rrmse < pass_threshold)
 

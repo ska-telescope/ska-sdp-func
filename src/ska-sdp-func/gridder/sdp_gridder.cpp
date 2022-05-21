@@ -370,6 +370,8 @@ void sdp_gridder_log_plan(
 		sdp_Gridder* plan,
         sdp_Error* status)
 {
+    if (*status) return;
+
 	if (1)
 	{
 		SDP_LOG_DEBUG("  plan->pixsize_x_rad is %.12e", plan->pixsize_x_rad);
@@ -504,8 +506,9 @@ sdp_Gridder* sdp_gridder_create_plan(
 	sdp_gridder_check_plan(plan, status);
     if (*status) return NULL;
 
-	// sdp_gridder_check_inputs(uvw, freq_hz, vis, weight, status);
-    // if (*status) return NULL;
+	(void)uvw; // avoid compiler unused parameter warning
+	(void)freq_hz; // avoid compiler unused parameter warning
+	(void)weight; // avoid compiler unused parameter warning
 
     SDP_LOG_INFO("Created sdp_Gridder");
     return plan;
@@ -954,7 +957,7 @@ void sdp_gridder_dirty2ms(
 	const sdp_Mem* freq_hz,
 	      sdp_Mem* vis,
 	const sdp_Mem* weight,
-    const sdp_Mem *dirty_image,
+		  sdp_Mem *dirty_image, // even though this is an input, it is modified in place so can't be constant
     sdp_Gridder* plan,
     sdp_Error* status
 )
@@ -968,7 +971,7 @@ void sdp_gridder_dirty2ms(
 	sdp_gridder_check_buffers(uvw, freq_hz, vis, weight, dirty_image, true, status);
     if (*status) return;
 
-/*     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
+    const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
     const int npix_y = (int)sdp_mem_shape_dim(dirty_image, 1);  // this should be the same as checked by check_params()
 	
     //int start_row = 0;
@@ -1001,7 +1004,7 @@ void sdp_gridder_dirty2ms(
 		// SDP_LOG_DEBUG("dbl_coord is %i", dbl_coord);		
 	}
 
-    // Create the empty grid.
+    // Create the empty grid stack.
 	// THIS SHOULD BE DONE IN THE PLAN!!
 	int64_t w_grid_stack_shape[] = {plan->grid_size, plan->grid_size};
     sdp_Mem* d_w_grid_stack = sdp_mem_create(
@@ -1012,6 +1015,171 @@ void sdp_gridder_dirty2ms(
 
     if (*status) return;
 
+    // Generate Gauss Legendre kernel for convolution correction.
+    double *quadrature_kernel, *quadrature_nodes, *quadrature_weights;
+    double *conv_corr_kernel;
+    quadrature_kernel  = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
+    quadrature_nodes   = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
+    quadrature_weights = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
+    conv_corr_kernel   = (double*) calloc(plan->image_size / 2 + 1, sizeof(double));
+    generate_gauss_legendre_conv_kernel(plan->image_size, plan->grid_size, plan->support, plan->beta,
+            quadrature_kernel, quadrature_nodes, quadrature_weights,
+            conv_corr_kernel);
+
+    // Need to determine normalisation factor for scaling runtime calculated
+    // conv correction values for coordinate n (where n = sqrt(1 - l^2 - m^2) - 1)
+    //uint32_t p = (uint32_t)(ceil(1.5 * support + 2.0));
+    uint32_t p = (uint32_t)(int(1.5 * plan->support + 2.0));
+    double conv_corr_norm_factor = 0.0;
+    for (uint32_t i = 0; i < p; i++)
+        conv_corr_norm_factor += quadrature_kernel[i] * quadrature_weights[i];
+    conv_corr_norm_factor *= (double)plan->support;
+    const float conv_corr_norm_factor_f = (float)conv_corr_norm_factor;
+
+	if (0) 
+	{
+		for (size_t i = 0; i < QUADRATURE_SUPPORT_BOUND; i++)
+		{			
+			// printf("quadrature_weights[%li] = [%.12e]\n", i, quadrature_weights[i]);
+			printf("conv_corr_kernel[%li] = [%.12e]\n", i, conv_corr_kernel[i]);
+		}
+		
+		printf("conv_corr_norm_factor = [%.12e]\n", conv_corr_norm_factor);
+	}	
+
+    // Convert precision if required.
+    void *p_quadrature_kernel, *p_quadrature_nodes, *p_quadrature_weights;
+    void *p_conv_corr_kernel;
+    sdp_MemType mem_type;
+    if (dbl_vis)
+    {
+        mem_type = SDP_MEM_DOUBLE;
+        p_quadrature_kernel = quadrature_kernel;
+        p_quadrature_nodes = quadrature_nodes;
+        p_quadrature_weights = quadrature_weights;
+        p_conv_corr_kernel = conv_corr_kernel;
+    }
+    else
+    {
+        // Cast to float.
+        mem_type = SDP_MEM_FLOAT;
+        p_quadrature_kernel  = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
+        p_quadrature_nodes   = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
+        p_quadrature_weights = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
+        p_conv_corr_kernel   = calloc(plan->image_size / 2 + 1, sizeof(float));
+        for (int i = 0; i < QUADRATURE_SUPPORT_BOUND; ++i)
+        {
+            ((float*)p_quadrature_kernel)[ i] = (float)(quadrature_kernel[ i]);
+            ((float*)p_quadrature_nodes)[  i] = (float)(quadrature_nodes[  i]);
+            ((float*)p_quadrature_weights)[i] = (float)(quadrature_weights[i]);
+        }
+        for (int i = 0; i < plan->image_size / 2 + 1; ++i)
+            ((float*)p_conv_corr_kernel)[i] = (float)(conv_corr_kernel[i]);
+        free(quadrature_kernel);
+        free(quadrature_nodes);
+        free(quadrature_weights);
+        free(conv_corr_kernel);
+    }
+			
+	const int64_t qsb[] = {QUADRATURE_SUPPORT_BOUND};
+	const int64_t stride[] = {1};
+	const int64_t len[] = {plan->image_size / 2 + 1};
+			
+	sdp_Mem* h_quadrature_kernel = sdp_mem_create_wrapper(p_quadrature_kernel, 
+		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
+	sdp_Mem* h_quadrature_nodes = sdp_mem_create_wrapper(p_quadrature_nodes, 
+		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
+	sdp_Mem* h_quadrature_weights = sdp_mem_create_wrapper(p_quadrature_weights, 
+		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
+	sdp_Mem* h_conv_corr_kernel = sdp_mem_create_wrapper(p_conv_corr_kernel, 
+		mem_type, SDP_MEM_CPU, 1, len, stride, status);
+
+	if (0) 
+	{
+		const double* test = (const double*)sdp_mem_data_const(h_conv_corr_kernel);
+		for (size_t i = 0; i < QUADRATURE_SUPPORT_BOUND; i++)
+		{			
+			// printf("quadrature_weights[%li] = [%.12e]\n", i, quadrature_weights[i]);
+			printf("h_conv_corr_kernel[%li] = [%.12e]\n", i, test[i]);
+		}
+		
+		// printf("conv_corr_norm_factor = [%.12e]\n", conv_corr_norm_factor);
+	}
+
+    // Copy arrays to GPU.
+	sdp_Mem* d_quadrature_kernel  = sdp_mem_create_copy(h_quadrature_kernel,  SDP_MEM_GPU, status);
+	sdp_Mem* d_quadrature_nodes   = sdp_mem_create_copy(h_quadrature_nodes,   SDP_MEM_GPU, status);
+	sdp_Mem* d_quadrature_weights = sdp_mem_create_copy(h_quadrature_weights, SDP_MEM_GPU, status);
+	sdp_Mem* d_conv_corr_kernel   = sdp_mem_create_copy(h_conv_corr_kernel,   SDP_MEM_GPU, status);
+	
+    // Perform convolution correction and final scaling on single real plane
+    // note: can recycle same block/thread dims as w correction kernel
+    {
+        const char* k = dbl_vis ?
+                "conv_corr_and_scaling<double>" :
+                "conv_corr_and_scaling<float>";
+        num_threads[0] = std::min(32, (npix_x + 1) / 2);
+        num_threads[1] = std::min(32, (npix_y + 1) / 2);
+        // Allow extra in negative x quadrants, for asymmetric image centre
+        num_blocks[0] = (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
+		const bool solving = false;
+		// const bool do_wstacking = false;
+        const void* args[] = {
+            sdp_mem_gpu_buffer(dirty_image, status),
+            &plan->image_size,
+            dbl_vis ? (const void*)&plan->pixel_size : (const void*)&plan->pixel_size_f,
+            &plan->support,
+            dbl_vis ?
+                (const void*)&conv_corr_norm_factor :
+                (const void*)&conv_corr_norm_factor_f,
+            sdp_mem_gpu_buffer_const(d_conv_corr_kernel, status),
+            dbl_vis ? (const void*)&plan->inv_w_range : (const void*)&plan->inv_w_range_f,
+            dbl_vis ? (const void*)&plan->inv_w_scale : (const void*)&plan->inv_w_scale_f,
+            sdp_mem_gpu_buffer_const(d_quadrature_kernel, status),
+            sdp_mem_gpu_buffer_const(d_quadrature_nodes, status),
+            sdp_mem_gpu_buffer_const(d_quadrature_weights, status),
+			&solving,
+			&plan->do_wstacking
+        };
+        sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
+    }
+
+	if (1) // write out dirty_image
+	{
+		sdp_Mem* h_dirty_image = sdp_mem_create_copy(dirty_image, SDP_MEM_CPU, status);
+		const void* test_image = (const void*)sdp_mem_data_const(h_dirty_image);
+		
+		for (size_t i = 524288 - 5; i <= 524288 + 5; i++)
+		{	
+			if (sdp_mem_type(h_dirty_image) == SDP_MEM_DOUBLE)
+				printf("test_image[%li] = [%e]\n", i, ((const double*)test_image)[i]);
+			else
+				printf("test_image[%li] = [%e]\n", i, ((const float*)test_image)[i]);
+		}
+		
+		char file_name_buffer[257];
+		uint32_t num_dirty_image_pixels = plan->image_size * plan->image_size;
+		for(int i = 0; i < num_w_grids_batched; i++)
+		{
+			// build file name, ie: my/folder/path/w_grid_123.bin
+			//snprintf(file_name_buffer, 257, "%s/cw_grid_%d.bin", config->data_output_folder, start_w_grid++);
+			snprintf(file_name_buffer, 257, "dirty_image.bin");
+			printf("Writing image to file: %s ...\n", file_name_buffer);
+			FILE *f = fopen(file_name_buffer, "wb");
+
+			if (sdp_mem_type(h_dirty_image) == SDP_MEM_DOUBLE)
+				fwrite(test_image, sizeof(double), num_dirty_image_pixels, f);
+			else
+				fwrite(test_image, sizeof(float), num_dirty_image_pixels, f);
+			
+			fclose(f);
+		}
+		
+		sdp_mem_free(h_dirty_image);
+	}
+
+/*
     // Determine how many w grid subset batches to process in total
     const int total_w_grid_batches =
             (plan->num_total_w_grids + num_w_grids_batched - 1) / num_w_grids_batched;
@@ -1170,8 +1338,9 @@ void sdp_gridder_dirty2ms(
             };
             sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
         }
-	}	
 	
+	}	
+	*/
 	if (0) // write out dirty_image
 	{
 		sdp_Mem* h_dirty_image = sdp_mem_create_copy(dirty_image, SDP_MEM_CPU, status);
@@ -1203,170 +1372,7 @@ void sdp_gridder_dirty2ms(
     sdp_fft_free(fft);	
 	
     sdp_mem_free(d_w_grid_stack);
-
-    // Generate Gauss Legendre kernel for convolution correction.
-    double *quadrature_kernel, *quadrature_nodes, *quadrature_weights;
-    double *conv_corr_kernel;
-    quadrature_kernel  = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
-    quadrature_nodes   = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
-    quadrature_weights = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
-    conv_corr_kernel   = (double*) calloc(plan->image_size / 2 + 1, sizeof(double));
-    generate_gauss_legendre_conv_kernel(plan->image_size, plan->grid_size, plan->support, plan->beta,
-            quadrature_kernel, quadrature_nodes, quadrature_weights,
-            conv_corr_kernel);
-
-    // Need to determine normalisation factor for scaling runtime calculated
-    // conv correction values for coordinate n (where n = sqrt(1 - l^2 - m^2) - 1)
-    //uint32_t p = (uint32_t)(ceil(1.5 * support + 2.0));
-    uint32_t p = (uint32_t)(int(1.5 * plan->support + 2.0));
-    double conv_corr_norm_factor = 0.0;
-    for (uint32_t i = 0; i < p; i++)
-        conv_corr_norm_factor += quadrature_kernel[i] * quadrature_weights[i];
-    conv_corr_norm_factor *= (double)plan->support;
-    const float conv_corr_norm_factor_f = (float)conv_corr_norm_factor;
-
-	if (0) 
-	{
-		for (size_t i = 0; i < QUADRATURE_SUPPORT_BOUND; i++)
-		{			
-			// printf("quadrature_weights[%li] = [%.12e]\n", i, quadrature_weights[i]);
-			printf("conv_corr_kernel[%li] = [%.12e]\n", i, conv_corr_kernel[i]);
-		}
-		
-		printf("conv_corr_norm_factor = [%.12e]\n", conv_corr_norm_factor);
-	}	
-
-    // Convert precision if required.
-    void *p_quadrature_kernel, *p_quadrature_nodes, *p_quadrature_weights;
-    void *p_conv_corr_kernel;
-    sdp_MemType mem_type;
-    if (dbl_vis)
-    {
-        mem_type = SDP_MEM_DOUBLE;
-        p_quadrature_kernel = quadrature_kernel;
-        p_quadrature_nodes = quadrature_nodes;
-        p_quadrature_weights = quadrature_weights;
-        p_conv_corr_kernel = conv_corr_kernel;
-    }
-    else
-    {
-        // Cast to float.
-        mem_type = SDP_MEM_FLOAT;
-        p_quadrature_kernel  = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
-        p_quadrature_nodes   = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
-        p_quadrature_weights = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
-        p_conv_corr_kernel   = calloc(plan->image_size / 2 + 1, sizeof(float));
-        for (int i = 0; i < QUADRATURE_SUPPORT_BOUND; ++i)
-        {
-            ((float*)p_quadrature_kernel)[ i] = (float)(quadrature_kernel[ i]);
-            ((float*)p_quadrature_nodes)[  i] = (float)(quadrature_nodes[  i]);
-            ((float*)p_quadrature_weights)[i] = (float)(quadrature_weights[i]);
-        }
-        for (int i = 0; i < plan->image_size / 2 + 1; ++i)
-            ((float*)p_conv_corr_kernel)[i] = (float)(conv_corr_kernel[i]);
-        free(quadrature_kernel);
-        free(quadrature_nodes);
-        free(quadrature_weights);
-        free(conv_corr_kernel);
-    }
-			
-	const int64_t qsb[] = {QUADRATURE_SUPPORT_BOUND};
-	const int64_t stride[] = {1};
-	const int64_t len[] = {plan->image_size / 2 + 1};
-			
-	sdp_Mem* h_quadrature_kernel = sdp_mem_create_wrapper(p_quadrature_kernel, 
-		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
-	sdp_Mem* h_quadrature_nodes = sdp_mem_create_wrapper(p_quadrature_nodes, 
-		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
-	sdp_Mem* h_quadrature_weights = sdp_mem_create_wrapper(p_quadrature_weights, 
-		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
-	sdp_Mem* h_conv_corr_kernel = sdp_mem_create_wrapper(p_conv_corr_kernel, 
-		mem_type, SDP_MEM_CPU, 1, len, stride, status);
-
-	if (0) 
-	{
-		const double* test = (const double*)sdp_mem_data_const(h_conv_corr_kernel);
-		for (size_t i = 0; i < QUADRATURE_SUPPORT_BOUND; i++)
-		{			
-			// printf("quadrature_weights[%li] = [%.12e]\n", i, quadrature_weights[i]);
-			printf("h_conv_corr_kernel[%li] = [%.12e]\n", i, test[i]);
-		}
-		
-		// printf("conv_corr_norm_factor = [%.12e]\n", conv_corr_norm_factor);
-	}
-
-    // Copy arrays to GPU.
-	sdp_Mem* d_quadrature_kernel  = sdp_mem_create_copy(h_quadrature_kernel,  SDP_MEM_GPU, status);
-	sdp_Mem* d_quadrature_nodes   = sdp_mem_create_copy(h_quadrature_nodes,   SDP_MEM_GPU, status);
-	sdp_Mem* d_quadrature_weights = sdp_mem_create_copy(h_quadrature_weights, SDP_MEM_GPU, status);
-	sdp_Mem* d_conv_corr_kernel   = sdp_mem_create_copy(h_conv_corr_kernel,   SDP_MEM_GPU, status);
-	
-    // Perform convolution correction and final scaling on single real plane
-    // note: can recycle same block/thread dims as w correction kernel
-    {
-        const char* k = dbl_vis ?
-                "conv_corr_and_scaling<double>" :
-                "conv_corr_and_scaling<float>";
-        num_threads[0] = std::min(32, (npix_x + 1) / 2);
-        num_threads[1] = std::min(32, (npix_y + 1) / 2);
-        // Allow extra in negative x quadrants, for asymmetric image centre
-        num_blocks[0] = (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
-        num_blocks[1] = (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
-		const bool solving = true;
-		// const bool do_wstacking = false;
-        const void* args[] = {
-            sdp_mem_gpu_buffer(dirty_image, status),
-            &plan->image_size,
-            dbl_vis ? (const void*)&plan->pixel_size : (const void*)&plan->pixel_size_f,
-            &plan->support,
-            dbl_vis ?
-                (const void*)&conv_corr_norm_factor :
-                (const void*)&conv_corr_norm_factor_f,
-            sdp_mem_gpu_buffer_const(d_conv_corr_kernel, status),
-            dbl_vis ? (const void*)&plan->inv_w_range : (const void*)&plan->inv_w_range_f,
-            dbl_vis ? (const void*)&plan->inv_w_scale : (const void*)&plan->inv_w_scale_f,
-            sdp_mem_gpu_buffer_const(d_quadrature_kernel, status),
-            sdp_mem_gpu_buffer_const(d_quadrature_nodes, status),
-            sdp_mem_gpu_buffer_const(d_quadrature_weights, status),
-			&solving,
-			&plan->do_wstacking
-        };
-        sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
-    }
-
-	if (0) // write out dirty_image
-	{
-		sdp_Mem* h_dirty_image = sdp_mem_create_copy(dirty_image, SDP_MEM_CPU, status);
-		const void* test_image = (const void*)sdp_mem_data_const(h_dirty_image);
-		
-		for (size_t i = 524288 - 5; i <= 524288 + 5; i++)
-		{	
-			if (sdp_mem_type(h_dirty_image) == SDP_MEM_DOUBLE)
-				printf("test_image[%li] = [%e]\n", i, ((const double*)test_image)[i]);
-			else
-				printf("test_image[%li] = [%e]\n", i, ((const float*)test_image)[i]);
-		}
-		
-		char file_name_buffer[257];
-		uint32_t num_dirty_image_pixels = plan->image_size * plan->image_size;
-		for(int i = 0; i < num_w_grids_batched; i++)
-		{
-			// build file name, ie: my/folder/path/w_grid_123.bin
-			//snprintf(file_name_buffer, 257, "%s/cw_grid_%d.bin", config->data_output_folder, start_w_grid++);
-			snprintf(file_name_buffer, 257, "dirty_image.bin");
-			printf("Writing image to file: %s ...\n", file_name_buffer);
-			FILE *f = fopen(file_name_buffer, "wb");
-
-			if (sdp_mem_type(h_dirty_image) == SDP_MEM_DOUBLE)
-				fwrite(test_image, sizeof(double), num_dirty_image_pixels, f);
-			else
-				fwrite(test_image, sizeof(float), num_dirty_image_pixels, f);
-			
-			fclose(f);
-		}
-		
-		sdp_mem_free(h_dirty_image);
-	}
+/*
 	
  */
     // // Free arrays used for convolution correction.
