@@ -549,6 +549,118 @@ __global__ void apply_w_screen_and_sum(
 }
 
 /**********************************************************************
+ * Reverses w screen phase shift for each w layer from dirty image
+ * Parallelised so each CUDA thread processes one pixel in each quadrant of the dirty image
+ **********************************************************************/
+template<typename FP, typename FP2>
+__global__ void reverse_w_screen_to_stack(
+    const FP* const __restrict__ dirty_image, // INPUT: real plane for input dirty image
+    const uint image_size, // one dimensional size of image plane (grid_size / sigma), assumed square
+    const FP pixel_size, // converts pixel index (x, y) to normalised image coordinate (l, m) where l, m between -0.5 and 0.5
+    FP2* __restrict__ w_grid_stack, // OUTPUT: flat array containing 2D computed w layers (w layer = iFFT(w grid))
+    const uint grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
+    const int grid_start_w, // index of first w grid in current subset stack
+    const uint num_w_grids_subset, // number of w grids bound in current subset stack
+    const FP inv_w_scale, // inverse of scaling factor for converting w coord to signed w grid index
+    const FP min_plane_w, // w coordinate of smallest w plane
+    const bool perform_shift_fft,  // flag to (equivalently) rearrange each grid so origin is at lower-left corner for FFT
+	const bool do_wstacking
+)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    const uint half_image_size = image_size / 2;
+
+    if (i <= (int)half_image_size && j <= (int)half_image_size)  // allow extra in negative x and y directions, for asymmetric image centre
+    {
+        // Obtain four pixels from the dirty image, taking care to be within bounds for positive x and y quadrants
+        const int origin_offset_image_centre = (int)half_image_size; // offset of origin (in dirty image) along l or m axes
+        const int image_index_offset_image_centre = origin_offset_image_centre*((int)image_size) + origin_offset_image_centre;
+
+        // Look up dirty pixels in four quadrants
+        FP dirty_image_pos_pos = FP(0.0);
+        FP dirty_image_neg_pos = FP(0.0);
+        FP dirty_image_pos_neg = FP(0.0);
+        FP dirty_image_neg_neg = FP(0.0);
+
+        if (j < (int)half_image_size && i < (int)half_image_size)
+            dirty_image_pos_pos = dirty_image[image_index_offset_image_centre + j*((int)image_size) + i];
+        if (j < (int)half_image_size)
+            dirty_image_neg_pos = dirty_image[image_index_offset_image_centre + j*((int)image_size) - i];
+        if (i < (int)half_image_size)
+            dirty_image_pos_neg = dirty_image[image_index_offset_image_centre - j*((int)image_size) + i];
+        
+        dirty_image_neg_neg = dirty_image[image_index_offset_image_centre - j*((int)image_size) - i];
+
+        // Equivalently rearrange each grid so origin is at lower-left corner for FFT
+        bool odd_grid_coordinate = ((i+j) & 1) != 0;
+        if(perform_shift_fft && odd_grid_coordinate)
+        {
+            dirty_image_pos_pos = -dirty_image_pos_pos;
+            dirty_image_pos_neg = -dirty_image_pos_neg;
+            dirty_image_neg_pos = -dirty_image_neg_pos;
+            dirty_image_neg_neg = -dirty_image_neg_neg;
+        }
+
+        const int origin_offset_grid_centre = (int)(grid_size/2); // offset of origin (in w layer) along l or m axes
+        const int grid_index_offset_image_centre = origin_offset_grid_centre*((int)grid_size) + origin_offset_grid_centre;
+
+        for (int grid_coord_w=grid_start_w; grid_coord_w < grid_start_w + (int)num_w_grids_subset; grid_coord_w++)
+        {
+            FP l = pixel_size * (FP)i;
+            FP m = pixel_size * (FP)j;
+            
+			FP2 shift;
+			if (do_wstacking)
+			{
+				FP w = (FP)grid_coord_w * inv_w_scale + min_plane_w; 
+				shift = phase_shift<FP, FP2>(w, l, m, FP(1.0));
+				//shift.y = -shift.y; // inverse of original phase shift (equivalent to division)
+			}
+			else
+			{
+				shift.x = 1.0;
+				shift.y = 0.0;
+			}
+            int grid_index_offset_w = (grid_coord_w-grid_start_w)*((int)(grid_size*grid_size));
+            int grid_index_image_centre = grid_index_offset_w + grid_index_offset_image_centre;
+            
+            // Calculate the complex product of the (real) dirty image by the complex phase shift
+            // Special cases along centre or edges of image
+            FP2 out;
+			if(i < (int)half_image_size && j < (int)half_image_size)
+			{	
+				out = shift;
+				out.x *= dirty_image_pos_pos;
+				out.y *= dirty_image_pos_pos;
+                w_grid_stack[grid_index_image_centre + j*((int)grid_size) + i] = out;
+			}
+            if(j > 0 && i < (int)half_image_size)
+			{	
+				out = shift;
+				out.x *= dirty_image_pos_neg;
+				out.y *= dirty_image_pos_neg;
+                w_grid_stack[grid_index_image_centre - j*((int)grid_size) + i] = out;
+			}
+            if(i > 0 && j < (int)half_image_size)
+			{	
+				out = shift;
+				out.x *= dirty_image_neg_pos;
+				out.y *= dirty_image_neg_pos;
+                w_grid_stack[grid_index_image_centre + j*((int)grid_size) - i] = out;
+			}
+            if(i > 0 && j > 0)
+			{	
+				out = shift;
+				out.x *= dirty_image_neg_neg;
+				out.y *= dirty_image_neg_neg;
+                w_grid_stack[grid_index_image_centre - j*((int)grid_size) - i] = out;
+			}
+        }
+    }
+}
+
+/**********************************************************************
  * Performs convolution correction and final scaling of dirty image
  * using precalculated and runtime calculated correction values.
  * See conv_corr device function for more details
@@ -665,6 +777,9 @@ SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  float,  floa
 
 SDP_CUDA_KERNEL(apply_w_screen_and_sum<double, double2>)
 SDP_CUDA_KERNEL(apply_w_screen_and_sum<float, float2>)
+
+SDP_CUDA_KERNEL(reverse_w_screen_to_stack<double, double2>)
+SDP_CUDA_KERNEL(reverse_w_screen_to_stack<float, float2>)
 
 SDP_CUDA_KERNEL(conv_corr_and_scaling<double>)
 SDP_CUDA_KERNEL(conv_corr_and_scaling<float>)

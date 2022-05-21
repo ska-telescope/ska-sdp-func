@@ -381,6 +381,8 @@ void sdp_gridder_log_plan(
 		SDP_LOG_DEBUG("  plan->max_abs_w is %e",       	plan->max_abs_w);
 		SDP_LOG_DEBUG("  plan->min_plane_w is %e",       	plan->min_plane_w);
 		SDP_LOG_DEBUG("  plan->max_plane_w is %e",       	plan->max_plane_w);
+		SDP_LOG_DEBUG("  plan->image_size is %i",       	plan->image_size);
+		SDP_LOG_DEBUG("  plan->grid_size is %i",       	plan->grid_size);
 		// SDP_LOG_DEBUG("  plan-> is %e",       	plan->);
 
 		SDP_LOG_DEBUG("  plan->workarea is %p",      plan->workarea);
@@ -1011,7 +1013,7 @@ void sdp_gridder_dirty2ms(
             vis_type, SDP_MEM_GPU, 2, w_grid_stack_shape, status);
 			
     // Create the FFT plan.
-    sdp_Fft* fft = sdp_fft_create(d_w_grid_stack, d_w_grid_stack, 2, 0, status);
+    sdp_Fft* fft = sdp_fft_create(d_w_grid_stack, d_w_grid_stack, 2, true, status);
 
     if (*status) return;
 
@@ -1179,7 +1181,6 @@ void sdp_gridder_dirty2ms(
 		sdp_mem_free(h_dirty_image);
 	}
 
-/*
     // Determine how many w grid subset batches to process in total
     const int total_w_grid_batches =
             (plan->num_total_w_grids + num_w_grids_batched - 1) / num_w_grids_batched;
@@ -1194,6 +1195,77 @@ void sdp_gridder_dirty2ms(
         sdp_mem_clear_contents(d_w_grid_stack, status);
 		if (*status) return;
 
+        // Undo w-stacking and dirty image accumulation.
+        {
+            const char* k = dbl_vis ?
+                    "reverse_w_screen_to_stack<double, double2>" :
+                    "reverse_w_screen_to_stack<float, float2>";
+            num_threads[0] = std::min(32, (npix_x + 1) / 2);
+            num_threads[1] = std::min(32, (npix_y + 1) / 2);
+            // Allow extra in negative x quadrants, for asymmetric image centre
+            num_blocks[0] = (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
+            num_blocks[1] = (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
+			const bool do_FFT_shift = true;
+			//const bool do_wstacking = true;
+            const void* args[] = {
+                sdp_mem_gpu_buffer_const(dirty_image, status),
+                &plan->image_size,
+                dbl_vis ?
+                    (const void*)&plan->pixel_size : (const void*)&plan->pixel_size_f,
+                sdp_mem_gpu_buffer(d_w_grid_stack, status),
+                &plan->grid_size,
+                &grid_start_w,
+                &num_w_grids_subset,
+                dbl_vis ?
+                    (const void*)&plan->inv_w_scale : (const void*)&plan->inv_w_scale_f,
+                dbl_vis ?
+                    (const void*)&plan->min_plane_w : (const void*)&plan->min_plane_w_f,
+				&do_FFT_shift,
+				&plan->do_wstacking
+            };
+            sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
+        }
+
+        // Perform 2D FFT on each bound w grid
+		sdp_fft_exec(fft, d_w_grid_stack, d_w_grid_stack, status);
+		
+		if (1) // write out w-grids
+		{
+			sdp_Mem* h_w_grid_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
+			// const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
+			const void* test_grid = (const void*)sdp_mem_data_const(h_w_grid_stack);
+			for (size_t i = 1185039 - 5; i <= 1185039 + 5; i++)
+			{			
+				//printf("test_grid[%li] = [%e, %e]\n", i, real(test_grid[i]), imag(test_grid[i]));
+			}
+			
+			int start_w_grid = batch;
+			char file_name_buffer[257];
+			uint32_t num_w_grid_cells = plan->grid_size * plan->grid_size;
+			for(int i = 0; i < num_w_grids_batched; i++)
+			{
+				// build file name, ie: my/folder/path/w_grid_123.bin
+				//snprintf(file_name_buffer, 257, "%s/cw_grid_%d.bin", config->data_output_folder, start_w_grid++);
+				snprintf(file_name_buffer, 257, "w_grid_%d.bin", start_w_grid++);
+				printf("Writing image to file: %s ...\n", file_name_buffer);
+				FILE *f = fopen(file_name_buffer, "wb");
+
+				// memory offset for "splitting" the binary write process
+				uint32_t w_grid_index_offset = i * num_w_grid_cells; 
+				if (sdp_mem_type(h_w_grid_stack) & SDP_MEM_DOUBLE)
+					fwrite(test_grid + w_grid_index_offset, sizeof(std::complex<double>), num_w_grid_cells, f);
+				else
+					fwrite(test_grid + w_grid_index_offset, sizeof(std::complex<float>), num_w_grid_cells, f);
+							
+				fclose(f);
+			}
+			
+			sdp_mem_free(h_w_grid_stack);
+		}	
+	
+	} // for (int batch = 0; batch < total_w_grid_batches; batch++)
+			
+/*
         // Perform gridding on a "chunk" of w grids
         {
             const char* k = 0;
@@ -1276,9 +1348,6 @@ void sdp_gridder_dirty2ms(
 			sdp_mem_free(h_w_grid_stack);
 		}
 			
-        // Perform 2D FFT on each bound w grid
-		sdp_fft_exec(fft, d_w_grid_stack, d_w_grid_stack, status);
-		
 		if (0) // write out w-images
 		{
 			sdp_Mem* h_w_image_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
