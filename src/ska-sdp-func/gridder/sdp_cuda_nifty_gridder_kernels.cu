@@ -284,7 +284,7 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d(
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows) 
     	return;
 
-    //if (i_vis > 0) return;  // AG Debug
+    // if (i_vis > 0) return;  // AG Debug
 
     //if (i_chan > 2 || i_row > 5) // AG Debug
     //if (i_row > 0) // AG Debug
@@ -428,11 +428,13 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d(
                 {
                         vis_weighted.x += w_grid_stack[grid_offset_uvw].x * kernel_value;
                         vis_weighted.y += w_grid_stack[grid_offset_uvw].y * kernel_value;
+
+						//printf("vis_weighted is [%.12e, %.12e]\n\n", vis_weighted.x, vis_weighted.y);
                 }
 
-				if (0) //(i_chan == 0 && i_row == 0)
+				if (1) //(i_chan == 0 && i_row == 0)
 				{
-					printf("w_grid_stack[%li] is [%e, %e]\n\n", grid_offset_uvw, w_grid_stack[grid_offset_uvw].x, w_grid_stack[grid_offset_uvw].y);
+				//	printf("w_grid_stack[%li] is [%e, %e]\n\n", grid_offset_uvw, w_grid_stack[grid_offset_uvw].x, w_grid_stack[grid_offset_uvw].y);
 				}		
             }
         }
@@ -442,6 +444,9 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d(
     {
         visibilities[i_vis].x += vis_weighted.x;
         visibilities[i_vis].y += vis_weighted.y * flip;
+		
+		//printf("visibilities[%i] is [%.12e, %.12e]\n\n", i_vis, visibilities[i_vis].x, visibilities[i_vis].y);
+
     }
 }
 

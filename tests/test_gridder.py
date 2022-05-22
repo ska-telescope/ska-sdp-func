@@ -262,6 +262,8 @@ def run_dirty2ms(do_single, do_w_stacking):
         else:
             dirty_image = np.load("tests/test_data/dirty_image_1024_2D_DP.npy")
 
+    # dirty_image *= 1.00001
+
     # parameters
     im_size = 1024
     pixel_size_deg = 1.94322419749866394E-02

@@ -1263,10 +1263,7 @@ void sdp_gridder_dirty2ms(
 			sdp_mem_free(h_w_grid_stack);
 		}	
 	
-	} // for (int batch = 0; batch < total_w_grid_batches; batch++)
-			
-/*
-        // Perform gridding on a "chunk" of w grids
+        // Perform degridding on a "chunk" of w grids
         {
             const char* k = 0;
 			if (plan->do_wstacking)
@@ -1293,7 +1290,7 @@ void sdp_gridder_dirty2ms(
                 num_threads[1] = 256;
                 num_blocks[0] = (plan->num_chan + num_threads[0] - 1) / num_threads[0];
                 num_blocks[1] = (chunk_size + num_threads[1] - 1) / num_threads[1];
-                const bool solving = 1;
+                const bool solving = 0; // degridding
                 const void* args[] = {
                     &chunk_size,
                     &plan->num_chan,
@@ -1315,101 +1312,42 @@ void sdp_gridder_dirty2ms(
                 sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
             }
         }
-		
-		SDP_LOG_DEBUG("Finished gridding batch %i of %i batches.",  batch, total_w_grid_batches);
-		
-		if (0) // write out w-grids
-		{
-			sdp_Mem* h_w_grid_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
-			const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
-			for (size_t i = 1185039 - 5; i <= 1185039 + 5; i++)
-			{			
-				//printf("test_grid[%li] = [%e, %e]\n", i, real(test_grid[i]), imag(test_grid[i]));
-			}
-			
-			int start_w_grid = batch;
-			char file_name_buffer[257];
-			uint32_t num_w_grid_cells = plan->grid_size * plan->grid_size;
-			for(int i = 0; i < num_w_grids_batched; i++)
-			{
-				// build file name, ie: my/folder/path/w_grid_123.bin
-				//snprintf(file_name_buffer, 257, "%s/cw_grid_%d.bin", config->data_output_folder, start_w_grid++);
-				snprintf(file_name_buffer, 257, "cw_grid_%d.bin", start_w_grid++);
-				printf("Writing image to file: %s ...\n", file_name_buffer);
-				FILE *f = fopen(file_name_buffer, "wb");
-
-				// memory offset for "splitting" the binary write process
-				uint32_t w_grid_index_offset = i * num_w_grid_cells; 
-				fwrite(test_grid + w_grid_index_offset, sizeof(std::complex<double>), num_w_grid_cells, f);
-				
-				fclose(f);
-			}
-			
-			sdp_mem_free(h_w_grid_stack);
-		}
-			
-		if (0) // write out w-images
-		{
-			sdp_Mem* h_w_image_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
-			const std::complex<double>* test_image = (const std::complex<double>*)sdp_mem_data_const(h_w_image_stack);
-			for (size_t i = 1185039 - 5; i <= 1185039 + 5; i++)
-			{			
-				printf("test_image[%li] = [%e, %e]\n", i, real(test_image[i]), imag(test_image[i]));
-			}
-			
-			int start_w_grid = batch;
-			char file_name_buffer[257];
-			uint32_t num_w_grid_cells = plan->grid_size * plan->grid_size;
-			for(int i = 0; i < num_w_grids_batched; i++)
-			{
-				// build file name, ie: my/folder/path/w_grid_123.bin
-				//snprintf(file_name_buffer, 257, "%s/cw_grid_%d.bin", config->data_output_folder, start_w_grid++);
-				snprintf(file_name_buffer, 257, "cw_image_%d.bin", start_w_grid++);
-				printf("Writing image to file: %s ...\n", file_name_buffer);
-				FILE *f = fopen(file_name_buffer, "wb");
-
-				// memory offset for "splitting" the binary write process
-				uint32_t w_grid_index_offset = i * num_w_grid_cells; 
-				fwrite(test_image + w_grid_index_offset, sizeof(std::complex<double>), num_w_grid_cells, f);
-				
-				fclose(f);
-			}
-			
-			sdp_mem_free(h_w_image_stack);
-		}
-				
-        // Perform phase shift on a "chunk" of planes and sum into single real plane
-        {
-            const char* k = dbl_vis ?
-                    "apply_w_screen_and_sum<double, double2>" :
-                    "apply_w_screen_and_sum<float, float2>";
-            num_threads[0] = std::min(32, (npix_x + 1) / 2);
-            num_threads[1] = std::min(32, (npix_y + 1) / 2);
-            // Allow extra in negative x quadrants, for asymmetric image centre
-            num_blocks[0] = (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
-            num_blocks[1] = (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
-			const bool do_FFT_shift = true;
-			// const bool do_wstacking = false;
-            const void* args[] = {
-                sdp_mem_gpu_buffer(dirty_image, status),
-                &plan->image_size,
-                dbl_vis ? (const void*)&plan->pixel_size : (const void*)&plan->pixel_size_f,
-                sdp_mem_gpu_buffer_const(d_w_grid_stack, status),
-                &plan->grid_size,
-                &grid_start_w,
-                &num_w_grids_subset,
-                dbl_vis ?
-                    (const void*)&plan->inv_w_scale : (const void*)&plan->inv_w_scale_f,
-                dbl_vis ?
-                    (const void*)&plan->min_plane_w : (const void*)&plan->min_plane_w_f,
-				&do_FFT_shift,
-				&plan->do_wstacking
-            };
-            sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
-        }
 	
+	} // for (int batch = 0; batch < total_w_grid_batches; batch++)
+
+	if (1) // write out visibilities
+	{
+		sdp_Mem* h_vis = sdp_mem_create_copy(vis, SDP_MEM_CPU, status);
+		// const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
+		const void* acc_vis = (const void*)sdp_mem_data_const(h_vis);
+
+		for (size_t i = 0; i <= 5; i++)
+		{			
+			if (sdp_mem_type(h_vis) & SDP_MEM_DOUBLE)
+				printf("output_vis[%li] = [%e, %e]\n", i, real(((const std::complex<double>*)acc_vis)[i]), imag(((const std::complex<double>*)acc_vis)[i]));
+			else
+				printf("output_vis[%li] = [%e, %e]\n", i, real(((const std::complex<float>*)acc_vis)[i]), imag(((const std::complex<float>*)acc_vis)[i]));
+		}
+		
+		char file_name_buffer[257];
+		uint32_t num_elements = sdp_mem_shape_dim(h_vis, 0) * sdp_mem_shape_dim(h_vis, 1);
+
+		// build file name, ie: my/folder/path/w_grid_123.bin
+		//snprintf(file_name_buffer, 257, "%s/cw_grid_%d.bin", config->data_output_folder, start_w_grid++);
+		snprintf(file_name_buffer, 257, "vis.bin");
+		printf("Writing to file: %s ...\n", file_name_buffer);
+		FILE *f = fopen(file_name_buffer, "wb");
+
+		if (sdp_mem_type(h_vis) & SDP_MEM_DOUBLE)
+			fwrite(acc_vis, sizeof(std::complex<double>), num_elements, f);
+		else
+			fwrite(acc_vis, sizeof(std::complex<float>),  num_elements, f);
+					
+		fclose(f);
+		
+		sdp_mem_free(h_vis);
 	}	
-	*/
+	
 	if (0) // write out dirty_image
 	{
 		sdp_Mem* h_dirty_image = sdp_mem_create_copy(dirty_image, SDP_MEM_CPU, status);
