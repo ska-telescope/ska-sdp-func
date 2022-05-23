@@ -1147,7 +1147,7 @@ void sdp_gridder_dirty2ms(
         sdp_launch_cuda_kernel(k, num_blocks, num_threads, 0, 0, args, status);
     }
 
-	if (1) // write out dirty_image
+	if (0) // write out dirty_image
 	{
 		sdp_Mem* h_dirty_image = sdp_mem_create_copy(dirty_image, SDP_MEM_CPU, status);
 		const void* test_image = (const void*)sdp_mem_data_const(h_dirty_image);
@@ -1229,7 +1229,7 @@ void sdp_gridder_dirty2ms(
         // Perform 2D FFT on each bound w grid
 		sdp_fft_exec(fft, d_w_grid_stack, d_w_grid_stack, status);
 		
-		if (1) // write out w-grids
+		if (0) // write out w-grids
 		{
 			sdp_Mem* h_w_grid_stack = sdp_mem_create_copy(d_w_grid_stack, SDP_MEM_CPU, status);
 			// const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
@@ -1315,7 +1315,7 @@ void sdp_gridder_dirty2ms(
 	
 	} // for (int batch = 0; batch < total_w_grid_batches; batch++)
 
-	if (1) // write out visibilities
+	if (0) // write out visibilities
 	{
 		sdp_Mem* h_vis = sdp_mem_create_copy(vis, SDP_MEM_CPU, status);
 		// const std::complex<double>* test_grid = (const std::complex<double>*)sdp_mem_data_const(h_w_grid_stack);
@@ -1323,10 +1323,10 @@ void sdp_gridder_dirty2ms(
 
 		for (size_t i = 0; i <= 5; i++)
 		{			
-			if (sdp_mem_type(h_vis) & SDP_MEM_DOUBLE)
-				printf("output_vis[%li] = [%e, %e]\n", i, real(((const std::complex<double>*)acc_vis)[i]), imag(((const std::complex<double>*)acc_vis)[i]));
-			else
-				printf("output_vis[%li] = [%e, %e]\n", i, real(((const std::complex<float>*)acc_vis)[i]), imag(((const std::complex<float>*)acc_vis)[i]));
+			// if (sdp_mem_type(h_vis) & SDP_MEM_DOUBLE)
+				// printf("output_vis[%li] = [%.12e, %.12e]\n", i, real(((const std::complex<double>*)acc_vis)[i]), imag(((const std::complex<double>*)acc_vis)[i]));
+			// else
+				// printf("output_vis[%li] = [%.12e, %.12e]\n", i, real(((const std::complex<float>*)acc_vis)[i]), imag(((const std::complex<float>*)acc_vis)[i]));
 		}
 		
 		char file_name_buffer[257];
