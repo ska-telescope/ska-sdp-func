@@ -166,7 +166,7 @@ def test_get_w_range():
     assert (max_abs_w == -1)
 
 
-def run_ms2dirty(do_single, do_w_stacking):
+def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
     print(" ")  # just for separation of debug output
     print(" ")
 
@@ -187,9 +187,7 @@ def run_ms2dirty(do_single, do_w_stacking):
     im_size = 1024
     pixel_size_deg = 1.94322419749866394E-02
     pixel_size_rad = pixel_size_deg * np.pi / 180.0
-    print(pixel_size_rad)
-
-    epsilon = 1e-5
+    # print(pixel_size_rad)
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
@@ -213,21 +211,19 @@ def run_ms2dirty(do_single, do_w_stacking):
 
         # Check output
         dirty_image = cupy.asnumpy(dirty_image_gpu)
-        # np.save("tests/test_data/dirty_image_1024_3D_SP.npy", dirty_image)
-        if do_single:
-            pass_threshold = 1e-5
-            if do_w_stacking:
-                test_output = np.load("tests/test_data/dirty_image_1024_3D_SP.npy")
-            else:
-                test_output = np.load("tests/test_data/dirty_image_1024_2D_SP.npy")
-        else:
-            pass_threshold = 1e-14
-            if do_w_stacking:
-                test_output = np.load("tests/test_data/dirty_image_1024_3D_DP.npy")
-            else:
-                test_output = np.load("tests/test_data/dirty_image_1024_2D_DP.npy")
 
-        this_rrmse = rrmse(dirty_image, test_output)
+        dirty_image_file = "tests/test_data/dirty_image_1024_%.0e_%s_%s.npy" \
+                           % (1e-5 if do_single else 1e-12,
+                              "3D" if do_w_stacking else "2D",
+                              "SP" if do_single else "DP")
+
+        # np.save(dirty_image_file + "x", dirty_image)  # the x stops the test file been overwritten
+        expected_dirty_image = np.load(dirty_image_file)
+
+        pass_threshold = 1e-5 if do_single else 1e-12
+
+        this_rrmse = rrmse(dirty_image, expected_dirty_image)
+
         print("RRMSE of dirty images is %e" % this_rrmse)
 
         return this_rrmse, pass_threshold
@@ -263,7 +259,7 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
     im_size = 1024
     pixel_size_deg = 1.94322419749866394E-02
     pixel_size_rad = pixel_size_deg * np.pi / 180.0
-    print(pixel_size_rad)
+    # print(pixel_size_rad)
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
@@ -298,34 +294,44 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
                        "3D" if do_w_stacking else "2D",
                        "SP" if do_single else "DP")
 
-        # np.save(test_file, vis)
+        # np.save(test_file + "x", vis)  # the x stops the test file been overwritten
         test_output = np.load(test_file)
 
         this_rrmse = rrmse(vis, test_output)
         print("RRMSE of visibilities is %e" % this_rrmse)
 
-        pass_threshold = 1e-12 if do_w_stacking else 1e-5
+        pass_threshold = 1e-5 if do_single else 1e-12
 
         return this_rrmse, pass_threshold
 
 
-def atest_ms2dirty_sp_2d():
+def test_ms2dirty_sp_2d():
     this_rrmse, pass_threshold = run_ms2dirty(do_single=True, do_w_stacking=False)
     assert (this_rrmse < pass_threshold)
 
 
-def atest_ms2dirty_dp_2d():
-    this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=False)
-    assert (this_rrmse < pass_threshold)
-
-
-def atest_ms2dirty_sp_3d():
+def test_ms2dirty_sp_3d():
     this_rrmse, pass_threshold = run_ms2dirty(do_single=True, do_w_stacking=True)
     assert (this_rrmse < pass_threshold)
 
 
-def atest_ms2dirty_dp_3d():
-    this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=True)
+def test_ms2dirty_dp_2d():
+    this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=False, epsilon=1e-12)
+    assert (this_rrmse < pass_threshold)
+
+
+def test_ms2dirty_dp_3d():
+    this_rrmse, pass_threshold = run_ms2dirty(do_single=False, do_w_stacking=True, epsilon=1e-12)
+    assert (this_rrmse < pass_threshold)
+
+
+def test_dirty2ms_sp_2d():
+    this_rrmse, pass_threshold = run_dirty2ms(do_single=True, do_w_stacking=False)
+    assert (this_rrmse < pass_threshold)
+
+
+def test_dirty2ms_sp_3d():
+    this_rrmse, pass_threshold = run_dirty2ms(do_single=True, do_w_stacking=True)
     assert (this_rrmse < pass_threshold)
 
 
@@ -336,14 +342,4 @@ def test_dirty2ms_dp_2d():
 
 def test_dirty2ms_dp_3d():
     this_rrmse, pass_threshold = run_dirty2ms(do_single=False, do_w_stacking=True, epsilon=1e-12)
-    assert (this_rrmse < pass_threshold)
-
-
-def test_dirty2ms_sp_3d():
-    this_rrmse, pass_threshold = run_dirty2ms(do_single=True, do_w_stacking=True)
-    assert (this_rrmse < pass_threshold)
-
-
-def test_dirty2ms_sp_2d():
-    this_rrmse, pass_threshold = run_dirty2ms(do_single=True, do_w_stacking=False)
     assert (this_rrmse < pass_threshold)
