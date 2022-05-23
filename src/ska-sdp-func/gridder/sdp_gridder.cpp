@@ -656,7 +656,7 @@ void sdp_gridder_ms2dirty(
     //const double upsampling = 2.0;
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
-	SDP_LOG_DEBUG("vis_type is %#06x", vis_type);
+	//SDP_LOG_DEBUG("vis_type is %#06x", vis_type);
 
 	
     //const int max_rows_per_chunk = 2000000 / num_chan;
@@ -666,19 +666,6 @@ void sdp_gridder_ms2dirty(
     const int coord_type = sdp_mem_type(uvw);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
     const int dbl_coord = (coord_type & SDP_MEM_DOUBLE);
-    //const int image_size = npix_x;
-   //grid_size = floor(npix_x * upsampling);
-
-	if (1)
-	{	
-		// SDP_LOG_DEBUG("grid_size is %i",  plan->grid_size);
-		// SDP_LOG_DEBUG("image_size is %i", plan->image_size);
-		// SDP_LOG_DEBUG("num_total_w_grids is %i", plan->num_total_w_grids);
-		// SDP_LOG_DEBUG("min_plane_w is %e", plan->min_plane_w);
-		// SDP_LOG_DEBUG("uv_scale is %.12e", uv_scale);
-		// SDP_LOG_DEBUG("uv_scale_f is %.12e", uv_scale_f);
-		// SDP_LOG_DEBUG("dbl_coord is %i", dbl_coord);		
-	}
 
     // Create the FFT plan.
     sdp_Fft* fft = sdp_fft_create(plan->w_grid_stack, plan->w_grid_stack, 2, 0, status);
@@ -874,104 +861,7 @@ void sdp_gridder_ms2dirty(
 	
     // Free FFT plan and data.
     sdp_fft_free(fft);	
-	
-    // Generate Gauss Legendre kernel for convolution correction.
-    double *quadrature_kernel, *quadrature_nodes, *quadrature_weights;
-    double *conv_corr_kernel;
-    quadrature_kernel  = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
-    quadrature_nodes   = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
-    quadrature_weights = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
-    conv_corr_kernel   = (double*) calloc(plan->image_size / 2 + 1, sizeof(double));
-    generate_gauss_legendre_conv_kernel(plan->image_size, plan->grid_size, plan->support, plan->beta,
-            quadrature_kernel, quadrature_nodes, quadrature_weights,
-            conv_corr_kernel);
-
-    // Need to determine normalisation factor for scaling runtime calculated
-    // conv correction values for coordinate n (where n = sqrt(1 - l^2 - m^2) - 1)
-    //uint32_t p = (uint32_t)(ceil(1.5 * support + 2.0));
-    uint32_t p = (uint32_t)(int(1.5 * plan->support + 2.0));
-    double conv_corr_norm_factor = 0.0;
-    for (uint32_t i = 0; i < p; i++)
-        conv_corr_norm_factor += quadrature_kernel[i] * quadrature_weights[i];
-    conv_corr_norm_factor *= (double)plan->support;
-    const float conv_corr_norm_factor_f = (float)conv_corr_norm_factor;
-
-	if (0) 
-	{
-		for (size_t i = 0; i < QUADRATURE_SUPPORT_BOUND; i++)
-		{			
-			// printf("quadrature_weights[%li] = [%.12e]\n", i, quadrature_weights[i]);
-			printf("conv_corr_kernel[%li] = [%.12e]\n", i, conv_corr_kernel[i]);
-		}
 		
-		printf("conv_corr_norm_factor = [%.12e]\n", conv_corr_norm_factor);
-	}	
-
-    // Convert precision if required.
-    void *p_quadrature_kernel, *p_quadrature_nodes, *p_quadrature_weights;
-    void *p_conv_corr_kernel;
-    sdp_MemType mem_type;
-    if (dbl_vis)
-    {
-        mem_type = SDP_MEM_DOUBLE;
-        p_quadrature_kernel = quadrature_kernel;
-        p_quadrature_nodes = quadrature_nodes;
-        p_quadrature_weights = quadrature_weights;
-        p_conv_corr_kernel = conv_corr_kernel;
-    }
-    else
-    {
-        // Cast to float.
-        mem_type = SDP_MEM_FLOAT;
-        p_quadrature_kernel  = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
-        p_quadrature_nodes   = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
-        p_quadrature_weights = calloc(QUADRATURE_SUPPORT_BOUND, sizeof(float));
-        p_conv_corr_kernel   = calloc(plan->image_size / 2 + 1, sizeof(float));
-        for (int i = 0; i < QUADRATURE_SUPPORT_BOUND; ++i)
-        {
-            ((float*)p_quadrature_kernel)[ i] = (float)(quadrature_kernel[ i]);
-            ((float*)p_quadrature_nodes)[  i] = (float)(quadrature_nodes[  i]);
-            ((float*)p_quadrature_weights)[i] = (float)(quadrature_weights[i]);
-        }
-        for (int i = 0; i < plan->image_size / 2 + 1; ++i)
-            ((float*)p_conv_corr_kernel)[i] = (float)(conv_corr_kernel[i]);
-        free(quadrature_kernel);
-        free(quadrature_nodes);
-        free(quadrature_weights);
-        free(conv_corr_kernel);
-    }
-			
-	const int64_t qsb[] = {QUADRATURE_SUPPORT_BOUND};
-	const int64_t stride[] = {1};
-	const int64_t len[] = {plan->image_size / 2 + 1};
-			
-	sdp_Mem* h_quadrature_kernel = sdp_mem_create_wrapper(p_quadrature_kernel, 
-		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
-	sdp_Mem* h_quadrature_nodes = sdp_mem_create_wrapper(p_quadrature_nodes, 
-		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
-	sdp_Mem* h_quadrature_weights = sdp_mem_create_wrapper(p_quadrature_weights, 
-		mem_type, SDP_MEM_CPU, 1, qsb, stride, status);
-	sdp_Mem* h_conv_corr_kernel = sdp_mem_create_wrapper(p_conv_corr_kernel, 
-		mem_type, SDP_MEM_CPU, 1, len, stride, status);
-
-	if (0) 
-	{
-		const double* test = (const double*)sdp_mem_data_const(h_conv_corr_kernel);
-		for (size_t i = 0; i < QUADRATURE_SUPPORT_BOUND; i++)
-		{			
-			// printf("quadrature_weights[%li] = [%.12e]\n", i, quadrature_weights[i]);
-			printf("h_conv_corr_kernel[%li] = [%.12e]\n", i, test[i]);
-		}
-		
-		// printf("conv_corr_norm_factor = [%.12e]\n", conv_corr_norm_factor);
-	}
-
-    // Copy arrays to GPU.
-	sdp_Mem* d_quadrature_kernel  = sdp_mem_create_copy(h_quadrature_kernel,  SDP_MEM_GPU, status);
-	sdp_Mem* d_quadrature_nodes   = sdp_mem_create_copy(h_quadrature_nodes,   SDP_MEM_GPU, status);
-	sdp_Mem* d_quadrature_weights = sdp_mem_create_copy(h_quadrature_weights, SDP_MEM_GPU, status);
-	sdp_Mem* d_conv_corr_kernel   = sdp_mem_create_copy(h_conv_corr_kernel,   SDP_MEM_GPU, status);
-	
     // Perform convolution correction and final scaling on single real plane
     // note: can recycle same block/thread dims as w correction kernel
     {
@@ -991,14 +881,14 @@ void sdp_gridder_ms2dirty(
             dbl_vis ? (const void*)&plan->pixel_size : (const void*)&plan->pixel_size_f,
             &plan->support,
             dbl_vis ?
-                (const void*)&conv_corr_norm_factor :
-                (const void*)&conv_corr_norm_factor_f,
-            sdp_mem_gpu_buffer_const(d_conv_corr_kernel, status),
+                (const void*)&plan->conv_corr_norm_factor :
+                (const void*)&plan->conv_corr_norm_factor_f,
+            sdp_mem_gpu_buffer_const(plan->conv_corr_kernel, status),
             dbl_vis ? (const void*)&plan->inv_w_range : (const void*)&plan->inv_w_range_f,
             dbl_vis ? (const void*)&plan->inv_w_scale : (const void*)&plan->inv_w_scale_f,
-            sdp_mem_gpu_buffer_const(d_quadrature_kernel, status),
-            sdp_mem_gpu_buffer_const(d_quadrature_nodes, status),
-            sdp_mem_gpu_buffer_const(d_quadrature_weights, status),
+            sdp_mem_gpu_buffer_const(plan->quadrature_kernel,  status),
+            sdp_mem_gpu_buffer_const(plan->quadrature_nodes,   status),
+            sdp_mem_gpu_buffer_const(plan->quadrature_weights, status),
 			&solving,
 			&plan->do_wstacking
         };
