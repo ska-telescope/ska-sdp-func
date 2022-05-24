@@ -77,8 +77,8 @@ static void check_params(
 
 
 sdp_Fft* sdp_fft_create(
-        sdp_Mem* input,
-        sdp_Mem* output,
+        const sdp_Mem* input,
+        const sdp_Mem* output,
         int32_t num_dims_fft,
         int32_t is_forward,
         sdp_Error* status)
@@ -162,10 +162,8 @@ sdp_Fft* sdp_fft_create(
     if (!*status)
     {
         fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
-        sdp_mem_ref_inc(input);
-        sdp_mem_ref_inc(output);
-        fft->input = input;
-        fft->output = output;
+        fft->input = sdp_mem_create_alias(input);
+        fft->output = sdp_mem_create_alias(output);
         fft->num_dims = num_dims_fft;
         fft->batch_size = batch_size;
         fft->is_forward = is_forward;

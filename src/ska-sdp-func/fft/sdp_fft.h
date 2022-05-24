@@ -40,8 +40,8 @@ typedef struct sdp_Fft sdp_Fft;
  * @return sdp_Fft* Handle to FFT plan.
  */
 sdp_Fft* sdp_fft_create(
-        sdp_Mem* input,
-        sdp_Mem* output,
+        const sdp_Mem* input,
+        const sdp_Mem* output,
         int32_t num_dims_fft,
         int32_t is_forward,
         sdp_Error* status);

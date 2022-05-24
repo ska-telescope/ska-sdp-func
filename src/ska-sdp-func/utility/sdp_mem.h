@@ -171,7 +171,15 @@ sdp_Mem* sdp_mem_create_wrapper(
         sdp_Error* status);
 
 /**
- * @brief Create a copy of a memory block in the specified location.
+ * @brief Create a shallow copy, or an alias, of a block's metadata.
+ *
+ * @param src Handle to source memory block.
+ * @return ::sdp_Mem* Handle to aliased memory.
+ */
+sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src);
+
+/**
+ * @brief Create a deep copy of a memory block in the specified location.
  *
  * @param src Handle to source memory block.
  * @param location Enumerated memory location for destination.
