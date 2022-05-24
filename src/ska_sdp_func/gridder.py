@@ -6,29 +6,46 @@ import numpy as np
 
 try:
     import cupy
-    print("All good!")
 except ImportError:
     cupy = None
 
 
 class Gridder:
-    """Processing function example A.
+    """Processing function Gridder.
     """
     class Handle(ctypes.Structure):
         pass
 
     def __init__(self, uvw, freq_hz, vis, weight, dirty_image, pixel_size_x_rad, pixel_size_y_rad, epsilon: float,
                  do_w_stacking: bool):
-        """Creates processing function A.
+        """Creates a plan for (de)gridding using the supplied parameters and input and output buffers.
 
-        :param par_a: Value of a.
-        :type par_a: int
+        This currently only supports processing on a GPU.
 
-        :param par_b: Value of b.
-        :type par_b: int
-
-        :param par_c: Value of c.
-        :type par_c: float
+        Parameters
+        ==========
+        uvw: cupy.ndarray((num_rows, 3), dtype=numpy.float32 or numpy.float64)
+            (u,v,w) coordinates.
+        freq_hz: cupy.ndarray((num_chan,), dtype=numpy.float32 or numpy.float64)
+            Channel frequencies.
+        vis: cupy.ndarray((num_rows, num_chan), dtype=numpy.complex64 or numpy.complex128)
+            The input measurement set data.
+            Its data type determines the precision used for the (de)gridding.
+        weight: cupy.ndarray((num_rows, num_chan), same precision as **vis**)
+            Its values are used to multiply the input.
+        dirty_image: cupy.ndarray((num_pix, num_pix), dtype=numpy.float32 or numpy.float64)
+            Dirty image, **must be square**.
+        pixel_size_x_rad: float
+            Angular x pixel size (in radians) of the dirty image.
+        pixel_size_y_rad: float
+            Angular y pixel size (in radians) of the dirty image (must be the same as pixel_size_x_rad).
+        epsilon: float
+            Accuracy at which the computation should be done.
+            Must be larger than 2e-13.
+            If **vis** has type numpy.complex64, it must be larger than 1e-5.
+        do_w_stacking: bool
+            If True, the full improved w-stacking algorithm is carried out,
+            otherwise the w values are assumed to be zero.
         """
 
         self._handle = None
