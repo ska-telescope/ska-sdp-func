@@ -6,15 +6,20 @@ from ska_sdp_func import twosm_rfi_flagger
 
 
 def data_preparation(spectro, flags, num_timesamples, num_channels, num_baselines, num_pols):
-    arr = np.array([0.1, 0.2, 0.3, 2.8, 2.81, 2.79, 0.3])
-    insertion_time = np.random.randint(0, num_timesamples - 7)
+    arr = np.array([0.1, 0.2, 0.3, 2.8, 2.81, 2.805, 0.1])
+    insertion_time = np.random.randint(0, num_timesamples - 9)
     freq = np.random.randint(0, num_channels - 1)
     for i in range(7):
         for b in range(num_baselines):
             for p in range(num_pols):
                 spectro[insertion_time + i][b][freq][p] = arr[i]
-                if 2 < i < 7:
-                    flags[insertion_time + i][b][freq][p] = 1
+    for i in range(6):
+        for b in range(num_baselines):
+            for p in range(num_pols):
+                flags[insertion_time + i][b][freq][p] = 1
+
+
+
 
 
 def test_rfi_flagger():
@@ -22,7 +27,7 @@ def test_rfi_flagger():
     num_baselines = 21
     num_timesamples = 1000
     num_pols = 4
-    thresholds = np.array([0.015, 0.015], dtype=np.int32)
+    thresholds = np.array([0.05, 0.05])
     antennas = np.array([0, 1, 2, 3, 4, 5], dtype=np.int32)
 
 
@@ -36,7 +41,13 @@ def test_rfi_flagger():
         spectrogram, flags_as_expected,
         num_timesamples, num_channels, num_baselines, num_pols)
     twosm_rfi_flagger(spectrogram, thresholds, antennas, flags_by_algo)
+    #
+    # print("flags by the algorithm =  ", np.where(flags_by_algo == 1))
+    # print("     ")
+    # print("     ")
+    # print("flags as expected = ", np.where(flags_as_expected == 1))
 
-    print(np.sum(flags_by_algo), "   ", np.sum(flags_as_expected))
+
+    # print(np.sum(flags_by_algo), "   ", np.sum(flags_as_expected))
     np.testing.assert_array_equal(flags_by_algo, flags_as_expected)
     print("test passed!")

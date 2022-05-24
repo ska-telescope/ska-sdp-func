@@ -4,6 +4,7 @@ import ctypes
 from .utility import Error, Lib, Mem
 
 
+
 def twosm_rfi_flagger(vis, thresholds, antennas, flags):
     """
     Basic RFI flagger based on sum-threshold algorithm.
@@ -32,16 +33,14 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
 
     :param flags: Output flags. Dimensions as above.
     :type flags: numpy.ndarray
-
-    :param max_sequence_length: Maximum length of the partial sum.
-    :type max_sequence_length: integer
     """
+
     mem_vis = Mem(vis)
     mem_thresholds = Mem(thresholds)
     mem_antennas = Mem(antennas)
     mem_flags = Mem(flags)
     error_status = Error()
-    lib_rfi_flagger = Lib.handle().sdp_2sm_rfi_flagger
+    lib_rfi_flagger = Lib.handle().sdp_twosm_algo_flagger
     lib_rfi_flagger.argtypes = [
         Mem.handle_type(),
         Mem.handle_type(),
@@ -57,3 +56,4 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
         error_status.handle()
     )
     error_status.check()
+
