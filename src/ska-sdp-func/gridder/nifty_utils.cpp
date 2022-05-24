@@ -510,7 +510,7 @@ void CalculateSupportAndBeta(double upsampling, double epsilon, int &support, do
     {
 		int N = 16;
 		
-		double maxmaperr[N] = {
+		double maxmaperr[16] = {
 			1.00e+08, 0.19e+00, 2.98e-03, 5.98e-05, 1.11e-06, 2.01e-08, 3.55e-10, 5.31e-12, 
 			8.81e-14, 1.34e-15, 2.17e-17, 2.12e-19, 2.88e-21, 3.92e-23, 8.21e-25, 7.13e-27 };
 
@@ -542,9 +542,9 @@ void CalculateSupportAndBeta(double upsampling, double epsilon, int &support, do
 	}
     if (upsampling >= 2)
     {
-		int N = 16;
+		//int N = 16;
 		
-        double opt_beta[N] = {-1, 0.14, 1.70, 2.08, 2.205, 2.26,
+        double opt_beta[16] = {-1, 0.14, 1.70, 2.08, 2.205, 2.26,
           2.29, 2.307, 2.316, 2.3265, 2.3324, 2.282, 2.294, 2.304, 2.3138, 2.317};
 		  
 		beta = opt_beta[support];
