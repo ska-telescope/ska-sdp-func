@@ -31,13 +31,14 @@ class Lib:
         """Return a handle to the library for use by ctypes."""
         if not Lib.lib:
             lib_dir = Lib.find_dir(Lib.search_dirs)
-            Lib.mutex.acquire()
-            if not Lib.lib:
-                try:
-                    Lib.lib = numpy.ctypeslib.load_library(Lib.name, lib_dir)
-                except OSError:
-                    pass
-            Lib.mutex.release()
+            with Lib.mutex:
+                if not Lib.lib:
+                    try:
+                        Lib.lib = numpy.ctypeslib.load_library(
+                            Lib.name, lib_dir
+                        )
+                    except OSError:
+                        pass
             if not Lib.lib:
                 raise RuntimeError(
                     f"Cannot find {Lib.name} in {Lib.search_dirs}. "

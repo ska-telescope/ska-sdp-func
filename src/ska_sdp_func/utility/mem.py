@@ -60,7 +60,7 @@ class Mem:
         mem_set_read_only.argtypes = [Mem.handle_type(), ctypes.c_int32]
         error_status = Error()
         if isinstance(obj, numpy.ndarray):
-            if obj.dtype == numpy.int8 or obj.dtype == numpy.byte:
+            if obj.dtype in (numpy.int8, numpy.byte):
                 mem_type = self.MemType.SDP_MEM_CHAR
             elif obj.dtype == numpy.int32:
                 mem_type = self.MemType.SDP_MEM_INT
@@ -88,7 +88,7 @@ class Mem:
             mem_set_read_only(self._handle, not obj.flags.writeable)
         elif cupy:
             if isinstance(obj, cupy.ndarray):
-                if obj.dtype == cupy.int8 or obj.dtype == cupy.byte:
+                if obj.dtype in (cupy.int8, cupy.byte):
                     mem_type = self.MemType.SDP_MEM_CHAR
                 elif obj.dtype == cupy.int32:
                     mem_type = self.MemType.SDP_MEM_INT
