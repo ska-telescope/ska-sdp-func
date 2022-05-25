@@ -137,6 +137,25 @@ build-test-release:
     reports:
       junit: build/reports/unit-tests.xml
 
+# Need to override the template stage because we want to run this on a GPU.
+python-test:
+  stage: test
+  image: nvidia/cuda:11.6.0-devel-ubuntu20.04
+  tags: [k8srunner-gpu-v100]
+  before_script:
+    - *cuda_key
+    - apt-get -y update
+    - apt-get -y install build-essential cmake python3 python3-pip
+    - pip3 install numpy pytest
+    - CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}" pip3 install .
+  script:
+    - pytest
+
+# Need to override the template as it doesn't appear to work with this repo.
+python-gemnasium-scan-legacy:
+  rules:
+    - when: never
+
 pages:
   stage: publish
   image: alpine
