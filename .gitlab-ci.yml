@@ -161,6 +161,10 @@ python-publish-to-gitlab:
 
 # Include CI templates
 include:
+  # Conan
+  - project: 'ska-telescope/templates-repository'
+    file: 'gitlab-ci/includes/conan.gitlab-ci.yml'
+
   # Docs pages
   - project: "ska-telescope/templates-repository"
     file: "gitlab-ci/includes/docs.gitlab-ci.yml"
