@@ -14,8 +14,10 @@ import numpy
 # trigger a bug with mock imports. We use this static class instead
 # to hold the library handle.
 
+
 class Lib:
     """Class to hold a handle to the compiled library."""
+
     name = "libska_sdp_func"
     env_name = "SKA_SDP_FUNC_LIB_DIR"
     this_dir = os.path.dirname(os.path.abspath(__file__))

@@ -17,11 +17,13 @@ from .lib import Lib
 
 class Mem:
     """Class to wrap arrays for passing to processing functions"""
+
     class Handle(ctypes.Structure):
         """Class handle for use by ctypes."""
 
     class MemType:
         """Enumerator to hold memory element type."""
+
         SDP_MEM_CHAR = 1
         SDP_MEM_INT = 2
         SDP_MEM_FLOAT = 4
@@ -31,6 +33,7 @@ class Mem:
 
     class MemLocation:
         """Enumerator to hold memory location."""
+
         SDP_MEM_CPU = 0
         SDP_MEM_GPU = 1
 

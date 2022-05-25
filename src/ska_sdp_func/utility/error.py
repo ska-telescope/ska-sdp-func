@@ -7,6 +7,7 @@ import ctypes
 
 class Error:
     """Wrapper for error codes."""
+
     error_codes = {
         0: "No error",
         1: "Generic runtime error",
