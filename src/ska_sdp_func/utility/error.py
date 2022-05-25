@@ -19,12 +19,14 @@ class Error:
     }
 
     def __init__(self):
-        """Create an error code wrapper for passing to a processing function.
+        """
+        Create an error code wrapper for passing to a processing function.
         """
         self._error = ctypes.c_int(0)
 
     def check(self):
-        """Check if an error occurred and raise a Python exception if needed.
+        """
+        Check if an error occurred and raise a Python exception if needed.
         """
         if self._error.value != 0:
             raise RuntimeError(Error.error_codes[self._error.value])
