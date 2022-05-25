@@ -1,5 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Test DFT functions."""
+
 import numpy
 
 try:
@@ -11,6 +13,7 @@ from ska_sdp_func import dft_point_v00
 
 
 def reference_dft(directions, fluxes, uvw_lambda):
+    """Generate reference data for DFT comparison."""
     num_times, num_baselines, num_channels, _ = uvw_lambda.shape
     num_components, _, num_pols = fluxes.shape
     vis = numpy.zeros(
@@ -29,6 +32,7 @@ def reference_dft(directions, fluxes, uvw_lambda):
 
 
 def test_dft():
+    """Test DFT function."""
     # Run DFT test on CPU, using numpy arrays.
     num_components = 20
     num_pols = 4

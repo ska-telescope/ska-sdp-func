@@ -1,5 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Module to wrap arrays for passing to processing functions."""
+
 import ctypes
 
 import numpy
@@ -14,10 +16,12 @@ from .lib import Lib
 
 
 class Mem:
+    """Class to wrap arrays for passing to processing functions"""
     class Handle(ctypes.Structure):
-        pass
+        """Class handle for use by ctypes."""
 
     class MemType:
+        """Enumerator to hold memory element type."""
         SDP_MEM_CHAR = 1
         SDP_MEM_INT = 2
         SDP_MEM_FLOAT = 4
@@ -26,10 +30,16 @@ class Mem:
         SDP_MEM_COMPLEX_DOUBLE = 40
 
     class MemLocation:
+        """Enumerator to hold memory location."""
         SDP_MEM_CPU = 0
         SDP_MEM_GPU = 1
 
     def __init__(self, *args):
+        """Create a new wrapper for an array.
+
+        The array to wrap (either a numpy or cupy array) should be
+        passed as the first argument.
+        """
         self._handle = None
         obj = args[0] if len(args) == 1 else None
         mem_create_wrapper = Lib.handle().sdp_mem_create_wrapper
@@ -46,7 +56,7 @@ class Mem:
         mem_set_read_only = Lib.handle().sdp_mem_set_read_only
         mem_set_read_only.argtypes = [Mem.handle_type(), ctypes.c_int32]
         error_status = Error()
-        if type(obj) == numpy.ndarray:
+        if isinstance(obj, numpy.ndarray):
             if obj.dtype == numpy.int8 or obj.dtype == numpy.byte:
                 mem_type = self.MemType.SDP_MEM_CHAR
             elif obj.dtype == numpy.int32:
@@ -74,7 +84,7 @@ class Mem:
             )
             mem_set_read_only(self._handle, not obj.flags.writeable)
         elif cupy:
-            if type(obj) == cupy.ndarray:
+            if isinstance(obj, cupy.ndarray):
                 if obj.dtype == cupy.int8 or obj.dtype == cupy.byte:
                     mem_type = self.MemType.SDP_MEM_CHAR
                 elif obj.dtype == cupy.int32:
@@ -107,14 +117,17 @@ class Mem:
         error_status.check()
 
     def __del__(self):
+        """Called when the handle is destroyed."""
         if self._handle:
             sdp_mem_free = Lib.handle().sdp_mem_free
             sdp_mem_free.argtypes = [Mem.handle_type()]
             sdp_mem_free(self._handle)
 
     def handle(self):
+        """Return a handle for use by ctypes in a function call."""
         return self._handle
 
     @staticmethod
     def handle_type():
+        """Return the type of the handle for use in the argtypes list."""
         return ctypes.POINTER(Mem.Handle)

@@ -1,5 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Module for RFI flagging functions."""
+
 import ctypes
 
 from .utility import Error, Lib, Mem

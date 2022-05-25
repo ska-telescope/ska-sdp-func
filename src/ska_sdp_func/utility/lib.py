@@ -1,5 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Private module to find and return a handle to the compiled library."""
+
 import glob
 import os
 import threading
@@ -12,8 +14,8 @@ import numpy
 # trigger a bug with mock imports. We use this static class instead
 # to hold the library handle.
 
-
 class Lib:
+    """Class to hold a handle to the compiled library."""
     name = "libska_sdp_func"
     env_name = "SKA_SDP_FUNC_LIB_DIR"
     this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +26,7 @@ class Lib:
 
     @staticmethod
     def handle():
+        """Return a handle to the library for use by ctypes."""
         if not Lib.lib:
             lib_dir = Lib.find_dir(Lib.search_dirs)
             Lib.mutex.acquire()
@@ -42,7 +45,7 @@ class Lib:
 
     @staticmethod
     def find_dir(lib_search_dirs):
-        # Try to find the shared library in the listed directories.
+        """Try to find the shared library in the listed directories."""
         lib_dir = ""
         env_dir = os.environ.get(Lib.env_name)
         if env_dir and env_dir not in Lib.search_dirs:

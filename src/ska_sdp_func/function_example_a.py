@@ -1,5 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Module for example function."""
+
 import ctypes
 
 from .utility import Error, Lib, Mem
@@ -9,7 +11,7 @@ class FunctionExampleA:
     """Processing function example A."""
 
     class Handle(ctypes.Structure):
-        pass
+        """Class handle for use by ctypes."""
 
     def __init__(self, par_a, par_b, par_c):
         """Creates processing function A.

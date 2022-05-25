@@ -1,15 +1,18 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Test RFI flagger functions."""
+
 import numpy
 
 from ska_sdp_func import sum_threshold_rfi_flagger
 
 
 def threshold_calc(initial_value, rho, seq_lengths):
+    """Threshold calculation."""
     thresholds = numpy.zeros(len(seq_lengths), dtype=numpy.float64)
     for i in range(len(seq_lengths)):
-        m = pow(rho, numpy.log2(seq_lengths[i]))
-        thresholds[i] = initial_value / m
+        val = pow(rho, numpy.log2(seq_lengths[i]))
+        thresholds[i] = initial_value / val
     return thresholds
 
 
@@ -22,15 +25,17 @@ def data_preparation(
     num_samples,
     num_baselines,
 ):
-    for i in range(num_samples):
+    """Prepare test data."""
+    for _ in range(num_samples):
         time = numpy.random.randint(0, num_timesamples - 1)
         freq = numpy.random.randint(0, num_channels - 1)
-        for b in range(num_baselines):
-            spectro[time][b][freq][0] = threshold + 0.01
-            flags[time][b][freq][0] = 1
+        for baseline in range(num_baselines):
+            spectro[time][baseline][freq][0] = threshold + 0.01
+            flags[time][baseline][freq][0] = 1
 
 
 def test_rfi_flagger():
+    """Test for RFI flagger."""
     num_channels = 200
     num_baselines = 21
     num_timesamples = 1000

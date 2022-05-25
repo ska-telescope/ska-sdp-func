@@ -1,5 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Test example function."""
+
 import numpy
 
 try:
@@ -11,6 +13,7 @@ from ska_sdp_func import vector_add
 
 
 def test_vector_add():
+    """Test vector addition function."""
     # Run vector add test on CPU, using numpy arrays.
     input_a = numpy.random.random_sample([1000])
     input_b = numpy.random.random_sample(input_a.shape)

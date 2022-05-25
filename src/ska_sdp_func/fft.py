@@ -1,5 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Module for FFT functions."""
+
 import ctypes
 
 from .utility import Error, Lib, Mem
@@ -9,9 +11,9 @@ class Fft:
     """Interface to SDP FFT."""
 
     class Handle(ctypes.Structure):
-        pass
+        """Class handle for use by ctypes."""
 
-    def __init__(self, input, output, num_dims_fft, is_forward):
+    def __init__(self, input_data, output_data, num_dims_fft, is_forward):
         """Creates a plan for FFTs using the supplied input and output buffers.
 
         The number of dimensions used for the FFT is specified using the
@@ -21,11 +23,11 @@ class Fft:
 
         This wraps cuFFT, so only GPU FFTs are currently supported.
 
-        :param input: Input data.
-        :type input: cupy.ndarray
+        :param input_data: Input data.
+        :type input_data: cupy.ndarray
 
-        :param output: Output data.
-        :type output: cupy.ndarray
+        :param output_data: Output data.
+        :type output_data: cupy.ndarray
 
         :param num_dims_fft: The number of dimensions for the FFT.
         :type num_dims_fft: int
@@ -35,8 +37,8 @@ class Fft:
         :type is_forward: bool
         """
         self._handle = None
-        mem_input = Mem(input)
-        mem_output = Mem(output)
+        mem_input = Mem(input_data)
+        mem_output = Mem(output_data)
         error_status = Error()
         function_create = Lib.handle().sdp_fft_create
         function_create.restype = Fft.handle_type()
@@ -84,20 +86,20 @@ class Fft:
         """
         return ctypes.POINTER(Fft.Handle)
 
-    def exec(self, input, output):
+    def exec(self, input_data, output_data):
         """Executes FFT using plan and supplied data.
 
-        :param input: Input data.
-        :type input: cupy.ndarray
+        :param input_data: Input data.
+        :type input_data: cupy.ndarray
 
-        :param output: Output data.
-        :type output: cupy.ndarray
+        :param output_data: Output data.
+        :type output_data: cupy.ndarray
         """
         if not self._handle:
             raise RuntimeError("FFT plan not ready")
 
-        mem_input = Mem(input)
-        mem_output = Mem(output)
+        mem_input = Mem(input_data)
+        mem_output = Mem(output_data)
         error_status = Error()
         function_exec = Lib.handle().sdp_fft_exec
         function_exec.argtypes = [
