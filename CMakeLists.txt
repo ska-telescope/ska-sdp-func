@@ -29,6 +29,7 @@ set(${libname}_TESTS
     test_dft
     test_vector_add
     test_function_example_a
+    test_degridding
 )
 
 # Project version.
