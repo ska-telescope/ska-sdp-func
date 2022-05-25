@@ -149,7 +149,7 @@ python-test:
     - pip3 install numpy pytest
     - CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}" pip3 install .
   script:
-    - pytest
+    - pytest --junitxml=build/reports/unit-tests.xml tests/
 
 # Need to override the template as it doesn't appear to work with this repo.
 python-gemnasium-scan-legacy:
