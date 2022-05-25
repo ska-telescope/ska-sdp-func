@@ -4,6 +4,7 @@ import numpy
 
 from ska_sdp_func import sum_threshold_rfi_flagger
 
+
 def threshold_calc(initial_value, rho, seq_lengths):
     thresholds = numpy.zeros(len(seq_lengths), dtype=numpy.float64)
     for i in range(len(seq_lengths)):

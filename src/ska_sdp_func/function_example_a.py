@@ -1,7 +1,9 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import ctypes
+
 from .utility import Error, Lib, Mem
+
 
 class FunctionExampleA:
     """Processing function example A.

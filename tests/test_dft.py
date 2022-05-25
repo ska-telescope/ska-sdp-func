@@ -1,12 +1,14 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import numpy
+
 try:
     import cupy
 except ImportError:
     cupy = None
 
 from ska_sdp_func import dft_point_v00
+
 
 def reference_dft(directions, fluxes, uvw_lambda):
     num_times, num_baselines, num_channels, _ = uvw_lambda.shape

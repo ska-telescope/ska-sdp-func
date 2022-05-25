@@ -4,6 +4,7 @@ import ctypes
 
 from .utility import Error, Lib, Mem
 
+
 class Fft:
     """Interface to SDP FFT.
     """

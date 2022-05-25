@@ -1,12 +1,14 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import numpy
+
 try:
     import cupy
 except ImportError:
     cupy = None
 
 from ska_sdp_func import Fft
+
 
 def test_fft_1d():
     input = numpy.random.random(256) + 0j

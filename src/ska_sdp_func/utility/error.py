@@ -2,6 +2,7 @@
 
 import ctypes
 
+
 class Error:
     error_codes = {
         0: "No error",

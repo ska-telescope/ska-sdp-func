@@ -1,6 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import numpy
+
 try:
     import cupy
 except ImportError:

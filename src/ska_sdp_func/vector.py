@@ -2,6 +2,7 @@
 
 from .utility import Error, Lib, Mem
 
+
 def vector_add(input_a, input_b, output):
     """
     Simple example to add two vectors, element_wise.

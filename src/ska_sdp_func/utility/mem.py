@@ -1,7 +1,9 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 import ctypes
+
 import numpy
+
 try:
     import cupy
 except ImportError:
@@ -9,6 +11,7 @@ except ImportError:
 
 from .error import Error
 from .lib import Lib
+
 
 class Mem:
     class Handle(ctypes.Structure):
