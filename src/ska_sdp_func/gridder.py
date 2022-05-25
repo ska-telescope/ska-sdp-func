@@ -29,12 +29,12 @@ class Gridder:
         freq_hz: cupy.ndarray((num_chan,), dtype=numpy.float32 or numpy.float64)
             Channel frequencies.
         vis: cupy.ndarray((num_rows, num_chan), dtype=numpy.complex64 or numpy.complex128)
-            The input measurement set data.
+            The input/output visibility data.
             Its data type determines the precision used for the (de)gridding.
         weight: cupy.ndarray((num_rows, num_chan), same precision as **vis**)
             Its values are used to multiply the input.
         dirty_image: cupy.ndarray((num_pix, num_pix), dtype=numpy.float32 or numpy.float64)
-            Dirty image, **must be square**.
+            The input/output dirty image, **must be square**.
         pixel_size_x_rad: float
             Angular x pixel size (in radians) of the dirty image.
         pixel_size_y_rad: float
@@ -124,7 +124,7 @@ class Gridder:
             min_abs_w = cupy.amin(cupy.abs(uvw[:, 2]))
             max_abs_w = cupy.amax(cupy.abs(uvw[:, 2]))
         else:
-            print("bad type!!")
+            print(f"Unsupported uvw type of {type(uvw)}.")
             return -1, -1
 
         min_abs_w *= freq_hz[ 0] / 299792458.0
@@ -143,75 +143,84 @@ class Gridder:
         """
         return ctypes.POINTER(Gridder.Handle)
 
-    def ms2dirty(self, uvw, freq, vis, weight, dirty_image):
-        """Demonstrate a function utilising a plan.
+    def ms2dirty(self, uvw, freq_hz, vis, weight, dirty_image):
+        """Generate a dirty image from visibility data.
 
-        :param dirty_image: Output buffer.
-        :type dirty_image: numpy.ndarray
+        Parameters
+        ==========
+        uvw: as above.
+        freq_hz: as above.
+        vis: as above.
+        weight: as above.
+        dirty_image: as above.
         """
         if self._handle is None:
             raise RuntimeError("Function plan not ready")
 
         mem_uvw = Mem(uvw)
-        mem_freq = Mem(freq)
+        mem_freq_hz = Mem(freq_hz)
         mem_vis = Mem(vis)
         mem_weight = Mem(weight)
         mem_dirty_image = Mem(dirty_image)
         error_status = Error()
         function_exec = Lib.handle().sdp_gridder_ms2dirty
         function_exec.argtypes = [
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
             Gridder.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
             Error.handle_type()
         ]
         function_exec(
+            self._handle,
             mem_uvw.handle(),
-            mem_freq.handle(),
+            mem_freq_hz.handle(),
             mem_vis.handle(),
             mem_weight.handle(),
             mem_dirty_image.handle(),
-            self._handle,
             error_status.handle()
         )
         error_status.check()
 
-    def dirty2ms(self, uvw, freq, vis, weight, dirty_image):
-        """Demonstrate a function utilising a plan.
+    def dirty2ms(self, uvw, freq_hz, vis, weight, dirty_image):
+        """Generate visibility data from a dirty image.
 
-        :param dirty_image: Input dirty image.
-        :param vis: output buffer
-        :type dirty_image: numpy.ndarray
+        Parameters
+        ==========
+        uvw: as above.
+        freq_hz: as above.
+        vis: as above.
+        weight: as above.
+        dirty_image: as above.
         """
         if self._handle is None:
             raise RuntimeError("Function plan not ready")
 
         mem_uvw = Mem(uvw)
-        mem_freq = Mem(freq)
+        mem_freq_hz = Mem(freq_hz)
         mem_vis = Mem(vis)
         mem_weight = Mem(weight)
         mem_dirty_image = Mem(dirty_image)
         error_status = Error()
         function_exec = Lib.handle().sdp_gridder_dirty2ms
         function_exec.argtypes = [
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
             Gridder.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
+            Mem.handle_type(),
             Error.handle_type()
         ]
         function_exec(
+            self._handle,
             mem_uvw.handle(),
-            mem_freq.handle(),
+            mem_freq_hz.handle(),
             mem_vis.handle(),
             mem_weight.handle(),
             mem_dirty_image.handle(),
-            self._handle,
             error_status.handle()
         )
         error_status.check()

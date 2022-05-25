@@ -188,188 +188,6 @@ void sdp_gridder_check_buffers(
 	}
 }
 
-/* void sdp_gridder_check_ms2dirty_outputs(
-		const sdp_Mem* uvw,
-		const sdp_Mem* dirty_image,
-        sdp_Error* status)
-{
-    SDP_LOG_DEBUG("Checking outputs...");
-
-    const sdp_MemLocation location = sdp_mem_location(uvw);
-	
-    if (location != sdp_mem_location(dirty_image))
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Memory location mismatch");
-        return;
-    }
-
-    if (sdp_mem_is_complex(dirty_image))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Dirty image values must be real");
-        return;
-    }
-    if (sdp_mem_shape_dim(dirty_image, 0) != sdp_mem_shape_dim(dirty_image, 1))
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("Dirty image must be square.");
-        return;
-    }
-	
-    if (!sdp_mem_is_c_contiguous(dirty_image))
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("All arrays must be C contiguous");
-        return;
-    }
-    if (sdp_mem_is_read_only(dirty_image))
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("Dirty image must be writable.");
-		return;
-    }
-}
-
-void sdp_gridder_check_dirty2ms_inputs(
-		const sdp_Mem* uvw,
-		const sdp_Mem* freq_hz,  // in Hz
-		const sdp_Mem* weight,
-		const sdp_Mem* dirty_image,
-        sdp_Error* status)
-{
-    SDP_LOG_DEBUG("Checking inputs...");
-
-	// check location of parameters (CPU or GPU)
-    const sdp_MemLocation location = sdp_mem_location(uvw);
-	
-    if (location != sdp_mem_location(freq_hz) || 
-		location != sdp_mem_location(dirty_image) || 
-		location != sdp_mem_location(weight))
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Memory location mismatch.");
-        return;
-    }
-	
-	// check types of parameters (real or complex)
-    if (sdp_mem_is_complex(uvw))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("uvw values must be real.");
-        return;
-    }
-    if (sdp_mem_is_complex(freq_hz))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Frequency values must be real.");
-        return;
-    }
-    if (sdp_mem_is_complex(dirty_image))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Dirty image must be real.");
-        return;
-    }
-    if (sdp_mem_is_complex(weight))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Weight values must be real.");
-        return;
-    }
-	
-	// check shapes of parameters
-    const int64_t num_vis      = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_channels = sdp_mem_shape_dim(vis, 1);
-	
-	SDP_LOG_DEBUG("vis is %i by %i", num_vis, num_channels);
-	SDP_LOG_DEBUG("freq_hz is %i by %i", 
-		sdp_mem_shape_dim(freq_hz, 0), 
-		sdp_mem_shape_dim(freq_hz, 1));
-		
-    if (sdp_mem_shape_dim(uvw, 0) != num_vis)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("The number of rows in uvw and vis must match.");
-        return;
-    }
-    if (sdp_mem_shape_dim(uvw, 1) != 3)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("uvw must be N x 3.");
-        return;
-    }
-    if (sdp_mem_shape_dim(freq_hz, 0) != num_channels)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("The number of channels in vis and freq_hz must match.");
-        return;
-    }
-
-	// check contiguity
-    if (!sdp_mem_is_c_contiguous(uvw) ||
-        !sdp_mem_is_c_contiguous(freq_hz) ||
-        !sdp_mem_is_c_contiguous(vis) ||
-        !sdp_mem_is_c_contiguous(weight))
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("All input arrays must be C contiguous");
-        return;
-    }
-}
-
-void sdp_gridder_check_dirty2ms_outputs(
-		const sdp_Mem* uvw,
-		const sdp_Mem* freq_hz,
-		const sdp_Mem* vis,
-        sdp_Error* status)
-{
-    SDP_LOG_DEBUG("Checking outputs...");
-
-    const sdp_MemLocation location = sdp_mem_location(uvw);
-	
-    if (location != sdp_mem_location(vis))
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Memory location mismatch");
-        return;
-    }
-
-    if (!sdp_mem_is_complex(vis))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Visibility data must be complex");
-        return;
-    }
-	
-	// check shapes of parameters
-    const int64_t num_vis  = sdp_mem_shape_dim(uvw, 0);
-    const int64_t num_chan = sdp_mem_shape_dim(freq_hz, 0);
-	
-    if (    (sdp_mem_shape_dim(vis, 0) != num_vis)
-		 || (sdp_mem_shape_dim(vis, 1) != num_chan) )
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("Visibility data dimensions must be consistent with those of uvw and freq_hz.");
-        return;
-    }
-	
-    if (!sdp_mem_is_c_contiguous(vis))
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("All arrays must be C contiguous");
-        return;
-    }
-    if (sdp_mem_is_read_only(vis))
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("Visibility data must be writable.");
-		return;
-    }
-}
-
- */
-
 void sdp_gridder_log_plan(
 		sdp_Gridder* plan,
         sdp_Error* status)
@@ -389,7 +207,7 @@ void sdp_gridder_log_plan(
 		SDP_LOG_DEBUG("  plan->grid_size is %i",       	plan->grid_size);
 		// SDP_LOG_DEBUG("  plan-> is %e",       	plan->);
 
-	// SDP_LOG_DEBUG("  plan->uvw's     location is %i", sdp_mem_location(plan->uvw));
+        // SDP_LOG_DEBUG("  plan->uvw's     location is %i", sdp_mem_location(plan->uvw));
 		// SDP_LOG_DEBUG("  plan->freq_hz's location is %i", sdp_mem_location(plan->freq_hz));
 		// SDP_LOG_DEBUG("  plan->vis's     location is %i", sdp_mem_location(plan->vis));
 		// SDP_LOG_DEBUG("  plan->weight's  location is %i", sdp_mem_location(plan->weight));		
@@ -400,9 +218,6 @@ void sdp_gridder_check_plan(
 		sdp_Gridder* plan,
         sdp_Error* status)
 {
-	sdp_gridder_log_plan(plan, status);
-    if (*status) return;
-
 	if (plan->pixsize_x_rad != plan->pixsize_y_rad)
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
@@ -510,7 +325,10 @@ sdp_Gridder* sdp_gridder_create_plan(
 		
 	sdp_gridder_check_plan(plan, status);
     if (*status) return NULL;
-	
+    
+   	sdp_gridder_log_plan(plan, status);
+    if (*status) return NULL;
+
     // Generate Gauss Legendre kernel for convolution correction.
     double *quadrature_kernel, *quadrature_nodes, *quadrature_weights;
     double *conv_corr_kernel;
@@ -521,18 +339,6 @@ sdp_Gridder* sdp_gridder_create_plan(
     generate_gauss_legendre_conv_kernel(plan->image_size, plan->grid_size, plan->support, plan->beta,
             quadrature_kernel, quadrature_nodes, quadrature_weights,
             conv_corr_kernel);
-
-	if (0) 
-	{
-		//const double* test = (const double*)sdp_mem_data_const(h_conv_corr_kernel);
-		//for (size_t i = 0; i < QUADRATURE_SUPPORT_BOUND; i++)
-		{			
-			// printf("quadrature_weights[%li] = [%.12e]\n", i, quadrature_weights[i]);
-	//		printf("h_conv_corr_kernel[%li] = [%.12e]\n", i, test[i]);
-		}
-		
-		// printf("conv_corr_norm_factor = [%.12e]\n", conv_corr_norm_factor);
-	}
 	
     // Need to determine normalisation factor for scaling runtime calculated
     // conv correction values for coordinate n (where n = sqrt(1 - l^2 - m^2) - 1)
@@ -629,12 +435,14 @@ sdp_Gridder* sdp_gridder_create_plan(
 }
 
 void sdp_gridder_ms2dirty(
+    sdp_Gridder* plan,
+
 	const sdp_Mem* uvw,
 	const sdp_Mem* freq_hz,
 	const sdp_Mem* vis,
 	const sdp_Mem* weight,
           sdp_Mem *dirty_image,
-    sdp_Gridder* plan,
+
     sdp_Error* status
 )
 {
@@ -801,14 +609,15 @@ void sdp_gridder_ms2dirty(
     }
 }
 
-
 void sdp_gridder_dirty2ms(
+    sdp_Gridder* plan,
+    
 	const sdp_Mem* uvw,
 	const sdp_Mem* freq_hz,
 	      sdp_Mem* vis,
 	const sdp_Mem* weight,
 		  sdp_Mem *dirty_image, // even though this is an input, it is modified in place so can't be constant
-    sdp_Gridder* plan,
+
     sdp_Error* status
 )
 {
@@ -829,8 +638,6 @@ void sdp_gridder_dirty2ms(
     const sdp_MemType vis_type = sdp_mem_type(vis);
 	//SDP_LOG_DEBUG("vis_type is %#06x", vis_type);
 	
-    //const int max_rows_per_chunk = 2000000 / num_chan;
-    //const int max_rows_per_chunk = plan->num_rows;
     const int chunk_size = plan->num_rows;
     const int num_w_grids_batched = 1; // fixed, don't change this!!
     const int coord_type = sdp_mem_type(uvw);

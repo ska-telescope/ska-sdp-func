@@ -54,22 +54,22 @@ sdp_Gridder* sdp_gridder_create_plan(
  * @param status Error status.
  */
 void sdp_gridder_ms2dirty(
+        sdp_Gridder* plan,
         const sdp_Mem* uvw,
         const sdp_Mem* freq_hz,
         const sdp_Mem* vis,
         const sdp_Mem* weight,
               sdp_Mem *dirty_image,
-        sdp_Gridder* plan,
         sdp_Error* status
     );
 
 void sdp_gridder_dirty2ms(
+        sdp_Gridder* plan,
         const sdp_Mem* uvw,
         const sdp_Mem* freq_hz,
               sdp_Mem* vis,
         const sdp_Mem* weight,
               sdp_Mem *dirty_image,   // even though this is an input, it is modified in place so can't be constant
-        sdp_Gridder* plan,
         sdp_Error* status
     );
 
