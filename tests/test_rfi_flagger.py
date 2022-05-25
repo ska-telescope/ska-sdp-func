@@ -13,7 +13,15 @@ def threshold_calc(initial_value, rho, seq_lengths):
     return thresholds
 
 
-def data_preparation(spectro, flags, threshold, num_timesamples, num_channels, num_samples, num_baselines):
+def data_preparation(
+    spectro,
+    flags,
+    threshold,
+    num_timesamples,
+    num_channels,
+    num_samples,
+    num_baselines,
+):
     for i in range(num_samples):
         time = numpy.random.randint(0, num_timesamples - 1)
         freq = numpy.random.randint(0, num_channels - 1)
@@ -38,15 +46,27 @@ def test_rfi_flagger():
     thresholds = threshold_calc(initial_threshold, rho1, sequence_lengths)
 
     # Initialise numpy arrays
-    spectrogram = numpy.zeros(
-            [num_timesamples, num_baselines, num_channels, num_polarisations]) + 0j
+    spectrogram = (
+        numpy.zeros(
+            [num_timesamples, num_baselines, num_channels, num_polarisations]
+        )
+        + 0j
+    )
     flags_by_algo = numpy.zeros(spectrogram.shape, dtype=numpy.int32)
     flags_as_expected = numpy.zeros(spectrogram.shape, dtype=numpy.int32)
 
     data_preparation(
-            spectrogram, flags_as_expected, thresholds[0],
-            num_timesamples, num_channels, num_samples, num_baselines)
-    sum_threshold_rfi_flagger(spectrogram, thresholds, flags_by_algo, max_sequence_length)
+        spectrogram,
+        flags_as_expected,
+        thresholds[0],
+        num_timesamples,
+        num_channels,
+        num_samples,
+        num_baselines,
+    )
+    sum_threshold_rfi_flagger(
+        spectrogram, thresholds, flags_by_algo, max_sequence_length
+    )
 
     print(numpy.sum(flags_by_algo), "   ", numpy.sum(flags_as_expected))
     numpy.testing.assert_array_equal(flags_by_algo, flags_as_expected)

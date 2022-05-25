@@ -11,7 +11,7 @@ class Error:
         3: "Unsupported data type(s)",
         4: "Memory allocation failure",
         5: "Memory copy failure",
-        6: "Memory location mismatch"
+        6: "Memory location mismatch",
     }
 
     def __init__(self):

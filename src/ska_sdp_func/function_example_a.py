@@ -6,8 +6,8 @@ from .utility import Error, Lib, Mem
 
 
 class FunctionExampleA:
-    """Processing function example A.
-    """
+    """Processing function example A."""
+
     class Handle(ctypes.Structure):
         pass
 
@@ -31,19 +31,18 @@ class FunctionExampleA:
             ctypes.c_int32,
             ctypes.c_int32,
             ctypes.c_float,
-            Error.handle_type()
+            Error.handle_type(),
         ]
         self._handle = function_create(
             ctypes.c_int(par_a),
             ctypes.c_int(par_b),
             ctypes.c_float(par_c),
-            error_status.handle()
+            error_status.handle(),
         )
         error_status.check()
 
     def __del__(self):
-        """Releases handle to the processing function.
-        """
+        """Releases handle to the processing function."""
         if self._handle:
             function_free = Lib.handle().sdp_function_example_a_free_plan
             function_free.argtypes = [FunctionExampleA.handle_type()]
@@ -85,11 +84,7 @@ class FunctionExampleA:
         function_exec.argtypes = [
             FunctionExampleA.handle_type(),
             Mem.handle_type(),
-            Error.handle_type()
+            Error.handle_type(),
         ]
-        function_exec(
-            self._handle,
-            mem_output.handle(),
-            error_status.handle()
-        )
+        function_exec(self._handle, mem_output.handle(), error_status.handle())
         error_status.check()

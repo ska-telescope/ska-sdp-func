@@ -6,8 +6,8 @@ from .utility import Error, Lib, Mem
 
 
 class Fft:
-    """Interface to SDP FFT.
-    """
+    """Interface to SDP FFT."""
+
     class Handle(ctypes.Structure):
         pass
 
@@ -45,20 +45,19 @@ class Fft:
             Mem.handle_type(),
             ctypes.c_int32,
             ctypes.c_int32,
-            Error.handle_type()
+            Error.handle_type(),
         ]
         self._handle = function_create(
             mem_input.handle(),
             mem_output.handle(),
             ctypes.c_int32(num_dims_fft),
             ctypes.c_int32(is_forward),
-            error_status.handle()
+            error_status.handle(),
         )
         error_status.check()
 
     def __del__(self):
-        """Releases handle to the processing function.
-        """
+        """Releases handle to the processing function."""
         if self._handle:
             function_free = Lib.handle().sdp_fft_free
             function_free.argtypes = [Fft.handle_type()]
@@ -105,12 +104,12 @@ class Fft:
             Fft.handle_type(),
             Mem.handle_type(),
             Mem.handle_type(),
-            Error.handle_type()
+            Error.handle_type(),
         ]
         function_exec(
             self._handle,
             mem_input.handle(),
             mem_output.handle(),
-            error_status.handle()
+            error_status.handle(),
         )
         error_status.check()

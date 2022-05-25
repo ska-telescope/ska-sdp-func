@@ -41,7 +41,7 @@ class Mem:
             ctypes.c_int32,
             ctypes.POINTER(ctypes.c_int64),
             ctypes.POINTER(ctypes.c_int64),
-            Error.handle_type()
+            Error.handle_type(),
         ]
         mem_set_read_only = Lib.handle().sdp_mem_set_read_only
         mem_set_read_only.argtypes = [Mem.handle_type(), ctypes.c_int32]
@@ -70,7 +70,7 @@ class Mem:
                 obj.ndim,
                 shape,
                 strides,
-                error_status.handle()
+                error_status.handle(),
             )
             mem_set_read_only(self._handle, not obj.flags.writeable)
         elif cupy:
@@ -98,7 +98,7 @@ class Mem:
                     obj.ndim,
                     shape,
                     strides,
-                    error_status.handle()
+                    error_status.handle(),
                 )
                 # cupy doesn't appear to have a "writeable" flag.
                 mem_set_read_only(self._handle, 0)

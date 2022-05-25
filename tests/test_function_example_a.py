@@ -14,5 +14,5 @@ def test_function_example_a():
     function_example_a = FunctionExampleA(a, b, c)
 
     # Run function_example_a
-    output_vector = numpy.zeros(a*b, dtype=numpy.float32)
+    output_vector = numpy.zeros(a * b, dtype=numpy.float32)
     function_example_a.exec(output_vector)

@@ -46,13 +46,13 @@ def sum_threshold_rfi_flagger(vis, thresholds, flags, max_sequence_length):
         Mem.handle_type(),
         Mem.handle_type(),
         ctypes.c_int64,
-        Error.handle_type()
+        Error.handle_type(),
     ]
     lib_rfi_flagger(
         mem_vis.handle(),
         mem_thresholds.handle(),
         mem_flags.handle(),
         ctypes.c_int64(max_sequence_length),
-        error_status.handle()
+        error_status.handle(),
     )
     error_status.check()

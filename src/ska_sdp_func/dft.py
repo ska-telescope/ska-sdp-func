@@ -56,13 +56,13 @@ def dft_point_v00(source_directions, source_fluxes, uvw_lambda, vis):
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Error.handle_type()
+        Error.handle_type(),
     ]
     lib_dft(
         mem_source_directions.handle(),
         mem_source_fluxes.handle(),
         mem_uvw_lambda.handle(),
         mem_vis.handle(),
-        error_status.handle()
+        error_status.handle(),
     )
     error_status.check()
