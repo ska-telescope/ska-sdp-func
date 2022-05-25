@@ -37,7 +37,6 @@ def test_rfi_flagger():
     num_polarisations = 4
     num_samples = 20
     max_sequence_length = 1
-    num_sequence_el = 1
     sequence_lengths = numpy.array([1], dtype=numpy.int32)
     rho1 = 1.5
 
