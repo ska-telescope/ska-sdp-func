@@ -1,6 +1,9 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Module for example function."""
+
 from .utility import Error, Lib, Mem
+
 
 def vector_add(input_a, input_b, output):
     """
@@ -28,12 +31,12 @@ def vector_add(input_a, input_b, output):
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Error.handle_type()
+        Error.handle_type(),
     ]
     lib_vector_add(
         mem_input_a.handle(),
         mem_input_b.handle(),
         mem_output.handle(),
-        error_status.handle()
+        error_status.handle(),
     )
     error_status.check()

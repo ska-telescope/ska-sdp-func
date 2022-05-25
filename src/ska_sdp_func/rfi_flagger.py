@@ -1,6 +1,9 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Module for RFI flagging functions."""
+
 import ctypes
+
 from .utility import Error, Lib, Mem
 
 
@@ -45,13 +48,13 @@ def sum_threshold_rfi_flagger(vis, thresholds, flags, max_sequence_length):
         Mem.handle_type(),
         Mem.handle_type(),
         ctypes.c_int64,
-        Error.handle_type()
+        Error.handle_type(),
     ]
     lib_rfi_flagger(
         mem_vis.handle(),
         mem_thresholds.handle(),
         mem_flags.handle(),
         ctypes.c_int64(max_sequence_length),
-        error_status.handle()
+        error_status.handle(),
     )
     error_status.check()

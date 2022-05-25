@@ -1,6 +1,9 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Test example function."""
+
 import numpy
+
 try:
     import cupy
 except ImportError:
@@ -10,6 +13,7 @@ from ska_sdp_func import vector_add
 
 
 def test_vector_add():
+    """Test vector addition function."""
     # Run vector add test on CPU, using numpy arrays.
     input_a = numpy.random.random_sample([1000])
     input_b = numpy.random.random_sample(input_a.shape)
@@ -28,5 +32,6 @@ def test_vector_add():
         vector_add(input_a_gpu, input_b_gpu, output_vector_gpu)
         output_gpu_check = cupy.asnumpy(output_vector_gpu)
         numpy.testing.assert_array_almost_equal(
-            output_gpu_check, input_a + input_b)
+            output_gpu_check, input_a + input_b
+        )
         print("Vector addition on GPU: Test passed")
