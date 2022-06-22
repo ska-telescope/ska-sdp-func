@@ -35,49 +35,49 @@ Functions which would be working with visibilities should use these input/output
   - **Dimensions:** (time samples, baselines, channels)
     
   
-- *Channel start:* ``double channel_start`` 
+- *Channel start:* ``double channel_start`` [Hz]
 
   - **Type:** real-valued variable
     
   
-- *Channel step:* ``double channel_step`` 
+- *Channel step:* ``double channel_step`` [Hz]
 
   - **Type:** real-valued array
     
   
-- *Time centroids:* ``sdp_Mem *time_centroids``
+- *Time centroids:* ``sdp_Mem *time_centroids`` [s]
  
   - **Type:** real-valued array
   
   - **Dimensions:** (time samples, baselines, channels)
     
   
-- *Freq centroids:* ``sdp_Mem *freq_centroid``
+- *Freq centroids:* ``sdp_Mem *freq_centroid`` [Hz]
  
   - **Type:** real-valued array
   
   - **Dimensions:** (time samples, baselines, channels)
   
   
-- *Exposure:* ``sdp_Mem *exposure``
- 
-  - **Type:** real-valued array
-  
-  - **Dimensions:** (time samples, baselines, channels)
-    
-  
-- *Bandwidth:* ``sdp_Mem *bandwidth``
+- *Exposure:* ``sdp_Mem *exposure`` [s]
  
   - **Type:** real-valued array
   
   - **Dimensions:** (time samples, baselines, channels)
     
-- *Phase centre (radians):* ``double phasecentre_ra`` 
+  
+- *Bandwidth:* ``sdp_Mem *bandwidth`` [Hz]
+ 
+  - **Type:** real-valued array
+  
+  - **Dimensions:** (time samples, baselines, channels)
+    
+- *Phase centre Right Ascension:* ``double phasecentre_ra_rad`` [radians]
 
   - **Type:** real-valued variable
     
   
-- *Phase centre (degrees):* ``double phasecentre_dec`` 
+- *Phase centre Declination:* ``double phasecentre_dec_rad`` [radians] 
 
   - **Type:** real-valued array
     
