@@ -16,8 +16,8 @@ extern "C" {
 /**
  * @brief Degrid visibilities. 
  * 
- * @param grid Input grid data 
- * @param vis_coordinates 3D floating-point u,v,w coordinates of the visibilities
+ * @param grid Input grid data with shape [chan][w][v][u][pol]
+ * @param uvw u,v,w coordinates of the visibilities with shape [time][baseline][chan][uvw]
  * @param uv_kernel u,v plane kernel
  * @param w_kernel w plane Kernel
  * @param uv_kernel_oversampling U,V plane kernel oversampling
@@ -25,12 +25,12 @@ extern "C" {
  * @param theta Conversion parameter from uv coordinates to xy coordinates x=u*theta
  * @param wstep, Conversion parameter from w coordinates to z coordinates z=w*wstep 
  * @param conjugate  Whether to generate conjugated visibilities
- * @param vis Output Visabilities
+ * @param vis Output Visabilities with shape [time][baseline][chan][pol]
  * @param status Error status.
  */
-void sdp_degridding(
+void sdp_degrid_uvw_custom(
         const sdp_Mem* grid,
-        const sdp_Mem* vis_coordinates,
+        const sdp_Mem* uvw,
         const sdp_Mem* uv_kernel,
         const sdp_Mem* w_kernel,
         const int64_t uv_kernel_oversampling,

@@ -3,9 +3,9 @@
 import ctypes
 from .utility import Error, Lib, Mem
 
-def degridding(
+def degrid_uvw_custom(
     grid,
-    vis_coordinates,
+    uvw,
     uv_kernel,
     w_kernel,
     uv_kernel_oversampling,
@@ -20,10 +20,10 @@ def degridding(
 
     Degrids a previously gridded visabilty, based on the UV and W kernel input and returns the result.
 
-    :param grid: 3D floating-point u,v,w coordinates of the visibilities
+    :param grid: Input grid data with shape [chan][w][v][u][pol]
     :type grid: numpy.ndarray or cupy.ndarray
 
-    :param vis_coordinates: 3D floating-point u,v,w coordinates of the visibilities
+    :param uvw: u,v,w coordinates of the visibilities with shape [time][baseline][chan][uvw]
     :type vis_coordinates: numpy.ndarray or cupy.ndarray
     
     :param uv_kernel: u,v plane kernel
@@ -47,16 +47,16 @@ def degridding(
     :param conjugate: Whether to generate conjugated visibilities
     :type conjugate: bool
 
-    :param vis: Output Visabilities
+    :param vis: Output Visabilities with shape [time][baseline][chan][pol]
     :type vis: numpy.ndarray or cupy.ndarray
     """
     mem_grid = Mem(grid)
-    mem_vis_coordinates = Mem(vis_coordinates)
+    mem_vis_coordinates = Mem(uvw)
     mem_uv_kernel = Mem(uv_kernel)
     mem_w_kernel = Mem(w_kernel)
     mem_vis = Mem(vis)
     error_status = Error()
-    lib_degridding = Lib.handle().sdp_degridding
+    lib_degridding = Lib.handle().sdp_degrid_uvw_custom
     lib_degridding.argtypes = [
         Mem.handle_type(),
         Mem.handle_type(),
