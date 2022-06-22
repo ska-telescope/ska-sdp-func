@@ -17,6 +17,7 @@ SDP Processing Function Library
   kernels
   errors
   logging
+  data_models
 
 .. toctree::
   :caption: Processing functions
