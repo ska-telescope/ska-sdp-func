@@ -1,10 +1,10 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#ifndef SKA_SDP_PROC_DEGRIDDING_H_
-#define SKA_SDP_PROC_DEGRIDDING_H_
+#ifndef SKA_SDP_PROC_DEGRID_UVW_CUSTOM_H_
+#define SKA_SDP_PROC_DEGRID_UVW_CUSTOM_H_
 
 /**
- * @file sdp_degridding.h
+ * @file sdp_degrid_uvw_custom.h
  */
 
 #include "ska-sdp-func/utility/sdp_mem.h"
