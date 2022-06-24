@@ -128,7 +128,7 @@ Functions which would be working on grids should use these input/outputs. Only p
   - **Type:** real-valued
   
 
-- *Phase centre Right Ascension and Declination:* ``double phasecentre_ra_rad, double phasecentre_dec_rad`` [radians]
+- *Phase centre Right Ascension and Declination:* ``double phase_centre_ra_rad, double phase_centre_dec_rad`` [radians]
 
   - **Type:** real-valued variable
     
