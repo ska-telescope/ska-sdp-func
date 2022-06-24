@@ -122,8 +122,6 @@ Functions which would be working on grids should use these input/outputs. Only p
 
   - **Type:** real-valued
   
-  - **Note:** Do we want a sdp_Mem array for that? It would deal with the precision.
-  
   
 - *Grid offset:* ``double offset_u, double offset_v, double offset_w``
 
