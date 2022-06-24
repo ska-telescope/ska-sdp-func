@@ -25,7 +25,7 @@ Functions which would be working with visibilities should use these input/output
 
   - **Type:** real-valued array
 
-  - **Dimensions:** (time samples, baselines, channels, 3)
+  - **Dimensions:** (time samples, baselines, 3)
     
   
 - *Weights:* ``sdp_Mem *weights`` 
@@ -158,7 +158,7 @@ Functions which would be working on UVW coordinates should use these input/outpu
 
   - **Type:** real-valued array
 
-  - **Dimensions:** (time samples, baselines, channels, 3)
+  - **Dimensions:** (time samples, baselines, 3)
     
   
 - *Time:* ``double time_start, double time_step``
@@ -197,8 +197,6 @@ Functions which would be working on UVW coordinates should use these input/outpu
 - *Coordinate step:* ``double dl, double dm``
 
   - **Type:** real-valued
-  
-  - **Note:** Do we want a sdp_Mem array for that? It would deal with the precision.
   
 
 - *Phase centre Right Ascension and Declination:* ``double phasecentre_ra_rad, double phasecentre_dec_rad`` [radians]
