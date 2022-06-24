@@ -78,7 +78,7 @@ Functions which would be working with visibilities should use these input/output
   - **Type:** real-valued variable
     
   
-- *Phase centre Declination:* ``double phasecentre_dec_rad`` [radians] 
+- *Phase centre Declination:* ``double phase_centre_dec_rad`` [radians] 
 
   - **Type:** real-valued array
     
