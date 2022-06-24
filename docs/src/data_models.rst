@@ -127,8 +127,6 @@ Functions which would be working on grids should use these input/outputs. Only p
 
   - **Type:** real-valued
   
-  - **Note:** Do we want a sdp_Mem array for that? It would deal with the precision.
-
 
 - *Phase centre Right Ascension and Declination:* ``double phasecentre_ra_rad, double phasecentre_dec_rad`` [radians]
 
