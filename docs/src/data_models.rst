@@ -73,7 +73,7 @@ Functions which would be working with visibilities should use these input/output
   - **Dimensions:** (time samples, baselines, channels)
   
   
-- *Phase centre Right Ascension:* ``double phasecentre_ra_rad`` [radians]
+- *Phase centre Right Ascension:* ``double phase_centre_ra_rad`` [radians]
 
   - **Type:** real-valued variable
     
