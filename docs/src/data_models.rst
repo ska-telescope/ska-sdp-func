@@ -8,7 +8,7 @@
 Data Models
 ***********
 
-All functions in the processing function library should use these data models for the input and output variables. When referring to the dimensions [X][Y][Z] the Z dimension is the fastest varying while X is the slowest varying dimension. 
+All functions in the processing function library should use these data models for the input and output variables. When referring to the dimensions (X, Y, Z) the Z dimension is the fastest varying while X is the slowest varying dimension. 
  
 Visibility functions
 ====================
