@@ -111,7 +111,7 @@ Grid functions
 Functions which would be working on grids should use these input/outputs. Only parameters which are used be the function should be passed, not all of them.
 
 
-- *Grid:* ``sdp_Mem *grid`` // double complex [chan][w][v][u][polar]
+- *Grid:* ``sdp_Mem *grid``
 
   - **Type:** real-valued array
   
