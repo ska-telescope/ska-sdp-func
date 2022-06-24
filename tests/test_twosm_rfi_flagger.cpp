@@ -248,7 +248,7 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Wrong flags type", false, false,
-                      SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_FLOAT,SDP_MEM_INT,
+                      SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,SDP_MEM_FLOAT,
                       SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
                       &status);
         assert(status == SDP_ERR_DATA_TYPE);
@@ -265,6 +265,14 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Wrong threshold type", false, false,
                       SDP_MEM_COMPLEX_FLOAT, SDP_MEM_DOUBLE, SDP_MEM_INT, SDP_MEM_INT,
+                      SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
+                      &status);
+        assert(status == SDP_ERR_DATA_TYPE);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("Wrong antennas type", false, false,
+                      SDP_MEM_COMPLEX_FLOAT, SDP_MEM_DOUBLE, SDP_MEM_FLOAT, SDP_MEM_INT,
                       SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
                       &status);
         assert(status == SDP_ERR_DATA_TYPE);
