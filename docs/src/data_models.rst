@@ -21,7 +21,7 @@ Functions which would be working with visibilities should use these input/output
   - **Dimensions:** (time samples, baselines, channels, polarizations)
     
   
-- *UVW coordinates:* ``sdp_Mem *uvw`` 
+- *UVW coordinates:* ``sdp_Mem *uvw`` [metres]
 
   - **Type:** real-valued array
 
