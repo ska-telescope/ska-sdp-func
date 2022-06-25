@@ -80,7 +80,7 @@ Functions which would be working with visibilities should use these input/output
   
 - *Phase centre Declination:* ``double phase_centre_dec_rad`` [radians] 
 
-  - **Type:** real-valued array
+  - **Type:** real-valued variable
     
   
 - *Baseline metadata:* ``sdp_Table *bl``
@@ -113,7 +113,7 @@ Functions which would be working on grids should use these input/outputs. Only p
 
 - *Grid:* ``sdp_Mem *grid``
 
-  - **Type:** real-valued array
+  - **Type:** complex-valued array
   
   - **Dimensions:** (channels, w, v, u, polarizations)
 
