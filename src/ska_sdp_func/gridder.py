@@ -40,7 +40,8 @@ class Gridder:
         ==========
         uvw: cupy.ndarray((num_rows, 3), dtype=numpy.float32 or numpy.float64)
             (u,v,w) coordinates.
-        freq_hz: cupy.ndarray((num_chan,), dtype=numpy.float32 or numpy.float64)
+        freq_hz: cupy.ndarray((num_chan,), dtype=numpy.float32 or
+            numpy.float64)
             Channel frequencies.
         vis: cupy.ndarray((num_rows, num_chan), dtype=numpy.complex64 or
             numpy.complex128)

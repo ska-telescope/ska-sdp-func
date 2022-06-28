@@ -82,7 +82,8 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
             )
         )
 
-        # np.save(dirty_image_file + "x", dirty_image)  # the x stops the test file been overwritten
+        # np.save(dirty_image_file + "x", dirty_image)
+        # the x stops the test file been overwritten
         expected_dirty_image = np.load(dirty_image_file)
 
         pass_threshold = 1e-5 if do_single else 1e-12
@@ -176,7 +177,8 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
             "SP" if do_single else "DP",
         )
 
-        # np.save(test_file + "x", vis)  # the x stops the test file been overwritten
+        # np.save(test_file + "x", vis)
+        # the x stops the test file been overwritten
         test_output = np.load(test_file)
 
         this_rrmse = rrmse(vis, test_output)
@@ -217,7 +219,7 @@ def atest_gridder_plan():
         weight_gpu = cupy.asarray(weight)
         dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)
 
-        ## tests for plan creation
+        # # tests for plan creation
 
         # test for memory mismatch on inputs
         error_string = "Memory location mismatch"
@@ -372,7 +374,7 @@ def atest_gridder_plan():
             )
         # should test epsilon!!
 
-        ## tests for exec()
+        # # tests for exec()
 
         # Create gridder, need to create a valid gridder!
         gridder = Gridder(
@@ -388,12 +390,13 @@ def atest_gridder_plan():
 
         gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu)
 
-        # this checks that sdp_gridder_check_inputs() is being called, but could do exhaustive checking like above...
+        # this checks that sdp_gridder_check_inputs() is being called,
+        # but could do exhaustive checking like above...
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
             gridder.exec(uvw_gpu, freqs, vis_gpu, weight_gpu, dirty_image_gpu)
 
-        ## test dirty_image is correct
+        # # test dirty_image is correct
 
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
