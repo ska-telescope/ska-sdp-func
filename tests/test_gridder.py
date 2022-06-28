@@ -5,13 +5,11 @@ import pytest
 
 try:
     import cupy
-
-    print("cupy imported successfully.")
 except ImportError:
     cupy = None
 
-from ska_sdp_func.utility import Error
 from ska_sdp_func import Gridder
+from ska_sdp_func.utility import Error
 
 
 def rrmse(x, y):
