@@ -10,7 +10,6 @@ import numpy as np
 import pytest
 
 from ska_sdp_func import Gridder
-# from ska_sdp_func.utility import Error
 
 
 def rrmse(x, y):
