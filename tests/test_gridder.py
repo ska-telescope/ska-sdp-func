@@ -9,7 +9,7 @@ except ImportError:
     cupy = None
 
 from ska_sdp_func import Gridder
-from ska_sdp_func.utility import Error
+# from ska_sdp_func.utility import Error
 
 
 def rrmse(x, y):
@@ -123,7 +123,7 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
     # dirty_image *= 1.00001
 
     # parameters
-    im_size = 1024
+    # im_size = 1024
     pixel_size_deg = 1.94322419749866394e-02
     pixel_size_rad = pixel_size_deg * np.pi / 180.0
     # print(pixel_size_rad)
