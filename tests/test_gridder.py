@@ -1,12 +1,13 @@
 # See the LICENSE file at the top-level directory of this distribution.
-
-import numpy as np
-import pytest
+""" Module to test gridding functions. """
 
 try:
     import cupy
 except ImportError:
     cupy = None
+
+import numpy as np
+import pytest
 
 from ska_sdp_func import Gridder
 # from ska_sdp_func.utility import Error
