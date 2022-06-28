@@ -1,25 +1,38 @@
 # See the LICENSE file at the top-level directory of this distribution.
+""" Module for gridding functions. """
 
 import ctypes
-import numpy as np
 
 try:
     import cupy
 except ImportError:
     cupy = None
 
+import numpy as np
+
 from .utility import Error, Lib, Mem
 
 
 class Gridder:
-    """Processing function Gridder.
-    """
-    class Handle(ctypes.Structure):
-        pass
+    """Processing function Gridder."""
 
-    def __init__(self, uvw, freq_hz, vis, weight, dirty_image, pixel_size_x_rad, pixel_size_y_rad, epsilon: float,
-                 do_w_stacking: bool):
-        """Creates a plan for (de)gridding using the supplied parameters and input and output buffers.
+    class Handle(ctypes.Structure):
+        """Class handle for use by ctypes."""
+
+    def __init__(
+        self,
+        uvw,
+        freq_hz,
+        vis,
+        weight,
+        dirty_image,
+        pixel_size_x_rad,
+        pixel_size_y_rad,
+        epsilon: float,
+        do_w_stacking: bool,
+    ):
+        """Creates a plan for (de)gridding using the supplied parameters and
+        input and output buffers.
 
         This currently only supports processing on a GPU.
 
@@ -29,17 +42,20 @@ class Gridder:
             (u,v,w) coordinates.
         freq_hz: cupy.ndarray((num_chan,), dtype=numpy.float32 or numpy.float64)
             Channel frequencies.
-        vis: cupy.ndarray((num_rows, num_chan), dtype=numpy.complex64 or numpy.complex128)
+        vis: cupy.ndarray((num_rows, num_chan), dtype=numpy.complex64 or
+            numpy.complex128)
             The input/output visibility data.
             Its data type determines the precision used for the (de)gridding.
         weight: cupy.ndarray((num_rows, num_chan), same precision as **vis**)
             Its values are used to multiply the input.
-        dirty_image: cupy.ndarray((num_pix, num_pix), dtype=numpy.float32 or numpy.float64)
+        dirty_image: cupy.ndarray((num_pix, num_pix), dtype=numpy.float32 or
+            numpy.float64)
             The input/output dirty image, **must be square**.
         pixel_size_x_rad: float
             Angular x pixel size (in radians) of the dirty image.
         pixel_size_y_rad: float
-            Angular y pixel size (in radians) of the dirty image (must be the same as pixel_size_x_rad).
+            Angular y pixel size (in radians) of the dirty image (must be the
+            same as pixel_size_x_rad).
         epsilon: float
             Accuracy at which the computation should be done.
             Must be larger than 2e-13.
@@ -79,7 +95,7 @@ class Gridder:
             ctypes.c_double,
             ctypes.c_double,  # 10
             ctypes.c_bool,
-            Error.handle_type()
+            Error.handle_type(),
         ]
         self._handle = function_create(
             mem_uvw.handle(),
@@ -93,13 +109,12 @@ class Gridder:
             ctypes.c_double(min_abs_w),
             ctypes.c_double(max_abs_w),
             ctypes.c_bool(do_w_stacking),  # 10
-            error_status.handle()
+            error_status.handle(),
         )
         error_status.check()
 
     def __del__(self):
-        """Releases handle to the processing function.
-        """
+        """Releases handle to the processing function."""
         if self._handle:
             function_free = Lib.handle().sdp_gridder_free_plan
             function_free.argtypes = [Gridder.handle_type()]
@@ -117,18 +132,18 @@ class Gridder:
 
     @staticmethod
     def get_w_range(uvw, freq_hz):
-
-        if type(uvw) == np.ndarray:
+        """Calculate w-range from UVW-coordinates."""
+        if isinstance(uvw, np.ndarray):
             min_abs_w = np.amin(np.abs(uvw[:, 2]))
             max_abs_w = np.amax(np.abs(uvw[:, 2]))
-        elif cupy and type(uvw) == cupy.ndarray:
+        elif cupy and isinstance(uvw, cupy.ndarray):
             min_abs_w = cupy.amin(cupy.abs(uvw[:, 2]))
             max_abs_w = cupy.amax(cupy.abs(uvw[:, 2]))
         else:
             print(f"Unsupported uvw type of {type(uvw)}.")
             return -1, -1
 
-        min_abs_w *= freq_hz[ 0] / 299792458.0
+        min_abs_w *= freq_hz[0] / 299792458.0
         max_abs_w *= freq_hz[-1] / 299792458.0
 
         return min_abs_w, max_abs_w
@@ -172,7 +187,7 @@ class Gridder:
             Mem.handle_type(),
             Mem.handle_type(),
             Mem.handle_type(),
-            Error.handle_type()
+            Error.handle_type(),
         ]
         function_exec(
             self._handle,
@@ -181,7 +196,7 @@ class Gridder:
             mem_vis.handle(),
             mem_weight.handle(),
             mem_dirty_image.handle(),
-            error_status.handle()
+            error_status.handle(),
         )
         error_status.check()
 
@@ -213,7 +228,7 @@ class Gridder:
             Mem.handle_type(),
             Mem.handle_type(),
             Mem.handle_type(),
-            Error.handle_type()
+            Error.handle_type(),
         ]
         function_exec(
             self._handle,
@@ -222,6 +237,6 @@ class Gridder:
             mem_vis.handle(),
             mem_weight.handle(),
             mem_dirty_image.handle(),
-            error_status.handle()
+            error_status.handle(),
         )
         error_status.check()
