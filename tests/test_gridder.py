@@ -12,11 +12,13 @@ import pytest
 from ska_sdp_func import Gridder
 
 
-def rrmse(x, y):
-    return np.linalg.norm(x - y) / np.linalg.norm(y)
+def rrmse(in_x, in_y):
+    """Calculates the relative RMS error between the inputs."""
+    return np.linalg.norm(in_x - in_y) / np.linalg.norm(in_y)
 
 
 def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
+    """Runs ms2dirty for tests below."""
     print(" ")  # just for separation of debug output
     print(" ")
 
@@ -38,6 +40,9 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
     pixel_size_deg = 1.94322419749866394e-02
     pixel_size_rad = pixel_size_deg * np.pi / 180.0
     # print(pixel_size_rad)
+
+    this_rrmse = 1
+    pass_threshold = 0
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
@@ -92,10 +97,11 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
 
         print("RRMSE of dirty images is %e" % this_rrmse)
 
-        return this_rrmse, pass_threshold
+    return this_rrmse, pass_threshold
 
 
 def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
+    """Runs dirty2ms for tests below."""
     print(" ")  # just for separation of debug output
     print(" ")
 
@@ -127,6 +133,9 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
     pixel_size_deg = 1.94322419749866394e-02
     pixel_size_rad = pixel_size_deg * np.pi / 180.0
     # print(pixel_size_rad)
+
+    this_rrmse = 1
+    pass_threshold = 0
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
@@ -186,10 +195,11 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
 
         pass_threshold = 1e-5 if do_single else 1e-12
 
-        return this_rrmse, pass_threshold
+    return this_rrmse, pass_threshold
 
 
 def atest_gridder_plan():
+    """Test"""
     print(" ")  # just for separation of debug output
     print(" ")
 
@@ -200,7 +210,7 @@ def atest_gridder_plan():
     uvw = test_data["uvw"]
     weight = np.ones(vis.shape)
     # parameters
-    imSize = 1024
+    im_size = 1024
     pixsize_deg = 1.94322419749866394e-02
     pixsize_rad = pixsize_deg * np.pi / 180.0
 
@@ -208,7 +218,7 @@ def atest_gridder_plan():
 
     epsilon = 1e-5
 
-    dirty_image = np.zeros([imSize, imSize], dtype=np.float64)
+    dirty_image = np.zeros([im_size, im_size], dtype=np.float64)
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
@@ -217,7 +227,7 @@ def atest_gridder_plan():
         freqs_gpu = cupy.asarray(freqs)
         uvw_gpu = cupy.asarray(uvw)
         weight_gpu = cupy.asarray(weight)
-        dirty_image_gpu = cupy.zeros([imSize, imSize], dtype=np.float64)
+        dirty_image_gpu = cupy.zeros([im_size, im_size], dtype=np.float64)
 
         # # tests for plan creation
 
@@ -410,21 +420,25 @@ def atest_gridder_plan():
         # but could do exhaustive checking like above...
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.exec(uvw_gpu, freqs, vis_gpu, weight_gpu, dirty_image_gpu)
+            gridder.ms2dirty(
+                uvw_gpu, freqs, vis_gpu, weight_gpu, dirty_image_gpu
+            )
 
         # # test dirty_image is correct
 
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image)
+            gridder.ms2dirty(
+                uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image
+            )
 
         error_string = "Unsupported data type\\(s\\)"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.exec(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, vis_gpu)
+            gridder.ms2dirty(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, vis_gpu)
 
         error_string = "Invalid function argument"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.exec(
+            gridder.ms2dirty(
                 uvw_gpu,
                 freqs_gpu,
                 vis_gpu,
@@ -437,6 +451,7 @@ def atest_gridder_plan():
 
 
 def test_get_w_range():
+    """Test."""
     print(" ")  # just for separation of debug output
     print(" ")
 
@@ -486,6 +501,7 @@ def test_get_w_range():
 
 
 def test_ms2dirty_sp_2d():
+    """Test."""
     this_rrmse, pass_threshold = run_ms2dirty(
         do_single=True, do_w_stacking=False
     )
@@ -493,6 +509,7 @@ def test_ms2dirty_sp_2d():
 
 
 def test_ms2dirty_sp_3d():
+    """Test."""
     this_rrmse, pass_threshold = run_ms2dirty(
         do_single=True, do_w_stacking=True
     )
@@ -500,6 +517,7 @@ def test_ms2dirty_sp_3d():
 
 
 def test_ms2dirty_dp_2d():
+    """Test."""
     this_rrmse, pass_threshold = run_ms2dirty(
         do_single=False, do_w_stacking=False, epsilon=1e-12
     )
@@ -507,6 +525,7 @@ def test_ms2dirty_dp_2d():
 
 
 def test_ms2dirty_dp_3d():
+    """Test."""
     this_rrmse, pass_threshold = run_ms2dirty(
         do_single=False, do_w_stacking=True, epsilon=1e-12
     )
@@ -514,6 +533,7 @@ def test_ms2dirty_dp_3d():
 
 
 def test_dirty2ms_sp_2d():
+    """Test."""
     this_rrmse, pass_threshold = run_dirty2ms(
         do_single=True, do_w_stacking=False
     )
@@ -521,6 +541,7 @@ def test_dirty2ms_sp_2d():
 
 
 def test_dirty2ms_sp_3d():
+    """Test."""
     this_rrmse, pass_threshold = run_dirty2ms(
         do_single=True, do_w_stacking=True
     )
@@ -528,6 +549,7 @@ def test_dirty2ms_sp_3d():
 
 
 def test_dirty2ms_dp_2d():
+    """Test."""
     this_rrmse, pass_threshold = run_dirty2ms(
         do_single=False, do_w_stacking=False, epsilon=1e-12
     )
@@ -535,6 +557,7 @@ def test_dirty2ms_dp_2d():
 
 
 def test_dirty2ms_dp_3d():
+    """Test."""
     this_rrmse, pass_threshold = run_dirty2ms(
         do_single=False, do_w_stacking=True, epsilon=1e-12
     )
