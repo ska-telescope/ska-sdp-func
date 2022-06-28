@@ -38,10 +38,10 @@ set(${libname}_TESTS
 )
 
 # Project version.
-set(SDP_FUNC_VERSION_ID "0x000000")
+set(SDP_FUNC_VERSION_ID "0x000003")
 set(SDP_FUNC_VERSION_MAJOR 0)
 set(SDP_FUNC_VERSION_MINOR 0)
-set(SDP_FUNC_VERSION_PATCH 0)
+set(SDP_FUNC_VERSION_PATCH 3)
 set(SDP_FUNC_VERSION_SUFFIX "")
 
 # Add local CMake module path.
