@@ -78,14 +78,15 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
         # Check output
         dirty_image = cupy.asnumpy(dirty_image_gpu)
 
-        dirty_image_file = (
-            "tests/test_data/dirty_image_1024_%.0e_%s_%s.npy"
-            % (
-                1e-5 if do_single else 1e-12,
-                "3D" if do_w_stacking else "2D",
-                "SP" if do_single else "DP",
-            )
-        )
+        dirty_image_file = "tests/test_data/dirty_image_1024_1e-5_3D_SP.npy"
+        # dirty_image_file = (
+        #     "tests/test_data/dirty_image_1024_%.0e_%s_%s.npy"
+        #     % (
+        #         1e-5 if do_single else 1e-12,
+        #         "3D" if do_w_stacking else "2D",
+        #         "SP" if do_single else "DP",
+        #     )
+        # )
 
         # np.save(dirty_image_file + "x", dirty_image)
         # the x stops the test file been overwritten
@@ -95,7 +96,7 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
 
         this_rrmse = rrmse(dirty_image, expected_dirty_image)
 
-        print("RRMSE of dirty images is %e" % this_rrmse)
+        print(f"RRMSE of dirty images is {this_rrmse:e}")
 
     return this_rrmse, pass_threshold
 
@@ -118,11 +119,12 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
         uvw = uvw.astype(np.float32)
         weight = weight.astype(np.float32)
 
-    dirty_image_file = "tests/test_data/dirty_image_1024_%.0e_%s_%s.npy" % (
-        1e-5 if do_single else 1e-12,
-        "3D" if do_w_stacking else "2D",
-        "SP" if do_single else "DP",
-    )
+    dirty_image_file = "tests/test_data/dirty_image_1024_1e-5_3D_SP.npy"
+    # dirty_image_file = "tests/test_data/dirty_image_1024_%.0e_%s_%s.npy" % (
+    #     1e-5 if do_single else 1e-12,
+    #     "3D" if do_w_stacking else "2D",
+    #     "SP" if do_single else "DP",
+    # )
 
     dirty_image = np.load(dirty_image_file)
 
@@ -180,18 +182,20 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
         # Check output
         vis = cupy.asnumpy(vis_gpu)
 
-        test_file = "tests/test_data/vis_1024_%.0e_%s_%s.npy" % (
-            1e-5 if do_single else 1e-12,
-            "3D" if do_w_stacking else "2D",
-            "SP" if do_single else "DP",
-        )
+        test_file = "tests/test_data/vis_1024_1e-5_3D_SP.npy"
+
+        # test_file = "tests/test_data/vis_1024_%.0e_%s_%s.npy" % (
+        #     1e-5 if do_single else 1e-12,
+        #     "3D" if do_w_stacking else "2D",
+        #     "SP" if do_single else "DP",
+        # )
 
         # np.save(test_file + "x", vis)
         # the x stops the test file been overwritten
         test_output = np.load(test_file)
 
         this_rrmse = rrmse(vis, test_output)
-        print("RRMSE of visibilities is %e" % this_rrmse)
+        print(f"RRMSE of visibilities is {this_rrmse:e}")
 
         pass_threshold = 1e-5 if do_single else 1e-12
 
@@ -214,7 +218,7 @@ def atest_gridder_plan():
     pixsize_deg = 1.94322419749866394e-02
     pixsize_rad = pixsize_deg * np.pi / 180.0
 
-    print("pixsize_rad is %.12e" % pixsize_rad)
+    print(f"pixsize_rad is {pixsize_rad:.12e}")
 
     epsilon = 1e-5
 
@@ -466,8 +470,8 @@ def test_get_w_range():
     true_min_abs_w = np.amin(np.abs(uvw[:, 2])) * freq_hz[0] / 299792458.0
     true_max_abs_w = np.amax(np.abs(uvw[:, 2])) * freq_hz[-1] / 299792458.0
 
-    print("min_abs_w is %.12e" % true_min_abs_w)
-    print("max_abs_w is %.12e" % true_max_abs_w)
+    print(f"min_abs_w is {true_min_abs_w:.12e}")
+    print(f"max_abs_w is {true_max_abs_w:.12e}")
 
     # test with numpy arguments
     print("testing numpy arguments...")
