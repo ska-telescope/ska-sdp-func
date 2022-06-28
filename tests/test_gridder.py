@@ -402,8 +402,9 @@ def atest_gridder_plan():
             False,
         )
 
-        gridder.ms2dirty(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu,
-                         dirty_image_gpu)
+        gridder.ms2dirty(
+            uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu
+        )
 
         # this checks that sdp_gridder_check_inputs() is being called,
         # but could do exhaustive checking like above...
