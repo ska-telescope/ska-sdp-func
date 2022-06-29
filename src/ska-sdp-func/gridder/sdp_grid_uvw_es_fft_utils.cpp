@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 
-#include "nifty_utils.h"
+#include "sdp_grid_uvw_es_fft_utils.h"
 
 /**********************************************************************
  * Calculate the n-th Legendre Polynomial P_n at x
