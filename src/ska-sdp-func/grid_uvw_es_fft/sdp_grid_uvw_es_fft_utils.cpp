@@ -73,7 +73,7 @@ double sdp_get_approx_legendre_root(int32_t i, int32_t n)
 double sdp_calculate_legendre_root(int32_t i, int32_t n, double accuracy, double *weight)
 {
     double next_estimate = sdp_get_approx_legendre_root(i, n);
-    double derivative;
+    double derivative = 1.0; // AG: just a dummy value to fix lint warning
     double estimate;
     int32_t iterations = 0;
     do
@@ -86,7 +86,8 @@ double sdp_calculate_legendre_root(int32_t i, int32_t n, double accuracy, double
     while (fdim(next_estimate,estimate)>accuracy && iterations<MAX_NEWTON_RAPHSON_ITERATIONS);
 
     // Gauss-Legendre quadrature weight for x is given by w = 2/((1-x*x)P_n'(x)*P_n'(x))
-    double p_n = sdp_get_legendre(next_estimate, n, &derivative);
+    // double p_n = sdp_get_legendre(next_estimate, n, &derivative);
+    sdp_get_legendre(next_estimate, n, &derivative);  // AG: avoid lint warning
     *weight = 2.0/((1.0-next_estimate*next_estimate)*derivative*derivative);
     return next_estimate;
 }
@@ -134,7 +135,7 @@ void sdp_generate_gauss_legendre_conv_kernel(
     conv_corr_norm_factor *= (double)support;
 
     // Precalculate one side of convolutional correction kernel out to one more than half the image size
-    for (uint32_t l_m = 0; l_m <= image_size / 2; l_m++)
+    for (uint32_t l_m = 0; l_m <= (uint32_t)image_size / 2; l_m++)
     {
         double l_m_norm =  ((double)l_m) * (1.0 / grid_size); // between 0.0 .. 0.5
         double correction = 0.0;
@@ -187,6 +188,9 @@ int sdp_good_size_complex(int n)
 void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_precision, 
 								int &grid_size, int &support, double &beta, sdp_Error* status)
 {
+    if (*status) return;  // AG: temp to silence lint warning
+    *status = SDP_SUCCESS;
+    
 	// getAvailableKernels()
 	const int numKernels = 244;
 	enum {K_support, K_ofactor, K_epsilon, K_beta, K_e0, K_corr_range};
@@ -478,12 +482,13 @@ void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_p
 	//	printf("idx[%2i], ofactors[%2i] = %2i  %.2f\n", i, i, idx[i], ofactors[i]);
 	}
 
-	int min_nu=80000, minnv=0, min_idx=numKernels;
+	//int min_nu=80000, minnv=0, min_idx=numKernels;
+	int min_nu=80000, min_idx=numKernels;
 
 	for (int i=0; i < num_opts; ++i)
 	{
 		int this_idx = idx[i];
-		int support = int(floor(KernelDB[this_idx][K_support]));
+		//int support = int(floor(KernelDB[this_idx][K_support]));
 		//auto nvec = (supp+vlen-1)/vlen;
 		double ofactor = KernelDB[this_idx][K_ofactor];
 		int nu = 2*sdp_good_size_complex(int(image_size*ofactor*0.5)+1);
@@ -520,7 +525,7 @@ void sdp_calculate_support_and_beta(double upsampling, double epsilon, int &supp
     double epssq = epsilon*epsilon;
     if (upsampling >= 2)
     {
-		int N = 16;
+		size_t N = 16;
 		
 		double maxmaperr[16] = {
 			1.00e+08, 0.19e+00, 2.98e-03, 5.98e-05, 1.11e-06, 2.01e-08, 3.55e-10, 5.31e-12, 
