@@ -19,12 +19,12 @@ def rrmse(in_x, in_y):
 
 def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
     """Temp function."""
-    return 0*do_single*do_w_stacking*epsilon, 1
+    return 0 * do_single * do_w_stacking * epsilon, 1
 
 
 def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
     """Temp function."""
-    return 0*do_single*do_w_stacking*epsilon, 1
+    return 0 * do_single * do_w_stacking * epsilon, 1
 
 
 def arun_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
