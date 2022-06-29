@@ -37,12 +37,12 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
 
     # parameters
     im_size = 1024
-    pixel_size_deg = 1.94322419749866394e-02
-    pixel_size_rad = pixel_size_deg * np.pi / 180.0
+    # pixel_size_deg = 1.94322419749866394e-02
+    pixel_size_rad = 1.94322419749866394e-02 * np.pi / 180.0
     # print(pixel_size_rad)
 
     this_rrmse = 1
-    pass_threshold = 0
+    # pass_threshold = 0
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
@@ -92,13 +92,13 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
         # the x stops the test file been overwritten
         expected_dirty_image = np.load(dirty_image_file)
 
-        pass_threshold = 1e-5 if do_single else 1e-12
+        # pass_threshold = 1e-5 if do_single else 1e-12
 
         this_rrmse = rrmse(dirty_image, expected_dirty_image)
 
         print(f"RRMSE of dirty images is {this_rrmse:e}")
 
-    return this_rrmse, pass_threshold
+    return this_rrmse, 1e-5 if do_single else 1e-12  # pass_threshold
 
 
 def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
@@ -126,34 +126,30 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
     #     "SP" if do_single else "DP",
     # )
 
-    dirty_image = np.load(dirty_image_file)
+    # dirty_image = np.load(dirty_image_file)
 
     # dirty_image *= 1.00001
 
     # parameters
     # im_size = 1024
-    pixel_size_deg = 1.94322419749866394e-02
-    pixel_size_rad = pixel_size_deg * np.pi / 180.0
+    # pixel_size_deg = 1.94322419749866394e-02
+    pixel_size_rad = 1.94322419749866394e-02 * np.pi / 180.0
     # print(pixel_size_rad)
 
     this_rrmse = 1
-    pass_threshold = 0
+    # pass_threshold = 0
 
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
         freqs_gpu = cupy.asarray(freqs)
         uvw_gpu = cupy.asarray(uvw)
         weight_gpu = cupy.asarray(weight)
-        dirty_image_gpu = cupy.asarray(dirty_image)
+        dirty_image_gpu = cupy.asarray(np.load(dirty_image_file))
 
-        if do_single:
-            vis_gpu = cupy.zeros(
-                [uvw_gpu.shape[0], freqs_gpu.shape[0]], np.complex64
-            )
-        else:
-            vis_gpu = cupy.zeros(
-                [uvw_gpu.shape[0], freqs_gpu.shape[0]], np.complex128
-            )
+        vis_gpu = cupy.zeros(
+            [uvw_gpu.shape[0], freqs_gpu.shape[0]],
+            np.complex64 if do_single else np.complex128,
+        )
 
         # print(vis_gpu.dtype)
         # print(vis_gpu.shape)
@@ -180,8 +176,6 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
         )
 
         # Check output
-        vis = cupy.asnumpy(vis_gpu)
-
         test_file = "tests/test_data/vis_1024_1e-5_3D_SP.npy"
 
         # test_file = "tests/test_data/vis_1024_%.0e_%s_%s.npy" % (
@@ -190,16 +184,17 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
         #     "SP" if do_single else "DP",
         # )
 
+        # vis = cupy.asnumpy(vis_gpu)
         # np.save(test_file + "x", vis)
         # the x stops the test file been overwritten
         test_output = np.load(test_file)
 
-        this_rrmse = rrmse(vis, test_output)
+        this_rrmse = rrmse(cupy.asnumpy(vis_gpu), test_output)
         print(f"RRMSE of visibilities is {this_rrmse:e}")
 
-        pass_threshold = 1e-5 if do_single else 1e-12
+        # pass_threshold = 1e-5 if do_single else 1e-12
 
-    return this_rrmse, pass_threshold
+    return this_rrmse, 1e-5 if do_single else 1e-12  # pass_threshold
 
 
 def atest_gridder_plan():
