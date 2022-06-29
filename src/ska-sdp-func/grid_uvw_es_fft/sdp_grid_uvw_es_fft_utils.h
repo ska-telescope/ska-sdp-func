@@ -31,7 +31,7 @@ void get_w_range(const int num_rows, const T* uvw, const int num_chan, const T* 
 	max_abs_w *= fscaleMax;	
 }
 
-void generate_gauss_legendre_conv_kernel(
+void sdp_generate_gauss_legendre_conv_kernel(
         int image_size,
         int grid_size,
         int support,
@@ -42,9 +42,9 @@ void generate_gauss_legendre_conv_kernel(
         double* conv_corr_kernel
 );
 
-void CalculateParamsFromEpsilon(double epsilon, int image_size, int vis_precision, 
+void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_precision, 
 								int &grid_size, int &support, double &beta, sdp_Error* status);
 								
-void CalculateSupportAndBeta(double upsampling, double epsilon, int &support, double &beta, int &status);
+void sdp_calculate_support_and_beta(double upsampling, double epsilon, int &support, double &beta, int &status);
 
 #endif /* include guard */

@@ -267,7 +267,7 @@ sdp_Gridder* sdp_gridder_create_plan(
 	const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
     const int vis_precision = (vis_type & SDP_MEM_DOUBLE) ? SDP_MEM_DOUBLE : SDP_MEM_FLOAT;
 	
-	CalculateParamsFromEpsilon(plan->epsilon, plan->image_size, vis_precision, 
+	sdp_calculate_params_from_epsilon(plan->epsilon, plan->image_size, vis_precision, 
 					   grid_size, support, beta, status);	
     if (*status) return NULL;
 
@@ -336,7 +336,7 @@ sdp_Gridder* sdp_gridder_create_plan(
     quadrature_nodes   = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
     quadrature_weights = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
     conv_corr_kernel   = (double*) calloc(plan->image_size / 2 + 1, sizeof(double));
-    generate_gauss_legendre_conv_kernel(plan->image_size, plan->grid_size, plan->support, plan->beta,
+    sdp_generate_gauss_legendre_conv_kernel(plan->image_size, plan->grid_size, plan->support, plan->beta,
             quadrature_kernel, quadrature_nodes, quadrature_weights,
             conv_corr_kernel);
 	

@@ -9,18 +9,20 @@
  * Calculate the n-th Legendre Polynomial P_n at x
  * optionally also calculates the (first) derivate P_n' at x when -1<x<1
  **********************************************************************/
-double get_legendre(double x, int n, double *derivative)
+double sdp_get_legendre(double x, int n, double *derivative)
 {
     if (n==0)
     {
-        if (derivative != NULL)
+        if (derivative != NULL) {
              *derivative = 0.0;
+}
         return 1.0;
     }
     else if (n==1)
     {
-        if (derivative != NULL)
+        if (derivative != NULL) {
              *derivative = 1.0;
+}
         return x;
     }
     // else n>=2
@@ -55,7 +57,7 @@ double get_legendre(double x, int n, double *derivative)
  * "Sugli zeri dei polinomi sferici ed ultrasferici" by Francesco G. Tricomi
  * Annali di Matematica Pura ed Applicata volume 31, pages93–97 (1950)
  **********************************************************************/
-double get_approx_legendre_root(int32_t i, int32_t n)
+double sdp_get_approx_legendre_root(int32_t i, int32_t n)
 {
     double improvement = 1.0 - (1.0-1.0/(double)n)/(8.0*(double)n*(double)n);
     double estimate = cos(M_PI*(4.0*(double)i-1.0)/(4.0*(double)n+2.0));
@@ -68,23 +70,23 @@ double get_approx_legendre_root(int32_t i, int32_t n)
  * using Newton-Ralphson iterations until the specified
  * accuracy is reached and then also calculate its weight for Gauss-Legendre quadrature
  **********************************************************************/
-double calculate_legendre_root(int32_t i, int32_t n, double accuracy, double *weight)
+double sdp_calculate_legendre_root(int32_t i, int32_t n, double accuracy, double *weight)
 {
-    double next_estimate = get_approx_legendre_root(i, n);
+    double next_estimate = sdp_get_approx_legendre_root(i, n);
     double derivative;
     double estimate;
     int32_t iterations = 0;
     do
     {
         estimate = next_estimate;
-        double p_n = get_legendre(estimate, n, &derivative);
+        double p_n = sdp_get_legendre(estimate, n, &derivative);
         next_estimate = estimate - p_n/derivative;
         iterations++;
     }
     while (fdim(next_estimate,estimate)>accuracy && iterations<MAX_NEWTON_RAPHSON_ITERATIONS);
 
     // Gauss-Legendre quadrature weight for x is given by w = 2/((1-x*x)P_n'(x)*P_n'(x))
-    double p_n = get_legendre(next_estimate, n, &derivative);
+    double p_n = sdp_get_legendre(next_estimate, n, &derivative);
     *weight = 2.0/((1.0-next_estimate*next_estimate)*derivative*derivative);
     return next_estimate;
 }
@@ -98,7 +100,7 @@ double calculate_legendre_root(int32_t i, int32_t n, double accuracy, double *we
  * Note: quadrature_nodes decrease from ~1.0. approaching ~0.0
  * Note: quadrature_kernel increases from 0.0, approaching ~1.0
  **********************************************************************/
-void generate_gauss_legendre_conv_kernel(
+void sdp_generate_gauss_legendre_conv_kernel(
         int image_size,
         int grid_size,
         int support,
@@ -118,7 +120,7 @@ void generate_gauss_legendre_conv_kernel(
     for (uint32_t i = 1; i <= n / 2; i++)
     {
         double w_i = 0.0;
-        double x_i = calculate_legendre_root((int32_t)i, (int32_t)n, 1e-16, &w_i);
+        double x_i = sdp_calculate_legendre_root((int32_t)i, (int32_t)n, 1e-16, &w_i);
         double k_i = exp(beta * (sqrt(1.0 - x_i * x_i) - 1.0));
         quadrature_nodes[i - 1] = (double) x_i;
         quadrature_weights[i - 1] = (double) w_i;
@@ -126,8 +128,9 @@ void generate_gauss_legendre_conv_kernel(
     }
 
     double conv_corr_norm_factor = 0.0;
-    for (uint32_t i = 0; i < p; i++)
+    for (uint32_t i = 0; i < p; i++) {
         conv_corr_norm_factor += quadrature_kernel[i] * quadrature_weights[i];
+}
     conv_corr_norm_factor *= (double)support;
 
     // Precalculate one side of convolutional correction kernel out to one more than half the image size
@@ -136,43 +139,52 @@ void generate_gauss_legendre_conv_kernel(
         double l_m_norm =  ((double)l_m) * (1.0 / grid_size); // between 0.0 .. 0.5
         double correction = 0.0;
 
-        for (uint32_t i = 0; i < p; i++)
+        for (uint32_t i = 0; i < p; i++) {
             correction += quadrature_kernel[i] * quadrature_weights[i] *
                     cos(M_PI * l_m_norm * ((double)support) * quadrature_nodes[i]);
+}
         conv_corr_kernel[l_m] = (double)(correction * ((double)support)) / conv_corr_norm_factor;
     }
 }
 
 
-int good_size_complex(int n)
+int sdp_good_size_complex(int n)
 {
 	if (n<=12) return n;
 
 	int bestfac=2*n;
-	for (int f11=1; f11<bestfac; f11*=11)
-	for (int f117=f11; f117<bestfac; f117*=7)
-	for (int f1175=f117; f1175<bestfac; f1175*=5)
-	{
-		int x=f1175;
-		while (x<n) x*=2;
-		for (;;)
-		{
-			if (x<n)
-				x*=3;
-			else if (x>n)
-			{
-				if (x<bestfac) bestfac=x;
-				if (x&1) break;
-				x>>=1;
-			}
-			else
-				return n;
-		}
-	}
+	for (int f11=1; f11<bestfac; f11*=11) 
+    {
+        for (int f117=f11; f117<bestfac; f117*=7) 
+        {
+            for (int f1175=f117; f1175<bestfac; f1175*=5)
+            {
+                int x=f1175;
+                while (x<n) x*=2;
+                for (;;)
+                {
+                    if (x<n) 
+                    {
+                        x*=3;
+                    } 
+                    else if (x>n)
+                    {
+                        if (x<bestfac) bestfac=x;
+                        if (x&1) break;
+                        x>>=1;
+                    }
+                    else 
+                    {
+                        return n;
+                    }
+                }
+            }
+        }
+    }
 	return bestfac;
 }
 
-void CalculateParamsFromEpsilon(double epsilon, int image_size, int vis_precision, 
+void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_precision, 
 								int &grid_size, int &support, double &beta, sdp_Error* status)
 {
 	// getAvailableKernels()
@@ -474,7 +486,7 @@ void CalculateParamsFromEpsilon(double epsilon, int image_size, int vis_precisio
 		int support = int(floor(KernelDB[this_idx][K_support]));
 		//auto nvec = (supp+vlen-1)/vlen;
 		double ofactor = KernelDB[this_idx][K_ofactor];
-		int nu = 2*good_size_complex(int(image_size*ofactor*0.5)+1);
+		int nu = 2*sdp_good_size_complex(int(image_size*ofactor*0.5)+1);
 		
 		if (nu <= min_nu)
 		{
@@ -490,12 +502,12 @@ void CalculateParamsFromEpsilon(double epsilon, int image_size, int vis_precisio
 	support = int(floor(KernelDB[min_idx][K_support]));
 	double ofactor = KernelDB[min_idx][K_ofactor];
 	beta = KernelDB[min_idx][K_beta];
-	int nu = 2*good_size_complex(int(image_size*ofactor*0.5)+1);
+	int nu = 2*sdp_good_size_complex(int(image_size*ofactor*0.5)+1);
 
 	grid_size = nu;
 }
 
-void CalculateSupportAndBeta(double upsampling, double epsilon, int &support, double &beta, int &status)
+void sdp_calculate_support_and_beta(double upsampling, double epsilon, int &support, double &beta, int &status)
 {
 	// NB: only supports upsampling >= 2.0 at this stage
 	
@@ -514,12 +526,13 @@ void CalculateSupportAndBeta(double upsampling, double epsilon, int &support, do
 			1.00e+08, 0.19e+00, 2.98e-03, 5.98e-05, 1.11e-06, 2.01e-08, 3.55e-10, 5.31e-12, 
 			8.81e-14, 1.34e-15, 2.17e-17, 2.12e-19, 2.88e-21, 3.92e-23, 8.21e-25, 7.13e-27 };
 
-		for (size_t i=2; i < N; ++i)
+		for (size_t i=2; i < N; ++i) {
 			if (epssq>maxmaperr[i])
 			{
 				support = i;
 				break;
 			}
+}
 
 		if (support == -1)
 		{
