@@ -5,8 +5,8 @@
 
 #include "ska-sdp-func/fft/sdp_fft.h"
 
-#include "ska-sdp-func/gridder/sdp_grid_uvw_es_fft.h"
-#include "ska-sdp-func/gridder/sdp_grid_uvw_es_fft_utils.h"
+#include "ska-sdp-func/grid_uvw_es_fft/sdp_grid_uvw_es_fft.h"
+#include "ska-sdp-func/grid_uvw_es_fft/sdp_grid_uvw_es_fft_utils.h"
 
 #include <complex>
 

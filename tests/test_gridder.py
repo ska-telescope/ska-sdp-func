@@ -17,17 +17,17 @@ def rrmse(in_x, in_y):
     return np.linalg.norm(in_x - in_y) / np.linalg.norm(in_y)
 
 
-def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
-    """Temp function."""
-    return 0 * do_single * do_w_stacking * epsilon, 1
-
-
-def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
-    """Temp function."""
-    return 0 * do_single * do_w_stacking * epsilon, 1
-
-
 def arun_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
+    """Temp function."""
+    return 0 * do_single * do_w_stacking * epsilon, 1
+
+
+def arun_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
+    """Temp function."""
+    return 0 * do_single * do_w_stacking * epsilon, 1
+
+
+def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
     """Runs ms2dirty for tests below."""
     print(" ")  # just for separation of debug output
     print(" ")
@@ -121,7 +121,7 @@ def arun_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
     return this_rrmse, 1e-5 if do_single else 1e-12  # pass_threshold
 
 
-def arun_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
+def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
     """Runs dirty2ms for tests below."""
     print(" ")  # just for separation of debug output
     print(" ")
