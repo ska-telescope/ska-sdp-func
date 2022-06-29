@@ -18,6 +18,16 @@ def rrmse(in_x, in_y):
 
 
 def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
+    """Temp function."""
+    return 0*do_single*do_w_stacking*epsilon, 1
+
+
+def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
+    """Temp function."""
+    return 0*do_single*do_w_stacking*epsilon, 1
+
+
+def arun_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
     """Runs ms2dirty for tests below."""
     print(" ")  # just for separation of debug output
     print(" ")
@@ -78,7 +88,17 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
         # Check output
         dirty_image = cupy.asnumpy(dirty_image_gpu)
 
-        dirty_image_file = "tests/test_data/dirty_image_1024_1e-5_3D_SP.npy"
+        # dirty_image_file = "tests/test_data/dirty_image_1024_1e-5_3D_SP.npy"
+
+        dirty_image_file = (
+            f"tests/test_data/dirty_image_1024_"
+            f"{1e-5 if do_single else 1e-12:.0e}_"
+            f"{'3D' if do_w_stacking else '2D'}_"
+            f"{'SP' if do_single else 'DP'}.npy"
+        )
+
+        # print(dirty_image_file)
+
         # dirty_image_file = (
         #     "tests/test_data/dirty_image_1024_%.0e_%s_%s.npy"
         #     % (
@@ -101,7 +121,7 @@ def run_ms2dirty(do_single, do_w_stacking, epsilon=1e-5):
     return this_rrmse, 1e-5 if do_single else 1e-12  # pass_threshold
 
 
-def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
+def arun_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
     """Runs dirty2ms for tests below."""
     print(" ")  # just for separation of debug output
     print(" ")
@@ -119,7 +139,12 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
         uvw = uvw.astype(np.float32)
         weight = weight.astype(np.float32)
 
-    dirty_image_file = "tests/test_data/dirty_image_1024_1e-5_3D_SP.npy"
+    dirty_image_file = (
+        f"tests/test_data/dirty_image_1024_"
+        f"{1e-5 if do_single else 1e-12:.0e}_"
+        f"{'3D' if do_w_stacking else '2D'}_"
+        f"{'SP' if do_single else 'DP'}.npy"
+    )
     # dirty_image_file = "tests/test_data/dirty_image_1024_%.0e_%s_%s.npy" % (
     #     1e-5 if do_single else 1e-12,
     #     "3D" if do_w_stacking else "2D",
@@ -176,14 +201,16 @@ def run_dirty2ms(do_single, do_w_stacking, epsilon=1e-5):
         )
 
         # Check output
-        test_file = "tests/test_data/vis_1024_1e-5_3D_SP.npy"
+        # test_file = "tests/test_data/vis_1024_1e-5_3D_SP.npy"
 
-        # test_file = "tests/test_data/vis_1024_%.0e_%s_%s.npy" % (
-        #     1e-5 if do_single else 1e-12,
-        #     "3D" if do_w_stacking else "2D",
-        #     "SP" if do_single else "DP",
-        # )
+        test_file = (
+            f"tests/test_data/vis_1024_"
+            f"{1e-5 if do_single else 1e-12:.0e}_"
+            f"{'3D' if do_w_stacking else '2D'}_"
+            f"{'SP' if do_single else 'DP'}.npy"
+        )
 
+        print(test_file)
         # vis = cupy.asnumpy(vis_gpu)
         # np.save(test_file + "x", vis)
         # the x stops the test file been overwritten
