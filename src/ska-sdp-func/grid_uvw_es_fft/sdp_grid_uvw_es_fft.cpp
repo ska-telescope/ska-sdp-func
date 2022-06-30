@@ -275,9 +275,9 @@ sdp_Gridder* sdp_gridder_create_plan(
 
     plan->pixel_size_f = (float) plan->pixel_size;
 
-	int grid_size;
-	int support;
-	double beta;
+	int grid_size = 0;
+	int support = 0;
+	double beta = NAN;
 	
 	const sdp_MemType vis_type = sdp_mem_type(vis);
 	const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
@@ -354,8 +354,8 @@ sdp_Gridder* sdp_gridder_create_plan(
    	sdp_gridder_log_plan(plan, status);
 
     // Generate Gauss Legendre kernel for convolution correction.
-    double *quadrature_kernel, *quadrature_nodes, *quadrature_weights;
-    double *conv_corr_kernel;
+    double *quadrature_kernel = nullptr, *quadrature_nodes = nullptr, *quadrature_weights = nullptr ;
+    double *conv_corr_kernel = nullptr;
     quadrature_kernel  = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
     quadrature_nodes   = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
     quadrature_weights = (double*) calloc(QUADRATURE_SUPPORT_BOUND, sizeof(double));
