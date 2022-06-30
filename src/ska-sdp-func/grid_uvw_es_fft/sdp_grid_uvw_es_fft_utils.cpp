@@ -31,7 +31,7 @@ double sdp_get_legendre(double x, int n, double *derivative)
     // note this is same as P_n(x) = xP_{n-1}(x) + ((n-1)/n)(xP_{n-1}(x)-P_{n-2}(x))
     double p_im2 = 1.0; // P_{i-2}(x)
     double p_im1 = x; // P_{i-1}(x)
-    double p_i;
+    double p_i = 0;
 
     for (int32_t i=2; i<=n; i++)
     {
@@ -74,7 +74,7 @@ double sdp_calculate_legendre_root(int32_t i, int32_t n, double accuracy, double
 {
     double next_estimate = sdp_get_approx_legendre_root(i, n);
     double derivative = 1.0; // AG: just a dummy value to fix lint warning
-    double estimate;
+    double estimate = 0;
     int32_t iterations = 0;
     do
     {

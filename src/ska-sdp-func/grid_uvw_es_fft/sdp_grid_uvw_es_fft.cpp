@@ -57,6 +57,22 @@ struct sdp_Gridder
 	sdp_Mem* conv_corr_kernel;
 };
 
+void sdp_gridder_free_plan(sdp_Gridder* plan)
+{
+    if (!plan) return;
+    
+	sdp_mem_free(plan->w_grid_stack);
+	sdp_mem_free(plan->quadrature_kernel);
+	sdp_mem_free(plan->quadrature_nodes);
+	sdp_mem_free(plan->quadrature_weights);
+	sdp_mem_free(plan->conv_corr_kernel);
+	
+    free(plan);
+
+    SDP_LOG_INFO("Destroyed sdp_Gridder");
+}
+
+
 void sdp_gridder_check_buffers(
 		const sdp_Mem* uvw,
 		const sdp_Mem* freq_hz,  // in Hz
@@ -190,7 +206,7 @@ void sdp_gridder_check_buffers(
 
 void sdp_gridder_log_plan(
 		sdp_Gridder* plan,
-        sdp_Error* status)
+        const sdp_Error* status)
 {
     if (*status) return;
 
@@ -269,7 +285,11 @@ sdp_Gridder* sdp_gridder_create_plan(
 	
 	sdp_calculate_params_from_epsilon(plan->epsilon, plan->image_size, vis_precision, 
 					   grid_size, support, beta, status);	
-    if (*status) return NULL;
+    if (*status) 
+    {
+        sdp_gridder_free_plan(plan);
+        return NULL;
+    }
 
     beta *= support; 
 
@@ -288,8 +308,9 @@ sdp_Gridder* sdp_gridder_create_plan(
 		const double x0 = -0.5 * plan->image_size * plan->pixel_size;
 		const double y0 = -0.5 * plan->image_size * plan->pixel_size;
 		double nmin = sqrt(std::max(1.0 - x0 * x0 - y0 * y0, 0.0)) - 1.0;
-		if (x0 * x0 + y0 * y0 > 1.0)
+		if (x0 * x0 + y0 * y0 > 1.0) {
 			nmin = -sqrt(fabs(1.0 - x0*x0 - y0*y0)) - 1.0;
+        }
 		double w_scale = 0.25 / fabs(nmin); // scaling factor for converting w coord to signed w grid index
 		int num_total_w_grids = (max_abs_w - min_abs_w) / w_scale + 2; //  number of w grids required
 		w_scale = 1.0 / ((1.0 + 1e-13) * (max_abs_w - min_abs_w) / (num_total_w_grids - 1));
@@ -324,10 +345,13 @@ sdp_Gridder* sdp_gridder_create_plan(
     plan->inv_w_range_f = (float) plan->inv_w_range;
 		
 	sdp_gridder_check_plan(plan, status);
-    if (*status) return NULL;
-    
+    if (*status) 
+    {
+        sdp_gridder_free_plan(plan);
+        return NULL;
+    }
+   
    	sdp_gridder_log_plan(plan, status);
-    if (*status) return NULL;
 
     // Generate Gauss Legendre kernel for convolution correction.
     double *quadrature_kernel, *quadrature_nodes, *quadrature_weights;
@@ -344,8 +368,10 @@ sdp_Gridder* sdp_gridder_create_plan(
     // conv correction values for coordinate n (where n = sqrt(1 - l^2 - m^2) - 1)
     uint32_t p = (uint32_t)(int(1.5 * plan->support + 2.0));
     plan->conv_corr_norm_factor = 0.0;
-    for (uint32_t i = 0; i < p; i++)
+    for (uint32_t i = 0; i < p; i++) 
+    {
         plan->conv_corr_norm_factor += quadrature_kernel[i] * quadrature_weights[i];
+    }
     plan->conv_corr_norm_factor *= (double)plan->support;
     plan->conv_corr_norm_factor_f = (float)plan->conv_corr_norm_factor;
 		
@@ -424,7 +450,11 @@ sdp_Gridder* sdp_gridder_create_plan(
 	// allocate memory
 	int64_t w_grid_stack_shape[] = {plan->grid_size, plan->grid_size};
     plan->w_grid_stack = sdp_mem_create(vis_type, SDP_MEM_GPU, 2, w_grid_stack_shape, status);
-	if (*status) return NULL;
+    if (*status) 
+    {
+        sdp_gridder_free_plan(plan);
+        return NULL;
+    }
 
 	(void)uvw; // avoid compiler unused parameter warning
 	(void)freq_hz; // avoid compiler unused parameter warning
@@ -493,21 +523,23 @@ void sdp_gridder_ms2dirty(
             const char* k = 0;
 			if (plan->do_wstacking)
 			{
-				if (dbl_vis && dbl_coord)
+				if (dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_3d<double, double2, double, double2, double3>";
-				else if (!dbl_vis && dbl_coord)
+				} else if (!dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, double, double2, double3>";
-				else if (!dbl_vis && !dbl_coord)
+				} else if (!dbl_vis && !dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, float, float2, float3>";
+                }
 			}
 			else
 			{
-				if (dbl_vis && dbl_coord)
+				if (dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>";
-				else if (!dbl_vis && dbl_coord)
+				} else if (!dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, double, double2, double3>";
-				else if (!dbl_vis && !dbl_coord)
+				} else if (!dbl_vis && !dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, float, float2, float3>";
+                }
 			}
             if (k)
             {
@@ -735,21 +767,23 @@ void sdp_gridder_dirty2ms(
             const char* k = 0;
 			if (plan->do_wstacking)
 			{
-				if (dbl_vis && dbl_coord)
+				if (dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_3d<double, double2, double, double2, double3>";
-				else if (!dbl_vis && dbl_coord)
+				} else if (!dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, double, double2, double3>";
-				else if (!dbl_vis && !dbl_coord)
+				} else if (!dbl_vis && !dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, float, float2, float3>";
+}
 			}
 			else
 			{
-				if (dbl_vis && dbl_coord)
+				if (dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>";
-				else if (!dbl_vis && dbl_coord)
+				} else if (!dbl_vis && dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, double, double2, double3>";
-				else if (!dbl_vis && !dbl_coord)
+				} else if (!dbl_vis && !dbl_coord) {
 					k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, float, float2, float3>";
+}
 			}
             if (k)
             {
@@ -786,17 +820,3 @@ void sdp_gridder_dirty2ms(
     sdp_fft_free(fft);	
 }
 
-void sdp_gridder_free_plan(sdp_Gridder* plan)
-{
-    if (!plan) return;
-    
-	sdp_mem_free(plan->w_grid_stack);
-	sdp_mem_free(plan->quadrature_kernel);
-	sdp_mem_free(plan->quadrature_nodes);
-	sdp_mem_free(plan->quadrature_weights);
-	sdp_mem_free(plan->conv_corr_kernel);
-	
-    free(plan);
-
-    SDP_LOG_INFO("Destroyed sdp_Gridder");
-}
