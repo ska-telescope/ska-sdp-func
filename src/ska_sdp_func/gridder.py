@@ -82,7 +82,7 @@ class Gridder:
             min_abs_w = 0
             max_abs_w = 0
 
-        function_create = Lib.handle().sdp_gridder_create_plan
+        function_create = Lib.handle().sdp_gridder_uvw_es_fft_create_plan
         function_create.restype = Gridder.handle_type()
         function_create.argtypes = [
             Mem.handle_type(),
@@ -117,7 +117,7 @@ class Gridder:
     def __del__(self):
         """Releases handle to the processing function."""
         if self._handle:
-            function_free = Lib.handle().sdp_gridder_free_plan
+            function_free = Lib.handle().sdp_gridder_uvw_es_fft_free_plan
             function_free.argtypes = [Gridder.handle_type()]
             function_free(self._handle)
 
@@ -180,7 +180,7 @@ class Gridder:
         mem_weight = Mem(weight)
         mem_dirty_image = Mem(dirty_image)
         error_status = Error()
-        function_exec = Lib.handle().sdp_gridder_ms2dirty
+        function_exec = Lib.handle().sdp_grid_uvw_es_fft
         function_exec.argtypes = [
             Gridder.handle_type(),
             Mem.handle_type(),
@@ -221,7 +221,7 @@ class Gridder:
         mem_weight = Mem(weight)
         mem_dirty_image = Mem(dirty_image)
         error_status = Error()
-        function_exec = Lib.handle().sdp_gridder_dirty2ms
+        function_exec = Lib.handle().sdp_ifft_degrid_uvw_es
         function_exec.argtypes = [
             Gridder.handle_type(),
             Mem.handle_type(),

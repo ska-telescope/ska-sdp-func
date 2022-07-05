@@ -10,7 +10,7 @@
 
 #include <complex>
 
-struct sdp_Gridder
+struct sdp_GridderUvwEsFft
 {
 	double pixsize_x_rad; 
 	double pixsize_y_rad;
@@ -57,7 +57,7 @@ struct sdp_Gridder
 	sdp_Mem* conv_corr_kernel;
 };
 
-void sdp_gridder_free_plan(sdp_Gridder* plan)
+void sdp_gridder_uvw_es_fft_free_plan(sdp_GridderUvwEsFft* plan)
 {
     if (!plan) return;
     
@@ -69,7 +69,7 @@ void sdp_gridder_free_plan(sdp_Gridder* plan)
 	
     free(plan);
 
-    SDP_LOG_INFO("Destroyed sdp_Gridder");
+    SDP_LOG_INFO("Destroyed sdp_GridderUvwEsFft");
 }
 
 
@@ -205,7 +205,7 @@ void sdp_gridder_check_buffers(
 }
 
 void sdp_gridder_log_plan(
-		sdp_Gridder* plan,
+		sdp_GridderUvwEsFft* plan,
         const sdp_Error* status)
 {
     if (*status) return;
@@ -231,7 +231,7 @@ void sdp_gridder_log_plan(
 }
 
 void sdp_gridder_check_plan(
-		sdp_Gridder* plan,
+		sdp_GridderUvwEsFft* plan,
         sdp_Error* status)
 {
 	if (plan->pixsize_x_rad != plan->pixsize_y_rad)
@@ -244,7 +244,7 @@ void sdp_gridder_check_plan(
 	// should check range of epsilon !!
 }
 
-sdp_Gridder* sdp_gridder_create_plan(
+sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         const sdp_Mem* uvw,
         const sdp_Mem* freq_hz,  // in Hz
         const sdp_Mem* vis,
@@ -260,7 +260,7 @@ sdp_Gridder* sdp_gridder_create_plan(
 {
     if (*status) return NULL;
 	
-    sdp_Gridder* plan = (sdp_Gridder*) calloc(1, sizeof(sdp_Gridder));
+    sdp_GridderUvwEsFft* plan = (sdp_GridderUvwEsFft*) calloc(1, sizeof(sdp_GridderUvwEsFft));
 	
     plan->pixsize_x_rad = pixsize_x_rad;
     plan->pixsize_y_rad = pixsize_y_rad;
@@ -287,7 +287,7 @@ sdp_Gridder* sdp_gridder_create_plan(
 					   grid_size, support, beta, status);	
     if (*status) 
     {
-        sdp_gridder_free_plan(plan);
+        sdp_gridder_uvw_es_fft_free_plan(plan);
         return NULL;
     }
 
@@ -347,7 +347,7 @@ sdp_Gridder* sdp_gridder_create_plan(
 	sdp_gridder_check_plan(plan, status);
     if (*status) 
     {
-        sdp_gridder_free_plan(plan);
+        sdp_gridder_uvw_es_fft_free_plan(plan);
         return NULL;
     }
    
@@ -452,7 +452,7 @@ sdp_Gridder* sdp_gridder_create_plan(
     plan->w_grid_stack = sdp_mem_create(vis_type, SDP_MEM_GPU, 2, w_grid_stack_shape, status);
     if (*status) 
     {
-        sdp_gridder_free_plan(plan);
+        sdp_gridder_uvw_es_fft_free_plan(plan);
         return NULL;
     }
 
@@ -460,12 +460,12 @@ sdp_Gridder* sdp_gridder_create_plan(
 	(void)freq_hz; // avoid compiler unused parameter warning
 	(void)weight; // avoid compiler unused parameter warning
 
-    SDP_LOG_INFO("Created sdp_Gridder");
+    SDP_LOG_INFO("Created sdp_GridderUvwEsFft");
     return plan;
 }
 
-void sdp_gridder_ms2dirty(
-    sdp_Gridder* plan,
+void sdp_grid_uvw_es_fft(
+    sdp_GridderUvwEsFft* plan,
 
 	const sdp_Mem* uvw,
 	const sdp_Mem* freq_hz,
@@ -476,7 +476,7 @@ void sdp_gridder_ms2dirty(
     sdp_Error* status
 )
 {
-    SDP_LOG_DEBUG("Executing sdp_Gridder...");
+    SDP_LOG_DEBUG("Executing sdp_GridderUvwEsFft...");
     if (*status || !plan) return;
 	
 	sdp_gridder_check_plan(plan, status);
@@ -641,8 +641,8 @@ void sdp_gridder_ms2dirty(
     }
 }
 
-void sdp_gridder_dirty2ms(
-    sdp_Gridder* plan,
+void sdp_ifft_degrid_uvw_es(
+    sdp_GridderUvwEsFft* plan,
     
 	const sdp_Mem* uvw,
 	const sdp_Mem* freq_hz,
@@ -653,7 +653,7 @@ void sdp_gridder_dirty2ms(
     sdp_Error* status
 )
 {
-    SDP_LOG_DEBUG("Executing sdp_Gridder...");
+    SDP_LOG_DEBUG("Executing sdp_GridderUvwEsFft...");
     if (*status || !plan) return;
 	
 	sdp_gridder_check_plan(plan, status);

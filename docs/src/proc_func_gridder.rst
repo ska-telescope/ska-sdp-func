@@ -1,13 +1,13 @@
 .. _gridder_functions:
 
-*****************
-Gridder Functions
-*****************
+****************************
+Gridder UVW ES FFT Functions
+****************************
 
 C/C++
 =====
 
-.. doxygengroup:: Gridder_func
+.. doxygengroup:: GridderUvwEsFft_func
    :content-only:
 
 
