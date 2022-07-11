@@ -22,6 +22,7 @@ set(${libname}_SRC
 set(${libname}_CUDA_SRC
     src/ska-sdp-func/dft/sdp_dft.cu
     src/ska-sdp-func/vector/sdp_vector_add.cu
+    src/ska-sdp-func/degridding/sdp_degrid_uvw_custom.cu
 )
 
 # List of tests to build, in the "tests" directory.

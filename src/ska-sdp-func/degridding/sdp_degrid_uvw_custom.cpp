@@ -6,6 +6,7 @@
 
 #include <math.h>
 #include <complex>
+#include <vector>
 
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
@@ -290,7 +291,6 @@ void sdp_degrid_uvw_custom(
     if (location == SDP_MEM_CPU)
     {
 
-
         degrid_uvw_custom(
             uv_kernel_stride_in_elements,
             w_kernel_stride_in_elements,
@@ -312,10 +312,38 @@ void sdp_degrid_uvw_custom(
             (std::complex<double>*)sdp_mem_data(vis));
 
     }
-
+    
     else if (location == SDP_MEM_GPU)
     {
-        SDP_LOG_INFO("GPU not yet implemented");
-        return;
+
+        const uint64_t num_threads[] = {128, 2, 2};
+        const uint64_t num_blocks[] = {
+            (num_baselines + num_threads[0] - 1) / num_threads[0],
+            (num_channels + num_threads[1] - 1) / num_threads[1],
+            (num_times + num_threads[2] - 1) / num_threads[2]
+        };
+
+        const void* args[] = {
+            &uv_kernel_stride_in_elements,
+            &w_kernel_stride_in_elements,
+            &x_size,
+            &y_size,
+            &num_times,
+            &num_baselines,
+            &num_channels,
+            &num_pols,
+            sdp_mem_gpu_buffer_const(grid, status),
+            sdp_mem_gpu_buffer_const(uvw, status),
+            sdp_mem_gpu_buffer_const(uv_kernel, status),
+            sdp_mem_gpu_buffer_const(w_kernel, status),
+            &uv_kernel_oversampling,
+            &w_kernel_oversampling,
+            &theta,
+            &wstep, 
+            &conjugate, 
+            sdp_mem_gpu_buffer(vis, status)
+        };
+        sdp_launch_cuda_kernel("degrid_uvw_custom",
+                num_blocks, num_threads, 0, 0, args, status);
     }
 }
