@@ -170,7 +170,6 @@ static void check_results(
             }
         }
      
-
     }
 
     SDP_LOG_INFO("%s: Test passed", test_name);
@@ -220,13 +219,13 @@ static void run_and_check(
     sdp_MemType vis_type = output_type;  
 
     sdp_Mem* grid = sdp_mem_create(
-        grid_type, input_location, 5, grid_shape, status);
+        grid_type, SDP_MEM_CPU, 5, grid_shape, status);
     sdp_Mem* uvw = sdp_mem_create(
-        uvw_type, input_location, 4, uvw_shape, status);
+        uvw_type, SDP_MEM_CPU, 4, uvw_shape, status);
     sdp_Mem* uv_kernel = sdp_mem_create(
-        uv_kernel_type, input_location, 1, uv_kernel_shape, status);
+        uv_kernel_type, SDP_MEM_CPU, 1, uv_kernel_shape, status);
     sdp_Mem* w_kernel = sdp_mem_create(
-        w_kernel_type, input_location, 1, w_kernel_shape, status);
+        w_kernel_type, SDP_MEM_CPU, 1, w_kernel_shape, status);
 
     sdp_Mem* vis = sdp_mem_create(
         vis_type, output_location, 4, vis_shape, status);
@@ -321,6 +320,25 @@ int main()
     assert(status == SDP_SUCCESS);
     }
 
+    #ifdef SDP_HAVE_CUDA
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU run, 1 polarisation, 1 channel", true, false, 1, 1, SDP_MEM_DOUBLE, 
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
+            16000, 16000, 0.1, 250, false, &status);
+    assert(status == SDP_SUCCESS);
+    }
+
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU run - complex conjugate, 1 polarisation, 1 channel", true, false, 1, 1, SDP_MEM_DOUBLE, 
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
+            16000, 16000, 0.1, 250, true, &status);
+    assert(status == SDP_SUCCESS);
+    }
+
+    #endif
+
 
 // Unhappy paths.
     {
@@ -341,7 +359,7 @@ int main()
 
     {
     sdp_Error status = SDP_SUCCESS;
-    run_and_check("Unsuported data type", false, false, 1, 1, SDP_MEM_DOUBLE,
+    run_and_check("CPU Unsuported data type", false, false, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_CHAR, SDP_MEM_DOUBLE, SDP_MEM_CPU,
             SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
@@ -349,7 +367,7 @@ int main()
 
     {
     sdp_Error status = SDP_SUCCESS;
-    run_and_check("Wrong grid data type", false, false, 1, 1, SDP_MEM_DOUBLE,
+    run_and_check("CPU Unsupported grid data type", false, false, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
             SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
@@ -357,7 +375,7 @@ int main()
 
     {
     sdp_Error status = SDP_SUCCESS;
-    run_and_check("Wrong visabilities data type", false, false, 1, 1, SDP_MEM_COMPLEX_DOUBLE,
+    run_and_check("CPU Unsupported visabilities data type", false, false, 1, 1, SDP_MEM_COMPLEX_DOUBLE,
             SDP_MEM_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_CPU,
             SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
@@ -365,7 +383,7 @@ int main()
 
     {
     sdp_Error status = SDP_SUCCESS;
-    run_and_check("CPU run, 1 polarisation, 2 channels", false, false, 2, 1, SDP_MEM_DOUBLE, 
+    run_and_check("CPU Unsupported number of channels", false, false, 2, 1, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, 
             16000, 16000, 0.1, 250, false, &status);
     assert(status == SDP_ERR_RUNTIME);
@@ -373,13 +391,14 @@ int main()
 
     {
     sdp_Error status = SDP_SUCCESS;
-    run_and_check("CPU run, 2 polarisation, 1 channel", false, false, 1, 2, SDP_MEM_DOUBLE, 
+    run_and_check("CPU Unsupported number of polarisations", false, false, 1, 2, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, 
             16000, 16000, 0.1, 250, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
 #ifdef SDP_HAVE_CUDA
+
     {
     sdp_Error status = SDP_SUCCESS;
     run_and_check("Memory location mismatch", false, false, 1, 1, SDP_MEM_DOUBLE,
@@ -388,6 +407,57 @@ int main()
     assert(status == SDP_ERR_MEM_LOCATION);
     }
 
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU Read only output", false, true, 1, 1, SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU,
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+    assert(status == SDP_ERR_RUNTIME);
+    }
+
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU Unsuported data type", false, false, 1, 1, SDP_MEM_DOUBLE,
+            SDP_MEM_CHAR, SDP_MEM_DOUBLE, SDP_MEM_GPU,
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+    assert(status == SDP_ERR_DATA_TYPE);
+    }
+
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU Unsupported grid data type", false, false, 1, 1, SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU,
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+    assert(status == SDP_ERR_DATA_TYPE);
+    }
+
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU Unsupported visabilities data type", false, false, 1, 1, SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_GPU,
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+    assert(status == SDP_ERR_DATA_TYPE);
+    }
+
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU Unsupported number of channels", false, false, 2, 1, SDP_MEM_DOUBLE, 
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
+            16000, 16000, 0.1, 250, false, &status);
+    assert(status == SDP_ERR_RUNTIME);
+    }
+
+    {
+    sdp_Error status = SDP_SUCCESS;
+    run_and_check("GPU Unsupported number of polarisations", false, false, 1, 2, SDP_MEM_DOUBLE, 
+            SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
+            16000, 16000, 0.1, 250, false, &status);
+    assert(status == SDP_ERR_RUNTIME);
+    }
+
+
 #endif
+
+    return 0;
 
 }
