@@ -1,5 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+from matplotlib import testing
 import numpy
 
 try:
@@ -232,4 +233,29 @@ def test_degrid_uvw_custom():
     )
 
     numpy.testing.assert_array_almost_equal(vis, vis_reference)
-    print("Degridding on CPU: Test passed")
+    
+    # Run degridding on GPU using cuppy arrays.
+    if cupy:
+        grid_gpu = cupy.asarray(grid)
+        uvw_gpu = cupy.asarray(uvw)
+        uv_kernel_gpu = cupy.asarray(uv_kernel)
+        w_kernel_gpu = cupy.asarray(w_kernel)
+        vis_gpu = cupy.zeros(
+            [num_times, num_baselines, num_channels, num_pols], dtype=numpy.complex128
+        )
+        print("Testing Degridding on GPU from ska-sdp-func...")
+        degrid_uvw_custom(
+            grid_gpu,
+            uvw_gpu,
+            uv_kernel_gpu,
+            w_kernel_gpu,
+            uv_kernel_oversampling,
+            w_kernel_oversampling,
+            theta,
+            wstep,
+            conjugate,
+            vis_gpu,
+        )
+        output_gpu_check = cupy.asnumpy(vis_gpu)
+        numpy.testing.assert_array_almost_equal(output_gpu_check, vis_reference)
+        print("Degridding on GPU: Test passed")
