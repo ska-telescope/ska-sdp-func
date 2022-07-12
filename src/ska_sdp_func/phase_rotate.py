@@ -3,6 +3,7 @@
 """Module for phase rotation functions."""
 
 import ctypes
+
 from .utility import Error, Lib, Mem
 
 
