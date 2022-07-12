@@ -12,6 +12,7 @@ set(${libname}_SRC
     src/ska-sdp-func/rfi_flagger/sdp_rfi_flagger.cpp
     src/ska-sdp-func/dft/sdp_dft.cpp
     src/ska-sdp-func/fft/sdp_fft.cpp
+    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cpp
     src/ska-sdp-func/vector/sdp_vector_add.cpp
     src/ska-sdp-func/function_example_a/sdp_function_example_a.cpp
     src/ska-sdp-func/utility/sdp_device_wrapper.cpp
@@ -30,6 +31,7 @@ set(${libname}_TESTS
     test_rfi_flagger
     test_dft
     test_fft
+    test_phase_rotate
     test_vector_add
     test_function_example_a
 )

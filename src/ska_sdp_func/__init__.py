@@ -4,6 +4,7 @@
 
 from .dft import dft_point_v00
 from .fft import Fft
+from .phase_rotate import phase_rotate_uvw, phase_rotate_vis
 from .function_example_a import FunctionExampleA
 from .rfi_flagger import sum_threshold_rfi_flagger
 from .vector import vector_add
