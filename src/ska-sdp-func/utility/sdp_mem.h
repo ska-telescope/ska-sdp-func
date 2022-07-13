@@ -398,7 +398,19 @@ int64_t sdp_mem_shape_dim(const sdp_Mem* mem, int32_t dim);
  * @param dim The dimension index to return.
  * @return int64_t Stride in bytes for the specified dimension.
  */
-int64_t sdp_mem_stride_dim(const sdp_Mem* mem, int32_t dim);
+int64_t sdp_mem_stride_bytes_dim(const sdp_Mem* mem, int32_t dim);
+
+/**
+ * @brief Returns the stride (in elements) of the specified dimension.
+ *
+ * The slowest varying dimension is the first index (0), and
+ * the fastest varying dimension is the last index (num_dims - 1).
+ *
+ * @param mem Handle to memory block.
+ * @param dim The dimension index to return.
+ * @return int64_t Stride in elements for the specified dimension.
+ */
+int64_t sdp_mem_stride_elements_dim(const sdp_Mem* mem, int32_t dim);
 
 /**
  * @brief Returns the enumerated data type of the memory.

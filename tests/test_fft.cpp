@@ -144,18 +144,18 @@ int main()
     }
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, double precision", false, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
-        assert(status == SDP_ERR_MEM_LOCATION);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
         run_and_check("Wrong data type", false, false,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
                 SDP_MEM_GPU, SDP_MEM_GPU, &status);
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("CPU, double precision", false, false,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE,
+                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status == SDP_ERR_MEM_LOCATION);
+    }
     return 0;
 }
