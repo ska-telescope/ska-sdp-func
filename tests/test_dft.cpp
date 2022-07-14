@@ -205,7 +205,7 @@ static void check_results_v01(
         int num_times,
         const DIR_TYPE *const __restrict__ source_directions,
         const complex<FLUX_TYPE> *const __restrict__ source_fluxes,
-        const UVW_TYPE *const __restrict__ uvw_lambda,
+        const UVW_TYPE *const __restrict__ uvw_metres,
         const double channel_start_hz,
         const double channel_step_hz,
         const complex<VIS_TYPE> *const __restrict__ vis,
@@ -224,9 +224,9 @@ static void check_results_v01(
             const unsigned int i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
                     i_time, i_baseline, 0);
-            const UVW_TYPE uu = uvw_lambda[i_uvw];
-            const UVW_TYPE vv = uvw_lambda[i_uvw + 1];
-            const UVW_TYPE ww = uvw_lambda[i_uvw + 2];
+            const UVW_TYPE uu = uvw_metres[i_uvw];
+            const UVW_TYPE vv = uvw_metres[i_uvw + 1];
+            const UVW_TYPE ww = uvw_metres[i_uvw + 2];
 
             for (int i_channel = 0; i_channel < num_channels; ++i_channel)
             {

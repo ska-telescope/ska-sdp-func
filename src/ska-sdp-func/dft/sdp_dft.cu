@@ -109,7 +109,7 @@ __global__ void dft_point_v01(
         const int num_times,
         const DIR_TYPE3 *const __restrict__ source_directions,
         const FLUX_TYPE2 *const __restrict__ source_fluxes,
-        const UVW_TYPE3 *const __restrict__ uvw_lambda,
+        const UVW_TYPE3 *const __restrict__ uvw_metres,
         const double channel_start_hz,
         const double channel_step_hz,
         VIS_TYPE2 *__restrict__ vis
@@ -138,7 +138,7 @@ __global__ void dft_point_v01(
     const unsigned int i_uvw = INDEX_2D(
             num_times, num_baselines,
             i_time, i_baseline);
-    const UVW_TYPE3 uvw = uvw_lambda[i_uvw];
+    const UVW_TYPE3 uvw = uvw_metres[i_uvw];
     const double inv_wavelength = (
         channel_start_hz + i_channel * channel_step_hz) / C_0;
 
