@@ -232,7 +232,7 @@ void run_and_check_rotate_vis(
     const double new_ra_rad = 148.3 * M_PI / 180;
     const double new_dec_rad = 38.9 * M_PI / 180;
     const double channel_start_hz = 100e6;
-    const double channel_step_hz = 100e3;
+    const double channel_step_hz = 10e6;
     const int num_channels = 3;
     const int num_baselines = 351;
     const int num_times = 10;
