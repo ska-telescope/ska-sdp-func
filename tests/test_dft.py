@@ -139,7 +139,7 @@ def test_dft_v01():
     if cupy:
         fluxes_gpu = cupy.asarray(fluxes)
         directions_gpu = cupy.asarray(directions)
-        uvw_lambda_gpu = cupy.asarray(uvw)
+        uvw_gpu = cupy.asarray(uvw)
         vis_gpu = cupy.zeros(
             [num_times, num_baselines, num_channels, num_pols],
             dtype=numpy.complex128,
@@ -148,7 +148,7 @@ def test_dft_v01():
         dft_point_v01(
             directions_gpu,
             fluxes_gpu,
-            uvw_lambda_gpu,
+            uvw_gpu,
             channel_start_hz,
             channel_step_hz,
             vis_gpu,
