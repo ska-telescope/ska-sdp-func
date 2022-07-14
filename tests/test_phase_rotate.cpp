@@ -328,6 +328,83 @@ int main()
                 SDP_MEM_CPU, SDP_MEM_CPU, &status);
         assert(status == SDP_SUCCESS);
     }
+#ifdef SDP_HAVE_CUDA
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_uvw("GPU, phase_rotate_uvw, double precision",
+                true, false, SDP_MEM_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, &status);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_uvw("GPU, phase_rotate_uvw, single precision",
+                true, false, SDP_MEM_FLOAT, SDP_MEM_GPU, SDP_MEM_GPU, &status);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_vis("GPU, phase_rotate_vis, double precision",
+                true, false,
+                SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_vis("GPU, phase_rotate_vis, single precision",
+                true, false,
+                SDP_MEM_FLOAT, SDP_MEM_COMPLEX_FLOAT,
+                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+        assert(status == SDP_SUCCESS);
+    }
+#endif
+
+    // Unhappy paths.
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_uvw("Read-only output (rotate_uvw)",
+                false, true, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status != SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_vis("Read-only output (rotate_vis)",
+                false, true,
+                SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status != SDP_SUCCESS);
+    }
+#ifdef SDP_HAVE_CUDA
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_uvw("Location mismatch (rotate_uvw)",
+                false, false, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_GPU, &status);
+        assert(status == SDP_ERR_MEM_LOCATION);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_vis("Location mismatch (rotate_vis)",
+                false, false,
+                SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_CPU, SDP_MEM_GPU, &status);
+        assert(status == SDP_ERR_MEM_LOCATION);
+    }
+#endif
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_uvw("Bad data type (rotate_uvw)",
+                false, false, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status != SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_rotate_vis("Bad data type (rotate_vis)",
+                false, false,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status != SDP_SUCCESS);
+    }
 
     return 0;
 }

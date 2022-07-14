@@ -23,6 +23,7 @@ set(${libname}_SRC
 # List of CUDA kernel source files.
 set(${libname}_CUDA_SRC
     src/ska-sdp-func/dft/sdp_dft.cu
+    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cu
     src/ska-sdp-func/vector/sdp_vector_add.cu
 )
 

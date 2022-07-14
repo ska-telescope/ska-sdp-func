@@ -115,6 +115,13 @@ void sdp_phase_rotate_uvw(
     const int64_t num_times      = sdp_mem_shape_dim(uvw_in, 0);
     const int64_t num_baselines  = sdp_mem_shape_dim(uvw_in, 1);
     const int64_t num_total = num_times * num_baselines;
+    if (sdp_mem_shape_dim(uvw_out, 0) != num_times ||
+            sdp_mem_shape_dim(uvw_out, 1) != num_baselines)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Input and output coordinates must be the same shape.");
+        return;
+    }
 
     // Rotate by -delta_ra around v, then delta_dec around u.
     const double d_a = -(phase_centre_new_ra_rad - phase_centre_orig_ra_rad);
@@ -161,12 +168,12 @@ void sdp_phase_rotate_uvw(
         if (sdp_mem_type(uvw_in) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(uvw_out) == SDP_MEM_DOUBLE)
         {
-            kernel_name = "rotate_uvw<double>";
+            kernel_name = "rotate_uvw<double3>";
         }
         else if (sdp_mem_type(uvw_in) == SDP_MEM_FLOAT &&
                 sdp_mem_type(uvw_out) == SDP_MEM_FLOAT)
         {
-            kernel_name = "rotate_uvw<float>";
+            kernel_name = "rotate_uvw<float3>";
         }
         else
         {
@@ -326,13 +333,13 @@ void sdp_phase_rotate_vis(
                 sdp_mem_type(vis_in) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(vis_out) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "rotate_vis<double>";
+            kernel_name = "rotate_vis<double3, double2>";
         }
         else if (sdp_mem_type(uvw) == SDP_MEM_FLOAT &&
                 sdp_mem_type(vis_in) == SDP_MEM_COMPLEX_FLOAT &&
                 sdp_mem_type(vis_out) == SDP_MEM_COMPLEX_FLOAT)
         {
-            kernel_name = "rotate_vis<float>";
+            kernel_name = "rotate_vis<float3, float2>";
         }
         else
         {

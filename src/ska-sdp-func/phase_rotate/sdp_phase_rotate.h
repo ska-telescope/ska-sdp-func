@@ -69,7 +69,7 @@ void sdp_phase_rotate_uvw(
  * @param phase_centre_new_ra_rad New phase centre RA, in radians.
  * @param phase_centre_new_dec_rad New phase centre Dec, in radians.
  * @param channel_start_hz Frequency of first channel, in Hz.
- * @param channel_step_hz Frequency incremenet between channels, in Hz.
+ * @param channel_step_hz Frequency increment between channels, in Hz.
  * @param uvw Original baseline (u,v,w) coordinates, in metres.
  *            Dimensions as above.
  * @param vis_in Input visibility data. Dimensions as above.
