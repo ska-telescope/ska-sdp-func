@@ -365,16 +365,20 @@ def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
     #       "FOV={} degrees".format(nxydirty, nxydirty, fov))
     # print("Requested accuracy: {}".format(epsilon))
 
-    speed_of_light = 299792458.
+    speed_of_light = 299792458.0
     np.random.seed(40)
     pixel_size_rad = fov * np.pi / 180 / nxydirty
-    f0 = 1e9
+    f_0 = 1e9
 
-    freqs = f0 + np.arange(num_chan) * (f0 / num_chan)
-    uvw = (np.random.rand(num_vis, 3) - 0.5) / \
-          (pixel_size_rad * f0 / speed_of_light)
-    test_vis = np.random.rand(num_vis, num_chan) - 0.5 + 1j \
-               * (np.random.rand(num_vis, num_chan) - 0.5)
+    freqs = f_0 + np.arange(num_chan) * (f_0 / num_chan)
+    uvw = (np.random.rand(num_vis, 3) - 0.5) / (
+        pixel_size_rad * f_0 / speed_of_light
+    )
+    test_vis = (
+        np.random.rand(num_vis, num_chan)
+        - 0.5
+        + 1j * (np.random.rand(num_vis, num_chan) - 0.5)
+    )
     test_dirty_image = np.random.rand(nxydirty, nxydirty) - 0.5
     weight = np.ones([num_vis, num_chan])
 
@@ -388,6 +392,8 @@ def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
         uvw = uvw.astype(np.float32)
         weight = weight.astype(np.float32)
 
+    adj_error = -1
+
     # Run gridder test on GPU, using cupy arrays.
     if cupy:
         # run ms2dirty
@@ -399,10 +405,12 @@ def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
 
         vis_gpu = cupy.zeros(
             [num_vis, num_chan],
-            np.complex64 if do_single else np.complex128, )
+            np.complex64 if do_single else np.complex128,
+        )
         dirty_image_gpu = cupy.zeros(
             [nxydirty, nxydirty],
-            np.float32 if do_single else np.float64, )
+            np.float32 if do_single else np.float64,
+        )
 
         # Create gridder
         gridder = Gridder(
@@ -437,13 +445,15 @@ def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
         vis = cupy.asnumpy(vis_gpu)
 
         adj2 = np.vdot(vis, test_vis).real
-        adj_error = np.abs(adj1 - adj2) / np.maximum(np.abs(adj1), np.abs(adj2))
+        adj_error = np.abs(adj1 - adj2) / np.maximum(
+            np.abs(adj1), np.abs(adj2)
+        )
 
         print()
-        print(f"************************************************************")
+        print("************************************************************")
         print(f"adjointness test - adj1: {adj1}, adj2: {adj2}")
         print(f"adjointness test: {adj_error}")
-        print(f"************************************************************")
+        print("************************************************************")
         print()
 
-        return adj_error, 1e-5 if do_single else 1e-12  # pass_threshold
+    return adj_error, 1e-5 if do_single else 1e-12  # pass_threshold
