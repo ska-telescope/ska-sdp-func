@@ -73,6 +73,11 @@ Functions which would be working with visibilities should use these input/output
   - **Dimensions:** (time samples, baselines, channels)
   
   
+- *Sky Coordinate Metadata:* ``sdp_mem(char) *string, double epoch, double C1, double C2, double C3``
+
+  - **Type:** three coordinates and string providing context
+  
+  
 - *Phase centre Right Ascension:* ``double phase_centre_ra_rad`` [radians]
 
   - **Type:** real-valued variable

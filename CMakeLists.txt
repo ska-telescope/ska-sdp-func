@@ -14,9 +14,11 @@ set(${libname}_SRC
     src/ska-sdp-func/fft/sdp_fft.cpp
     src/ska-sdp-func/vector/sdp_vector_add.cpp
     src/ska-sdp-func/function_example_a/sdp_function_example_a.cpp
+    src/ska-sdp-func/sky_function/sdp_sky_function.cpp
     src/ska-sdp-func/utility/sdp_device_wrapper.cpp
     src/ska-sdp-func/utility/sdp_logging.c
     src/ska-sdp-func/utility/sdp_mem.c
+    src/ska-sdp-func/utility/sdp_skycoord.c
 )
 
 # List of CUDA kernel source files.
@@ -32,6 +34,7 @@ set(${libname}_TESTS
     test_fft
     test_vector_add
     test_function_example_a
+    test_sky_function
 )
 
 # Project version.

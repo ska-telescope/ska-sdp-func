@@ -7,3 +7,4 @@ from .fft import Fft
 from .function_example_a import FunctionExampleA
 from .rfi_flagger import sum_threshold_rfi_flagger
 from .vector import vector_add
+from .sky_function import sky_function
