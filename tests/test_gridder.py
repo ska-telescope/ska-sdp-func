@@ -275,15 +275,29 @@ def test_get_w_range():
     print(" ")
 
     # load dataset
-    test_data = np.load("tests/test_data/vla_d_3_chan.npz")
-    freq_hz = test_data["freqs"]
-    uvw = test_data["uvw"]
+    # test_data = np.load("tests/test_data/vla_d_3_chan.npz")
+    # freq_hz = test_data["freqs"]
+    # uvw = test_data["uvw"]
+    num_vis = 1000
+    num_chan = 10
+    fov = 2  # degrees
+    im_size = 1024
+
+    speed_of_light = 299792458.0
+    np.random.seed(40)
+    pixel_size_rad = fov * np.pi / 180 / im_size
+    f_0 = 1e9
+
+    freq_hz = f_0 + np.arange(num_chan) * (f_0 / num_chan)
+    uvw = (np.random.rand(num_vis, 3) - 0.5) / (
+        pixel_size_rad * f_0 / speed_of_light
+    )
 
     print(freq_hz)
     print(freq_hz.dtype)
 
-    true_min_abs_w = np.amin(np.abs(uvw[:, 2])) * freq_hz[0] / 299792458.0
-    true_max_abs_w = np.amax(np.abs(uvw[:, 2])) * freq_hz[-1] / 299792458.0
+    true_min_abs_w = np.amin(np.abs(uvw[:, 2])) * freq_hz[0] / speed_of_light
+    true_max_abs_w = np.amax(np.abs(uvw[:, 2])) * freq_hz[-1] / speed_of_light
 
     print(f"min_abs_w is {true_min_abs_w:.12e}")
     print(f"max_abs_w is {true_max_abs_w:.12e}")
