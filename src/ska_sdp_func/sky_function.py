@@ -5,7 +5,7 @@
 from .utility import Error, Lib, Mem, SkyCoord
 
 
-def sky_function(sky_coordinates):
+def sky_function(coord_type, epoch, coord_0, coord_1, coord_2):
     """
     Simple example to add two vectors, element_wise.
 
@@ -23,6 +23,7 @@ def sky_function(sky_coordinates):
     :type output: numpy.ndarray or cupy.ndarray
     """
     error_status = Error()
+    sky_coordinates = SkyCoord(coord_type, epoch, coord_0, coord_1, coord_2);
     lib_vector_add = Lib.handle().sdp_sky_coordinate_test
     lib_vector_add.argtypes = [
         SkyCoord.handle_type(),

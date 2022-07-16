@@ -17,7 +17,8 @@ class SkyCoord:
         The arguments are coordinate type as string, epoch, and three coordinate values coord_0, coord_1, coord_2.
         """
         self._handle = None
-        sky_coord_create = Lib.handle().sdp_skycoord_create
+        error_status = Error()
+        sky_coord_create = Lib.handle().sdp_sky_coord_create
         sky_coord_create.restype = SkyCoord.handle_type()
         sky_coord_create.argtypes = [
             ctypes.c_char_p,
@@ -28,7 +29,7 @@ class SkyCoord:
             Error.handle_type(),
         ]
         self._handle = sky_coord_create(
-            ctypes.c_char_p(coordinate_type),
+            coordinate_type.encode('ascii'),
             epoch,
             coord_0,
             coord_1,
