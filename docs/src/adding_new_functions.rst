@@ -40,7 +40,8 @@ In C or C++
       - :cpp:func:`sdp_mem_is_read_only`
       - :cpp:func:`sdp_mem_num_dims`
       - :cpp:func:`sdp_mem_shape_dim`
-      - :cpp:func:`sdp_mem_stride_dim`
+      - :cpp:func:`sdp_mem_stride_bytes_dim`
+      - :cpp:func:`sdp_mem_stride_elements_dim`
 
    - If an :cpp:enum:`sdp_Error` error code is passed to the function,
      check it first, and only proceed if it is zero.
