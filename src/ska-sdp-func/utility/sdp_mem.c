@@ -401,7 +401,8 @@ int64_t sdp_mem_stride_bytes_dim(const sdp_Mem* mem, int32_t dim)
 
 int64_t sdp_mem_stride_elements_dim(const sdp_Mem* mem, int32_t dim)
 {
-    return sdp_mem_stride_bytes_dim(mem, dim) / sdp_mem_type_size(mem->type);
+    const int64_t type_size = sdp_mem_type_size(mem->type);
+    return type_size > 0 ? sdp_mem_stride_bytes_dim(mem, dim) / type_size : 0;
 }
 
 sdp_MemType sdp_mem_type(const sdp_Mem* mem)
