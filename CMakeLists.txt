@@ -35,6 +35,7 @@ set(${libname}_TESTS
     test_fft
     test_vector_add
     test_function_example_a
+    test_gridder_uvw_es_fft
 )
 
 # Project version.
