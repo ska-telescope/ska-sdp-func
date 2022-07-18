@@ -5,8 +5,9 @@
 import ctypes
 
 try:
+    import astropy
     import astropy.coordinates
-except:
+except ImportError:
     astropy = None
 
 from .error import Error
@@ -50,13 +51,14 @@ class SkyCoord:
                         astropy_coord.ra.rad,
                         astropy_coord.dec.rad,
                         0.0,
-                        error_status.handle()
+                        error_status.handle(),
                     )
                 else:
                     raise RuntimeError("Unknown astropy coordinate frame")
             else:
                 raise RuntimeError(
-                        "Object is not of type astropy.coordinates.SkyCoord")
+                    "Object is not of type astropy.coordinates.SkyCoord"
+                )
         elif len(args) >= 3:
             self._handle = sky_coord_create(
                 args[0].encode("ascii"),
