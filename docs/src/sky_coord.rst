@@ -1,11 +1,16 @@
 
 ***************
-Sky coordinates
+Sky Coordinates
 ***************
 
-Sky coordinates are represented by string, epoch and three coordinate values.
+Sky coordinates are represented by a string, an epoch, and up to three
+coordinate values.
 
-Include the header *"ska-sdp-func/utility/sdp_sky_coord.h"* to use these functions.
+C/C++
+=====
+
+Include the header *"ska-sdp-func/utility/sdp_sky_coord.h"* to use
+these functions.
 
 .. doxygengroup:: SkyCoord_struct
    :content-only:
@@ -13,3 +18,10 @@ Include the header *"ska-sdp-func/utility/sdp_sky_coord.h"* to use these functio
 .. doxygengroup:: SkyCoord_func
    :content-only:
 
+Python
+======
+
+.. autoclass:: ska_sdp_func.utility.SkyCoord
+   :members:
+   :special-members: __init__
+   :exclude-members: Handle, handle, handle_type

@@ -5,7 +5,7 @@
 #define SKA_SDP_PROC_FUNC_SKY_COORD_H_
 
 /**
- * @file sdp_mem.h
+ * @file sdp_sky_coord.h
  */
 
 #include <stdint.h>
@@ -33,93 +33,71 @@ typedef struct sdp_SkyCoord sdp_SkyCoord;
  */
 
 /**
- * @brief Creates a data structure that describes sky coordinates.
+ * @brief Creates a data structure to encapsulate sky coordinates.
  *
- * Coordinates are described by coordinate type as string, epoch and three 
- * coordinate values. Context for the coordinate values is given by the 
- * coordinate type.
+ * Sky coordinates are fully described by a coordinate type string, an epoch,
+ * and up to three coordinate values (one for each spatial dimension).
  *
- * @param type string declering coordinate type.
- * @param epoch epoch.
- * @param c0 value of the first coordinate.
- * @param c1 value of the second coordinate.
- * @param c2 value of the third coordinate.
+ * Context for the coordinate values is given by the coordinate type
+ * (values for which are still to be defined).
+ *
+ * The default epoch value is 2000.0, but can be set using
+ * ::sdp_sky_coord_set_epoch().
+ *
+ * @param type String describing coordinate type.
+ * @param coord0 Value of the first coordinate.
+ * @param coord1 Value of the second coordinate.
+ * @param coord2 Value of the third coordinate.
  * @param status Error status.
  * @return ::sdp_SkyCoord* Handle to sky coordinate structure.
  */
 sdp_SkyCoord* sdp_sky_coord_create(
     const char* type,
-    double epoch,
-    double c0,
-    double c1,
-    double c2,
-    sdp_Error* status
+    double coord0,
+    double coord1,
+    double coord2,
+    const sdp_Error* status
 );
 
+/**
+ * @brief Releases memory held by the sdp_SkyCoord handle.
+ *
+ * @param sky_coord Handle to sky coordinate.
+ */
+void sdp_sky_coord_free(sdp_SkyCoord *sky_coord);
 
 /**
- * @brief Releases memory allocated to the sdp_SkyCoord handle.
+ * @brief Returns the value of the coordinate epoch.
  *
- * Releases memory held by sdp_SkyCoord handle.
- *
- * @param sky_coordinates Handle to memory block.
+ * @param sky_coord Handle to sky coordinate.
+ * @return Value of the coordinate epoch.
  */
-void sdp_sky_coord_free(sdp_SkyCoord *sky_coordinates);
-
+double sdp_sky_coord_epoch(const sdp_SkyCoord *sky_coord);
 
 /**
- * @brief Returns coordinates type.
+ * @brief Sets the coordinate epoch value.
  *
- * @param sky_coordinates Handle to memory block.
- * @return pointer to char with coordinate type.
+ * @param sky_coord Handle to sky coordinate.
+ * @param epoch Value of coordinate epoch.
  */
-const char* sdp_sky_coord_type(const sdp_SkyCoord *sky_coordinates);
+void sdp_sky_coord_set_epoch(sdp_SkyCoord *sky_coord, double epoch);
 
 /**
- * @brief Returns epoch value.
+ * @brief Returns the coordinate type string.
  *
- * @param sky_coordinates Handle to memory block.
- * @return value of epoch.
+ * @param sky_coord Handle to sky coordinate.
+ * @return Pointer to string describing coordinate type.
  */
-double sdp_sky_coord_epoch(const sdp_SkyCoord *sky_coordinates);
-
+const char* sdp_sky_coord_type(const sdp_SkyCoord *sky_coord);
 
 /**
- * @brief Returns value of the selected coordinate.
+ * @brief Returns the value of the specified coordinate.
  *
- * @param sky_coordinates Handle to memory block.
- * @param coordinate coordinate index (starting 0; max 2).
- * @return value of chosen coordinate.
+ * @param sky_coord Handle to sky coordinate.
+ * @param dim Coordinate dimension index (starting 0; max 2).
+ * @return Value of specified coordinate.
  */
-double sdp_sky_coord_coordinate(const sdp_SkyCoord *sky_coordinates, int coordinate);
-
-
-/**
- * @brief Returns value of C0 coordinate.
- *
- * @param sky_coordinates Handle to memory block.
- * @return value of chosen coordinate.
- */
-double sdp_sky_coord_c0(const sdp_SkyCoord *sky_coordinates);
-
-
-/**
- * @brief Returns value of C1 coordinate.
- *
- * @param sky_coordinates Handle to memory block.
- * @return value of chosen coordinate.
- */
-double sdp_sky_coord_c1(const sdp_SkyCoord *sky_coordinates);
-
-
-/**
- * @brief Returns value of C2 coordinate.
- *
- * @param sky_coordinates Handle to memory block.
- * @return value of chosen coordinate.
- */
-double sdp_sky_coord_c2(const sdp_SkyCoord *sky_coordinates);
-
+double sdp_sky_coord_value(const sdp_SkyCoord *sky_coord, int32_t dim);
 
 /** @} */ /* End group SkyCoord_func. */
 

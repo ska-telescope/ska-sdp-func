@@ -4,87 +4,59 @@
 #include <string.h>
 
 #include "ska-sdp-func/utility/sdp_sky_coord.h"
-#include "ska-sdp-func/utility/sdp_logging.h"
 
 // Private implementation.
 struct sdp_SkyCoord
 {
-    char *type; // string indicating coordinate type.
-    double epoch; // epoch
-    double c0; // Coordinate 1
-    double c1; // Coordinate 2
-    double c2; // Coordinate 3
+    char *type; // A string to describe the coordinate type.
+    double epoch;
+    double coords[3];
 };
 
 sdp_SkyCoord* sdp_sky_coord_create(
         const char *type,
-        double epoch,
-        double c0,
-        double c1,
-        double c2,
-        sdp_Error* status
-) {
-    if(*status!=0) return(NULL);
-    sdp_SkyCoord *sky_coordinates;
-    sky_coordinates = (sdp_SkyCoord*) calloc(1, sizeof(sdp_SkyCoord));
-    // I think we need to copy because this should not be a wrapper
-    if(strlen(type)<50) {
-        sky_coordinates->type = (char *) malloc(50);
-        sprintf(sky_coordinates->type,"%s",type);
-    }
-    else {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_CRITICAL("Coordinate type is too long (maximum 50 characters)");
-        return(NULL);
-    }
-    sky_coordinates->epoch = epoch;
-    sky_coordinates->c0 = c0;
-    sky_coordinates->c1 = c1;
-    sky_coordinates->c2 = c2;
-    
-    return(sky_coordinates);
+        double coord0,
+        double coord1,
+        double coord2,
+        const sdp_Error* status
+)
+{
+    if (*status) return NULL;
+    sdp_SkyCoord *sky_coord = (sdp_SkyCoord*) calloc(1, sizeof(sdp_SkyCoord));
+    const size_t type_len = 1 + strlen(type);
+    sky_coord->type = (char*) calloc(type_len, sizeof(char));
+    memcpy(sky_coord->type, type, type_len);
+    sky_coord->epoch = 2000.0; // Set default (this is only needed sometimes).
+    sky_coord->coords[0] = coord0;
+    sky_coord->coords[1] = coord1;
+    sky_coord->coords[2] = coord2;
+    return sky_coord;
 }
 
-void sdp_sky_coord_free(sdp_SkyCoord *sky_coordinates) {
-    if (!sky_coordinates) return;
-    free(sky_coordinates->type);
-    free(sky_coordinates);
+void sdp_sky_coord_free(sdp_SkyCoord *sky_coord)
+{
+    if (!sky_coord) return;
+    free(sky_coord->type);
+    free(sky_coord);
 }
 
-// All these are awfully clumsy
-const char* sdp_sky_coord_type(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) {
-        return(sky_coordinates->type);
-    }
-    else return(NULL);
+double sdp_sky_coord_epoch(const sdp_SkyCoord *sky_coord)
+{
+    return sky_coord ? sky_coord->epoch : 0.0;
 }
 
-double sdp_sky_coord_epoch(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) {
-        return(sky_coordinates->epoch);
-    }
-    return(0);
+void sdp_sky_coord_set_epoch(sdp_SkyCoord *sky_coord, double epoch)
+{
+    if (!sky_coord) return;
+    sky_coord->epoch = epoch;
 }
 
-double sdp_sky_coord_coordinate(const sdp_SkyCoord *sky_coordinates, int coordinate) {
-    if(sky_coordinates==NULL || coordinate<0 || coordinate>2) return(0);
-    if(coordinate==0) return(sky_coordinates->c0);
-    else if(coordinate==1) return(sky_coordinates->c1);
-    else if(coordinate==2) return(sky_coordinates->c2);
-    else return(0);
+const char* sdp_sky_coord_type(const sdp_SkyCoord *sky_coord)
+{
+    return sky_coord ? sky_coord->type : 0;
 }
 
-double sdp_sky_coord_c0(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) return(sky_coordinates->c0);
-    else return(0);
-}
-
-double sdp_sky_coord_c1(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) return(sky_coordinates->c1);
-    else return(0);
-}
-
-double sdp_sky_coord_c2(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) return(sky_coordinates->c2);
-    else return(0);
+double sdp_sky_coord_value(const sdp_SkyCoord *sky_coord, int32_t dim)
+{
+    return (sky_coord && dim >= 0 && dim < 3) ? sky_coord->coords[dim] : 0.0;
 }
