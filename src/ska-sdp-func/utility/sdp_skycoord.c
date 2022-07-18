@@ -11,17 +11,17 @@ struct sdp_SkyCoord
 {
     char *type; // string indicating coordinate type.
     double epoch; // epoch
-    double C0; // Coordinate 1
-    double C1; // Coordinate 2
-    double C2; // Coordinate 3
+    double c0; // Coordinate 1
+    double c1; // Coordinate 2
+    double c2; // Coordinate 3
 };
 
 sdp_SkyCoord* sdp_sky_coord_create(
         const char *type,
         double epoch,
-        double C0,
-        double C1,
-        double C2,
+        double c0,
+        double c1,
+        double c2,
         sdp_Error* status
 ) {
     if(*status!=0) return(NULL);
@@ -38,9 +38,9 @@ sdp_SkyCoord* sdp_sky_coord_create(
         return(NULL);
     }
     sky_coordinates->epoch = epoch;
-    sky_coordinates->C0 = C0;
-    sky_coordinates->C1 = C1;
-    sky_coordinates->C2 = C2;
+    sky_coordinates->c0 = c0;
+    sky_coordinates->c1 = c1;
+    sky_coordinates->c2 = c2;
     
     return(sky_coordinates);
 }
@@ -68,23 +68,23 @@ double sdp_sky_coord_epoch(const sdp_SkyCoord *sky_coordinates) {
 
 double sdp_sky_coord_coordinate(const sdp_SkyCoord *sky_coordinates, int coordinate) {
     if(sky_coordinates==NULL || coordinate<0 || coordinate>2) return(0);
-    if(coordinate==0) return(sky_coordinates->C0);
-    else if(coordinate==1) return(sky_coordinates->C1);
-    else if(coordinate==2) return(sky_coordinates->C2);
+    if(coordinate==0) return(sky_coordinates->c0);
+    else if(coordinate==1) return(sky_coordinates->c1);
+    else if(coordinate==2) return(sky_coordinates->c2);
     else return(0);
 }
 
 double sdp_sky_coord_c0(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) return(sky_coordinates->C0);
+    if(sky_coordinates!=NULL) return(sky_coordinates->c0);
     else return(0);
 }
 
 double sdp_sky_coord_c1(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) return(sky_coordinates->C1);
+    if(sky_coordinates!=NULL) return(sky_coordinates->c1);
     else return(0);
 }
 
 double sdp_sky_coord_c2(const sdp_SkyCoord *sky_coordinates) {
-    if(sky_coordinates!=NULL) return(sky_coordinates->C2);
+    if(sky_coordinates!=NULL) return(sky_coordinates->c2);
     else return(0);
 }

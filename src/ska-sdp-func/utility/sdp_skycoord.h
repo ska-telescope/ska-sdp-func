@@ -50,9 +50,9 @@ typedef struct sdp_SkyCoord sdp_SkyCoord;
 sdp_SkyCoord* sdp_sky_coord_create(
     const char* type,
     double epoch,
-    double C0,
-    double C1,
-    double C2,
+    double c0,
+    double c1,
+    double c2,
     sdp_Error* status
 );
 
