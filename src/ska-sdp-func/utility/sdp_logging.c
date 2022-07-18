@@ -19,7 +19,7 @@ void sdp_log_message(
         int line,
         const char* message, ...)
 {
-    // Check environment variable for log filter, if not definted.
+    // Check environment variable for log filter, if not defined.
     if (log_filter == SDP_LOG_LEVEL_UNDEF)
     {
         const char* env = getenv("SKA_SDP_FUNC_LOG_LEVEL");
