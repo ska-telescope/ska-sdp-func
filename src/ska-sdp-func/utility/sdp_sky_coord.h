@@ -1,8 +1,8 @@
 
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#ifndef SKA_SDP_PROC_FUNC_SKYCOORD_H_
-#define SKA_SDP_PROC_FUNC_SKYCOORD_H_
+#ifndef SKA_SDP_PROC_FUNC_SKY_COORD_H_
+#define SKA_SDP_PROC_FUNC_SKY_COORD_H_
 
 /**
  * @file sdp_mem.h
@@ -41,9 +41,9 @@ typedef struct sdp_SkyCoord sdp_SkyCoord;
  *
  * @param type string declering coordinate type.
  * @param epoch epoch.
- * @param C0 value of the first coordinate.
- * @param C1 value of the second coordinate.
- * @param C2 value of the third coordinate.
+ * @param c0 value of the first coordinate.
+ * @param c1 value of the second coordinate.
+ * @param c2 value of the third coordinate.
  * @param status Error status.
  * @return ::sdp_SkyCoord* Handle to sky coordinate structure.
  */

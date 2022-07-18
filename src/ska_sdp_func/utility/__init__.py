@@ -5,4 +5,4 @@
 from .error import Error
 from .lib import Lib
 from .mem import Mem
-from .skycoord import SkyCoord
+from .sky_coord import SkyCoord

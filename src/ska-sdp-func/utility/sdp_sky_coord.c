@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ska-sdp-func/utility/sdp_skycoord.h"
+#include "ska-sdp-func/utility/sdp_sky_coord.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
 // Private implementation.

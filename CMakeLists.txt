@@ -17,7 +17,7 @@ set(${libname}_SRC
     src/ska-sdp-func/utility/sdp_device_wrapper.cpp
     src/ska-sdp-func/utility/sdp_logging.c
     src/ska-sdp-func/utility/sdp_mem.c
-    src/ska-sdp-func/utility/sdp_skycoord.c
+    src/ska-sdp-func/utility/sdp_sky_coord.c
 )
 
 # List of CUDA kernel source files.
