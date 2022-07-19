@@ -18,6 +18,7 @@ SDP Processing Function Library
   errors
   logging
   data_models
+  sky_coord
 
 .. toctree::
   :caption: Processing functions
