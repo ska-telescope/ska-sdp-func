@@ -164,21 +164,6 @@ static void run_and_check(
 	// fill weight with ones
 	{
 		void* weights = (void*)sdp_mem_data(weight);
-		
-		for (size_t i = 0; i < 10; i++)
-		{	
-			if (sdp_mem_type(weight) & SDP_MEM_DOUBLE)
-			{
-				double* temp = (double*)weights;
-				printf("weight[%li] = %e\n", i, temp[i]);
-			}
-			else
-			{
-				float* temp = (float*)weights;
-				printf("weight[%li] = %e\n", i, temp[i]);
-			}
-		}		
-
 		for (size_t i = 0; i < num_rows*num_channels; i++)
 		{	
 			if (sdp_mem_type(weight) == SDP_MEM_DOUBLE)
@@ -192,20 +177,6 @@ static void run_and_check(
 				temp[i] = 1.0f;
 			}
 		}
-		
-		for (size_t i = 0; i < 10; i++)
-		{	
-			if (sdp_mem_type(weight) & SDP_MEM_DOUBLE)
-			{
-				double* temp = (double*)weights;
-				printf("weight[%li] = %e\n", i, temp[i]);
-			}
-			else
-			{
-				float* temp = (float*)weights;
-				printf("weight[%li] = %e\n", i, temp[i]);
-			}
-		}		
 	}
 	
 	// fill freq_hz
@@ -268,9 +239,33 @@ static void run_and_check(
 		}
 	}
 
-
+	// find min_abs_w and max_abs_w
     double min_abs_w = 1e19;
     double max_abs_w = 1e-19;
+	printf("min_abs_w = %10.5e\n", min_abs_w);
+	printf("max_abs_w = %10.5e\n", max_abs_w);
+	{
+		const void* uvws = (const void*)sdp_mem_data_const(uvw);
+		for (size_t i = 0; i < num_rows*num_channels; i++)
+		{	
+			size_t ind = 3*i + 2;
+			
+			if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
+			{
+				const double* temp = (const double*)uvws;
+				if (min_abs_w > abs(temp[ind])) min_abs_w = abs(temp[ind]);
+				if (max_abs_w < abs(temp[ind])) max_abs_w = abs(temp[ind]);
+			}
+			else
+			{
+				const float* temp = (const float*)uvws;
+				if (min_abs_w > abs(temp[ind])) min_abs_w = abs(temp[ind]);
+				if (max_abs_w < abs(temp[ind])) max_abs_w = abs(temp[ind]);
+			}
+		}
+	}
+	printf("min_abs_w = %10.5e\n", min_abs_w);
+	printf("max_abs_w = %10.5e\n", max_abs_w);
     
 	// create plan
 	sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
