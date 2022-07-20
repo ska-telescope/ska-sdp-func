@@ -2,7 +2,7 @@
 
 """Import functions that we want to expose under ska_sdp_func"""
 
-from .dft import dft_point_v00
+from .dft import dft_point_v00, dft_point_v01
 from .fft import Fft
 from .function_example_a import FunctionExampleA
 from .phase_rotate import phase_rotate_uvw, phase_rotate_vis

@@ -92,8 +92,6 @@ sdp_Fft* sdp_fft_create(
     {
 #ifdef SDP_HAVE_CUDA
         int idist = 0, istride = 0, odist = 0, ostride = 0;
-        const int64_t type_size_in = sdp_mem_type_size(sdp_mem_type(input));
-        const int64_t type_size_out = sdp_mem_type_size(sdp_mem_type(output));
         const int32_t num_dims = sdp_mem_num_dims(input);
         const int32_t last_dim = num_dims - 1;
         cufftType cufft_type = CUFFT_C2C;
@@ -129,10 +127,10 @@ sdp_Fft* sdp_fft_create(
         {
             batch_size = sdp_mem_shape_dim(input, 0);
         }
-        istride = sdp_mem_stride_dim(input, last_dim) / type_size_in;
-        ostride = sdp_mem_stride_dim(output, last_dim) / type_size_out;
-        idist = sdp_mem_stride_dim(input, 0) / type_size_in;
-        odist = sdp_mem_stride_dim(output, 0) / type_size_out;
+        istride = sdp_mem_stride_elements_dim(input, last_dim);
+        ostride = sdp_mem_stride_elements_dim(output, last_dim);
+        idist = sdp_mem_stride_elements_dim(input, 0);
+        odist = sdp_mem_stride_elements_dim(output, 0);
         const cufftResult error = cufftPlanMany(
                 &cufft_plan, num_dims_fft, dim_size,
                 inembed, istride, idist, onembed, ostride, odist,
