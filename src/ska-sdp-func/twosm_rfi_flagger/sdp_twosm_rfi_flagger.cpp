@@ -1,12 +1,9 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #include <complex>
-#include <cstring>
-#include <iostream>
-
-#include "src/ska-sdp-func/twosm_rfi_flagger/sdp_twosm_rfi_flagger.h"
-#include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "src/ska-sdp-func/twosm_rfi_flagger/sdp_twosm_rfi_flagger.h"#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
+#include <iostream>
 
 static void check_params(
         const sdp_Mem* vis,
@@ -74,87 +71,32 @@ static void twosm_rfi_flagger(
     uint64_t timesample_block = num_channels * num_pols * num_baselines;
     uint64_t baseline_block = num_channels * num_pols;
     uint64_t channel_block = num_pols;
+    uint64_t num_elements = num_timesamples * num_baselines * num_channels * num_pols;
 
-
-    double dv_between_minustwo_and_one = 0;
-    double dv_between_minusthree_and_two = 0;
     double dv_between_cur_one = 0;
-    double diff_expl_vis = 0;
-    double second_dv = 0;
-    double extrapolated_dv = 0;
-    double extrapolated_val = 0;
     double dv_ratio = 0;
-    double diff_expl_ratio = 0;
-    double tol_margin_expl = thresholds[1];
-    double tol_margin_2sm = thresholds[0];
-
+    double tol_margin_2sm_time = thresholds[0];
+    double tol_margin_2sm_freq = thresholds[1];
 
     for (uint64_t a = 0; a < num_antennas; a++){
         uint64_t b = antennas[a];
-        for (uint16_t c = 0; c < num_channels; c++){
-            for (uint64_t t = 3; t < num_timesamples; t++) {
+        for (uint64_t c = 0; c < num_channels; c++){
+            for (uint64_t t = 1; t < num_timesamples; t++) {
                 uint64_t pos_current = t * timesample_block + b * baseline_block + c * channel_block;
                 uint64_t pos_minusone = (t - 1) * timesample_block + b * baseline_block + c * channel_block;
-                uint64_t pos_minustwo = (t - 2) * timesample_block + b * baseline_block + c * channel_block;
-                uint64_t pos_minusthree = (t - 3) * timesample_block + b * baseline_block + c * channel_block;
                 double vis0 = std::abs(visibilities[pos_current]);
                 double vis1 = std::abs(visibilities[pos_minusone]);
-                double vis2 = std::abs(visibilities[pos_minustwo]);
-                double vis3 = std::abs(visibilities[pos_minusthree]);
                 dv_between_cur_one = vis0 - vis1;
-                dv_between_minustwo_and_one = vis1 - vis2;
-                dv_between_minusthree_and_two = vis2 - vis3;
-                second_dv = dv_between_minustwo_and_one - dv_between_minusthree_and_two;
-                extrapolated_dv = second_dv + dv_between_minustwo_and_one;
-                extrapolated_val = std::abs(visibilities[pos_minusone]) + extrapolated_dv;
-                diff_expl_vis = extrapolated_val - vis0;
                 dv_ratio =  dv_between_cur_one/vis1;
-                diff_expl_ratio = diff_expl_vis/vis0;
-                tol_margin_expl = thresholds[1] * extrapolated_val;
-
                 if (flags[pos_current] != 1){
-                    bool cnd0 = dv_ratio > tol_margin_2sm;
-                    bool cnd1 = dv_ratio < (-1) * tol_margin_2sm;
-                    bool cnd2 = dv_ratio > (-1) * tol_margin_2sm;
-                    bool cnd3 = dv_ratio < tol_margin_2sm;
+                    bool cnd0 = dv_ratio > tol_margin_2sm_time;
+                    bool cnd1 = dv_ratio < (-1) * tol_margin_2sm_time;
+                    bool cnd2 = dv_ratio > (-1) * tol_margin_2sm_time;
+                    bool cnd3 = dv_ratio < tol_margin_2sm_time;
                     bool cnd4 = dv_ratio < 0;
                     bool cnd5 = dv_ratio > 0;
                     bool cnd6 = flags[pos_minusone] == 1;
                     bool cnd7 = flags[pos_minusone] == 0;
-
-                    bool pnd0 = diff_expl_ratio > tol_margin_expl;
-                    bool pnd1 = diff_expl_ratio < (-1) * tol_margin_expl;
-                    bool pnd2 = diff_expl_ratio > (-1) * tol_margin_expl;
-                    bool pnd3 = diff_expl_ratio < tol_margin_expl;
-                    bool pnd4 = diff_expl_ratio < 0;
-                    bool pnd5 = diff_expl_ratio > 0;
-                    bool pnd6 = flags[pos_minusone] == 1;
-                    bool pnd7 = flags[pos_minusone] == 0;
-
-//
-//                    if (pnd0 || (((pnd2 && pnd4) || (pnd3 && pnd5)) && pnd6)){
-//                        std::cout << "extraploate value for time " << t << " = " << extrapolated_val << std::endl;
-//                        for (uint64_t b = 0; b < num_baselines; b++){
-//                            for (uint64_t p = 0; p < num_pols; p++){
-//                                uint64_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
-//                                flags[pos] = 1;
-//                            }
-//                        }
-//                    }
-//                    if (pnd1 && pnd7){
-//                        int i = 0;
-//                        int pos = pos_minusone;
-//                        while (flags[pos] == 0 & t > i){
-//                            for (uint64_t b = 0; b < num_baselines; b++){
-//                                for (uint64_t p = 0; p < num_pols; p++){
-//                                    uint64_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
-//                                    flags[pos] = 1;
-//                                }
-//                            }
-//                            i = i + 1;
-//                            pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
-//                        }
-//                    }
 
                     if (cnd0 || (((cnd2 && cnd4) || (cnd3 && cnd5)) && cnd6)){
                         for (uint64_t b = 0; b < num_baselines; b++){
@@ -164,10 +106,10 @@ static void twosm_rfi_flagger(
                             }
                         }
                     }
-                    if (cnd1 & cnd7 == 0){
-                        int i = 0;
-                        int pos = pos_minusone;
-                        while (flags[pos] == 0 & t > i){
+                    if (cnd1 && (cnd7 == 0)){
+                        uint64_t i = 0;
+                        uint64_t pos = pos_minusone;
+                        while (flags[pos] == 0 && t > i){
                             for (uint64_t b = 0; b < num_baselines; b++){
                                 for (uint64_t p = 0; p < num_pols; p++){
                                     uint64_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
@@ -183,8 +125,54 @@ static void twosm_rfi_flagger(
 
             }
         }
+        for (uint64_t t = 0; t < num_timesamples; t++){
+            for (uint64_t c = 1; c < num_channels; c++) {
+                uint64_t pos_current = t * timesample_block + b * baseline_block + c * channel_block;
+                uint64_t pos_minusone = t * timesample_block + b * baseline_block + (c - 1) * channel_block;
+                double vis0 = std::abs(visibilities[pos_current]);
+                double vis1 = std::abs(visibilities[pos_minusone]);
+                dv_between_cur_one = vis0 - vis1;
+                dv_ratio =  dv_between_cur_one/vis1;
+                if (flags[pos_current] != 1){
+                    bool cnd0 = dv_ratio > tol_margin_2sm_freq;
+                    bool cnd1 = dv_ratio < (-1) * tol_margin_2sm_freq;
+                    bool cnd2 = dv_ratio > (-1) * tol_margin_2sm_freq;
+                    bool cnd3 = dv_ratio < tol_margin_2sm_freq;
+                    bool cnd4 = dv_ratio < 0;
+                    bool cnd5 = dv_ratio > 0;
+                    bool cnd6 = flags[pos_minusone] == 2;
+                    bool cnd7 = flags[pos_minusone] == 0 || flags[pos_minusone] == 1;
+                    if (cnd0 || (((cnd2 && cnd4) || (cnd3 && cnd5)) && cnd6)){
+                        for (uint64_t b = 0; b < num_baselines; b++){
+                            for (uint64_t p = 0; p < num_pols; p++){
+                                uint64_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
+                                flags[pos] = 2;
+                            }
+                        }
+                    }
+                    if (cnd1 && (cnd7 == 0)){
+                        uint64_t i = 0;
+                        uint64_t pos = pos_minusone;
+                        while ((flags[pos] == 0 || flags[pos] == 1) && t > i){
+                            for (uint64_t b = 0; b < num_baselines; b++){
+                                for (uint64_t p = 0; p < num_pols; p++){
+                                    uint64_t pos = t * timesample_block + b * baseline_block + c * channel_block + p;
+                                    flags[pos] = 2;
+                                }
+                            }
+                            i = i + 1;
+                            pos = t * timesample_block + b * baseline_block + (c - 1) * channel_block;
+                        }
+                    }
+                }
+            }
+        }
     }
-
+    for (int i = 0; i < num_elements; i++){
+        if (flags[i] > 0){
+            flags[i] = 1;
+        }
+    }
 }
 
 
