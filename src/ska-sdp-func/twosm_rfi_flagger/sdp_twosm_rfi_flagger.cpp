@@ -1,9 +1,9 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #include <complex>
-#include "src/ska-sdp-func/twosm_rfi_flagger/sdp_twosm_rfi_flagger.h"#include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "src/ska-sdp-func/twosm_rfi_flagger/sdp_twosm_rfi_flagger.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
-
 
 static void check_params(
         const sdp_Mem* vis,
@@ -180,7 +180,7 @@ static void twosm_rfi_flagger(
         }
     }
     // calculating the union (replace all 2's and 1's with 1)
-    for (int i = 0; i < num_elements; i++){
+    for (uint64_t i = 0; i < num_elements; i++){
         if (flags[i] > 0){
             flags[i] = 1;
         }
