@@ -26,6 +26,7 @@ SDP Processing Function Library
 
   proc_func_dft
   proc_func_fft
+  proc_func_phase_rotation
   proc_func_rfi_flagger
   proc_func_function_example_a
   proc_func_vector

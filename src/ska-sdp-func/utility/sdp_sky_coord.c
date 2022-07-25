@@ -17,11 +17,9 @@ sdp_SkyCoord* sdp_sky_coord_create(
         const char *type,
         double coord0,
         double coord1,
-        double coord2,
-        const sdp_Error* status
+        double coord2
 )
 {
-    if (*status) return NULL;
     sdp_SkyCoord *sky_coord = (sdp_SkyCoord*) calloc(1, sizeof(sdp_SkyCoord));
     const size_t type_len = 1 + strlen(type);
     sky_coord->type = (char*) calloc(type_len, sizeof(char));
