@@ -80,16 +80,6 @@ Functions which would be working with visibilities should use these input/output
     coord1, coord2, coord3 (each a ``double``).
 
 
-- *Phase centre Right Ascension:* ``double phase_centre_ra_rad`` [radians]
-
-  - **Type:** real-valued variable
-
-
-- *Phase centre Declination:* ``double phase_centre_dec_rad`` [radians]
-
-  - **Type:** real-valued variable
-
-
 - *Baseline metadata:* ``sdp_Table *bl``
 
   - **Note:** table-like data type not implemented yet
@@ -135,9 +125,11 @@ Functions which would be working on grids should use these input/outputs. Only p
   - **Type:** real-valued
 
 
-- *Phase centre Right Ascension and Declination:* ``double phase_centre_ra_rad, double phase_centre_dec_rad`` [radians]
+- *Sky Coordinate Metadata:* ``sdp_SkyCoord *coord``
 
-  - **Type:** real-valued variable
+  - **Type:** SkyCoord contains a string (``char* type``) to describe the
+    coordinate type, a coordinate epoch (``double``), and up to three values
+    coord1, coord2, coord3 (each a ``double``).
 
 
 - *UVW Projection:* ``sdp_Mem *uvw_projection``
@@ -169,9 +161,11 @@ Functions which would be working on UVW coordinates should use these input/outpu
   - **Type:** real-valued
 
 
-- *Phase centre Right Ascension and Declination:* ``double phase_centre_ra_rad, double phase_centre_dec_rad`` [radians]
+- *Sky Coordinate Metadata:* ``sdp_SkyCoord *coord``
 
-  - **Type:** real-valued variable
+  - **Type:** SkyCoord contains a string (``char* type``) to describe the
+    coordinate type, a coordinate epoch (``double``), and up to three values
+    coord1, coord2, coord3 (each a ``double``).
 
 
 - *UVW Projection:* ``sdp_Mem *uvw_projection``
@@ -202,9 +196,11 @@ Functions which would be working on UVW coordinates should use these input/outpu
   - **Type:** real-valued
 
 
-- *Phase centre Right Ascension and Declination:* ``double phasecentre_ra_rad, double phasecentre_dec_rad`` [radians]
+- *Sky Coordinate Metadata:* ``sdp_SkyCoord *coord``
 
-  - **Type:** real-valued variable
+  - **Type:** SkyCoord contains a string (``char* type``) to describe the
+    coordinate type, a coordinate epoch (``double``), and up to three values
+    coord1, coord2, coord3 (each a ``double``).
 
 
 - *lmn projection:* ``sdp_Mem *lmn_projection``
