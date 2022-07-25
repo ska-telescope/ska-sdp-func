@@ -24,10 +24,8 @@ using std::complex;
 template<typename FP>
 static void check_results_rotate_uvw(
         const char* test_name,
-        const double phase_centre_orig_ra_rad,
-        const double phase_centre_orig_dec_rad,
-        const double phase_centre_new_ra_rad,
-        const double phase_centre_new_dec_rad,
+        const sdp_SkyCoord* phase_centre_orig,
+        const sdp_SkyCoord* phase_centre_new,
         const int64_t num,
         const FP* uvw_in,
         const FP* uvw_out,
@@ -40,8 +38,12 @@ static void check_results_rotate_uvw(
     }
 
     // Rotate by -delta_ra around v, then delta_dec around u.
-    const double d_a = -(phase_centre_new_ra_rad - phase_centre_orig_ra_rad);
-    const double d_d = (phase_centre_new_dec_rad - phase_centre_orig_dec_rad);
+    const double orig_ra_rad = sdp_sky_coord_value(phase_centre_orig, 0);
+    const double orig_dec_rad = sdp_sky_coord_value(phase_centre_orig, 1);
+    const double new_ra_rad = sdp_sky_coord_value(phase_centre_new, 0);
+    const double new_dec_rad = sdp_sky_coord_value(phase_centre_new, 1);
+    const double d_a = -(new_ra_rad - orig_ra_rad);
+    const double d_d = (new_dec_rad - orig_dec_rad);
     const double sin_d_a = sin(d_a);
     const double cos_d_a = cos(d_a);
     const double sin_d_d = sin(d_d);
@@ -83,10 +85,8 @@ static void check_results_rotate_vis(
         const int64_t num_pols,
         const double channel_start_hz,
         const double channel_step_hz,
-        const double phase_centre_orig_ra_rad,
-        const double phase_centre_orig_dec_rad,
-        const double phase_centre_new_ra_rad,
-        const double phase_centre_new_dec_rad,
+        const sdp_SkyCoord* phase_centre_orig,
+        const sdp_SkyCoord* phase_centre_new,
         const COORD_TYPE* uvw,
         const complex<VIS_TYPE>* vis_in,
         const complex<VIS_TYPE>* vis_out,
@@ -99,13 +99,17 @@ static void check_results_rotate_vis(
     }
 
     // Convert from spherical to tangent-plane to get delta (l, m, n).
-    const double d_a = -(phase_centre_new_ra_rad - phase_centre_orig_ra_rad);
+    const double orig_ra_rad = sdp_sky_coord_value(phase_centre_orig, 0);
+    const double orig_dec_rad = sdp_sky_coord_value(phase_centre_orig, 1);
+    const double new_ra_rad = sdp_sky_coord_value(phase_centre_new, 0);
+    const double new_dec_rad = sdp_sky_coord_value(phase_centre_new, 1);
+    const double d_a = -(new_ra_rad - orig_ra_rad);
     const double sin_d_a = sin(d_a);
     const double cos_d_a = cos(d_a);
-    const double sin_dec0 = sin(phase_centre_orig_dec_rad);
-    const double cos_dec0 = cos(phase_centre_orig_dec_rad);
-    const double sin_dec  = sin(phase_centre_new_dec_rad);
-    const double cos_dec  = cos(phase_centre_new_dec_rad);
+    const double sin_dec0 = sin(orig_dec_rad);
+    const double cos_dec0 = cos(orig_dec_rad);
+    const double sin_dec  = sin(new_dec_rad);
+    const double cos_dec  = cos(new_dec_rad);
     const double l1 = cos_dec  * -sin_d_a;
     const double m1 = cos_dec0 * sin_dec - sin_dec0 * cos_dec * cos_d_a;
     const double n1 = sin_dec0 * sin_dec + cos_dec0 * cos_dec * cos_d_a;
@@ -159,10 +163,10 @@ void run_and_check_rotate_uvw(
 )
 {
     // Generate some test data.
-    const double original_ra_rad = 123.5 * M_PI / 180;
-    const double original_dec_rad = 17.8 * M_PI / 180;
-    const double new_ra_rad = 148.3 * M_PI / 180;
-    const double new_dec_rad = 38.9 * M_PI / 180;
+    sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(
+            "icrs", 123.5 * M_PI / 180, 17.8 * M_PI / 180, 0.0);
+    sdp_SkyCoord* new_phase_centre = sdp_sky_coord_create(
+            "icrs", 148.3 * M_PI / 180, 38.9 * M_PI / 180, 0.0);
     const int num_baselines = 351;
     const int num_times = 10;
     int64_t uvw_shape[] = {num_times, num_baselines, 3};
@@ -179,8 +183,8 @@ void run_and_check_rotate_uvw(
 
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
-    sdp_phase_rotate_uvw(original_ra_rad, original_dec_rad,
-            new_ra_rad, new_dec_rad, uvw_in, uvw_out, status);
+    sdp_phase_rotate_uvw(original_phase_centre, new_phase_centre,
+            uvw_in, uvw_out, status);
     sdp_mem_ref_dec(uvw_in);
 
     // Copy the output for checking.
@@ -193,8 +197,8 @@ void run_and_check_rotate_uvw(
         if (coord_type == SDP_MEM_DOUBLE)
         {
             check_results_rotate_uvw<double>(test_name,
-                    original_ra_rad, original_dec_rad,
-                    new_ra_rad, new_dec_rad,
+                    original_phase_centre,
+                    new_phase_centre,
                     num_times * num_baselines,
                     (const double*)sdp_mem_data_const(uvw_in_cpu),
                     (const double*)sdp_mem_data_const(uvw_out_cpu),
@@ -203,8 +207,8 @@ void run_and_check_rotate_uvw(
         else
         {
             check_results_rotate_uvw<float>(test_name,
-                    original_ra_rad, original_dec_rad,
-                    new_ra_rad, new_dec_rad,
+                    original_phase_centre,
+                    new_phase_centre,
                     num_times * num_baselines,
                     (const float*)sdp_mem_data_const(uvw_in_cpu),
                     (const float*)sdp_mem_data_const(uvw_out_cpu),
@@ -213,6 +217,8 @@ void run_and_check_rotate_uvw(
     }
     sdp_mem_ref_dec(uvw_in_cpu);
     sdp_mem_ref_dec(uvw_out_cpu);
+    sdp_sky_coord_free(original_phase_centre);
+    sdp_sky_coord_free(new_phase_centre);
 }
 
 void run_and_check_rotate_vis(
@@ -227,10 +233,10 @@ void run_and_check_rotate_vis(
 )
 {
     // Generate some test data.
-    const double original_ra_rad = 123.5 * M_PI / 180;
-    const double original_dec_rad = 17.8 * M_PI / 180;
-    const double new_ra_rad = 148.3 * M_PI / 180;
-    const double new_dec_rad = 38.9 * M_PI / 180;
+    sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(
+            "icrs", 123.5 * M_PI / 180, 17.8 * M_PI / 180, 0.0);
+    sdp_SkyCoord* new_phase_centre = sdp_sky_coord_create(
+            "icrs", 148.3 * M_PI / 180, 38.9 * M_PI / 180, 0.0);
     const double channel_start_hz = 100e6;
     const double channel_step_hz = 10e6;
     const int num_channels = 3;
@@ -256,9 +262,8 @@ void run_and_check_rotate_vis(
 
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
-    sdp_phase_rotate_vis(original_ra_rad, original_dec_rad,
-            new_ra_rad, new_dec_rad, channel_start_hz, channel_step_hz,
-            uvw_in, vis_in, vis_out, status);
+    sdp_phase_rotate_vis(original_phase_centre, new_phase_centre,
+            channel_start_hz, channel_step_hz, uvw_in, vis_in, vis_out, status);
     sdp_mem_ref_dec(uvw_in);
     sdp_mem_ref_dec(vis_in);
 
@@ -274,7 +279,7 @@ void run_and_check_rotate_vis(
             check_results_rotate_vis<double, double>(test_name,
                     num_times, num_baselines, num_channels, num_pols,
                     channel_start_hz, channel_step_hz,
-                    original_ra_rad, original_dec_rad, new_ra_rad, new_dec_rad,
+                    original_phase_centre, new_phase_centre,
                     (const double*)sdp_mem_data_const(uvw),
                     (const complex<double>*)sdp_mem_data_const(vis_in_cpu),
                     (const complex<double>*)sdp_mem_data_const(vis_out_cpu),
@@ -285,7 +290,7 @@ void run_and_check_rotate_vis(
             check_results_rotate_vis<float, float>(test_name,
                     num_times, num_baselines, num_channels, num_pols,
                     channel_start_hz, channel_step_hz,
-                    original_ra_rad, original_dec_rad, new_ra_rad, new_dec_rad,
+                    original_phase_centre, new_phase_centre,
                     (const float*)sdp_mem_data_const(uvw),
                     (const complex<float>*)sdp_mem_data_const(vis_in_cpu),
                     (const complex<float>*)sdp_mem_data_const(vis_out_cpu),
@@ -295,6 +300,8 @@ void run_and_check_rotate_vis(
     sdp_mem_ref_dec(uvw);
     sdp_mem_ref_dec(vis_in_cpu);
     sdp_mem_ref_dec(vis_out_cpu);
+    sdp_sky_coord_free(original_phase_centre);
+    sdp_sky_coord_free(new_phase_centre);
 }
 
 int main()

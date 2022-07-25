@@ -10,15 +10,18 @@ except ImportError:
     cupy = None
 
 from ska_sdp_func import phase_rotate_uvw, phase_rotate_vis
+from ska_sdp_func.utility import SkyCoord
 
 
 def test_phase_rotate():
     """Test phase centre rotation."""
     # Run test on CPU, using numpy arrays.
-    original_ra_rad = 123.5 * numpy.pi / 180.0
-    original_dec_rad = 17.8 * numpy.pi / 180.0
-    new_ra_rad = 148.3 * numpy.pi / 180.0
-    new_dec_rad = 38.9 * numpy.pi / 180.0
+    original_phase_centre = SkyCoord(
+        "icrs", 123.5 * numpy.pi / 180.0, 17.8 * numpy.pi / 180.0
+    )
+    new_phase_centre = SkyCoord(
+        "icrs", 148.3 * numpy.pi / 180.0, 38.9 * numpy.pi / 180.0
+    )
     channel_start_hz = 100e6
     channel_step_hz = 10e6
     num_pols = 4
@@ -36,18 +39,14 @@ def test_phase_rotate():
     vis_out = numpy.zeros_like(vis_in)
     print("Testing phase rotation on CPU from ska-sdp-func...")
     phase_rotate_uvw(
-        original_ra_rad,
-        original_dec_rad,
-        new_ra_rad,
-        new_dec_rad,
+        original_phase_centre,
+        new_phase_centre,
         uvw_in,
         uvw_out,
     )
     phase_rotate_vis(
-        original_ra_rad,
-        original_dec_rad,
-        new_ra_rad,
-        new_dec_rad,
+        original_phase_centre,
+        new_phase_centre,
         channel_start_hz,
         channel_step_hz,
         uvw_in,
@@ -63,18 +62,14 @@ def test_phase_rotate():
         vis_out_gpu = cupy.zeros_like(vis_in_gpu)
         print("Testing phase rotation on GPU from ska-sdp-func...")
         phase_rotate_uvw(
-            original_ra_rad,
-            original_dec_rad,
-            new_ra_rad,
-            new_dec_rad,
+            original_phase_centre,
+            new_phase_centre,
             uvw_in_gpu,
             uvw_out_gpu,
         )
         phase_rotate_vis(
-            original_ra_rad,
-            original_dec_rad,
-            new_ra_rad,
-            new_dec_rad,
+            original_phase_centre,
+            new_phase_centre,
             channel_start_hz,
             channel_step_hz,
             uvw_in_gpu,

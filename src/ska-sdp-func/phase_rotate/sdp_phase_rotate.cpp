@@ -78,10 +78,8 @@ static void rotate_vis(
 }
 
 void sdp_phase_rotate_uvw(
-        const double phase_centre_orig_ra_rad,
-        const double phase_centre_orig_dec_rad,
-        const double phase_centre_new_ra_rad,
-        const double phase_centre_new_dec_rad,
+        const sdp_SkyCoord* phase_centre_orig,
+        const sdp_SkyCoord* phase_centre_new,
         const sdp_Mem* uvw_in,
         sdp_Mem* uvw_out,
         sdp_Error* status
@@ -124,8 +122,12 @@ void sdp_phase_rotate_uvw(
     }
 
     // Rotate by -delta_ra around v, then delta_dec around u.
-    const double d_a = -(phase_centre_new_ra_rad - phase_centre_orig_ra_rad);
-    const double d_d = (phase_centre_new_dec_rad - phase_centre_orig_dec_rad);
+    const double orig_ra_rad = sdp_sky_coord_value(phase_centre_orig, 0);
+    const double orig_dec_rad = sdp_sky_coord_value(phase_centre_orig, 1);
+    const double new_ra_rad = sdp_sky_coord_value(phase_centre_new, 0);
+    const double new_dec_rad = sdp_sky_coord_value(phase_centre_new, 1);
+    const double d_a = -(new_ra_rad - orig_ra_rad);
+    const double d_d = (new_dec_rad - orig_dec_rad);
     const double sin_d_a = sin(d_a);
     const double cos_d_a = cos(d_a);
     const double sin_d_d = sin(d_d);
@@ -200,10 +202,8 @@ void sdp_phase_rotate_uvw(
 }
 
 void sdp_phase_rotate_vis(
-        const double phase_centre_orig_ra_rad,
-        const double phase_centre_orig_dec_rad,
-        const double phase_centre_new_ra_rad,
-        const double phase_centre_new_dec_rad,
+        const sdp_SkyCoord* phase_centre_orig,
+        const sdp_SkyCoord* phase_centre_new,
         const double channel_start_hz,
         const double channel_step_hz,
         const sdp_Mem* uvw,
@@ -259,13 +259,17 @@ void sdp_phase_rotate_vis(
     }
 
     // Convert from spherical to tangent-plane to get delta (l, m, n).
-    const double d_a = -(phase_centre_new_ra_rad - phase_centre_orig_ra_rad);
+    const double orig_ra_rad = sdp_sky_coord_value(phase_centre_orig, 0);
+    const double orig_dec_rad = sdp_sky_coord_value(phase_centre_orig, 1);
+    const double new_ra_rad = sdp_sky_coord_value(phase_centre_new, 0);
+    const double new_dec_rad = sdp_sky_coord_value(phase_centre_new, 1);
+    const double d_a = -(new_ra_rad - orig_ra_rad);
     const double sin_d_a = sin(d_a);
     const double cos_d_a = cos(d_a);
-    const double sin_dec0 = sin(phase_centre_orig_dec_rad);
-    const double cos_dec0 = cos(phase_centre_orig_dec_rad);
-    const double sin_dec  = sin(phase_centre_new_dec_rad);
-    const double cos_dec  = cos(phase_centre_new_dec_rad);
+    const double sin_dec0 = sin(orig_dec_rad);
+    const double cos_dec0 = cos(orig_dec_rad);
+    const double sin_dec  = sin(new_dec_rad);
+    const double cos_dec  = cos(new_dec_rad);
     const double l1 = cos_dec  * -sin_d_a;
     const double m1 = cos_dec0 * sin_dec - sin_dec0 * cos_dec * cos_d_a;
     const double n1 = sin_dec0 * sin_dec + cos_dec0 * cos_dec * cos_d_a;

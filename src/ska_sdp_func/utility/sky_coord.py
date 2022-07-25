@@ -10,7 +10,6 @@ try:
 except ImportError:
     astropy = None
 
-from .error import Error
 from .lib import Lib
 
 
@@ -26,13 +25,13 @@ class SkyCoord:
         The arguments are the coordinate type as a string,
         and up to three coordinate values coord0, coord1, coord2.
 
-        Alternatively, an astropy SkyCoord object can be passed instead.
+        Alternatively, an existing SkyCoord or an astropy SkyCoord object
+        can be passed instead.
 
         The default epoch value is 2000.0, but can be set using
         :meth:`set_epoch`.
         """
         self._handle = None
-        error_status = Error()
         sky_coord_create = Lib.handle().sdp_sky_coord_create
         sky_coord_create.restype = SkyCoord.handle_type()
         sky_coord_create.argtypes = [
@@ -40,24 +39,32 @@ class SkyCoord:
             ctypes.c_double,
             ctypes.c_double,
             ctypes.c_double,
-            Error.handle_type(),
         ]
-        if len(args) == 1 and astropy:
-            if isinstance(args[0], astropy.coordinates.SkyCoord):
-                astropy_coord = args[0]
-                if astropy_coord.frame.name == "icrs":
-                    self._handle = sky_coord_create(
-                        "icrs".encode("ascii"),
-                        astropy_coord.ra.rad,
-                        astropy_coord.dec.rad,
-                        0.0,
-                        error_status.handle(),
-                    )
-                else:
-                    raise RuntimeError("Unknown astropy coordinate frame")
+        if len(args) == 1:
+            if isinstance(args[0], SkyCoord):
+                other = args[0]
+                # Copy of an existing SkyCoord.
+                self._handle = sky_coord_create(
+                    other.type().encode("ascii"),
+                    other.value(0),
+                    other.value(1),
+                    other.value(2),
+                )
+            elif astropy:
+                if isinstance(args[0], astropy.coordinates.SkyCoord):
+                    astropy_coord = args[0]
+                    if astropy_coord.frame.name == "icrs":
+                        self._handle = sky_coord_create(
+                            "icrs".encode("ascii"),
+                            astropy_coord.ra.rad,
+                            astropy_coord.dec.rad,
+                            0.0,
+                        )
+                    else:
+                        raise RuntimeError("Unknown astropy coordinate frame")
             else:
                 raise RuntimeError(
-                    "Object is not of type astropy.coordinates.SkyCoord"
+                    "Unknown object passed to SkyCoord constructor"
                 )
         elif len(args) >= 3:
             self._handle = sky_coord_create(
@@ -65,7 +72,6 @@ class SkyCoord:
                 args[1],
                 args[2],
                 args[3] if len(args) >= 4 else 0.0,
-                error_status.handle(),
             )
         else:
             raise RuntimeError("Unknown construction method for SkyCoord")

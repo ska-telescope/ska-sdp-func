@@ -8,6 +8,7 @@
  */
 
 #include "ska-sdp-func/utility/sdp_mem.h"
+#include "ska-sdp-func/utility/sdp_sky_coord.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,19 +32,15 @@ extern "C" {
  * - @p uvw_out is 3D and real-valued, with shape:
  *   - [ num_times, num_baselines, 3 ]
  *
- * @param phase_centre_orig_ra_rad Original phase centre RA, in radians.
- * @param phase_centre_orig_dec_rad Original phase centre Dec, in radians.
- * @param phase_centre_new_ra_rad New phase centre RA, in radians.
- * @param phase_centre_new_dec_rad New phase centre Dec, in radians.
+ * @param phase_centre_orig Original phase centre.
+ * @param phase_centre_new New phase centre.
  * @param uvw_in Input baseline (u,v,w) coordinates. Dimensions as above.
  * @param uvw_out Output baseline (u,v,w) coordinates. Dimensions as above.
  * @param status Error status.
  */
 void sdp_phase_rotate_uvw(
-        const double phase_centre_orig_ra_rad,
-        const double phase_centre_orig_dec_rad,
-        const double phase_centre_new_ra_rad,
-        const double phase_centre_new_dec_rad,
+        const sdp_SkyCoord* phase_centre_orig,
+        const sdp_SkyCoord* phase_centre_new,
         const sdp_Mem* uvw_in,
         sdp_Mem* uvw_out,
         sdp_Error* status);
@@ -64,10 +61,8 @@ void sdp_phase_rotate_uvw(
  * - @p vis_out is 4D and complex-valued, with shape:
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
- * @param phase_centre_orig_ra_rad Original phase centre RA, in radians.
- * @param phase_centre_orig_dec_rad Original phase centre Dec, in radians.
- * @param phase_centre_new_ra_rad New phase centre RA, in radians.
- * @param phase_centre_new_dec_rad New phase centre Dec, in radians.
+ * @param phase_centre_orig Original phase centre.
+ * @param phase_centre_new New phase centre.
  * @param channel_start_hz Frequency of first channel, in Hz.
  * @param channel_step_hz Frequency increment between channels, in Hz.
  * @param uvw Original baseline (u,v,w) coordinates, in metres.
@@ -77,10 +72,8 @@ void sdp_phase_rotate_uvw(
  * @param status Error status.
  */
 void sdp_phase_rotate_vis(
-        const double phase_centre_orig_ra_rad,
-        const double phase_centre_orig_dec_rad,
-        const double phase_centre_new_ra_rad,
-        const double phase_centre_new_dec_rad,
+        const sdp_SkyCoord* phase_centre_orig,
+        const sdp_SkyCoord* phase_centre_new,
         const double channel_start_hz,
         const double channel_step_hz,
         const sdp_Mem* uvw,

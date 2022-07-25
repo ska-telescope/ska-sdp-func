@@ -4,14 +4,12 @@
 
 import ctypes
 
-from .utility import Error, Lib, Mem
+from .utility import Error, Lib, Mem, SkyCoord
 
 
 def phase_rotate_uvw(
-    phase_centre_orig_ra_rad,
-    phase_centre_orig_dec_rad,
-    phase_centre_new_ra_rad,
-    phase_centre_new_dec_rad,
+    phase_centre_orig,
+    phase_centre_new,
     uvw_in,
     uvw_out,
 ):
@@ -33,17 +31,11 @@ def phase_rotate_uvw(
 
       * [ num_times, num_baselines, 3 ]
 
-    :param phase_centre_orig_ra_rad: Original phase centre RA, in radians.
-    :type phase_centre_orig_ra_rad: float
+    :param phase_centre_orig: Original phase centre.
+    :type phase_centre_orig: SkyCoord, or astropy.coordinates.SkyCoord
 
-    :param phase_centre_orig_dec_rad: Original phase centre Dec, in radians.
-    :type phase_centre_orig_dec_rad: float
-
-    :param phase_centre_new_ra_rad: New phase centre RA, in radians.
-    :type phase_centre_new_ra_rad: float
-
-    :param phase_centre_new_dec_rad: New phase centre Dec, in radians.
-    :type phase_centre_new_dec_rad: float
+    :param phase_centre_new: New phase centre.
+    :type phase_centre_new: SkyCoord, or astropy.coordinates.SkyCoord
 
     :param uvw_in: Input baseline (u,v,w) coordinates.
     :type uvw_in: numpy.ndarray or cupy.ndarray
@@ -51,24 +43,22 @@ def phase_rotate_uvw(
     :param uvw_out: Output baseline (u,v,w) coordinates.
     :type uvw_in: numpy.ndarray or cupy.ndarray
     """
+    phase_centre_orig = SkyCoord(phase_centre_orig)
+    phase_centre_new = SkyCoord(phase_centre_new)
     mem_uvw_in = Mem(uvw_in)
     mem_uvw_out = Mem(uvw_out)
     error_status = Error()
     lib_rotate_uvw = Lib.handle().sdp_phase_rotate_uvw
     lib_rotate_uvw.argtypes = [
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
+        SkyCoord.handle_type(),
+        SkyCoord.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
         Error.handle_type(),
     ]
     lib_rotate_uvw(
-        ctypes.c_double(phase_centre_orig_ra_rad),
-        ctypes.c_double(phase_centre_orig_dec_rad),
-        ctypes.c_double(phase_centre_new_ra_rad),
-        ctypes.c_double(phase_centre_new_dec_rad),
+        phase_centre_orig.handle(),
+        phase_centre_new.handle(),
         mem_uvw_in.handle(),
         mem_uvw_out.handle(),
         error_status.handle(),
@@ -77,10 +67,8 @@ def phase_rotate_uvw(
 
 
 def phase_rotate_vis(
-    phase_centre_orig_ra_rad,
-    phase_centre_orig_dec_rad,
-    phase_centre_new_ra_rad,
-    phase_centre_new_dec_rad,
+    phase_centre_orig,
+    phase_centre_new,
     channel_start_hz,
     channel_step_hz,
     uvw,
@@ -108,17 +96,11 @@ def phase_rotate_vis(
 
       * [ num_times, num_baselines, num_channels, num_pols ]
 
-    :param phase_centre_orig_ra_rad: Original phase centre RA, in radians.
-    :type phase_centre_orig_ra_rad: float
+    :param phase_centre_orig: Original phase centre.
+    :type phase_centre_orig: SkyCoord, or astropy.coordinates.SkyCoord
 
-    :param phase_centre_orig_dec_rad: Original phase centre Dec, in radians.
-    :type phase_centre_orig_dec_rad: float
-
-    :param phase_centre_new_ra_rad: New phase centre RA, in radians.
-    :type phase_centre_new_ra_rad: float
-
-    :param phase_centre_new_dec_rad: New phase centre Dec, in radians.
-    :type phase_centre_new_dec_rad: float
+    :param phase_centre_new: New phase centre.
+    :type phase_centre_new: SkyCoord, or astropy.coordinates.SkyCoord
 
     :param channel_start_hz: Frequency of first channel, in Hz.
     :type channel_start_hz: float
@@ -135,16 +117,16 @@ def phase_rotate_vis(
     :param vis_out: Output visibility data.
     :type vis_out: numpy.ndarray or cupy.ndarray
     """
+    phase_centre_orig = SkyCoord(phase_centre_orig)
+    phase_centre_new = SkyCoord(phase_centre_new)
     mem_uvw = Mem(uvw)
     mem_vis_in = Mem(vis_in)
     mem_vis_out = Mem(vis_out)
     error_status = Error()
     lib_rotate_vis = Lib.handle().sdp_phase_rotate_vis
     lib_rotate_vis.argtypes = [
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
+        SkyCoord.handle_type(),
+        SkyCoord.handle_type(),
         ctypes.c_double,
         ctypes.c_double,
         Mem.handle_type(),
@@ -153,10 +135,8 @@ def phase_rotate_vis(
         Error.handle_type(),
     ]
     lib_rotate_vis(
-        ctypes.c_double(phase_centre_orig_ra_rad),
-        ctypes.c_double(phase_centre_orig_dec_rad),
-        ctypes.c_double(phase_centre_new_ra_rad),
-        ctypes.c_double(phase_centre_new_dec_rad),
+        phase_centre_orig.handle(),
+        phase_centre_new.handle(),
         ctypes.c_double(channel_start_hz),
         ctypes.c_double(channel_step_hz),
         mem_uvw.handle(),

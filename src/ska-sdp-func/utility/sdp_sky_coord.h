@@ -48,15 +48,13 @@ typedef struct sdp_SkyCoord sdp_SkyCoord;
  * @param coord0 Value of the first coordinate.
  * @param coord1 Value of the second coordinate.
  * @param coord2 Value of the third coordinate.
- * @param status Error status.
  * @return ::sdp_SkyCoord* Handle to sky coordinate structure.
  */
 sdp_SkyCoord* sdp_sky_coord_create(
     const char* type,
     double coord0,
     double coord1,
-    double coord2,
-    const sdp_Error* status
+    double coord2
 );
 
 /**
