@@ -83,6 +83,8 @@ def reference_degrid_uvw_custom(
     w_kernel_oversampling,
     theta,
     wstep,
+    channel_start_hz,
+    channel_step_hz,
     conjugate,
 ):
 
@@ -100,12 +102,13 @@ def reference_degrid_uvw_custom(
     for i_time in range(num_times):
         for i_channel in range(num_channels):
             for i_baseline in range(num_baselines):
+                inv_wavelength = (channel_start_hz + i_channel*channel_step_hz) / 299792458.0
 
-                u_vis_coordinate = uvw[i_time][i_baseline][i_channel][0]
+                u_vis_coordinate = uvw[i_time][i_baseline][0]*inv_wavelength
 
-                v_vis_coordinate = uvw[i_time][i_baseline][i_channel][1]
+                v_vis_coordinate = uvw[i_time][i_baseline][1]*inv_wavelength
 
-                w_vis_coordinate = uvw[i_time][i_baseline][i_channel][2]
+                w_vis_coordinate = uvw[i_time][i_baseline][2]*inv_wavelength
 
                 (
                     grid_offset,
@@ -168,6 +171,8 @@ def test_degrid_uvw_custom():
     w_kernel_oversampling = 16000
     theta = 0.1
     wstep = 250
+    channel_start_hz = 100
+    channel_step_hz = 0.1
     conjugate = False
     x_size = 512
     y_size = 512
@@ -189,7 +194,7 @@ def test_degrid_uvw_custom():
         * 1j
     )
     grid = grid_real + grid_imag
-    uvw = rng.random((num_times, num_baselines, num_channels, 3), dtype=numpy.float64)
+    uvw = rng.random((num_times, num_baselines, 3), dtype=numpy.float64)
     uv_kernel = rng.random(
         (uv_kernel_oversampling * uv_kernel_stride), dtype=numpy.float64
     )
@@ -209,6 +214,8 @@ def test_degrid_uvw_custom():
         w_kernel_oversampling,
         theta,
         wstep,
+        channel_start_hz,
+        channel_step_hz,
         conjugate,
         vis,
     )
@@ -229,6 +236,8 @@ def test_degrid_uvw_custom():
         w_kernel_oversampling,
         theta,
         wstep,
+        channel_start_hz,
+        channel_step_hz,
         conjugate,
     )
 
@@ -253,6 +262,8 @@ def test_degrid_uvw_custom():
             w_kernel_oversampling,
             theta,
             wstep,
+            channel_start_hz,
+            channel_step_hz,
             conjugate,
             vis_gpu,
         )

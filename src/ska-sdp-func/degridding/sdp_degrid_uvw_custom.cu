@@ -6,8 +6,10 @@
 
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
+#define C_0 299792458.0
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
+#define INDEX_2D(N2, N1, I2, I1)                 (N1 * I2 + I1)
 
 
 __device__ __inline__ void calculate_coordinates(
@@ -75,7 +77,9 @@ __global__ void degrid_uvw_custom(
     const int64_t uv_kernel_oversampling,
     const int64_t w_kernel_oversampling,
     const double theta,
-    const double wstep, 
+    const double wstep,
+    const double channel_start_hz,
+    const double channel_step_hz,
     const bool conjugate, 
     double2* vis)
     {
@@ -94,9 +98,12 @@ __global__ void degrid_uvw_custom(
         }
 
         // Load uvw-coordinates.
-        const unsigned int i_uvw = INDEX_3D(
-                num_times, num_baselines, num_channels,
-                i_time, i_baseline, i_channel);
+        const double inv_wavelength = (channel_start_hz + i_channel*channel_step_hz) / C_0;
+        //const unsigned int i_uvw = INDEX_3D(
+        //        num_times, num_baselines, num_channels,
+        //        i_time, i_baseline, i_channel);
+        //const double3 uvw_vis_coordinates = uvw[i_uvw];
+        const unsigned int i_uvw = INDEX_2D(num_times, num_baselines, i_time, i_baseline);
         const double3 uvw_vis_coordinates = uvw[i_uvw];
 
         int grid_offset, sub_offset_x, sub_offset_y, sub_offset_z;
@@ -106,9 +113,9 @@ __global__ void degrid_uvw_custom(
             uv_kernel_stride_in_elements, uv_kernel_stride_in_elements, uv_kernel_oversampling,
             w_kernel_stride_in_elements, w_kernel_oversampling,
             theta, wstep, 
-            uvw_vis_coordinates.x, 
-            uvw_vis_coordinates.y, 
-            uvw_vis_coordinates.z,
+            uvw_vis_coordinates.x*inv_wavelength, 
+            uvw_vis_coordinates.y*inv_wavelength, 
+            uvw_vis_coordinates.z*inv_wavelength,
             &grid_offset, 
             &sub_offset_x, &sub_offset_y, &sub_offset_z
         );

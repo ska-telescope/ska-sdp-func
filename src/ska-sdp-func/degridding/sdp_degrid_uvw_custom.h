@@ -23,9 +23,11 @@ extern "C" {
  * @param uv_kernel_oversampling U,V plane kernel oversampling
  * @param w_kernel_oversampling W plane kernel oversampling
  * @param theta Conversion parameter from uv coordinates to xy coordinates x=u*theta
- * @param wstep, Conversion parameter from w coordinates to z coordinates z=w*wstep 
+ * @param wstep Conversion parameter from w coordinates to z coordinates z=w*wstep 
+ * @param channel_start_hz Frequency of first channel, in Hz.
+ * @param channel_step_hz Frequency increment between channels, in Hz.
  * @param conjugate  Whether to generate conjugated visibilities
- * @param vis Output Visabilities with shape [time][baseline][chan][pol]
+ * @param vis Output Visibilities with shape [time][baseline][chan][pol]
  * @param status Error status.
  */
 void sdp_degrid_uvw_custom(
@@ -36,7 +38,9 @@ void sdp_degrid_uvw_custom(
         const int64_t uv_kernel_oversampling,
         const int64_t w_kernel_oversampling,
         const double theta,
-        const double wstep, 
+        const double wstep,
+        const double channel_start_hz,
+        const double channel_step_hz,
         const bool conjugate, 
         sdp_Mem* vis,
         sdp_Error* status);

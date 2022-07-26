@@ -12,11 +12,13 @@ def degrid_uvw_custom(
     w_kernel_oversampling,
     theta,
     wstep,
+    channel_start_hz,
+    channel_step_hz,
     conjugate,
     vis,
 ):
     """
-    Degridding visabilities.
+    Degridding visibilities.
 
     Degrids a previously gridded visabilty, based on the UV and W kernel input and returns the result.
 
@@ -44,6 +46,12 @@ def degrid_uvw_custom(
     :param wstep: Conversion parameter from w coordinates to z coordinates (i.e. z=w*wstep)
     :type wstep: float
 
+    :param channel_start_hz: Frequency of first channel, in Hz.
+    :type channel_start_hz: float
+
+    :param channel_step_hz: Frequency increment between channels, in Hz.
+    :type channel_step_hz: float
+
     :param conjugate: Whether to generate conjugated visibilities
     :type conjugate: bool
 
@@ -66,6 +74,8 @@ def degrid_uvw_custom(
         ctypes.c_int64,
         ctypes.c_double,
         ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
         ctypes.c_bool,
         Mem.handle_type(),
         Error.handle_type(),
@@ -79,6 +89,8 @@ def degrid_uvw_custom(
         ctypes.c_int64(w_kernel_oversampling),
         ctypes.c_double(theta),
         ctypes.c_double(wstep),
+        ctypes.c_double(channel_start_hz),
+        ctypes.c_double(channel_step_hz),
         ctypes.c_bool(conjugate),
         mem_vis.handle(),
         error_status.handle(),

@@ -8,6 +8,8 @@
 #include <complex>
 #include <vector>
 
+#define C_0 299792458.0
+#define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 void calculate_coordinates(
@@ -78,7 +80,9 @@ static void degrid_uvw_custom(
     const int64_t uv_kernel_oversampling,
     const int64_t w_kernel_oversampling,
     const double theta,
-    const double wstep, 
+    const double wstep,
+    const double channel_start_hz,
+    const double channel_step_hz,
     const bool conjugate, 
     std::complex<double>* vis)
 {
@@ -92,12 +96,13 @@ static void degrid_uvw_custom(
             for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
             {
                 // Load uvw-coordinates.
-                const unsigned int i_uvw = INDEX_4D(
-                        num_times, num_baselines, num_channels, 3,
-                        i_time, i_baseline, i_channel, 0);
-                double u_vis_coordinate = uvw[i_uvw];
-                double v_vis_coordinate = uvw[i_uvw + 1];
-                double w_vis_coordinate = uvw[i_uvw + 2];
+                const double inv_wavelength = (channel_start_hz + i_channel*channel_step_hz) / C_0;
+                const unsigned int i_uvw = INDEX_3D(
+                        num_times, num_baselines, 3,
+                        i_time, i_baseline, 0);
+                double u_vis_coordinate = uvw[i_uvw]*inv_wavelength;
+                double v_vis_coordinate = uvw[i_uvw + 1]*inv_wavelength;
+                double w_vis_coordinate = uvw[i_uvw + 2]*inv_wavelength;
 
 
                 calculate_coordinates(
@@ -164,7 +169,9 @@ void sdp_degrid_uvw_custom(
     const int64_t uv_kernel_oversampling,
     const int64_t w_kernel_oversampling,
     const double theta,
-    const double wstep, 
+    const double wstep,
+    const double channel_start_hz,
+    const double channel_step_hz,
     const bool conjugate, 
     sdp_Mem* vis,
     sdp_Error* status)
@@ -172,7 +179,6 @@ void sdp_degrid_uvw_custom(
 {
     if (*status) 
     {
-        SDP_LOG_INFO("Exit due to error flag set on entry");
         return;
     }
 
@@ -249,10 +255,9 @@ void sdp_degrid_uvw_custom(
         return;
     }
 
-        if (num_channels != 1 ||
-        sdp_mem_shape_dim(grid, 0) != 1 ||
-        sdp_mem_shape_dim(uvw, 2) != 1)
-    {
+    if (num_channels != 1 ||
+        sdp_mem_shape_dim(grid, 0) != 1
+    ) {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("Unsupported number of channels, must be 1");
         return;
@@ -277,8 +282,7 @@ void sdp_degrid_uvw_custom(
     }
 
     if (sdp_mem_shape_dim(uvw, 0) != num_times ||
-        sdp_mem_shape_dim(uvw, 1) != num_baselines ||
-        sdp_mem_shape_dim(uvw, 2) != num_channels)
+        sdp_mem_shape_dim(uvw, 1) != num_baselines)
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The uvw array must have shape "
@@ -307,7 +311,9 @@ void sdp_degrid_uvw_custom(
             uv_kernel_oversampling,
             w_kernel_oversampling,
             theta,
-            wstep, 
+            wstep,
+            channel_start_hz,
+            channel_step_hz,
             conjugate, 
             (std::complex<double>*)sdp_mem_data(vis));
 
@@ -339,7 +345,9 @@ void sdp_degrid_uvw_custom(
             &uv_kernel_oversampling,
             &w_kernel_oversampling,
             &theta,
-            &wstep, 
+            &wstep,
+            &channel_start_hz,
+            &channel_step_hz,
             &conjugate, 
             sdp_mem_gpu_buffer(vis, status)
         };

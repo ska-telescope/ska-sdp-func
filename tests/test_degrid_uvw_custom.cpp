@@ -12,6 +12,8 @@
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
+#define C_0 299792458.0
+#define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 void calculate_coordinates(
@@ -84,11 +86,12 @@ static void check_results(
     int64_t uv_kernel_oversampling,
     int64_t w_kernel_oversampling,
     double theta,
-    double wstep, 
+    double wstep,
+    double channel_start_hz,
+    double channel_step_hz,
     const bool conjugate, 
     std::complex<double>* vis,
     const sdp_Error* status)
-
 {
 
      if (*status)
@@ -106,12 +109,13 @@ static void check_results(
             for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
             {
                 // Load uvw-coordinates.
-                const unsigned int i_uvw = INDEX_4D(
-                        num_times, num_baselines, num_channels, 3,
-                        i_time, i_baseline, i_channel, 0);
-                double u_vis_coordinate = uvw[i_uvw];
-                double v_vis_coordinate = uvw[i_uvw + 1];
-                double w_vis_coordinate = uvw[i_uvw + 2];
+                const double inv_wavelength = (channel_start_hz + i_channel*channel_step_hz) / C_0;
+                const unsigned int i_uvw = INDEX_3D(
+                        num_times, num_baselines, 3,
+                        i_time, i_baseline, 0);
+                double u_vis_coordinate = uvw[i_uvw]*inv_wavelength;
+                double v_vis_coordinate = uvw[i_uvw + 1]*inv_wavelength;
+                double w_vis_coordinate = uvw[i_uvw + 2]*inv_wavelength;
 
 
                 calculate_coordinates(
@@ -191,7 +195,9 @@ static void run_and_check(
     int64_t uv_kernel_oversampling,
     int64_t w_kernel_oversampling,
     double theta,
-    double wstep, 
+    double wstep,
+    double channel_start_hz,
+    double channel_step_hz,
     bool conjugate, 
     sdp_Error* status)
 
@@ -206,7 +212,7 @@ static void run_and_check(
     sdp_MemType grid_type = input_type_complex;
     int64_t grid_shape[] = {num_channels, 4, 512, 512, num_pols};
 
-    int64_t uvw_shape[] = {num_times, num_baselines, num_channels, 3};
+    int64_t uvw_shape[] = {num_times, num_baselines, 3};
     sdp_MemType uvw_type = input_type;
      
     sdp_MemType uv_kernel_type = input_type;    
@@ -221,7 +227,7 @@ static void run_and_check(
     sdp_Mem* grid = sdp_mem_create(
         grid_type, SDP_MEM_CPU, 5, grid_shape, status);
     sdp_Mem* uvw = sdp_mem_create(
-        uvw_type, SDP_MEM_CPU, 4, uvw_shape, status);
+        uvw_type, SDP_MEM_CPU, 3, uvw_shape, status);
     sdp_Mem* uv_kernel = sdp_mem_create(
         uv_kernel_type, SDP_MEM_CPU, 1, uv_kernel_shape, status);
     sdp_Mem* w_kernel = sdp_mem_create(
@@ -250,7 +256,7 @@ static void run_and_check(
     SDP_LOG_INFO("Running test: %s", test_name);
     sdp_degrid_uvw_custom(grid_in, uvw_in, uv_kernel_in, w_kernel_in, 
             uv_kernel_oversampling, w_kernel_oversampling, 
-            theta, wstep, conjugate, vis, status);
+            theta, wstep, channel_start_hz, channel_step_hz, conjugate, vis, status);
 
     //sdp_mem_ref_dec(grid_in);
     sdp_mem_ref_dec(uvw_in);
@@ -286,7 +292,9 @@ static void run_and_check(
             uv_kernel_oversampling,
             w_kernel_oversampling,
             theta,
-            wstep, 
+            wstep,
+            channel_start_hz,
+            channel_step_hz,
             conjugate, 
             (std::complex<double>*)sdp_mem_data(vis_out),
             status);
@@ -308,7 +316,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("CPU run, 1 polarisation, 1 channel", true, false, 1, 1, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, 
-            16000, 16000, 0.1, 250, false, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_SUCCESS);
     }
 
@@ -316,7 +324,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("CPU run - complex conjugate, 1 polarisation, 1 channel", true, false, 1, 1,
             SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, 
-            16000, 16000, 0.1, 250, true, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, true, &status);
     assert(status == SDP_SUCCESS);
     }
 
@@ -325,7 +333,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU run, 1 polarisation, 1 channel", true, false, 1, 1, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
-            16000, 16000, 0.1, 250, false, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_SUCCESS);
     }
 
@@ -333,7 +341,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU run - complex conjugate, 1 polarisation, 1 channel", true, false, 1, 1, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
-            16000, 16000, 0.1, 250, true, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, true, &status);
     assert(status == SDP_SUCCESS);
     }
 
@@ -345,7 +353,7 @@ int main()
     sdp_Error status = SDP_ERR_RUNTIME;
     run_and_check("Error status set on function entry", false, false, 1, 1, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 
-            SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_CPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
@@ -353,7 +361,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("Read only output", false, true, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
-            SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_CPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
@@ -361,7 +369,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("CPU Unsuported data type", false, false, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_CHAR, SDP_MEM_DOUBLE, SDP_MEM_CPU,
-            SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_CPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
     }
 
@@ -369,7 +377,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("CPU Unsupported grid data type", false, false, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
-            SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_CPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
     }
 
@@ -377,7 +385,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("CPU Unsupported visabilities data type", false, false, 1, 1, SDP_MEM_COMPLEX_DOUBLE,
             SDP_MEM_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_CPU,
-            SDP_MEM_CPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_CPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
     }
 
@@ -385,7 +393,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("CPU Unsupported number of channels", false, false, 2, 1, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, 
-            16000, 16000, 0.1, 250, false, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
@@ -393,7 +401,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("CPU Unsupported number of polarisations", false, false, 1, 2, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, 
-            16000, 16000, 0.1, 250, false, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
@@ -403,7 +411,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("Memory location mismatch", false, false, 1, 1, SDP_MEM_DOUBLE,
         SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_GPU,
-        16000, 16000, 0.1, 250, false, &status);
+        16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_MEM_LOCATION);
     }
 
@@ -411,7 +419,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU Read only output", false, true, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU,
-            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
@@ -419,7 +427,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU Unsuported data type", false, false, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_CHAR, SDP_MEM_DOUBLE, SDP_MEM_GPU,
-            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
     }
 
@@ -427,7 +435,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU Unsupported grid data type", false, false, 1, 1, SDP_MEM_DOUBLE,
             SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU,
-            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
     }
 
@@ -435,7 +443,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU Unsupported visabilities data type", false, false, 1, 1, SDP_MEM_COMPLEX_DOUBLE,
             SDP_MEM_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_GPU,
-            SDP_MEM_GPU, 16000, 16000, 0.1, 250, false, &status);
+            SDP_MEM_GPU, 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_DATA_TYPE);
     }
 
@@ -443,7 +451,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU Unsupported number of channels", false, false, 2, 1, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
-            16000, 16000, 0.1, 250, false, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
@@ -451,7 +459,7 @@ int main()
     sdp_Error status = SDP_SUCCESS;
     run_and_check("GPU Unsupported number of polarisations", false, false, 1, 2, SDP_MEM_DOUBLE, 
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, 
-            16000, 16000, 0.1, 250, false, &status);
+            16000, 16000, 0.1, 250, 100, 0.1, false, &status);
     assert(status == SDP_ERR_RUNTIME);
     }
 
