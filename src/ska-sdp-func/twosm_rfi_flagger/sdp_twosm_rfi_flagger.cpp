@@ -19,6 +19,11 @@ static void check_params(
         SDP_LOG_ERROR("Output flags must be writable.");
         return;
     }
+    if (sdp_mem_shape_dim(antennas, 0) * (sdp_mem_shape_dim(antennas, 0) + 1)/2 != sdp_mem_shape_dim(vis, 1)){
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Number of baselines must be compatible with number of antennas");
+        return;
+    }
     if (!sdp_mem_is_c_contiguous(vis) ||
         !sdp_mem_is_c_contiguous(thresholds) ||
         !sdp_mem_is_c_contiguous(antennas)||
@@ -80,12 +85,12 @@ static void twosm_rfi_flagger(
 
     // two-state machine algorithm applied to time dimension
     for (uint64_t a = 0; a < num_antennas; a++){
-        uint64_t b = antennas[a]; // selecting the id of an autocorrelation baseline (an "antenna to itself" type of
+        uint64_t antenna_id = antennas[a]; // selecting the id of an autocorrelation baseline (an "antenna to itself" type of
         // baseline from the list of antennas
         for (uint64_t c = 0; c < num_channels; c++){
             for (uint64_t t = 1; t < num_timesamples; t++) {
-                uint64_t pos_current = t * timesample_block + b * baseline_block + c * channel_block; // current position
-                uint64_t pos_minusone = (t - 1) * timesample_block + b * baseline_block + c * channel_block; //position at t-1
+                uint64_t pos_current = t * timesample_block + antenna_id * baseline_block + c * channel_block; // current position
+                uint64_t pos_minusone = (t - 1) * timesample_block + antenna_id * baseline_block + c * channel_block; //position at t-1
                 double vis0 = std::abs(visibilities[pos_current]);
                 double vis1 = std::abs(visibilities[pos_minusone]);
                 dv_between_cur_one = vis0 - vis1;
@@ -122,7 +127,7 @@ static void twosm_rfi_flagger(
                                 }
                             }
                             i = i + 1;
-                            pos = (t - i) * timesample_block + b * baseline_block + c * channel_block;
+                            pos = (t - i) * timesample_block + antenna_id * baseline_block + c * channel_block;
                         }
                     }
 
@@ -135,8 +140,8 @@ static void twosm_rfi_flagger(
         // of the flags in frequency and time directions easier.
         for (uint64_t t = 0; t < num_timesamples; t++){
             for (uint64_t c = 1; c < num_channels; c++) {
-                uint64_t pos_current = t * timesample_block + b * baseline_block + c * channel_block;
-                uint64_t pos_minusone = t * timesample_block + b * baseline_block + (c - 1) * channel_block;
+                uint64_t pos_current = t * timesample_block + antenna_id * baseline_block + c * channel_block;
+                uint64_t pos_minusone = t * timesample_block + antenna_id * baseline_block + (c - 1) * channel_block;
                 double vis0 = std::abs(visibilities[pos_current]);
                 double vis1 = std::abs(visibilities[pos_minusone]);
                 dv_between_cur_one = vis0 - vis1;
@@ -172,7 +177,7 @@ static void twosm_rfi_flagger(
                                 }
                             }
                             i = i + 1;
-                            pos = t * timesample_block + b * baseline_block + (c - 1) * channel_block;
+                            pos = t * timesample_block + antenna_id * baseline_block + (c - i) * channel_block;
                         }
                     }
                 }

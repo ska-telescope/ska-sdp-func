@@ -32,7 +32,8 @@ extern "C" {
  * - @p flags is 4D and integer-valued, with the same shape as @p vis .
  *
  * @param vis Complex valued visibilities. Dimensions as above.
- * @param thresholds thresholds for first and second order estimate (extrapolation-based) methods .
+ * @param thresholds thresholds for time and frequency domains.
+ * @param antennas indices of antennas (autocorrelation baselines) in the list of baselines
  * @param flags Output flags. Dimensions as above.
  * @param status Error status.
  */
