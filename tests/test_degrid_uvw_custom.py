@@ -1,6 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-from matplotlib import testing
+"""Test degridding functions."""
+
 import numpy
 
 try:
@@ -25,45 +26,38 @@ def calculate_coordinates(
     u,
     v,
     w,
-    grid_offset,
-    sub_offset_x,
-    sub_offset_y,
-    sub_offset_z,
 ):
-
-    # x coordinate
-    x = theta * u
-    ox = x * oversample
-    iox = round(ox)
-    iox += (grid_size / 2 + 1) * oversample - 1
-    home_x = iox / oversample
-    home_x = round(home_x)
+    """Calculate coordinates in grid for visibility point."""
+    # u or x coordinate
+    ox = theta * u * oversample
+    iox = round(ox) + (grid_size // 2 + 1) * oversample - 1
+    home_x = iox // oversample
     frac_x = oversample - 1 - (iox % oversample)
 
-    # y coordinate
-    y = theta * v
-    oy = y * oversample
-    ioy = round(oy)
-    ioy += (grid_size / 2 + 1) * oversample - 1
-    home_y = ioy / oversample
-    home_y = round(home_y)
+    # v or y coordinate
+    oy = theta * v * oversample
+    ioy = round(oy) + (grid_size // 2 + 1) * oversample - 1
+    home_y = ioy // oversample
     frac_y = oversample - 1 - (ioy % oversample)
 
-    # w coordinate
-    z = 1.0 + w / wstep
-    oz = z * oversample_w
-    ioz = round(oz)
-    ioz += oversample_w - 1
+    # w or z coordinate
+    oz = (1.0 + w / wstep) * oversample_w
+    ioz = round(oz) + oversample_w - 1
     frac_z = oversample_w - 1 - (ioz % oversample_w)
 
-    grid_offset = (home_y - kernel_size / 2) * y_stride + (
-        home_x - kernel_size / 2
+    grid_offset = (home_y - kernel_size // 2) * y_stride + (
+        home_x - kernel_size // 2
     ) * x_stride
     sub_offset_x = kernel_stride * frac_x
     sub_offset_y = kernel_stride * frac_y
     sub_offset_z = wkernel_stride * frac_z
 
-    return int(grid_offset), int(sub_offset_x), int(sub_offset_y), int(sub_offset_z)
+    return (
+        int(grid_offset),
+        int(sub_offset_x),
+        int(sub_offset_y),
+        int(sub_offset_z),
+    )
 
 
 def reference_degrid_uvw_custom(
@@ -87,14 +81,10 @@ def reference_degrid_uvw_custom(
     channel_step_hz,
     conjugate,
 ):
-
-    grid_offset = 0
-    sub_offset_x = 0
-    sub_offset_y = 0
-    sub_offset_z = 0
-
+    """Generate reference data for degridding comparison."""
     vis = numpy.zeros(
-        [num_times, num_baselines, num_channels, num_pols], dtype=numpy.complex128
+        [num_times, num_baselines, num_channels, num_pols],
+        dtype=numpy.complex128,
     )
 
     grid = grid.flatten()
@@ -102,13 +92,9 @@ def reference_degrid_uvw_custom(
     for i_time in range(num_times):
         for i_channel in range(num_channels):
             for i_baseline in range(num_baselines):
-                inv_wavelength = (channel_start_hz + i_channel*channel_step_hz) / 299792458.0
-
-                u_vis_coordinate = uvw[i_time][i_baseline][0]*inv_wavelength
-
-                v_vis_coordinate = uvw[i_time][i_baseline][1]*inv_wavelength
-
-                w_vis_coordinate = uvw[i_time][i_baseline][2]*inv_wavelength
+                inv_wavelength = (
+                    channel_start_hz + i_channel * channel_step_hz
+                ) / 299792458.0
 
                 (
                     grid_offset,
@@ -126,46 +112,40 @@ def reference_degrid_uvw_custom(
                     w_kernel_oversampling,
                     theta,
                     wstep,
-                    u_vis_coordinate,
-                    v_vis_coordinate,
-                    w_vis_coordinate,
-                    grid_offset,
-                    sub_offset_x,
-                    sub_offset_y,
-                    sub_offset_z,
+                    inv_wavelength * uvw[i_time][i_baseline][0],
+                    inv_wavelength * uvw[i_time][i_baseline][1],
+                    inv_wavelength * uvw[i_time][i_baseline][2],
                 )
 
-                vis_r = 0
-                vis_i = 0
+                vis_local = complex(0, 0)
                 for z in range(w_kernel_stride):
-                    visz_r = 0
-                    visz_i = 0
+                    visz = complex(0, 0)
                     for y in range(uv_kernel_stride):
-                        visy_r = 0
-                        visy_i = 0
+                        visy = complex(0, 0)
                         for x in range(uv_kernel_stride):
-                            temp = grid[
-                                z * x_size * y_size + grid_offset + y * y_size + x
+                            grid_value = grid[
+                                z * x_size * y_size
+                                + grid_offset
+                                + y * y_size
+                                + x
                             ]
-                            visy_r += uv_kernel[sub_offset_x + x] * temp.real
-                            visy_i += uv_kernel[sub_offset_x + x] * temp.imag
-                        visz_r += uv_kernel[sub_offset_y + y] * visy_r
-                        visz_i += uv_kernel[sub_offset_y + y] * visy_i
-                    vis_r += w_kernel[sub_offset_z + z] * visz_r
-                    vis_i += w_kernel[sub_offset_z + z] * visz_i
+                            visy += uv_kernel[sub_offset_x + x] * grid_value
+                        visz += uv_kernel[sub_offset_y + y] * visy
+                    vis_local += w_kernel[sub_offset_z + z] * visz
 
                 if conjugate:
-                    temp_vis = vis_r - vis_i * 1j
-                else:
-                    temp_vis = vis_r + vis_i * 1j
+                    vis_local = vis_local.conjugate()
 
+                # NOTE This is not how to work with multiple polarisations.
+                # NOTE We need a separate grid for each polarisation.
                 for i_pol in range(num_pols):
-                    vis[i_time][i_baseline][i_channel][i_pol] = temp_vis
+                    vis[i_time][i_baseline][i_channel][i_pol] = vis_local
 
     return vis
 
 
 def test_degrid_uvw_custom():
+    """Test degridding function."""
     # Run degridding test on CPU using numpy arrays.
     uv_kernel_oversampling = 16000
     w_kernel_oversampling = 16000
@@ -187,11 +167,8 @@ def test_degrid_uvw_custom():
     grid_real = rng.random(
         (num_channels, z_size, y_size, x_size, num_pols), dtype=numpy.float64
     )
-    grid_imag = (
-        rng.random(
-            (num_channels, z_size, y_size, x_size, num_pols), dtype=numpy.float64
-        )
-        * 1j
+    grid_imag = 1j * rng.random(
+        (num_channels, z_size, y_size, x_size, num_pols), dtype=numpy.float64
     )
     grid = grid_real + grid_imag
     uvw = rng.random((num_times, num_baselines, 3), dtype=numpy.float64)
@@ -202,9 +179,10 @@ def test_degrid_uvw_custom():
         (w_kernel_oversampling * w_kernel_stride), dtype=numpy.float64
     )
     vis = numpy.zeros(
-        [num_times, num_baselines, num_channels, num_pols], dtype=numpy.complex128
+        [num_times, num_baselines, num_channels, num_pols],
+        dtype=numpy.complex128,
     )
-    print("Testing Degridding on CPU from ska-sdp-func...")
+    print("Testing degridding on CPU from ska-sdp-func...")
     degrid_uvw_custom(
         grid,
         uvw,
@@ -242,17 +220,18 @@ def test_degrid_uvw_custom():
     )
 
     numpy.testing.assert_array_almost_equal(vis, vis_reference)
-    
-    # Run degridding on GPU using cuppy arrays.
+
+    # Run degridding on GPU using cupy arrays.
     if cupy:
         grid_gpu = cupy.asarray(grid)
         uvw_gpu = cupy.asarray(uvw)
         uv_kernel_gpu = cupy.asarray(uv_kernel)
         w_kernel_gpu = cupy.asarray(w_kernel)
         vis_gpu = cupy.zeros(
-            [num_times, num_baselines, num_channels, num_pols], dtype=numpy.complex128
+            [num_times, num_baselines, num_channels, num_pols],
+            dtype=numpy.complex128,
         )
-        print("Testing Degridding on GPU from ska-sdp-func...")
+        print("Testing degridding on GPU from ska-sdp-func...")
         degrid_uvw_custom(
             grid_gpu,
             uvw_gpu,
@@ -268,5 +247,7 @@ def test_degrid_uvw_custom():
             vis_gpu,
         )
         output_gpu_check = cupy.asnumpy(vis_gpu)
-        numpy.testing.assert_array_almost_equal(output_gpu_check, vis_reference)
+        numpy.testing.assert_array_almost_equal(
+            output_gpu_check, vis_reference
+        )
         print("Degridding on GPU: Test passed")

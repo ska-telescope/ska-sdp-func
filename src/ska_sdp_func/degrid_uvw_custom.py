@@ -1,7 +1,10 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Module for degridding functions which use custom kernels."""
+
 import ctypes
 from .utility import Error, Lib, Mem
+
 
 def degrid_uvw_custom(
     grid,
@@ -18,32 +21,34 @@ def degrid_uvw_custom(
     vis,
 ):
     """
-    Degridding visibilities.
+    Degrid visibilities.
 
-    Degrids a previously gridded visabilty, based on the UV and W kernel input and returns the result.
+    Degrids previously gridded visibilities using supplied convolution kernels.
 
     :param grid: Input grid data with shape [chan][w][v][u][pol]
     :type grid: numpy.ndarray or cupy.ndarray
 
-    :param uvw: u,v,w coordinates of the visibilities with shape [time][baseline][chan][uvw]
-    :type vis_coordinates: numpy.ndarray or cupy.ndarray
-    
+    :param uvw: Visibility (u,v,w) coordinates with shape [time][baseline][3]
+    :type uvw: numpy.ndarray or cupy.ndarray
+
     :param uv_kernel: u,v plane kernel
     :type uv_kernel: numpy.ndarray or cupy.ndarray
 
-    :param w_kernel: w plane Kernel
+    :param w_kernel: w plane kernel
     :type w_kernel: numpy.ndarray or cupy.ndarray
 
     :param uv_kernel_oversampling: u,v plane kernel oversampling
     :type uv_kernel_oversampling: int
 
-    :param w_kernel_oversampling: w plane Kernel oversampling
+    :param w_kernel_oversampling: w plane kernel oversampling
     :type w_kernel_oversampling: int
 
-    :param theta: Conversion parameter from uv coordinates to xy coordinates (i.e. x=u*theta)
+    :param theta: Conversion parameter from uv coordinates
+    to xy coordinates (i.e. x=u*theta)
     :type theta: float
 
-    :param wstep: Conversion parameter from w coordinates to z coordinates (i.e. z=w*wstep)
+    :param wstep: Conversion parameter from w coordinates
+    to z coordinates (i.e. z=w*wstep)
     :type wstep: float
 
     :param channel_start_hz: Frequency of first channel, in Hz.
@@ -55,7 +60,7 @@ def degrid_uvw_custom(
     :param conjugate: Whether to generate conjugated visibilities
     :type conjugate: bool
 
-    :param vis: Output Visabilities with shape [time][baseline][chan][pol]
+    :param vis: Output visibilities with shape [time][baseline][chan][pol]
     :type vis: numpy.ndarray or cupy.ndarray
     """
     mem_grid = Mem(grid)
