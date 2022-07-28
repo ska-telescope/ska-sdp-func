@@ -75,7 +75,7 @@ __global__ void degrid_uvw_custom(
         const double wstep,
         const double channel_start_hz,
         const double channel_step_hz,
-        const bool conjugate,
+        const int32_t conjugate,
         VIS_TYPE2 *__restrict__ vis)
 {
     // Get indices of the output array this thread is working on.

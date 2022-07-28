@@ -31,24 +31,24 @@ def degrid_uvw_custom(
     :param uvw: Visibility (u,v,w) coordinates with shape [time][baseline][3]
     :type uvw: numpy.ndarray or cupy.ndarray
 
-    :param uv_kernel: u,v plane kernel
+    :param uv_kernel: (u,v)-plane kernel
     :type uv_kernel: numpy.ndarray or cupy.ndarray
 
-    :param w_kernel: w plane kernel
+    :param w_kernel: w-plane kernel
     :type w_kernel: numpy.ndarray or cupy.ndarray
 
-    :param uv_kernel_oversampling: u,v plane kernel oversampling
+    :param uv_kernel_oversampling: (u,v)-plane kernel oversampling
     :type uv_kernel_oversampling: int
 
-    :param w_kernel_oversampling: w plane kernel oversampling
+    :param w_kernel_oversampling: w-plane kernel oversampling
     :type w_kernel_oversampling: int
 
-    :param theta: Conversion parameter from uv coordinates
-    to xy coordinates (i.e. x=u*theta)
+    :param theta: Conversion parameter from (u,v)-coordinates
+     to (x,y)-coordinates (i.e. x=u*theta)
     :type theta: float
 
-    :param wstep: Conversion parameter from w coordinates
-    to z coordinates (i.e. z=w*wstep)
+    :param wstep: Conversion parameter from w-coordinates
+     to z-coordinates (i.e. z=w*wstep)
     :type wstep: float
 
     :param channel_start_hz: Frequency of first channel, in Hz.
@@ -81,7 +81,7 @@ def degrid_uvw_custom(
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
-        ctypes.c_bool,
+        ctypes.c_int32,
         Mem.handle_type(),
         Error.handle_type(),
     ]
@@ -96,7 +96,7 @@ def degrid_uvw_custom(
         ctypes.c_double(wstep),
         ctypes.c_double(channel_start_hz),
         ctypes.c_double(channel_step_hz),
-        ctypes.c_bool(conjugate),
+        ctypes.c_int32(conjugate),
         mem_vis.handle(),
         error_status.handle(),
     )

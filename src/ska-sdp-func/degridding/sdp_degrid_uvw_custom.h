@@ -14,16 +14,18 @@ extern "C" {
 #endif
 
 /**
- * @brief Degrid visibilities. 
- * 
+ * @brief Degrid visibilities.
+ *
+ * Degrids previously gridded visibilities using supplied convolution kernels.
+ *
  * @param grid Input grid data with shape [chan][w][v][u][pol]
- * @param uvw u,v,w coordinates of the visibilities with shape [time][baseline][chan][uvw]
- * @param uv_kernel u,v plane kernel
- * @param w_kernel w plane Kernel
- * @param uv_kernel_oversampling U,V plane kernel oversampling
- * @param w_kernel_oversampling W plane kernel oversampling
- * @param theta Conversion parameter from uv coordinates to xy coordinates x=u*theta
- * @param wstep Conversion parameter from w coordinates to z coordinates z=w*wstep 
+ * @param uvw Visibility (u,v,w) coordinates with shape [time][baseline][3]
+ * @param uv_kernel (u,v)-plane kernel
+ * @param w_kernel w-plane kernel
+ * @param uv_kernel_oversampling (u,v)-plane kernel oversampling
+ * @param w_kernel_oversampling w-plane kernel oversampling
+ * @param theta Conversion parameter from (u,v)-coordinates to (x,y)-coordinates x=u*theta
+ * @param wstep Conversion parameter from w-coordinates to z-coordinates z=w*wstep
  * @param channel_start_hz Frequency of first channel, in Hz.
  * @param channel_step_hz Frequency increment between channels, in Hz.
  * @param conjugate  Whether to generate conjugated visibilities
@@ -41,7 +43,7 @@ void sdp_degrid_uvw_custom(
         const double wstep,
         const double channel_start_hz,
         const double channel_step_hz,
-        const bool conjugate, 
+        const int32_t conjugate,
         sdp_Mem* vis,
         sdp_Error* status);
 

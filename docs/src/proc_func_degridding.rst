@@ -7,10 +7,10 @@ Degridding Functions
 C/C++
 =====
 
-.. doxygenfunction:: sdp_degridding
+.. doxygenfunction:: sdp_degrid_uvw_custom
 
 
 Python
 ======
 
-.. autofunction:: ska_sdp_func.degridding
+.. autofunction:: ska_sdp_func.degrid_uvw_custom

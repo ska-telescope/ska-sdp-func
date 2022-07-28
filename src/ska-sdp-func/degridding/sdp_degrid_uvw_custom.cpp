@@ -78,7 +78,7 @@ static void degrid_uvw_custom(
         const double wstep,
         const double channel_start_hz,
         const double channel_step_hz,
-        const bool conjugate,
+        const int32_t conjugate,
         std::complex<VIS_TYPE>* vis)
 {
     for (int i_time = 0; i_time < num_times; ++i_time)
@@ -162,7 +162,7 @@ void sdp_degrid_uvw_custom(
     const double wstep,
     const double channel_start_hz,
     const double channel_step_hz,
-    const bool conjugate,
+    const int32_t conjugate,
     sdp_Mem* vis,
     sdp_Error* status)
 {
