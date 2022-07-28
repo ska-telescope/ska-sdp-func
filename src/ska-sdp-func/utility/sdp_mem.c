@@ -129,12 +129,20 @@ sdp_Mem* sdp_mem_create_wrapper(
     int64_t num_elements = 1;
     for (int32_t i = num_dims - 1; i >= 0; --i)
     {
-        if (sdp_mem_stride_dim(mem, i) != num_elements * element_size)
+        if (sdp_mem_stride_bytes_dim(mem, i) != num_elements * element_size)
         {
             mem->is_c_contiguous = 0;
         }
         num_elements *= shape[i];
     }
+    return mem;
+}
+
+sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src)
+{
+    sdp_Error status = SDP_SUCCESS;
+    sdp_Mem* mem = sdp_mem_create_wrapper(src->data, src->type, src->location,
+            src->num_dims, src->shape, src->stride, &status);
     return mem;
 }
 
@@ -297,6 +305,20 @@ int32_t sdp_mem_is_complex(const sdp_Mem* mem)
             (mem->type & SDP_MEM_COMPLEX) == SDP_MEM_COMPLEX;
 }
 
+int32_t sdp_mem_is_matching(const sdp_Mem* mem1, const sdp_Mem* mem2,
+        int32_t check_location)
+{
+    if (mem1->type != mem2->type) return 0;
+    if (check_location && (mem1->location != mem2->location)) return 0;
+    if (mem1->num_dims != mem2->num_dims) return 0;
+    for (int32_t i = 0; i < mem1->num_dims; ++i)
+    {
+        if (mem1->shape[i] != mem2->shape[i]) return 0;
+        if (mem1->stride[i] != mem2->stride[i]) return 0;
+    }
+    return 1;
+}
+
 int32_t sdp_mem_is_read_only(const sdp_Mem* mem)
 {
     return (!mem || !mem->data) ? 1 : mem->is_read_only;
@@ -372,9 +394,15 @@ int64_t sdp_mem_shape_dim(const sdp_Mem* mem, int32_t dim)
     return (!mem || dim < 0 || dim >= mem->num_dims) ? 0 : mem->shape[dim];
 }
 
-int64_t sdp_mem_stride_dim(const sdp_Mem* mem, int32_t dim)
+int64_t sdp_mem_stride_bytes_dim(const sdp_Mem* mem, int32_t dim)
 {
     return (!mem || dim < 0 || dim >= mem->num_dims) ? 0 : mem->stride[dim];
+}
+
+int64_t sdp_mem_stride_elements_dim(const sdp_Mem* mem, int32_t dim)
+{
+    const int64_t type_size = sdp_mem_type_size(mem->type);
+    return type_size > 0 ? sdp_mem_stride_bytes_dim(mem, dim) / type_size : 0;
 }
 
 sdp_MemType sdp_mem_type(const sdp_Mem* mem)

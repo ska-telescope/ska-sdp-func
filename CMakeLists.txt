@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 if (APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
 endif()
@@ -9,35 +9,43 @@ set(libname ska_sdp_func)
 
 # List of C and C++ source files.
 set(${libname}_SRC
+    src/ska-sdp-func/rfi_flagger/sdp_rfi_flagger.cpp
     src/ska-sdp-func/dft/sdp_dft.cpp
+    src/ska-sdp-func/fft/sdp_fft.cpp
+    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cpp
     src/ska-sdp-func/vector/sdp_vector_add.cpp
     src/ska-sdp-func/function_example_a/sdp_function_example_a.cpp
     src/ska-sdp-func/utility/sdp_device_wrapper.cpp
     src/ska-sdp-func/degridding/sdp_degrid_uvw_custom.cpp
     src/ska-sdp-func/utility/sdp_logging.c
     src/ska-sdp-func/utility/sdp_mem.c
+    src/ska-sdp-func/utility/sdp_sky_coord.c
 )
 
 # List of CUDA kernel source files.
 set(${libname}_CUDA_SRC
     src/ska-sdp-func/dft/sdp_dft.cu
+    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cu
     src/ska-sdp-func/vector/sdp_vector_add.cu
     src/ska-sdp-func/degridding/sdp_degrid_uvw_custom.cu
 )
 
 # List of tests to build, in the "tests" directory.
 set(${libname}_TESTS
+    test_rfi_flagger
     test_dft
+    test_fft
+    test_phase_rotate
     test_vector_add
     test_function_example_a
     test_degrid_uvw_custom
 )
 
 # Project version.
-set(SDP_FUNC_VERSION_ID "0x000000")
+set(SDP_FUNC_VERSION_ID "0x000003")
 set(SDP_FUNC_VERSION_MAJOR 0)
 set(SDP_FUNC_VERSION_MINOR 0)
-set(SDP_FUNC_VERSION_PATCH 0)
+set(SDP_FUNC_VERSION_PATCH 3)
 set(SDP_FUNC_VERSION_SUFFIX "")
 
 # Add local CMake module path.
@@ -123,6 +131,11 @@ if (NOT DEFINED PYTHON_EXECUTABLE)
         VERSION ${SDP_FUNC_VERSION})
 else()
     message(STATUS "Building for Python: ${PYTHON_EXECUTABLE}")
+endif()
+
+# Add OpenMP compiler flags if found.
+if (OpenMP_CXX_FOUND)
+    target_link_libraries(${libname} OpenMP::OpenMP_CXX)
 endif()
 
 # Build tests.

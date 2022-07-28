@@ -1,8 +1,11 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-# Import functions that we want to expose under ska.sdp.func
+"""Import functions that we want to expose under ska_sdp_func"""
 
-from .dft import dft_point_v00
-from .vector import vector_add
-from .function_example_a import *
 from .degrid_uvw_custom import degrid_uvw_custom
+from .dft import dft_point_v00, dft_point_v01
+from .fft import Fft
+from .function_example_a import FunctionExampleA
+from .phase_rotate import phase_rotate_uvw, phase_rotate_vis
+from .rfi_flagger import sum_threshold_rfi_flagger
+from .vector import vector_add

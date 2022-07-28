@@ -1,16 +1,61 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
-  CUDA_ARCH: "6.1"
+  CUDA_ARCH: "7.0"
 
 stages:
   - lint
-  - build and test
+  - scan
+  - build
+  - test
   - publish
   - pages
 
+# Include CI templates
+include:
+  # Conan
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/conan.gitlab-ci.yml"
+
+  # Python package
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/python.gitlab-ci.yml"
+
+  # Release automation
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/release.gitlab-ci.yml"
+
+  # Docs pages
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/docs.gitlab-ci.yml"
+
+  # .post step finalisers e.g. badges
+  - project: "ska-telescope/templates-repository"
+    file: "gitlab-ci/includes/finaliser.gitlab-ci.yml"
+
 .reports: &ready_reports
   - mkdir -p build/reports/
+
+.add-cuda-key: &cuda_key
+  - rm /etc/apt/sources.list.d/cuda.list
+  - apt-key del 7fa2af80
+  - apt-get update && apt-get install -y --no-install-recommends wget
+  - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+  - dpkg -i cuda-keyring_1.0-1_all.deb
+
+.install-cuda-packages-centos: &cuda_packages_centos
+  - yum install -y yum-utils
+  - yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64/cuda-rhel7.repo
+  - yum clean all
+  - yum install -y cuda-nvcc-11-4 cuda-cudart-devel-11-4 libcufft-devel-11-4
+
+.build-manylinux-wheels: &build_wheels
+  - for PYBIN in /opt/python/cp*/bin; do
+      "${PYBIN}/pip" wheel . --no-deps -w temp-wheels;
+    done
+  - for whl in temp-wheels/*.whl; do
+      auditwheel repair "$whl" -w wheelhouse;
+    done
 
 linting:
   stage: lint
@@ -33,11 +78,12 @@ linting:
       - build/
 
 build-test-debug:
-  stage: build and test
-  image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
+  stage: test
+  image: nvidia/cuda:11.6.0-devel-ubuntu20.04
+  tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
+    - *cuda_key
     - apt-get -y update
     - apt-get -y install build-essential cmake lcov python3
     - nvidia-smi
@@ -55,14 +101,17 @@ build-test-debug:
       - build/
       - coverage/
     reports:
-      cobertura: build/reports/code-coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: build/reports/code-coverage.xml
 
 build-test-release:
-  stage: build and test
-  image: nvidia/cuda:11.3.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu]
+  stage: test
+  image: nvidia/cuda:11.6.0-devel-ubuntu20.04
+  tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
+    - *cuda_key
     # We need CMake >= 3.21.0 for the --output-junit option on CTest.
     - apt-get -y update
     - apt-get -y install build-essential gpg wget
@@ -88,6 +137,25 @@ build-test-release:
     reports:
       junit: build/reports/unit-tests.xml
 
+# Need to override the template stage because we want to run this on a GPU.
+python-test:
+  stage: test
+  image: nvidia/cuda:11.6.0-devel-ubuntu20.04
+  tags: [k8srunner-gpu-v100]
+  before_script:
+    - *cuda_key
+    - apt-get -y update
+    - apt-get -y install build-essential cmake python3 python3-pip
+    - pip3 install numpy pytest
+    - CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}" pip3 install .
+  script:
+    - pytest --junitxml=build/reports/unit-tests.xml tests/
+
+# Need to override the template as it doesn't appear to work with this repo.
+python-gemnasium-scan-legacy:
+  rules:
+    - when: never
+
 pages:
   stage: publish
   image: alpine
@@ -101,12 +169,36 @@ pages:
     paths:
       - public
 
-# Include CI templates
-include:
-  # Docs pages
-  - project: "ska-telescope/templates-repository"
-    file: "gitlab-ci/includes/docs-pages.gitlab-ci.yml"
+# Need to override the template stage because of auditwheel repair.
+# We can't use Poetry either, as setup.py is used to build the library.
+python-publish-to-car:
+  stage: publish
+  image: quay.io/pypa/manylinux2014_x86_64
+  allow_failure: true
+  before_script:
+    - *cuda_packages_centos
+    - python3.10 -m pip install twine
+  script:
+    - *build_wheels
+    - python3.10 -m twine upload --username ${CAR_PYPI_USERNAME} --password ${CAR_PYPI_PASSWORD} --repository-url ${CAR_PYPI_REPOSITORY_URL} wheelhouse/*
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      exists:
+        - setup.py
 
-  # .post step finalisers eg: badges
-  - project: "ska-telescope/templates-repository"
-    file: "gitlab-ci/includes/finaliser.gitlab-ci.yml"
+# Need to override the template stage because of auditwheel repair.
+# We can't use Poetry either, as setup.py is used to build the library.
+python-publish-to-gitlab:
+  stage: publish
+  image: quay.io/pypa/manylinux2014_x86_64
+  allow_failure: true
+  before_script:
+    - *cuda_packages_centos
+    - python3.10 -m pip install twine
+  script:
+    - *build_wheels
+    - python3.10 -m twine upload --username gitlab-ci-token --password ${CI_JOB_TOKEN} --repository-url https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/pypi wheelhouse/*
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      exists:
+        - setup.py
