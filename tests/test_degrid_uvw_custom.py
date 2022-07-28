@@ -11,7 +11,7 @@ except ImportError:
 
 from ska_sdp_func import degrid_uvw_custom
 
-
+# pylint: disable=too-many-locals
 def calculate_coordinates(
     grid_size,
     x_stride,
@@ -29,20 +29,20 @@ def calculate_coordinates(
 ):
     """Calculate coordinates in grid for visibility point."""
     # u or x coordinate
-    ox = theta * u * oversample
-    iox = round(ox) + (grid_size // 2 + 1) * oversample - 1
+    o_x = theta * u * oversample
+    iox = round(o_x) + (grid_size // 2 + 1) * oversample - 1
     home_x = iox // oversample
     frac_x = oversample - 1 - (iox % oversample)
 
     # v or y coordinate
-    oy = theta * v * oversample
-    ioy = round(oy) + (grid_size // 2 + 1) * oversample - 1
+    o_y = theta * v * oversample
+    ioy = round(o_y) + (grid_size // 2 + 1) * oversample - 1
     home_y = ioy // oversample
     frac_y = oversample - 1 - (ioy % oversample)
 
     # w or z coordinate
-    oz = (1.0 + w / wstep) * oversample_w
-    ioz = round(oz) + oversample_w - 1
+    o_z = (1.0 + w / wstep) * oversample_w
+    ioz = round(o_z) + oversample_w - 1
     frac_z = oversample_w - 1 - (ioz % oversample_w)
 
     grid_offset = (home_y - kernel_size // 2) * y_stride + (
@@ -60,6 +60,7 @@ def calculate_coordinates(
     )
 
 
+# pylint: disable=too-many-locals,too-many-nested-blocks
 def reference_degrid_uvw_custom(
     uv_kernel_stride,
     w_kernel_stride,
@@ -144,6 +145,7 @@ def reference_degrid_uvw_custom(
     return vis
 
 
+# pylint: disable=too-many-locals
 def test_degrid_uvw_custom():
     """Test degridding function."""
     # Run degridding test on CPU using numpy arrays.
