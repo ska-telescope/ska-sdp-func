@@ -3,6 +3,7 @@
 """Module for degridding functions which use custom kernels."""
 
 import ctypes
+
 from .utility import Error, Lib, Mem
 
 

@@ -11,6 +11,7 @@ except ImportError:
 
 from ska_sdp_func import degrid_uvw_custom
 
+
 # pylint: disable=too-many-locals
 def calculate_coordinates(
     grid_size,
