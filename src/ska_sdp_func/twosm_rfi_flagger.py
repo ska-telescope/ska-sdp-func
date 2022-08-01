@@ -1,6 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-import ctypes
+"""Module for RFI flagging functions."""
+
 from .utility import Error, Lib, Mem
 
 
@@ -56,5 +57,3 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
         error_status.handle()
     )
     error_status.check()
-
-

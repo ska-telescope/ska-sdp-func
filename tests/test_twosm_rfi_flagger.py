@@ -1,28 +1,32 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
+"""Test two-state RFI functions."""
+
 import numpy as np
 
 from ska_sdp_func import twosm_rfi_flagger
 
 
 def data_preparation(spectro, flags, num_timesamples, num_channels, num_baselines, num_pols):
+    """Prepares data for RFI test."""
     arr = np.array([0.1, 0.2, 0.3, 2.8, 2.81, 2.805, 0.1])
     insertion_time = np.random.randint(0, num_timesamples - 9)
     freq = np.random.randint(0, num_channels - 1)
     for i in range(7):
-        for b in range(num_baselines):
-            for p in range(num_pols):
-                spectro[insertion_time + i][b][freq][p] = arr[i]
+        for i_bl in range(num_baselines):
+            for i_pl in range(num_pols):
+                spectro[insertion_time + i][i_bl][freq][i_pl] = arr[i]
     for i in range(6):
-        for b in range(num_baselines):
-            for p in range(num_pols):
-                flags[insertion_time + i][b][freq][p] = 1
+        for i_bl in range(num_baselines):
+            for i_pl in range(num_pols):
+                flags[insertion_time + i][i_bl][freq][i_pl] = 1
 
 
 
 
 
 def test_rfi_flagger():
+    """Prepares data for RFI test."""
     num_channels = 200
     num_baselines = 21
     num_timesamples = 1000
