@@ -152,7 +152,7 @@ static void check_results_rotate_vis(
 }
 
 
-static void run_and_check_rotate_uvw(
+void run_and_check_rotate_uvw(
         const char* test_name,
         bool expect_pass,
         bool read_only_output,
@@ -221,7 +221,7 @@ static void run_and_check_rotate_uvw(
     sdp_sky_coord_free(new_phase_centre);
 }
 
-static void run_and_check_rotate_vis(
+void run_and_check_rotate_vis(
         const char* test_name,
         bool expect_pass,
         bool read_only_output,
