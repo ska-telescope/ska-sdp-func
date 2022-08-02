@@ -23,7 +23,7 @@ def data_preparation(
         for i_bl in range(num_baselines):
             for i_pl in range(num_pols):
                 spectro[insertion_time + i][i_bl][freq][i_pl] = arr[i]
-    for i in range(6):
+    for i in range(7):
         for i_bl in range(num_baselines):
             for i_pl in range(num_pols):
                 flags[insertion_time + i][i_bl][freq][i_pl] = 1
