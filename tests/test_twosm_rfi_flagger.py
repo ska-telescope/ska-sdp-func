@@ -3,6 +3,7 @@
 """Test two-state RFI functions."""
 
 import numpy as np
+
 from ska_sdp_func import twosm_rfi_flagger
 
 
