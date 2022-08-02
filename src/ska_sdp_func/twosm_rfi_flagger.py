@@ -5,7 +5,6 @@
 from .utility import Error, Lib, Mem
 
 
-
 def twosm_rfi_flagger(vis, thresholds, antennas, flags):
     """
     Basic RFI flagger based on sum-threshold algorithm.
