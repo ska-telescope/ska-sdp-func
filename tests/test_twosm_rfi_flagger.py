@@ -6,7 +6,14 @@ import numpy as np
 from ska_sdp_func import twosm_rfi_flagger
 
 
-def data_preparation(spectro, flags, num_timesamples, num_channels, num_baselines, num_pols):
+def data_preparation(
+    spectro, 
+    flags, 
+    num_timesamples, 
+    num_channels, 
+    num_baselines, 
+    num_pols,
+):
     """Prepares data for RFI test."""
     arr = np.array([0.1, 0.2, 0.3, 2.8, 2.81, 2.805, 0.1])
     insertion_time = np.random.randint(0, num_timesamples - 9)
