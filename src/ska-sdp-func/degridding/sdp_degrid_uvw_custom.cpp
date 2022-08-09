@@ -250,13 +250,6 @@ void sdp_degrid_uvw_custom(
         return;
     }
 
-    if (num_pols != sdp_mem_shape_dim(grid, 4))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Grid and visibilities must have the same number of polarisations");
-        return;
-    }
-
     if (sdp_mem_shape_dim(grid, 0) != num_channels ||
         sdp_mem_shape_dim(grid, 4) != num_pols)
     {
