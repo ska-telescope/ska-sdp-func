@@ -191,17 +191,6 @@ void sdp_degrid_uvw_custom(
         return;
     }
 
-    if (!sdp_mem_is_c_contiguous(grid) ||
-        !sdp_mem_is_c_contiguous(uvw) ||
-        !sdp_mem_is_c_contiguous(uv_kernel) ||
-        !sdp_mem_is_c_contiguous(w_kernel) ||
-        !sdp_mem_is_c_contiguous(vis))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("All arrays must be C contiguous");
-        return;
-    }
-
     if (sdp_mem_type(uvw) != SDP_MEM_DOUBLE||
         sdp_mem_type(uv_kernel) != SDP_MEM_DOUBLE||
         sdp_mem_type(w_kernel) != SDP_MEM_DOUBLE)
