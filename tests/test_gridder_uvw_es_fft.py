@@ -231,7 +231,7 @@ def atest_gridder_plan():
             False,
         )
 
-        gridder.ms2dirty(
+        gridder.grid_uvw_es_fft(
             uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu
         )
 
@@ -239,7 +239,7 @@ def atest_gridder_plan():
         # but could do exhaustive checking like above...
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.ms2dirty(
+            gridder.grid_uvw_es_fft(
                 uvw_gpu, freqs, vis_gpu, weight_gpu, dirty_image_gpu
             )
 
@@ -247,17 +247,19 @@ def atest_gridder_plan():
 
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.ms2dirty(
+            gridder.grid_uvw_es_fft(
                 uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image
             )
 
         error_string = "Unsupported data type\\(s\\)"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.ms2dirty(uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, vis_gpu)
+            gridder.grid_uvw_es_fft(
+                uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, vis_gpu
+            )
 
         error_string = "Invalid function argument"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder.ms2dirty(
+            gridder.grid_uvw_es_fft(
                 uvw_gpu,
                 freqs_gpu,
                 vis_gpu,
@@ -320,9 +322,7 @@ def test_get_w_range():
 
         # test with cupy arguments
         print("testing cupy arguments...")
-        min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(
-            uvw_gpu, freq_hz_gpu
-        )
+        min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(uvw_gpu, freq_hz_gpu)
         # print(rrmse(min_abs_w, true_min_abs_w))
         # print(rrmse(max_abs_w, true_max_abs_w))
         assert rrmse(min_abs_w, true_min_abs_w) < 1e-15
