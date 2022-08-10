@@ -299,7 +299,7 @@ static void run_and_check(
 		}
 	}
 
-    sdp_Mem* bad_weight_gpu  	 = sdp_mem_create_copy(weight,      SDP_MEM_GPU, status);
+    // sdp_Mem* bad_weight_gpu  	 = sdp_mem_create_copy(weight,      SDP_MEM_GPU, status);
 	
 	sdp_ifft_degrid_uvw_es(
 		gridder, 
