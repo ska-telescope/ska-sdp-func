@@ -15,7 +15,7 @@ C/C++
 Python
 ======
 
-.. autoclass:: ska_sdp_func.Gridder
+.. autoclass:: ska_sdp_func.GridderUvwEsFft
    :members:
    :special-members: __init__
    :exclude-members: Handle, handle, handle_type

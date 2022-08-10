@@ -9,7 +9,7 @@ except ImportError:
 import numpy as np
 import pytest
 
-from ska_sdp_func import Gridder
+from ska_sdp_func import GridderUvwEsFft
 
 
 def rrmse(in_x, in_y):
@@ -53,7 +53,7 @@ def atest_gridder_plan():
         # test for memory mismatch on inputs
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw,
                 freqs_gpu,
                 vis_gpu,
@@ -65,7 +65,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs,
                 vis_gpu,
@@ -77,7 +77,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
                 vis,
@@ -89,7 +89,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
                 vis_gpu,
@@ -104,7 +104,7 @@ def atest_gridder_plan():
         # test for wrong type on inputs
         error_string = "Unsupported data type\\(s\\)"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 vis_gpu,
                 freqs_gpu,
                 vis_gpu,
@@ -116,7 +116,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 vis_gpu,
                 vis_gpu,
@@ -128,7 +128,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
                 uvw_gpu,
@@ -140,7 +140,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
                 vis_gpu,
@@ -155,7 +155,7 @@ def atest_gridder_plan():
         # test for wrong sizes/values on inputs
         error_string = "Invalid function argument"
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu[:, 0:2],
                 freqs_gpu,
                 vis_gpu,
@@ -167,7 +167,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu[0:2],
                 vis_gpu,
@@ -179,7 +179,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu[0:-2, :],
                 freqs_gpu,
                 vis_gpu,
@@ -191,7 +191,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
                 vis_gpu,
@@ -203,7 +203,7 @@ def atest_gridder_plan():
                 False,
             )
         with pytest.raises(RuntimeError, match=error_string):
-            gridder = Gridder(
+            gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
                 vis_gpu,
@@ -219,7 +219,7 @@ def atest_gridder_plan():
         # # tests for exec()
 
         # Create gridder, need to create a valid gridder!
-        gridder = Gridder(
+        gridder = GridderUvwEsFft(
             uvw_gpu,
             freqs_gpu,
             vis_gpu,
@@ -304,7 +304,7 @@ def test_get_w_range():
 
     # test with numpy arguments
     print("testing numpy arguments...")
-    min_abs_w, max_abs_w = Gridder.get_w_range(uvw, freq_hz)
+    min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(uvw, freq_hz)
     # print(rrmse(min_abs_w, true_min_abs_w))
     # print(rrmse(max_abs_w, true_max_abs_w))
     assert rrmse(min_abs_w, true_min_abs_w) < 1e-15
@@ -320,7 +320,7 @@ def test_get_w_range():
 
         # test with cupy arguments
         print("testing cupy arguments...")
-        min_abs_w, max_abs_w = Gridder.get_w_range(uvw_gpu, freq_hz_gpu)
+        min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(uvw_gpu, freq_hz_gpu)
         # print(rrmse(min_abs_w, true_min_abs_w))
         # print(rrmse(max_abs_w, true_max_abs_w))
         assert rrmse(min_abs_w, true_min_abs_w) < 1e-15
@@ -328,7 +328,7 @@ def test_get_w_range():
 
     # test with bad arguments
     print("testing bad arguments...")
-    min_abs_w, max_abs_w = Gridder.get_w_range(None, None)
+    min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(None, None)
     assert min_abs_w == -1
     assert max_abs_w == -1
 
@@ -427,7 +427,7 @@ def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
         )
 
         # Create gridder
-        gridder = Gridder(
+        gridder = GridderUvwEsFft(
             uvw_gpu,
             freqs_gpu,
             test_vis_gpu,
@@ -440,7 +440,7 @@ def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
         )
 
         # Run gridder
-        gridder.ms2dirty(
+        gridder.grid_uvw_es_fft(
             uvw_gpu, freqs_gpu, test_vis_gpu, weight_gpu, dirty_image_gpu
         )
 
@@ -452,7 +452,7 @@ def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
         adj1 = np.vdot(dirty_image, test_dirty_image)
 
         # Run gridder
-        gridder.dirty2ms(
+        gridder.ifft_grid_uvw_es(
             uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, test_dirty_image_gpu
         )
 
