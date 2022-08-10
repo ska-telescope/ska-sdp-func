@@ -320,7 +320,9 @@ def test_get_w_range():
 
         # test with cupy arguments
         print("testing cupy arguments...")
-        min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(uvw_gpu, freq_hz_gpu)
+        min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(
+            uvw_gpu, freq_hz_gpu
+        )
         # print(rrmse(min_abs_w, true_min_abs_w))
         # print(rrmse(max_abs_w, true_max_abs_w))
         assert rrmse(min_abs_w, true_min_abs_w) < 1e-15
