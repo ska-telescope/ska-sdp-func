@@ -1,7 +1,8 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-from .utility import Error, Lib, Mem
 import ctypes
+
+from .utility import Error, Lib, Mem
 
 
 def twosm_rfi_flagger(vis, thresholds, antennas, flags):
