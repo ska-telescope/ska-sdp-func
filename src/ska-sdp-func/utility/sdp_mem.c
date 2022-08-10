@@ -129,7 +129,7 @@ sdp_Mem* sdp_mem_create_wrapper(
     int64_t num_elements = 1;
     for (int32_t i = num_dims - 1; i >= 0; --i)
     {
-        if (sdp_mem_stride_dim(mem, i) != num_elements * element_size)
+        if (sdp_mem_stride_bytes_dim(mem, i) != num_elements * element_size)
         {
             mem->is_c_contiguous = 0;
         }
@@ -394,9 +394,15 @@ int64_t sdp_mem_shape_dim(const sdp_Mem* mem, int32_t dim)
     return (!mem || dim < 0 || dim >= mem->num_dims) ? 0 : mem->shape[dim];
 }
 
-int64_t sdp_mem_stride_dim(const sdp_Mem* mem, int32_t dim)
+int64_t sdp_mem_stride_bytes_dim(const sdp_Mem* mem, int32_t dim)
 {
     return (!mem || dim < 0 || dim >= mem->num_dims) ? 0 : mem->stride[dim];
+}
+
+int64_t sdp_mem_stride_elements_dim(const sdp_Mem* mem, int32_t dim)
+{
+    const int64_t type_size = sdp_mem_type_size(mem->type);
+    return type_size > 0 ? sdp_mem_stride_bytes_dim(mem, dim) / type_size : 0;
 }
 
 sdp_MemType sdp_mem_type(const sdp_Mem* mem)

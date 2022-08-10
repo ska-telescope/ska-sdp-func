@@ -26,35 +26,40 @@ extern "C" {
  */
 #define SDP_LOG_CRITICAL(...) \
         sdp_log_message(\
-                "CRITICAL", stderr, __func__, FILENAME, __LINE__, __VA_ARGS__)
+                SDP_LOG_LEVEL_CRITICAL, stderr, __func__, FILENAME, __LINE__,\
+                __VA_ARGS__)
 
 /**
  * @brief Writes a log message to stderr, with severity "ERROR".
  */
 #define SDP_LOG_ERROR(...) \
         sdp_log_message(\
-                "ERROR", stderr, __func__, FILENAME, __LINE__, __VA_ARGS__)
+                SDP_LOG_LEVEL_ERROR, stderr, __func__, FILENAME, __LINE__,\
+                __VA_ARGS__)
 
 /**
  * @brief Writes a log message to stderr, with severity "WARNING".
  */
 #define SDP_LOG_WARNING(...) \
         sdp_log_message(\
-                "WARNING", stderr, __func__, FILENAME, __LINE__, __VA_ARGS__)
+                SDP_LOG_LEVEL_WARNING, stderr, __func__, FILENAME, __LINE__,\
+                __VA_ARGS__)
 
 /**
  * @brief Writes a log message to stdout, with severity "INFO".
  */
 #define SDP_LOG_INFO(...) \
         sdp_log_message(\
-                "INFO", stdout, __func__, FILENAME, __LINE__, __VA_ARGS__)
+                SDP_LOG_LEVEL_INFO, stdout, __func__, FILENAME, __LINE__,\
+                __VA_ARGS__)
 
 /**
  * @brief Writes a log message to stdout, with severity "DEBUG".
  */
 #define SDP_LOG_DEBUG(...) \
         sdp_log_message(\
-                "DEBUG", stdout, __func__, FILENAME, __LINE__, __VA_ARGS__)
+                SDP_LOG_LEVEL_DEBUG, stdout, __func__, FILENAME, __LINE__,\
+                __VA_ARGS__)
 
 #ifndef SOURCE_PATH_SIZE
 #define SOURCE_PATH_SIZE 0
@@ -62,8 +67,19 @@ extern "C" {
 
 #define FILENAME ((__FILE__) + SOURCE_PATH_SIZE)
 
+enum sdp_LogLevel
+{
+    SDP_LOG_LEVEL_UNDEF,
+    SDP_LOG_LEVEL_DEBUG,
+    SDP_LOG_LEVEL_INFO,
+    SDP_LOG_LEVEL_WARNING,
+    SDP_LOG_LEVEL_ERROR,
+    SDP_LOG_LEVEL_CRITICAL
+};
+typedef enum sdp_LogLevel sdp_LogLevel;
+
 void sdp_log_message(
-        const char* level,
+        sdp_LogLevel level,
         FILE* stream,
         const char* func,
         const char* file,

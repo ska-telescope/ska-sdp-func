@@ -12,11 +12,14 @@ set(${libname}_SRC
     src/ska-sdp-func/rfi_flagger/sdp_rfi_flagger.cpp
     src/ska-sdp-func/dft/sdp_dft.cpp
     src/ska-sdp-func/fft/sdp_fft.cpp
+    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cpp
+    src/ska-sdp-func/twosm_rfi_flagger/sdp_twosm_rfi_flagger.cpp
     src/ska-sdp-func/vector/sdp_vector_add.cpp
     src/ska-sdp-func/function_example_a/sdp_function_example_a.cpp
     src/ska-sdp-func/utility/sdp_device_wrapper.cpp
     src/ska-sdp-func/utility/sdp_logging.c
     src/ska-sdp-func/utility/sdp_mem.c
+    src/ska-sdp-func/utility/sdp_sky_coord.c
 	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft.cpp	
 	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft_utils.cpp	
 )
@@ -24,6 +27,7 @@ set(${libname}_SRC
 # List of CUDA kernel source files.
 set(${libname}_CUDA_SRC
     src/ska-sdp-func/dft/sdp_dft.cu
+    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cu
     src/ska-sdp-func/vector/sdp_vector_add.cu
 	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft_kernels.cu
 )
@@ -33,6 +37,8 @@ set(${libname}_TESTS
     test_rfi_flagger
     test_dft
     test_fft
+    test_phase_rotate
+    test_twosm_rfi_flagger
     test_vector_add
     test_function_example_a
     test_gridder_uvw_es_fft
