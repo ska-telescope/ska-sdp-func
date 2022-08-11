@@ -19,18 +19,20 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_size, weights):
     as the weight"""
     grid_uv = np.zeros((grid_size + 1, grid_size + 1))
 
-    for i in range(len(uvw)):
-        for j in range(len(freq_hz)):
-            u = uvw[i, 0] * freq_hz[j] / 299792458.0
-            v = uvw[i, 1] * freq_hz[j] / 299792458.0
-            idx_u = int(u / max_abs_uv * grid_size / 2 + grid_size / 2)
-            idx_v = int(v / max_abs_uv * grid_size / 2 + grid_size / 2)
+    uvw_range = range(len(uvw))
+    freq_hz_range = range(len(freq_hz))
+    for i in uvw_range:
+        for j in freq_hz_range:
+            grid_u = uvw[i, 0] * freq_hz[j] / 299792458.0
+            grid_v = uvw[i, 1] * freq_hz[j] / 299792458.0
+            idx_u = int(grid_u / max_abs_uv * grid_size / 2 + grid_size / 2)
+            idx_v = int(grid_v / max_abs_uv * grid_size / 2 + grid_size / 2)
             grid_uv[idx_u, idx_v] += 1.0
             weights[i, j, 0] = idx_u
             weights[i, j, 1] = idx_v
 
-    for i in range(len(uvw)):
-        for j in range(len(freq_hz)):
+    for i in uvw_range:
+        for j in freq_hz_range:
             idx_u = int(weights[i, j, 0])
             idx_v = int(weights[i, j, 1])
             weight_g = 1.0 / grid_uv[idx_u, idx_v]
