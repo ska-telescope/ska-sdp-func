@@ -31,7 +31,5 @@ def test_vector_add():
         print("Adding vectors on GPU using ska-sdp-func...")
         vector_add(input_a_gpu, input_b_gpu, output_vector_gpu)
         output_gpu_check = cupy.asnumpy(output_vector_gpu)
-        numpy.testing.assert_array_almost_equal(
-            output_gpu_check, input_a + input_b
-        )
+        numpy.testing.assert_array_almost_equal(output_gpu_check, input_a + input_b)
         print("Vector addition on GPU: Test passed")

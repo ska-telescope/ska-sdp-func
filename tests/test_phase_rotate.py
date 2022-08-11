@@ -31,9 +31,7 @@ def test_phase_rotate():
     uvw_in = numpy.random.random_sample([num_times, num_baselines, 3])
     uvw_out = numpy.zeros_like(uvw_in)
     vis_in = (
-        numpy.random.random_sample(
-            [num_times, num_baselines, num_channels, num_pols]
-        )
+        numpy.random.random_sample([num_times, num_baselines, num_channels, num_pols])
         + 0j
     )
     vis_out = numpy.zeros_like(vis_in)

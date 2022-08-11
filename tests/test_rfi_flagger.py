@@ -51,9 +51,7 @@ def test_rfi_flagger():
 
     # Initialise numpy arrays
     spectrogram = (
-        numpy.zeros(
-            [num_timesamples, num_baselines, num_channels, num_polarisations]
-        )
+        numpy.zeros([num_timesamples, num_baselines, num_channels, num_polarisations])
         + 0j
     )
     flags_by_algo = numpy.zeros(spectrogram.shape, dtype=numpy.int32)
