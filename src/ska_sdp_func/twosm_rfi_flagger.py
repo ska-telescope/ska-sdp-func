@@ -4,7 +4,6 @@ import ctypes
 from .utility import Error, Lib, Mem
 
 
-
 def twosm_rfi_flagger(vis, thresholds, antennas, flags):
     """
     Basic RFI flagger based on sum-threshold algorithm.
@@ -46,15 +45,13 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Error.handle_type()
+        Error.handle_type(),
     ]
     lib_rfi_flagger(
         mem_vis.handle(),
         mem_thresholds.handle(),
         mem_antennas.handle(),
         mem_flags.handle(),
-        error_status.handle()
+        error_status.handle(),
     )
     error_status.check()
-
-
