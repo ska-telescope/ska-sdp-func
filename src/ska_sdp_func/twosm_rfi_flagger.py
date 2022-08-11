@@ -1,8 +1,8 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-import ctypes
-from .utility import Error, Lib, Mem
+"""Module for RFI flagging functions."""
 
+from .utility import Error, Lib, Mem
 
 
 def twosm_rfi_flagger(vis, thresholds, antennas, flags):
@@ -46,15 +46,13 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Error.handle_type()
+        Error.handle_type(),
     ]
     lib_rfi_flagger(
         mem_vis.handle(),
         mem_thresholds.handle(),
         mem_antennas.handle(),
         mem_flags.handle(),
-        error_status.handle()
+        error_status.handle(),
     )
     error_status.check()
-
-
