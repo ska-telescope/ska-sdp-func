@@ -87,6 +87,8 @@ void sdp_gridder_check_buffers(
 	// check location of parameters (CPU or GPU)
     const sdp_MemLocation location = sdp_mem_location(uvw);
 	
+    //SDP_LOG_DEBUG("%s is%s on the GPU\n", "uvw", sdp_mem_location(uvw) == SDP_MEM_GPU ? "" : " NOT");
+    
     if (location != sdp_mem_location(freq_hz) || 
 		location != sdp_mem_location(vis) || 
 		location != sdp_mem_location(weight) ||
@@ -133,10 +135,19 @@ void sdp_gridder_check_buffers(
     const int64_t num_vis      = sdp_mem_shape_dim(vis, 0);
     const int64_t num_channels = sdp_mem_shape_dim(vis, 1);
 	
-	SDP_LOG_DEBUG("vis is %i by %i", num_vis, num_channels);
+	SDP_LOG_DEBUG("uvw is %i by %i", 
+		sdp_mem_shape_dim(uvw, 0), 
+		sdp_mem_shape_dim(uvw, 1));
 	SDP_LOG_DEBUG("freq_hz is %i by %i", 
 		sdp_mem_shape_dim(freq_hz, 0), 
 		sdp_mem_shape_dim(freq_hz, 1));
+	SDP_LOG_DEBUG("vis is %i by %i", num_vis, num_channels);
+	SDP_LOG_DEBUG("weight is %i by %i", 
+		sdp_mem_shape_dim(weight, 0), 
+		sdp_mem_shape_dim(weight, 1));
+	SDP_LOG_DEBUG("dirty_image is %i by %i", 
+		sdp_mem_shape_dim(dirty_image, 0), 
+		sdp_mem_shape_dim(dirty_image, 1));
 		
     if (sdp_mem_shape_dim(uvw, 0) != num_vis)
     {
@@ -259,6 +270,9 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         sdp_Error* status)
 {
     if (*status) return NULL;
+    
+	sdp_gridder_check_buffers(uvw, freq_hz, vis, weight, dirty_image, false, status);
+    if (*status) return NULL;    
 	
     sdp_GridderUvwEsFft* plan = (sdp_GridderUvwEsFft*) calloc(1, sizeof(sdp_GridderUvwEsFft));
 	
@@ -459,6 +473,13 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
 	(void)uvw; // avoid compiler unused parameter warning
 	(void)freq_hz; // avoid compiler unused parameter warning
 	(void)weight; // avoid compiler unused parameter warning
+ 
+	sdp_gridder_check_buffers(uvw, freq_hz, vis, weight, dirty_image, false, status);
+    if (*status) 
+    {
+        sdp_gridder_uvw_es_fft_free_plan(plan);
+        return NULL;
+    }
 
     SDP_LOG_INFO("Created sdp_GridderUvwEsFft");
     return plan;

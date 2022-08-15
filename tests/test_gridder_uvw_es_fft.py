@@ -16,37 +16,56 @@ def rrmse(in_x, in_y):
     """Calculates the relative RMS error between the inputs."""
     return np.linalg.norm(in_x - in_y) / np.linalg.norm(in_y)
 
-
-def atest_gridder_plan():
-    """Test"""
+def test_gridder_plan():
+    """Test the interface calls, easier to do here than in C."""
     print(" ")  # just for separation of debug output
     print(" ")
 
-    # load dataset
-    test_data = np.load("tests/test_data/vla_d_3_chan.npz")
-    vis = test_data["vis"]
-    freqs = test_data["freqs"]
-    uvw = test_data["uvw"]
-    weight = np.ones(vis.shape)
-    # parameters
-    im_size = 1024
-    pixsize_deg = 1.94322419749866394e-02
-    pixsize_rad = pixsize_deg * np.pi / 180.0
+    num_vis = 1000
+    num_chan = 10
+    nxydirty = 1024
+    fov = 2  # degrees
 
-    print(f"pixsize_rad is {pixsize_rad:.12e}")
+    speed_of_light = 299792458.0
+    np.random.seed(40)
+    pixel_size_rad = fov * np.pi / 180 / nxydirty
+    f_0 = 1e9
 
+    freqs = f_0 + np.arange(num_chan) * (f_0 / num_chan)
+    uvw = (np.random.rand(num_vis, 3) - 0.5) / (
+        pixel_size_rad * f_0 / speed_of_light
+    )
+    vis = (
+        np.random.rand(num_vis, num_chan)
+        - 0.5
+        + 1j * (np.random.rand(num_vis, num_chan) - 0.5)
+    )
+    dirty_image = np.random.rand(nxydirty, nxydirty) - 0.5
+    weight = np.ones([num_vis, num_chan])
+    do_w_stacking = False
     epsilon = 1e-5
 
-    dirty_image = np.zeros([im_size, im_size], dtype=np.float64)
+    # create single versions
+    vis_s = vis.astype(np.complex64)
+    dirty_image_s = dirty_image.astype(np.float32)
+    freqs_s = freqs.astype(np.float32)
+    uvw_s = uvw.astype(np.float32)
+    weight_s = weight.astype(np.float32)
 
-    # Run gridder test on GPU, using cupy arrays.
+    adj_error = -1
+
     if cupy:
-        print("hi!!")
         vis_gpu = cupy.asarray(vis)
         freqs_gpu = cupy.asarray(freqs)
         uvw_gpu = cupy.asarray(uvw)
         weight_gpu = cupy.asarray(weight)
-        dirty_image_gpu = cupy.zeros([im_size, im_size], dtype=np.float64)
+        dirty_image_gpu = cupy.asarray(dirty_image)
+
+        vis_s_gpu = cupy.asarray(vis_s)
+        freqs_s_gpu = cupy.asarray(freqs_s)
+        uvw_s_gpu = cupy.asarray(uvw)
+        weight_s_gpu = cupy.asarray(weight)
+        dirty_image_s_gpu = cupy.asarray(dirty_image_s)
 
         # # tests for plan creation
 
@@ -59,10 +78,10 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -71,10 +90,10 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -83,10 +102,10 @@ def atest_gridder_plan():
                 vis,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -95,10 +114,22 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
+            )
+        with pytest.raises(RuntimeError, match=error_string):
+            gridder = GridderUvwEsFft(
+                uvw_gpu,
+                freqs_gpu,
+                vis_gpu,
+                weight_gpu,
+                dirty_image,
+                pixel_size_rad,
+                pixel_size_rad,
+                epsilon,
+                do_w_stacking,
             )
 
         # test for wrong type on inputs
@@ -110,10 +141,10 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -122,10 +153,10 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -134,10 +165,10 @@ def atest_gridder_plan():
                 uvw_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -146,10 +177,22 @@ def atest_gridder_plan():
                 vis_gpu,
                 vis_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
+            )
+        with pytest.raises(RuntimeError, match=error_string):
+            gridder = GridderUvwEsFft(
+                uvw_gpu,
+                freqs_gpu,
+                vis_gpu,
+                weight_gpu,
+                vis_gpu,
+                pixel_size_rad,
+                pixel_size_rad,
+                epsilon,
+                do_w_stacking,
             )
 
         # test for wrong sizes/values on inputs
@@ -161,10 +204,10 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -173,10 +216,10 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -185,10 +228,46 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad,
+                pixel_size_rad,
+                pixel_size_rad,
                 epsilon,
-                False,
+                do_w_stacking,
+            )
+        with pytest.raises(RuntimeError, match=error_string):
+            gridder = GridderUvwEsFft(
+                uvw_gpu,
+                freqs_gpu,
+                vis_gpu,
+                weight_gpu[0:-2, :],
+                dirty_image_gpu,
+                pixel_size_rad,
+                pixel_size_rad,
+                epsilon,
+                do_w_stacking,
+            )
+        with pytest.raises(RuntimeError, match=error_string):
+            gridder = GridderUvwEsFft(
+                uvw_gpu,
+                freqs_gpu,
+                vis_gpu,
+                weight_gpu[:, 0:-2],
+                dirty_image_gpu,
+                pixel_size_rad,
+                pixel_size_rad,
+                epsilon,
+                do_w_stacking,
+            )
+        with pytest.raises(RuntimeError, match=error_string):
+            gridder = GridderUvwEsFft(
+                uvw_gpu,
+                freqs_gpu,
+                vis_gpu,
+                weight_gpu,
+                dirty_image_gpu[:, 0:-1],
+                pixel_size_rad,
+                pixel_size_rad,
+                epsilon,
+                do_w_stacking,
             )
         with pytest.raises(RuntimeError, match=error_string):
             gridder = GridderUvwEsFft(
@@ -197,26 +276,13 @@ def atest_gridder_plan():
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad * 2,
+                pixel_size_rad,
+                pixel_size_rad * 2,
                 epsilon,
-                False,
+                do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
-            gridder = GridderUvwEsFft(
-                uvw_gpu,
-                freqs_gpu,
-                vis_gpu,
-                weight_gpu,
-                dirty_image_gpu,
-                pixsize_rad,
-                pixsize_rad * 2,
-                epsilon,
-                False,
-            )
-        # should test epsilon!!
 
-        # # tests for exec()
+        # # tests for grid_uvw_es_fft()
 
         # Create gridder, need to create a valid gridder!
         gridder = GridderUvwEsFft(
@@ -225,51 +291,19 @@ def atest_gridder_plan():
             vis_gpu,
             weight_gpu,
             dirty_image_gpu,
-            pixsize_rad,
-            pixsize_rad,
+            pixel_size_rad,
+            pixel_size_rad,
             epsilon,
-            False,
+            do_w_stacking,
         )
 
-        gridder.grid_uvw_es_fft(
-            uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image_gpu
-        )
-
-        # this checks that sdp_gridder_check_inputs() is being called,
-        # but could do exhaustive checking like above...
+        # the following checks that sdp_gridder_check_buffer() is being
+        # called, but could do exhaustive checking like above...
         error_string = "Memory location mismatch"
         with pytest.raises(RuntimeError, match=error_string):
             gridder.grid_uvw_es_fft(
                 uvw_gpu, freqs, vis_gpu, weight_gpu, dirty_image_gpu
             )
-
-        # # test dirty_image is correct
-
-        error_string = "Memory location mismatch"
-        with pytest.raises(RuntimeError, match=error_string):
-            gridder.grid_uvw_es_fft(
-                uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, dirty_image
-            )
-
-        error_string = "Unsupported data type\\(s\\)"
-        with pytest.raises(RuntimeError, match=error_string):
-            gridder.grid_uvw_es_fft(
-                uvw_gpu, freqs_gpu, vis_gpu, weight_gpu, vis_gpu
-            )
-
-        error_string = "Invalid function argument"
-        with pytest.raises(RuntimeError, match=error_string):
-            gridder.grid_uvw_es_fft(
-                uvw_gpu,
-                freqs_gpu,
-                vis_gpu,
-                weight_gpu,
-                dirty_image_gpu[:, 0:-1],
-            )
-
-        # don't know how to test contiguity
-        # don't know how to test read-only from python
-
 
 def test_get_w_range():
     """Test."""
@@ -336,14 +370,12 @@ def test_get_w_range():
     assert min_abs_w == -1
     assert max_abs_w == -1
 
-
 def test_gridder_degridder_sp_2d():
     """Test."""
     adj_error, pass_threshold = run_gridder_adjointness_check(
         do_single=True, do_w_stacking=False, epsilon=1e-5
     )
     assert adj_error < pass_threshold
-
 
 def test_gridder_degridder_sp_3d():
     """Test."""
@@ -352,7 +384,6 @@ def test_gridder_degridder_sp_3d():
     )
     assert adj_error < pass_threshold
 
-
 def test_gridder_degridder_dp_2d():
     """Test."""
     adj_error, pass_threshold = run_gridder_adjointness_check(
@@ -360,14 +391,12 @@ def test_gridder_degridder_dp_2d():
     )
     assert adj_error < pass_threshold
 
-
 def test_gridder_degridder_dp_3d():
     """Test."""
     adj_error, pass_threshold = run_gridder_adjointness_check(
         do_single=False, do_w_stacking=True, epsilon=1e-12
     )
     assert adj_error < pass_threshold
-
 
 def run_gridder_adjointness_check(do_single, do_w_stacking, epsilon=1e-5):
     """Run an adjointness test, which tests both gridding and degridding."""
