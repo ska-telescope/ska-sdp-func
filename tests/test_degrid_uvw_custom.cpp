@@ -92,11 +92,11 @@ static void check_results(
         return;
     }
 
-    for (int i_time = 0; i_time < num_times; ++i_time)
+    for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
     {
         for (int i_channel = 0; i_channel < num_channels; ++i_channel)
         {
-            for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
+            for (int i_time = 0; i_time < num_times; ++i_time)
             {
                 // Get uvw-coordinate scaling.
                 const double inv_wavelength = (

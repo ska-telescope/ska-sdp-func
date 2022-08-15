@@ -91,9 +91,9 @@ def reference_degrid_uvw_custom(
 
     grid = grid.flatten()
 
-    for i_time in range(num_times):
+    for i_baseline in range(num_baselines):
         for i_channel in range(num_channels):
-            for i_baseline in range(num_baselines):
+            for i_time in range(num_times):
                 inv_wavelength = (
                     channel_start_hz + i_channel * channel_step_hz
                 ) / 299792458.0
