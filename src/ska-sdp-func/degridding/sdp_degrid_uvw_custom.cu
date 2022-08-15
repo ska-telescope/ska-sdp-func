@@ -91,60 +91,58 @@ __global__ void degrid_uvw_custom(
         return;
     }
 
-    // Get uvw-coordinate scaling.
-    const double inv_wavelength = (
-            channel_start_hz + i_channel * channel_step_hz) / C_0;
-    const unsigned int i_uvw = INDEX_2D(
-            num_times, num_baselines, i_time, i_baseline);
-
-    int grid_offset = 0;
-    int sub_offset_x = 0, sub_offset_y = 0, sub_offset_z = 0;
-    calculate_coordinates(
-            x_size,
-            1,
-            y_size,
-            uv_kernel_stride_in_elements,
-            uv_kernel_stride_in_elements,
-            uv_kernel_oversampling,
-            w_kernel_stride_in_elements,
-            w_kernel_oversampling,
-            theta,
-            wstep,
-            inv_wavelength * uvw[i_uvw].x,
-            inv_wavelength * uvw[i_uvw].y,
-            inv_wavelength * uvw[i_uvw].z,
-            &grid_offset,
-            &sub_offset_x,
-            &sub_offset_y,
-            &sub_offset_z
-    );
-
-    VIS_TYPE2 vis_local = {0, 0};
-    for (int z = 0; z < w_kernel_stride_in_elements; z++)
-    {
-        VIS_TYPE2 visz = {0, 0};
-        for (int y = 0; y < uv_kernel_stride_in_elements; y++)
-        {
-            VIS_TYPE2 visy = {0, 0};
-            for (int x = 0; x < uv_kernel_stride_in_elements; x++)
-            {
-                const VIS_TYPE2 grid_value = grid[
-                        z * x_size * y_size + grid_offset + y * y_size + x];
-                visy.x += uv_kernel[sub_offset_x + x] * grid_value.x;
-                visy.y += uv_kernel[sub_offset_x + x] * grid_value.y;
-            }
-            visz.x += uv_kernel[sub_offset_y + y] * visy.x;
-            visz.y += uv_kernel[sub_offset_y + y] * visy.y;
-        }
-        vis_local.x += w_kernel[sub_offset_z + z] * visz.x;
-        vis_local.y += w_kernel[sub_offset_z + z] * visz.y;
-    }
-    if (conjugate) vis_local.y = -vis_local.y;
-
-    // FIXME This is not how to work with multiple polarisations.
-    // FIXME We need a separate grid for each polarisation.
     for (int i_pol = 0; i_pol < num_pols; ++i_pol)
     {
+        // Get uvw-coordinate scaling.
+        const double inv_wavelength = (
+                channel_start_hz + i_channel * channel_step_hz) / C_0;
+        const unsigned int i_uvw = INDEX_2D(
+                num_times, num_baselines, i_time, i_baseline);
+
+        int grid_offset = 0;
+        int sub_offset_x = 0, sub_offset_y = 0, sub_offset_z = 0;
+        calculate_coordinates(
+                x_size,
+                1,
+                y_size,
+                uv_kernel_stride_in_elements,
+                uv_kernel_stride_in_elements,
+                uv_kernel_oversampling,
+                w_kernel_stride_in_elements,
+                w_kernel_oversampling,
+                theta,
+                wstep,
+                inv_wavelength * uvw[i_uvw].x,
+                inv_wavelength * uvw[i_uvw].y,
+                inv_wavelength * uvw[i_uvw].z,
+                &grid_offset,
+                &sub_offset_x,
+                &sub_offset_y,
+                &sub_offset_z
+        );
+
+        VIS_TYPE2 vis_local = {0, 0};
+        for (int z = 0; z < w_kernel_stride_in_elements; z++)
+        {
+                VIS_TYPE2 visz = {0, 0};
+                for (int y = 0; y < uv_kernel_stride_in_elements; y++)
+                {
+                VIS_TYPE2 visy = {0, 0};
+                for (int x = 0; x < uv_kernel_stride_in_elements; x++)
+                {
+                        const VIS_TYPE2 grid_value = grid[
+                                z * x_size * y_size + grid_offset + y * y_size + x];
+                        visy.x += uv_kernel[sub_offset_x + x] * grid_value.x;
+                        visy.y += uv_kernel[sub_offset_x + x] * grid_value.y;
+                }
+                visz.x += uv_kernel[sub_offset_y + y] * visy.x;
+                visz.y += uv_kernel[sub_offset_y + y] * visy.y;
+                }
+                vis_local.x += w_kernel[sub_offset_z + z] * visz.x;
+                vis_local.y += w_kernel[sub_offset_z + z] * visz.y;
+        }
+        if (conjugate) vis_local.y = -vis_local.y;
+
         const unsigned int i_out = INDEX_4D(
                 num_times, num_baselines, num_channels, num_pols,
                 i_time, i_baseline, i_channel, i_pol);

@@ -96,53 +96,51 @@ def reference_degrid_uvw_custom(
     for i_baseline in range(num_baselines):
         for i_channel in range(num_channels):
             for i_time in range(num_times):
-                inv_wavelength = (
-                    channel_start_hz + i_channel * channel_step_hz
-                ) / 299792458.0
-
-                (
-                    grid_offset,
-                    sub_offset_x,
-                    sub_offset_y,
-                    sub_offset_z,
-                ) = calculate_coordinates(
-                    x_size,
-                    1,
-                    y_size,
-                    uv_kernel_stride,
-                    uv_kernel_stride,
-                    uv_kernel_oversampling,
-                    w_kernel_stride,
-                    w_kernel_oversampling,
-                    theta,
-                    wstep,
-                    inv_wavelength * uvw[i_time][i_baseline][0],
-                    inv_wavelength * uvw[i_time][i_baseline][1],
-                    inv_wavelength * uvw[i_time][i_baseline][2],
-                )
-
-                vis_local = complex(0, 0)
-                for z in range(w_kernel_stride):
-                    visz = complex(0, 0)
-                    for y in range(uv_kernel_stride):
-                        visy = complex(0, 0)
-                        for x in range(uv_kernel_stride):
-                            grid_value = grid[
-                                z * x_size * y_size
-                                + grid_offset
-                                + y * y_size
-                                + x
-                            ]
-                            visy += uv_kernel[sub_offset_x + x] * grid_value
-                        visz += uv_kernel[sub_offset_y + y] * visy
-                    vis_local += w_kernel[sub_offset_z + z] * visz
-
-                if conjugate:
-                    vis_local = vis_local.conjugate()
-
-                # NOTE This is not how to work with multiple polarisations.
-                # NOTE We need a separate grid for each polarisation.
                 for i_pol in range(num_pols):
+                    inv_wavelength = (
+                        channel_start_hz + i_channel * channel_step_hz
+                    ) / 299792458.0
+
+                    (
+                        grid_offset,
+                        sub_offset_x,
+                        sub_offset_y,
+                        sub_offset_z,
+                    ) = calculate_coordinates(
+                        x_size,
+                        1,
+                        y_size,
+                        uv_kernel_stride,
+                        uv_kernel_stride,
+                        uv_kernel_oversampling,
+                        w_kernel_stride,
+                        w_kernel_oversampling,
+                        theta,
+                        wstep,
+                        inv_wavelength * uvw[i_time][i_baseline][0],
+                        inv_wavelength * uvw[i_time][i_baseline][1],
+                        inv_wavelength * uvw[i_time][i_baseline][2],
+                    )
+
+                    vis_local = complex(0, 0)
+                    for z in range(w_kernel_stride):
+                        visz = complex(0, 0)
+                        for y in range(uv_kernel_stride):
+                            visy = complex(0, 0)
+                            for x in range(uv_kernel_stride):
+                                grid_value = grid[
+                                    z * x_size * y_size
+                                    + grid_offset
+                                    + y * y_size
+                                    + x
+                                ]
+                                visy += uv_kernel[sub_offset_x + x] * grid_value
+                            visz += uv_kernel[sub_offset_y + y] * visy
+                        vis_local += w_kernel[sub_offset_z + z] * visz
+
+                    if conjugate:
+                        vis_local = vis_local.conjugate()
+
                     vis[i_time][i_baseline][i_channel][i_pol] = vis_local
 
     return vis

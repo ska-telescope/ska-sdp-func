@@ -298,6 +298,20 @@ int main()
     }
     {
         sdp_Error status = SDP_SUCCESS;
+        run_and_check("CPU run, 2 polarisations, 1 channel", true, false, 1, 2, SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU,
+                16000, 16000, 0.1, 250, 100, 0.1, false, &status);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("CPU run, 4 polarisations, 1 channel", true, false, 1, 4, SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU,
+                16000, 16000, 0.1, 250, 100, 0.1, false, &status);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU run - complex conjugate, 1 polarisation, 1 channel", true, false, 1, 1,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU,
                 16000, 16000, 0.1, 250, 100, 0.1, true, &status);
@@ -308,6 +322,20 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU run, 1 polarisation, 1 channel", true, false, 1, 1, SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU,
+                16000, 16000, 0.1, 250, 100, 0.1, false, &status);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("GPU run, 2 polarisations, 1 channel", true, false, 1, 2, SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU,
+                16000, 16000, 0.1, 250, 100, 0.1, false, &status);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("GPU run, 4 polarisations, 1 channel", true, false, 1, 4, SDP_MEM_DOUBLE,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU,
                 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
         assert(status == SDP_SUCCESS);
@@ -366,7 +394,7 @@ int main()
     }
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("Unsupported number of polarisations", false, false, 1, 2, SDP_MEM_DOUBLE,
+        run_and_check("Unsupported number of polarisations", false, false, 1, 3, SDP_MEM_DOUBLE,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU,
                 16000, 16000, 0.1, 250, 100, 0.1, false, &status);
         assert(status == SDP_ERR_RUNTIME);
