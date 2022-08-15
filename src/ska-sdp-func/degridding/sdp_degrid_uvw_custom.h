@@ -20,10 +20,8 @@ extern "C" {
  *
  * @param grid Input grid data with shape [chan][w][v][u][pol]
  * @param uvw Visibility (u,v,w) coordinates with shape [time][baseline][3]
- * @param uv_kernel (u,v)-plane kernel
- * @param w_kernel w-plane kernel
- * @param uv_kernel_oversampling (u,v)-plane kernel oversampling
- * @param w_kernel_oversampling w-plane kernel oversampling
+ * @param uv_kernel (u,v)-plane kernel with shape [oversampling][stride]
+ * @param w_kernel w-plane kernel with shape [oversampling][stride]
  * @param theta Conversion parameter from (u,v)-coordinates to (x,y)-coordinates x=u*theta
  * @param wstep Conversion parameter from w-coordinates to z-coordinates z=w*wstep
  * @param channel_start_hz Frequency of first channel, in Hz.
@@ -37,8 +35,6 @@ void sdp_degrid_uvw_custom(
         const sdp_Mem* uvw,
         const sdp_Mem* uv_kernel,
         const sdp_Mem* w_kernel,
-        const int64_t uv_kernel_oversampling,
-        const int64_t w_kernel_oversampling,
         const double theta,
         const double wstep,
         const double channel_start_hz,

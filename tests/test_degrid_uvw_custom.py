@@ -90,6 +90,8 @@ def reference_degrid_uvw_custom(
     )
 
     grid = grid.flatten()
+    uv_kernel = uv_kernel.flatten()
+    w_kernel = w_kernel.flatten()
 
     for i_baseline in range(num_baselines):
         for i_channel in range(num_channels):
@@ -176,10 +178,10 @@ def test_degrid_uvw_custom():
     grid = grid_real + grid_imag
     uvw = rng.random((num_times, num_baselines, 3), dtype=numpy.float64)
     uv_kernel = rng.random(
-        (uv_kernel_oversampling * uv_kernel_stride), dtype=numpy.float64
+        (uv_kernel_oversampling, uv_kernel_stride), dtype=numpy.float64
     )
     w_kernel = rng.random(
-        (w_kernel_oversampling * w_kernel_stride), dtype=numpy.float64
+        (w_kernel_oversampling, w_kernel_stride), dtype=numpy.float64
     )
     vis = numpy.zeros(
         [num_times, num_baselines, num_channels, num_pols],
@@ -191,8 +193,6 @@ def test_degrid_uvw_custom():
         uvw,
         uv_kernel,
         w_kernel,
-        uv_kernel_oversampling,
-        w_kernel_oversampling,
         theta,
         wstep,
         channel_start_hz,
@@ -240,8 +240,6 @@ def test_degrid_uvw_custom():
             uvw_gpu,
             uv_kernel_gpu,
             w_kernel_gpu,
-            uv_kernel_oversampling,
-            w_kernel_oversampling,
             theta,
             wstep,
             channel_start_hz,

@@ -156,8 +156,6 @@ void sdp_degrid_uvw_custom(
     const sdp_Mem* uvw,
     const sdp_Mem* uv_kernel,
     const sdp_Mem* w_kernel,
-    const int64_t uv_kernel_oversampling,
-    const int64_t w_kernel_oversampling,
     const double theta,
     const double wstep,
     const double channel_start_hz,
@@ -214,8 +212,11 @@ void sdp_degrid_uvw_custom(
         return;
     }
 
-    const int64_t uv_kernel_stride_in_elements = sdp_mem_shape_dim(uv_kernel, 0) / uv_kernel_oversampling;
-    const int64_t w_kernel_stride_in_elements = sdp_mem_shape_dim(w_kernel, 0) / w_kernel_oversampling;
+    const int64_t uv_kernel_stride_in_elements = sdp_mem_shape_dim(uv_kernel, 1);
+    const int64_t uv_kernel_oversampling = sdp_mem_shape_dim(uv_kernel, 0);
+
+    const int64_t w_kernel_stride_in_elements = sdp_mem_shape_dim(w_kernel, 1);
+    const int64_t w_kernel_oversampling = sdp_mem_shape_dim(w_kernel, 0);
 
     const int64_t num_times = sdp_mem_shape_dim(vis, 0);
     const int64_t num_baselines = sdp_mem_shape_dim(vis, 1);

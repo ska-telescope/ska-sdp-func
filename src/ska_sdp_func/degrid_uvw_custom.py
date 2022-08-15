@@ -12,8 +12,6 @@ def degrid_uvw_custom(
     uvw,
     uv_kernel,
     w_kernel,
-    uv_kernel_oversampling,
-    w_kernel_oversampling,
     theta,
     wstep,
     channel_start_hz,
@@ -32,17 +30,11 @@ def degrid_uvw_custom(
     :param uvw: Visibility (u,v,w) coordinates with shape [time][baseline][3]
     :type uvw: numpy.ndarray or cupy.ndarray
 
-    :param uv_kernel: (u,v)-plane kernel
+    :param uv_kernel: (u,v)-plane kernel with shape [oversampling][stride]
     :type uv_kernel: numpy.ndarray or cupy.ndarray
 
-    :param w_kernel: w-plane kernel
+    :param w_kernel: w-plane kernel with shape [oversampling][stride]
     :type w_kernel: numpy.ndarray or cupy.ndarray
-
-    :param uv_kernel_oversampling: (u,v)-plane kernel oversampling
-    :type uv_kernel_oversampling: int
-
-    :param w_kernel_oversampling: w-plane kernel oversampling
-    :type w_kernel_oversampling: int
 
     :param theta: Conversion parameter from (u,v)-coordinates
      to (x,y)-coordinates (i.e. x=u*theta)
@@ -76,8 +68,6 @@ def degrid_uvw_custom(
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        ctypes.c_int64,
-        ctypes.c_int64,
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
@@ -91,8 +81,6 @@ def degrid_uvw_custom(
         mem_vis_coordinates.handle(),
         mem_uv_kernel.handle(),
         mem_w_kernel.handle(),
-        ctypes.c_int64(uv_kernel_oversampling),
-        ctypes.c_int64(w_kernel_oversampling),
         ctypes.c_double(theta),
         ctypes.c_double(wstep),
         ctypes.c_double(channel_start_hz),

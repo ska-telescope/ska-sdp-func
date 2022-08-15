@@ -200,10 +200,10 @@ static void run_and_check(
     sdp_MemType uvw_type = input_type;
 
     sdp_MemType uv_kernel_type = input_type;
-    int64_t uv_kernel_shape[] = {uv_kernel_oversampling * uv_kernel_stride};
+    int64_t uv_kernel_shape[] = {uv_kernel_oversampling, uv_kernel_stride};
 
     sdp_MemType w_kernel_type = input_type;
-    int64_t w_kernel_shape[] = {w_kernel_oversampling * w_kernel_stride};
+    int64_t w_kernel_shape[] = {w_kernel_oversampling, w_kernel_stride};
 
     int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
     sdp_MemType vis_type = output_type;
@@ -213,9 +213,9 @@ static void run_and_check(
     sdp_Mem* uvw = sdp_mem_create(uvw_type, SDP_MEM_CPU,
             sizeof(uvw_shape) / sizeof(int64_t), uvw_shape, status);
     sdp_Mem* uv_kernel = sdp_mem_create(
-        uv_kernel_type, SDP_MEM_CPU, 1, uv_kernel_shape, status);
+        uv_kernel_type, SDP_MEM_CPU, 2, uv_kernel_shape, status);
     sdp_Mem* w_kernel = sdp_mem_create(
-        w_kernel_type, SDP_MEM_CPU, 1, w_kernel_shape, status);
+        w_kernel_type, SDP_MEM_CPU, 2, w_kernel_shape, status);
 
     sdp_Mem* vis = sdp_mem_create(
         vis_type, output_location, 4, vis_shape, status);
@@ -236,9 +236,8 @@ static void run_and_check(
 
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
-    sdp_degrid_uvw_custom(grid_in, uvw_in, uv_kernel_in, w_kernel_in,
-            uv_kernel_oversampling, w_kernel_oversampling,
-            theta, wstep, channel_start_hz, channel_step_hz, conjugate, vis, status);
+    sdp_degrid_uvw_custom(grid_in, uvw_in, uv_kernel_in, w_kernel_in, 
+                theta, wstep, channel_start_hz, channel_step_hz, conjugate, vis, status);
 
     sdp_mem_ref_dec(grid_in);
     sdp_mem_ref_dec(uvw_in);
