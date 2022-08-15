@@ -134,7 +134,9 @@ def reference_degrid_uvw_custom(
                                     + y * y_size
                                     + x
                                 ]
-                                visy += uv_kernel[sub_offset_x + x] * grid_value
+                                visy += uv_kernel[
+                                    sub_offset_x + x
+                                    ] * grid_value
                             visz += uv_kernel[sub_offset_y + y] * visy
                         vis_local += w_kernel[sub_offset_z + z] * visz
 
