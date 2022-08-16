@@ -574,30 +574,3 @@ void sdp_calculate_support_and_beta(double upsampling, double epsilon, int &supp
 		return;
     }
 }
-
-
-
-/*static size_t get_supp(double epsilon, double ofactor=2)
-{
-	double epssq = epsilon*epsilon;
-	if (ofactor>=2)
-	{
-		static const vector<double> maxmaperr { 1e8, 0.19, 2.98e-3, 5.98e-5,
-		1.11e-6, 2.01e-8, 3.55e-10, 5.31e-12, 8.81e-14, 1.34e-15, 2.17e-17,
-		2.12e-19, 2.88e-21, 3.92e-23, 8.21e-25, 7.13e-27 };
-
-		for (size_t i=2; i<maxmaperr.size(); ++i)
-		if (epssq>maxmaperr[i]) return i;
-		myfail("requested epsilon too small - minimum is 1e-13");
-	}
-	if (ofactor>=1.175)
-	{
-		for (size_t w=2; w<16; ++w)
-		{
-			auto estimate = 12*exp(-2.*w*ofactor); // empirical, not very good approximation
-			if (epssq>estimate) return w;
-		}
-		myfail("requested epsilon too small");
-	}
-	myfail("oversampling factor is too small");
-}*/
