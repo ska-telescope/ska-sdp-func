@@ -98,59 +98,57 @@ static void check_results(
         {
             for (int i_time = 0; i_time < num_times; ++i_time)
             {
-                // Get uvw-coordinate scaling.
-                const double inv_wavelength = (
-                        channel_start_hz + i_channel * channel_step_hz) / C_0;
-                const unsigned int i_uvw = INDEX_3D(
-                        num_times, num_baselines, 3,
-                        i_time, i_baseline, 0);
-
-                int grid_offset = 0;
-                int sub_offset_x = 0, sub_offset_y = 0, sub_offset_z = 0;
-                calculate_coordinates(
-                        x_size,
-                        1,
-                        y_size,
-                        uv_kernel_stride,
-                        uv_kernel_stride,
-                        uv_kernel_oversampling,
-                        w_kernel_stride,
-                        w_kernel_oversampling,
-                        theta,
-                        wstep,
-                        inv_wavelength * uvw[i_uvw],
-                        inv_wavelength * uvw[i_uvw + 1],
-                        inv_wavelength * uvw[i_uvw + 2],
-                        &grid_offset,
-                        &sub_offset_x,
-                        &sub_offset_y,
-                        &sub_offset_z
-                );
-
-                std::complex<VIS_TYPE> vis_local(0, 0);
-                for (int z = 0; z < w_kernel_stride; z++)
-                {
-                    std::complex<VIS_TYPE> visz(0, 0);
-                    for (int y = 0; y < uv_kernel_stride; y++)
-                    {
-                        std::complex<VIS_TYPE> visy(0, 0);
-                        for (int x = 0; x < uv_kernel_stride; x++)
-                        {
-                            const std::complex<VIS_TYPE> grid_value = grid[
-                                    z * x_size * y_size + grid_offset +
-                                    y * y_size + x];
-                            visy += uv_kernel[sub_offset_x + x] * grid_value;
-                        }
-                        visz += uv_kernel[sub_offset_y + y] * visy;
-                    }
-                    vis_local += w_kernel[sub_offset_z + z] * visz;
-                }
-                if (conjugate) vis_local = std::conj(vis_local);
-
-                // FIXME This is not how to work with multiple polarisations.
-                // FIXME We need a separate grid for each polarisation.
                 for (int i_pol = 0; i_pol < num_pols; ++i_pol)
                 {
+                    // Get uvw-coordinate scaling.
+                    const double inv_wavelength = (
+                            channel_start_hz + i_channel * channel_step_hz) / C_0;
+                    const unsigned int i_uvw = INDEX_3D(
+                            num_times, num_baselines, 3,
+                            i_time, i_baseline, 0);
+
+                    int grid_offset = 0;
+                    int sub_offset_x = 0, sub_offset_y = 0, sub_offset_z = 0;
+                    calculate_coordinates(
+                            x_size,
+                            1,
+                            y_size,
+                            uv_kernel_stride,
+                            uv_kernel_stride,
+                            uv_kernel_oversampling,
+                            w_kernel_stride,
+                            w_kernel_oversampling,
+                            theta,
+                            wstep,
+                            inv_wavelength * uvw[i_uvw],
+                            inv_wavelength * uvw[i_uvw + 1],
+                            inv_wavelength * uvw[i_uvw + 2],
+                            &grid_offset,
+                            &sub_offset_x,
+                            &sub_offset_y,
+                            &sub_offset_z
+                    );
+
+                    std::complex<VIS_TYPE> vis_local(0, 0);
+                    for (int z = 0; z < w_kernel_stride; z++)
+                    {
+                        std::complex<VIS_TYPE> visz(0, 0);
+                        for (int y = 0; y < uv_kernel_stride; y++)
+                        {
+                            std::complex<VIS_TYPE> visy(0, 0);
+                            for (int x = 0; x < uv_kernel_stride; x++)
+                            {
+                                const std::complex<VIS_TYPE> grid_value = grid[
+                                        z * x_size * y_size + grid_offset +
+                                        y * y_size + x];
+                                visy += uv_kernel[sub_offset_x + x] * grid_value;
+                            }
+                            visz += uv_kernel[sub_offset_y + y] * visy;
+                        }
+                        vis_local += w_kernel[sub_offset_z + z] * visz;
+                    }
+                    if (conjugate) vis_local = std::conj(vis_local);
+
                     const unsigned int i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
                             i_time, i_baseline, i_channel, i_pol);
