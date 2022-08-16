@@ -223,6 +223,35 @@ static void run_and_check(
 		// do_wstacking,
         // status);
 		
+    if (test_name[0] == 'f')
+    {
+        sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+            uvw_gpu,
+            freq_hz_gpu,  // in Hz
+            vis_gpu,
+            weight_gpu,
+            dirty_image,  // ON CPU!!
+            pixel_size_rad, 
+            pixel_size_rad, 
+            epsilon,
+            min_abs_w, 
+            max_abs_w, 
+            do_wstacking,
+            status);        
+            
+        if (*status) return;
+        
+        sdp_grid_uvw_es_fft(
+            gridder, 
+            uvw_gpu,
+            freq_hz_gpu,
+            vis_gpu,
+            weight_gpu,
+            est_dirty_image_gpu,
+            status
+        );
+    }
+        
 	sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
         uvw_gpu,
         freq_hz_gpu,  // in Hz
@@ -236,7 +265,7 @@ static void run_and_check(
 		max_abs_w, 
 		do_wstacking,
         status);
-		
+       		
     SDP_LOG_INFO("Running test: %s", test_name);
 	
 	sdp_grid_uvw_es_fft(
@@ -405,23 +434,22 @@ int main()
         assert(status == SDP_SUCCESS);
     }
 #endif
-/*    
-#ifdef SDP_HAVE_CUDA
+
+    // Sad path
+    
+    // This proves that sdp_gridder_check_buffers() is being called.
+    // Exhaustive parameter testing is done in the Python tests.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("Memory location mismatch", false, 4, false,
-                SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_GPU, &status);
-        assert(status == SDP_ERR_MEM_LOCATION);
+        run_and_check("fail", true, 1e-12,
+			SDP_MEM_DOUBLE,
+			SDP_MEM_DOUBLE,
+			SDP_MEM_COMPLEX_DOUBLE,
+			SDP_MEM_DOUBLE,
+			SDP_MEM_DOUBLE,
+			&status);
+        assert(status != SDP_SUCCESS);
     }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Unsupported coordinate types", false, 4, false,
-                SDP_MEM_FLOAT, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
-        assert(status == SDP_ERR_DATA_TYPE);
-    }
-#endif
-*/
+    
     return 0;
 }

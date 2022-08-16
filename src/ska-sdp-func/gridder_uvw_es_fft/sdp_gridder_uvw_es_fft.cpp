@@ -182,6 +182,34 @@ void sdp_gridder_check_buffers(
         return;
     }
 
+	// check precision consistency
+    if (sdp_mem_type(uvw)== SDP_MEM_DOUBLE)
+    {
+        //SDP_LOG_INFO("All buffers should be double precision.");
+        if ((sdp_mem_type(freq_hz)     != SDP_MEM_DOUBLE) ||
+            (sdp_mem_type(vis)         != SDP_MEM_COMPLEX_DOUBLE) ||
+            (sdp_mem_type(weight)      != SDP_MEM_DOUBLE) ||
+            (sdp_mem_type(dirty_image) != SDP_MEM_DOUBLE))
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("All buffers must be the same precision.");
+            return;
+        }
+    }
+    else
+    {
+        //SDP_LOG_INFO("All buffers should be single precision.");
+        if ((sdp_mem_type(freq_hz)     != SDP_MEM_FLOAT) ||
+            (sdp_mem_type(vis)         != SDP_MEM_COMPLEX_FLOAT) ||
+            (sdp_mem_type(weight)      != SDP_MEM_FLOAT) ||
+            (sdp_mem_type(dirty_image) != SDP_MEM_FLOAT))
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("All buffers must be the same precision.");
+            return;
+        }
+    }
+        
 	// check contiguity
     if (!sdp_mem_is_c_contiguous(uvw) ||
         !sdp_mem_is_c_contiguous(freq_hz) ||
