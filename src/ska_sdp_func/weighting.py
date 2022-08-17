@@ -6,8 +6,21 @@ import numpy as np
 
 
 def get_uv_range(uvw, freq_hz):
-    """Calculate uv-range in WL units given UVW-coordinates
-    and frequency array."""
+    """
+    Calculate uv-range in wavelength units given UVW-coordinates
+    and frequency array.
+
+    :param uvw: List of UVW coordinates in meters, real-valued.
+                Dimensions are [num_times*num_baselines, 3]
+    :type uvw: numpy.ndarray
+
+    :param freq_hz: List of frequencies in Hz, real-valued.
+                    Dimension is [num_channels]
+    :type freq_hz: numpy.ndarray
+
+    :returns max_abs_uv: Maximum absolute value of UV coordinates
+                         in wavelength units, real-valued
+    """
     max_abs_uv = np.amax(np.abs(uvw[:, 0:1]))
     max_abs_uv *= freq_hz[-1] / 299792458.0
 
@@ -15,9 +28,38 @@ def get_uv_range(uvw, freq_hz):
 
 
 def uniform_weights(uvw, freq_hz, max_abs_uv, grid_size, weights):
-    """Calculate the number of hits per UV cell and use an invert
-    as the weight"""
-    grid_uv = np.zeros((grid_size + 1, grid_size + 1))
+    """
+    Calculate the number of hits per UV cell and use the inverse of this
+    as the weight
+
+    :param uvw: List of UVW coordinates in meters, real-valued.
+                Dimensions are [num_times*num_baselines, 3]
+    :type uvw: numpy.ndarray
+
+    :param freq_hz: List of frequencies in Hz, real-valued.
+                    Dimension is [num_channels]
+    :type freq_hz: numpy.ndarray
+
+    :param max_abs_uv: Maximum absolute value of UV coordinates
+                         in wavelength units, real-valued
+    :type max_abs_uv: float
+
+    :param grid_size: A size of the UV grid, usually equal
+                      to the size of the inverted image
+    :type grid_size: int
+
+    :param weights: A zero-valued 3D array to keep the weights.
+                    Dimensions are [num_times*num_baselines, num_channels, 4]
+    :type weights: numpy.ndarray
+
+    :returns grid_uv: Real-valued 2D array with the number of hits per UV cell.
+                      Dimensions are [grid_size, grid_size]
+
+    :returns weights: Real-valued 3D array with weights,
+                      dimensions are as above.
+    """
+
+    grid_uv = np.zeros((grid_size, grid_size))
 
     uvw_range = range(len(uvw))
     freq_hz_range = range(len(freq_hz))
@@ -27,6 +69,10 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_size, weights):
             grid_v = uvw[i, 1] * freq_hz[j] / 299792458.0
             idx_u = int(grid_u / max_abs_uv * grid_size / 2 + grid_size / 2)
             idx_v = int(grid_v / max_abs_uv * grid_size / 2 + grid_size / 2)
+            if idx_u >= grid_size:
+                idx_u = grid_size - 1
+            if idx_v >= grid_size:
+                idx_v = grid_size - 1
             grid_uv[idx_u, idx_v] += 1.0
             weights[i, j, 0] = idx_u
             weights[i, j, 1] = idx_v
