@@ -27,7 +27,7 @@ def get_uv_range(uvw, freq_hz):
     return max_abs_uv
 
 
-def uniform_weights(uvw, freq_hz, max_abs_uv, grid_size, weights):
+def uniform_weights(uvw, freq_hz, max_abs_uv, grid_uv, weights):
     """
     Calculate the number of hits per UV cell and use the inverse of this
     as the weight
@@ -44,22 +44,18 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_size, weights):
                          in wavelength units, real-valued
     :type max_abs_uv: float
 
-    :param grid_size: A size of the UV grid, usually equal
-                      to the size of the inverted image
-    :type grid_size: int
+    :param grid_uv: A zero-valued 2D UV grid array, returns
+                      the number of hits per UV cell
+    :type grid_uv: numpy.ndarray
 
-    :param weights: A zero-valued 3D array to keep the weights.
+    :param weights: A zero-valued 3D array, returns the weights.
                     Dimensions are [num_times*num_baselines, num_channels, 4]
     :type weights: numpy.ndarray
 
-    :returns grid_uv: Real-valued 2D array with the number of hits per UV cell.
-                      Dimensions are [grid_size, grid_size]
-
-    :returns weights: Real-valued 3D array with weights,
-                      dimensions are as above.
     """
 
-    grid_uv = np.zeros((grid_size, grid_size))
+    # grid_uv = np.zeros((grid_size, grid_size))
+    grid_size = grid_uv.shape[0]
 
     uvw_range = range(len(uvw))
     freq_hz_range = range(len(freq_hz))
@@ -84,4 +80,4 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_size, weights):
             weight_g = 1.0 / grid_uv[idx_u, idx_v]
             weights[i, j, :] = weight_g
 
-    return grid_uv, weights
+    # return grid_uv, weights

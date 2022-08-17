@@ -162,5 +162,6 @@ def test_uniform_weights():
     max_abs_uv_c, weights_c = _define_control_outputs()
     weights = np.zeros((uvw.shape[0], freqs.shape[0], 4))
     grid_size = 4
-    _, weights = uniform_weights(uvw, freqs, max_abs_uv_c, grid_size, weights)
+    grid_uv = np.zeros((grid_size, grid_size))
+    uniform_weights(uvw, freqs, max_abs_uv_c, grid_uv, weights)
     assert np.allclose(weights, weights_c), "The weights are not identical"
