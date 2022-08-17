@@ -54,7 +54,6 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_uv, weights):
 
     """
 
-    # grid_uv = np.zeros((grid_size, grid_size))
     grid_size = grid_uv.shape[0]
 
     uvw_range = range(len(uvw))
@@ -79,5 +78,3 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_uv, weights):
             idx_v = int(weights[i, j, 1])
             weight_g = 1.0 / grid_uv[idx_u, idx_v]
             weights[i, j, :] = weight_g
-
-    # return grid_uv, weights
