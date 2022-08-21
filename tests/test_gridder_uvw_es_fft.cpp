@@ -79,6 +79,8 @@ static void run_and_check(
     
     if (test_name[0] != 'f')  // only prepare data if not a fail test
     {
+        SDP_LOG_INFO("Preparing test data");
+        
         // fill weight with ones
         {
             void* weights = (void*)sdp_mem_data(weight);
@@ -209,33 +211,64 @@ static void run_and_check(
     sdp_Mem* weight_gpu      = sdp_mem_create_copy(weight,      SDP_MEM_GPU, status);
     sdp_Mem* dirty_image_gpu = sdp_mem_create_copy(dirty_image, SDP_MEM_GPU, status);
     
-    if (test_name[0] == 'f')
-    {
-        sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
-            uvw_gpu,
-            freq_hz_gpu,  // in Hz
-            vis_gpu,
-            weight_gpu,
-            dirty_image,  // ON CPU!!
-            pixel_size_rad, 
-            pixel_size_rad, 
-            epsilon,
-            min_abs_w, 
-            max_abs_w, 
-            do_wstacking,
-            status);        
+    if (test_name[0] == 'f') // is this a fail test?
+    {        
+        if (test_name[1] == '1')  // is this a special fail test?
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                uvw_gpu,
+                freq_hz_gpu,  // in Hz
+                vis_gpu,
+                weight_gpu,
+                dirty_image,  // ON CPU!!
+                pixel_size_rad, 
+                pixel_size_rad, 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
             
-        if (*status) return;
-        
-        sdp_grid_uvw_es_fft(
-            gridder, 
-            uvw_gpu,
-            freq_hz_gpu,
-            vis_gpu,
-            weight_gpu,
-            est_dirty_image_gpu,
-            status
-        );
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
+        else  // just a "normal" fail test
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                uvw_gpu,
+                freq_hz_gpu,  // in Hz
+                vis_gpu,
+                weight_gpu,
+                dirty_image_gpu, 
+                pixel_size_rad, 
+                pixel_size_rad, 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
+            
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
     }
         
     sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
@@ -423,7 +456,7 @@ int main()
     // Exhaustive parameter testing is done in the Python tests.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("fail", true, 1e-12,
+        run_and_check("f1", true, 1e-12,
             SDP_MEM_DOUBLE,
             SDP_MEM_DOUBLE,
             SDP_MEM_COMPLEX_DOUBLE,
