@@ -37,7 +37,7 @@ static void run_and_check(
 )
 {
     // Generate some test data.
-    const int num_vis = 1000;
+    const int num_vis = 1024;
     const int num_channels = 10;
     const int im_size = 1024;
 
@@ -47,7 +47,7 @@ static void run_and_check(
     const double pixel_size_rad = fov * PI / 180.0 / im_size;
     const double f_0 = 1e9;
 
-    SDP_LOG_INFO("Running test: %s", test_name);
+    SDP_LOG_ERROR("Running test: %s", test_name);
 
     int64_t uvw_shape[] = {num_vis, 3};
     int64_t vis_shape[] = {num_vis, num_channels};
@@ -60,14 +60,9 @@ static void run_and_check(
     sdp_Mem* vis         = sdp_mem_create(vis_type,         SDP_MEM_CPU, 2, vis_shape,         status);
     sdp_Mem* dirty_image = sdp_mem_create(dirty_image_type, SDP_MEM_CPU, 2, dirty_image_shape, status);
 
-    int c = 0;
-    printf("GOT TO HERE %i\n",c++);
-    
     sdp_Mem* est_vis_gpu = sdp_mem_create(vis_type,         SDP_MEM_GPU, 2, vis_shape, status);
     sdp_Mem* est_dirty_image_gpu = sdp_mem_create(dirty_image_type, SDP_MEM_GPU, 2, dirty_image_shape, status);
     
-    printf("GOT TO HERE %i\n",c++);
-
     sdp_mem_random_fill(uvw, status);
     sdp_mem_random_fill(dirty_image, status);
     sdp_mem_random_fill(vis, status);
@@ -120,8 +115,6 @@ static void run_and_check(
                 }
             }
         }
-
-        printf("GOT TO HERE %i\n",c++);
 
         // modify uvw, vis, and dirty_image from raw random numbers
         {
@@ -201,9 +194,6 @@ static void run_and_check(
         max_abs_w *= max_freq / speed_of_light;
     }
         
-    printf("min_abs_w = %10.5e\n", min_abs_w);
-    printf("max_abs_w = %10.5e\n", max_abs_w);
-    
     // create GPU copies
     sdp_Mem* freq_hz_gpu     = sdp_mem_create_copy(freq_hz,     SDP_MEM_GPU, status);
     sdp_Mem* uvw_gpu         = sdp_mem_create_copy(uvw,         SDP_MEM_GPU, status);
@@ -212,12 +202,13 @@ static void run_and_check(
     sdp_Mem* dirty_image_gpu = sdp_mem_create_copy(dirty_image, SDP_MEM_GPU, status);
     
     if (test_name[0] == 'f') // is this a fail test?
-    {        
-        if (test_name[1] == '1')  // is this a special fail test?
+    {   
+        // special fail tests
+        if (test_name[1] == '0')
         {
             sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
                 uvw_gpu,
-                freq_hz_gpu,  // in Hz
+                freq_hz_gpu,  
                 vis_gpu,
                 weight_gpu,
                 dirty_image,  // ON CPU!!
@@ -230,7 +221,147 @@ static void run_and_check(
                 status);        
                 
             if (*status) return;
-            
+
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
+        else if  (test_name[1] == '1')
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                freq_hz_gpu,  // bad uvw for wrong num of rows
+                freq_hz_gpu,  
+                vis_gpu,
+                weight_gpu,
+                dirty_image_gpu,  
+                pixel_size_rad, 
+                pixel_size_rad, 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
+
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
+        else if  (test_name[1] == '2')
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                dirty_image_gpu,  // bad uvw for wrong num of cols
+                freq_hz_gpu,  
+                vis_gpu,
+                weight_gpu,
+                dirty_image_gpu,  
+                pixel_size_rad, 
+                pixel_size_rad, 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
+
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
+        else if  (test_name[1] == '3')
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                uvw_gpu,  
+                uvw_gpu,  // bad freq_hz_gpu for wrong num of chans
+                vis_gpu,
+                weight_gpu,
+                dirty_image_gpu,  
+                pixel_size_rad, 
+                pixel_size_rad, 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
+
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
+        else if  (test_name[1] == '4')
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                uvw_gpu,  
+                freq_hz_gpu,
+                vis_gpu,
+                dirty_image_gpu,  // bad weight size
+                dirty_image_gpu,  
+                pixel_size_rad, 
+                pixel_size_rad, 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
+
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
+        else if  (test_name[1] == '5')
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                uvw_gpu,  
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,  
+                weight_gpu,  // bad dirty_image size
+                pixel_size_rad, 
+                pixel_size_rad, 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
+
             sdp_grid_uvw_es_fft(
                 gridder, 
                 uvw_gpu,
@@ -245,7 +376,7 @@ static void run_and_check(
         {
             sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
                 uvw_gpu,
-                freq_hz_gpu,  // in Hz
+                freq_hz_gpu, 
                 vis_gpu,
                 weight_gpu,
                 dirty_image_gpu, 
@@ -456,7 +587,67 @@ int main()
     // Even more exhaustive testing is done in the Python tests.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("f1", true, 1e-12,
+        run_and_check("f0: dirty_image in CPU", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f1: uvw bad rows", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f2: uvw bad cols", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f3: freq_hz bad chans", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f4: bad weight size", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f5: bad dirty_image_gpu size", true, 1e-12,
             SDP_MEM_DOUBLE,
             SDP_MEM_DOUBLE,
             SDP_MEM_COMPLEX_DOUBLE,

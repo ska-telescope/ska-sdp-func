@@ -82,12 +82,8 @@ void sdp_gridder_check_buffers(
         bool  do_degridding,
         sdp_Error* status)
 {
-    SDP_LOG_DEBUG("Checking sdp_Mem buffers...");
-
     // check location of parameters (CPU or GPU)
     const sdp_MemLocation location = sdp_mem_location(uvw);
-    
-    //SDP_LOG_DEBUG("%s is%s on the GPU\n", "uvw", sdp_mem_location(uvw) == SDP_MEM_GPU ? "" : " NOT");
     
     if (location != sdp_mem_location(freq_hz) || 
         location != sdp_mem_location(vis) || 
@@ -135,36 +131,33 @@ void sdp_gridder_check_buffers(
     const int64_t num_vis      = sdp_mem_shape_dim(vis, 0);
     const int64_t num_channels = sdp_mem_shape_dim(vis, 1);
     
-    SDP_LOG_DEBUG("uvw is %i by %i", 
-        sdp_mem_shape_dim(uvw, 0), 
-        sdp_mem_shape_dim(uvw, 1));
-    SDP_LOG_DEBUG("freq_hz is %i by %i", 
-        sdp_mem_shape_dim(freq_hz, 0), 
-        sdp_mem_shape_dim(freq_hz, 1));
-    SDP_LOG_DEBUG("vis is %i by %i", num_vis, num_channels);
-    SDP_LOG_DEBUG("weight is %i by %i", 
-        sdp_mem_shape_dim(weight, 0), 
-        sdp_mem_shape_dim(weight, 1));
-    SDP_LOG_DEBUG("dirty_image is %i by %i", 
-        sdp_mem_shape_dim(dirty_image, 0), 
-        sdp_mem_shape_dim(dirty_image, 1));
-        
     if (sdp_mem_shape_dim(uvw, 0) != num_vis)
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         SDP_LOG_ERROR("The number of rows in uvw and vis must match.");
+        SDP_LOG_ERROR("uvw is %i by %i", 
+            sdp_mem_shape_dim(uvw, 0), 
+            sdp_mem_shape_dim(uvw, 1));
+        SDP_LOG_ERROR("vis is %i by %i", num_vis, num_channels);
         return;
     }
     if (sdp_mem_shape_dim(uvw, 1) != 3)
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         SDP_LOG_ERROR("uvw must be N x 3.");
+        SDP_LOG_ERROR("uvw is %i by %i", 
+            sdp_mem_shape_dim(uvw, 0), 
+            sdp_mem_shape_dim(uvw, 1));
         return;
     }
     if (sdp_mem_shape_dim(freq_hz, 0) != num_channels)
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         SDP_LOG_ERROR("The number of channels in vis and freq_hz must match.");
+        SDP_LOG_ERROR("freq_hz is %i by %i", 
+            sdp_mem_shape_dim(freq_hz, 0), 
+            sdp_mem_shape_dim(freq_hz, 1));
+        SDP_LOG_ERROR("vis is %i by %i", num_vis, num_channels);
         return;
     }
     if (sdp_mem_shape_dim(weight, 0) != num_vis || 
@@ -172,6 +165,10 @@ void sdp_gridder_check_buffers(
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         SDP_LOG_ERROR("weight and vis must be the same size.");
+        SDP_LOG_ERROR("weight is %i by %i", 
+            sdp_mem_shape_dim(weight, 0), 
+            sdp_mem_shape_dim(weight, 1));
+        SDP_LOG_ERROR("vis is %i by %i", num_vis, num_channels);
         return;
     }
     
@@ -179,6 +176,9 @@ void sdp_gridder_check_buffers(
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         SDP_LOG_ERROR("Dirty image must be square.");
+        SDP_LOG_ERROR("dirty_image is %i by %i", 
+            sdp_mem_shape_dim(dirty_image, 0), 
+            sdp_mem_shape_dim(dirty_image, 1));
         return;
     }
 
@@ -309,7 +309,6 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
     plan->pixel_size = pixsize_x_rad;  // only square pixels supported
     plan->epsilon = epsilon;
     plan->do_wstacking = do_wstacking;
-    //plan->workarea = (float*) calloc(10, sizeof(float)); // TBD!!
     plan->num_rows = sdp_mem_shape_dim(vis, 0);
     plan->num_chan = sdp_mem_shape_dim(vis, 1);
 
@@ -540,7 +539,6 @@ void sdp_grid_uvw_es_fft(
     size_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
-    //SDP_LOG_DEBUG("vis_type is %#06x", vis_type);
 
     const int chunk_size = plan->num_rows;
     const int num_w_grids_batched = 1; // fixed, don't change this!!
