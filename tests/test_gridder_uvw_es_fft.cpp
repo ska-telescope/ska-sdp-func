@@ -47,147 +47,161 @@ static void run_and_check(
     const double pixel_size_rad = fov * PI / 180.0 / im_size;
     const double f_0 = 1e9;
 
+    SDP_LOG_INFO("Running test: %s", test_name);
+
     int64_t uvw_shape[] = {num_vis, 3};
     int64_t vis_shape[] = {num_vis, num_channels};
     int64_t dirty_image_shape[] = {im_size, im_size};
     int64_t freq_hz_shape[] = {num_channels};
     
-    sdp_Mem* freq_hz     = sdp_mem_create(freq_hz_type,     SDP_MEM_CPU, 1, freq_hz_shape,     status);
     sdp_Mem* uvw         = sdp_mem_create(uvw_type,         SDP_MEM_CPU, 2, uvw_shape,         status);
+    sdp_Mem* freq_hz     = sdp_mem_create(freq_hz_type,     SDP_MEM_CPU, 1, freq_hz_shape,     status);
     sdp_Mem* weight      = sdp_mem_create(weight_type,      SDP_MEM_CPU, 2, vis_shape,         status);
     sdp_Mem* vis         = sdp_mem_create(vis_type,         SDP_MEM_CPU, 2, vis_shape,         status);
     sdp_Mem* dirty_image = sdp_mem_create(dirty_image_type, SDP_MEM_CPU, 2, dirty_image_shape, status);
+
+    int c = 0;
+    printf("GOT TO HERE %i\n",c++);
     
     sdp_Mem* est_vis_gpu = sdp_mem_create(vis_type,         SDP_MEM_GPU, 2, vis_shape, status);
     sdp_Mem* est_dirty_image_gpu = sdp_mem_create(dirty_image_type, SDP_MEM_GPU, 2, dirty_image_shape, status);
     
+    printf("GOT TO HERE %i\n",c++);
+
     sdp_mem_random_fill(uvw, status);
     sdp_mem_random_fill(dirty_image, status);
     sdp_mem_random_fill(vis, status);
 
-    // fill weight with ones
-    {
-        void* weights = (void*)sdp_mem_data(weight);
-        for (size_t i = 0; i < num_vis*num_channels; i++)
-        {   
-            if (sdp_mem_type(weight) == SDP_MEM_DOUBLE)
-            {
-                double* temp = (double*)weights;
-                temp[i] = 1.0;
-            }
-            else
-            {
-                float* temp = (float*)weights;
-                temp[i] = 1.0f;
-            }
-        }
-    }
-    
-    // fill freq_hz
     double min_freq = 0;
     double max_freq = 0;
-    {
-        void* freqs = (void*)sdp_mem_data(freq_hz);
-        for (size_t i = 0; i < num_channels; i++)
-        {   
-            if (sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE)
-            {
-                double* temp = (double*)freqs;
-                temp[i] = f_0 + double(i)*(f_0/double(num_channels));
-                if (i == 0) min_freq = temp[i];
-                if (i == num_channels-1) max_freq = temp[i];
-            }
-            else
-            {
-                float* temp = (float*)freqs;
-                temp[i] = (float)f_0 + float(i)*(((float)f_0)/float(num_channels));
-                if (i == 0) min_freq = temp[i];
-                if (i == num_channels-1) max_freq = temp[i];
-            }
-        }
-    }
-
-    // modify uvw, vis, and dirty_image from raw random numbers
-    {
-        void* uvws = (void*)sdp_mem_data(uvw);
-        for (size_t i = 0; i < num_vis*3; i++)
-        {   
-            if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
-            {
-                double* temp = (double*)uvws;
-                temp[i] -= 0.5;
-                temp[i] /= pixel_size_rad * f_0 / speed_of_light;
-            }
-            else
-            {
-                float* temp = (float*)uvws;
-                temp[i] -= 0.5;
-                temp[i] /= pixel_size_rad * f_0 / speed_of_light;
-            }
-        }
-    }
-    {
-        void* vis_1 = (void*)sdp_mem_data(vis);
-        for (size_t i = 0; i < num_vis*num_channels*2; i++)
-        {   
-            if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
-            {
-                double* temp = (double*)vis_1;
-                temp[i] -= 0.5;
-            }
-            else
-            {
-                float* temp = (float*)vis_1;
-                temp[i] -= 0.5;
-            }
-        }
-    }
-    {
-        void* image = (void*)sdp_mem_data(dirty_image);
-        for (size_t i = 0; i < im_size*im_size; i++)
-        {   
-            if (sdp_mem_type(dirty_image) == SDP_MEM_DOUBLE)
-            {
-                double* temp = (double*)image;
-                temp[i] -= 0.5;
-            }
-            else
-            {
-                float* temp = (float*)image;
-                temp[i] -= 0.5f;
-            }
-        }
-    }
-    
-    // find min_abs_w and max_abs_w
     double min_abs_w = 1e19;
     double max_abs_w = 1e-19;
-    printf("min_abs_w = %10.5e\n", min_abs_w);
-    printf("max_abs_w = %10.5e\n", max_abs_w);
+    
+    if (test_name[0] != 'f')  // only prepare data if not a fail test
     {
-        const void* uvws = (const void*)sdp_mem_data_const(uvw);
-        for (size_t i = 0; i < num_vis; i++)
-        {   
-            size_t ind = 3*i + 2;
-            
-            if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
-            {
-                const double* temp = (const double*)uvws;
-                if (min_abs_w > fabs(temp[ind])) min_abs_w = fabs(temp[ind]);
-                if (max_abs_w < fabs(temp[ind])) max_abs_w = fabs(temp[ind]);
-            }
-            else
-            {
-                const float* temp = (const float*)uvws;
-                if (min_abs_w > fabs(temp[ind])) min_abs_w = fabs(temp[ind]);
-                if (max_abs_w < fabs(temp[ind])) max_abs_w = fabs(temp[ind]);
+        // fill weight with ones
+        {
+            void* weights = (void*)sdp_mem_data(weight);
+            for (size_t i = 0; i < num_vis*num_channels; i++)
+            {   
+                if (sdp_mem_type(weight) == SDP_MEM_DOUBLE)
+                {
+                    double* temp = (double*)weights;
+                    temp[i] = 1.0;
+                }
+                else
+                {
+                    float* temp = (float*)weights;
+                    temp[i] = 1.0f;
+                }
             }
         }
-    }
-
-    min_abs_w *= min_freq / speed_of_light;
-    max_abs_w *= max_freq / speed_of_light;
         
+        // fill freq_hz
+        {
+            void* freqs = (void*)sdp_mem_data(freq_hz);
+            for (size_t i = 0; i < num_channels; i++)
+            {   
+                if (sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE)
+                {
+                    double* temp = (double*)freqs;
+                    temp[i] = f_0 + double(i)*(f_0/double(num_channels));
+                    if (i == 0) min_freq = temp[i];
+                    if (i == num_channels-1) max_freq = temp[i];
+                }
+                else
+                {
+                    float* temp = (float*)freqs;
+                    temp[i] = (float)f_0 + float(i)*(((float)f_0)/float(num_channels));
+                    if (i == 0) min_freq = temp[i];
+                    if (i == num_channels-1) max_freq = temp[i];
+                }
+            }
+        }
+
+        printf("GOT TO HERE %i\n",c++);
+
+        // modify uvw, vis, and dirty_image from raw random numbers
+        {
+            void* uvws = (void*)sdp_mem_data(uvw);
+            for (size_t i = 0; i < num_vis*3; i++)
+            {   
+                if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
+                {
+                    double* temp = (double*)uvws;
+                    temp[i] -= 0.5;
+                    temp[i] /= pixel_size_rad * f_0 / speed_of_light;
+                }
+                else
+                {
+                    float* temp = (float*)uvws;
+                    temp[i] -= 0.5;
+                    temp[i] /= pixel_size_rad * f_0 / speed_of_light;
+                }
+            }
+        }
+        {
+            void* vis_1 = (void*)sdp_mem_data(vis);
+            for (size_t i = 0; i < num_vis*num_channels*2; i++)
+            {   
+                if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
+                {
+                    double* temp = (double*)vis_1;
+                    temp[i] -= 0.5;
+                }
+                else
+                {
+                    float* temp = (float*)vis_1;
+                    temp[i] -= 0.5;
+                }
+            }
+        }
+        {
+            void* image = (void*)sdp_mem_data(dirty_image);
+            for (size_t i = 0; i < im_size*im_size; i++)
+            {   
+                if (sdp_mem_type(dirty_image) == SDP_MEM_DOUBLE)
+                {
+                    double* temp = (double*)image;
+                    temp[i] -= 0.5;
+                }
+                else
+                {
+                    float* temp = (float*)image;
+                    temp[i] -= 0.5f;
+                }
+            }
+        }
+        
+        // find min_abs_w and max_abs_w
+        {
+            const void* uvws = (const void*)sdp_mem_data_const(uvw);
+            for (size_t i = 0; i < num_vis; i++)
+            {   
+                size_t ind = 3*i + 2;
+                
+                if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
+                {
+                    const double* temp = (const double*)uvws;
+                    if (min_abs_w > fabs(temp[ind])) min_abs_w = fabs(temp[ind]);
+                    if (max_abs_w < fabs(temp[ind])) max_abs_w = fabs(temp[ind]);
+                }
+                else
+                {
+                    const float* temp = (const float*)uvws;
+                    if (min_abs_w > fabs(temp[ind])) min_abs_w = fabs(temp[ind]);
+                    if (max_abs_w < fabs(temp[ind])) max_abs_w = fabs(temp[ind]);
+                }
+            }
+        }
+
+        min_abs_w *= min_freq / speed_of_light;
+        max_abs_w *= max_freq / speed_of_light;
+    }
+        
+    printf("min_abs_w = %10.5e\n", min_abs_w);
+    printf("max_abs_w = %10.5e\n", max_abs_w);
+    
     // create GPU copies
     sdp_Mem* freq_hz_gpu     = sdp_mem_create_copy(freq_hz,     SDP_MEM_GPU, status);
     sdp_Mem* uvw_gpu         = sdp_mem_create_copy(uvw,         SDP_MEM_GPU, status);
@@ -403,9 +417,9 @@ int main()
     }
 #endif
 
-    // Sad path
+    // Sad paths
     
-    // This proves that sdp_gridder_check_buffers() is being called.
+    // These proves that sdp_gridder_check_buffers() is being called.
     // Exhaustive parameter testing is done in the Python tests.
     {
         sdp_Error status = SDP_SUCCESS;
@@ -415,6 +429,66 @@ int main()
             SDP_MEM_COMPLEX_DOUBLE,
             SDP_MEM_DOUBLE,
             SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: uvw complex", true, 1e-12,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: freq_hz complex", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: vis not complex", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: weight complex", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: dirty_image complex", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
             &status);
         assert(status != SDP_SUCCESS);
     }
