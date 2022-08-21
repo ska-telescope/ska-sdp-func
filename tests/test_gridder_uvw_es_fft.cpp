@@ -452,8 +452,8 @@ int main()
 
     // Sad paths
     
-    // These proves that sdp_gridder_check_buffers() is being called.
-    // Exhaustive parameter testing is done in the Python tests.
+    // These test bad parameters and buffers.
+    // Even more exhaustive testing is done in the Python tests.
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("f1", true, 1e-12,
@@ -522,6 +522,30 @@ int main()
             SDP_MEM_COMPLEX_DOUBLE,
             SDP_MEM_DOUBLE,
             SDP_MEM_COMPLEX_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: inconsistent double precision", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_FLOAT,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: inconsistent single precision", true, 1e-12,
+            SDP_MEM_FLOAT,
+            SDP_MEM_FLOAT,
+            SDP_MEM_COMPLEX_FLOAT,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_FLOAT,
             &status);
         assert(status != SDP_SUCCESS);
     }
