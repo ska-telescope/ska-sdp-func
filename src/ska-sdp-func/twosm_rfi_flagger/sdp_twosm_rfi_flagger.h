@@ -23,24 +23,22 @@ extern "C" {
  *
  * Array dimensions are as follows, from slowest to fastest varying:
  *
- * - @p vis is 4D and complex-valued, with shape:
- *   - [ num_timesamples, num_baselines, num_channels, num_polarisations ]
+ * - @p vis is 2D and complex-valued, with shape:
+ *   - [ num_timesamples, num_channels]
  *
  * - @p thresholds is 1D and real-valued.
  *   - The size of the array is n, where 2^(n-1) = @p max_sequence_length .
  *
- * - @p flags is 4D and integer-valued, with the same shape as @p vis .
+ * - @p flags is 2D and integer-valued, with the same shape as @p vis .
  *
  * @param vis Complex valued visibilities. Dimensions as above.
  * @param thresholds thresholds for time and frequency domains.
- * @param antennas indices of antennas (autocorrelation baselines) in the list of baselines
  * @param flags Output flags. Dimensions as above.
  * @param status Error status.
  */
 void sdp_twosm_algo_flagger(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
-        const sdp_Mem* antennas,
         sdp_Mem* flags,
         sdp_Error* status);
 

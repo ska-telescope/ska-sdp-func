@@ -5,7 +5,7 @@
 from .utility import Error, Lib, Mem
 
 
-def twosm_rfi_flagger(vis, thresholds, antennas, flags):
+def twosm_rfi_flagger(vis, thresholds, flags):
     """
     Basic RFI flagger based on sum-threshold algorithm.
 
@@ -37,12 +37,10 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
 
     mem_vis = Mem(vis)
     mem_thresholds = Mem(thresholds)
-    mem_antennas = Mem(antennas)
     mem_flags = Mem(flags)
     error_status = Error()
     lib_rfi_flagger = Lib.handle().sdp_twosm_algo_flagger
     lib_rfi_flagger.argtypes = [
-        Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
@@ -51,7 +49,6 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
     lib_rfi_flagger(
         mem_vis.handle(),
         mem_thresholds.handle(),
-        mem_antennas.handle(),
         mem_flags.handle(),
         error_status.handle(),
     )
