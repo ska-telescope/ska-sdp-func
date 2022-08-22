@@ -152,31 +152,33 @@ void sdp_generate_gauss_legendre_conv_kernel(
     }
 }
 
-
+/**********************************************************************
+ * Calculates a value for nu to help choose the best grid size.
+ **********************************************************************/
 int sdp_good_size_complex(int n)
 {
-    if (n<=12) return n;
+    if (n <= 12) return n;
 
-    int bestfac=2*n;
-    for (int f11=1; f11<bestfac; f11*=11) 
+    int best_factor=2*n;
+    for (int f11 = 1; f11 < best_factor; f11 *= 11) 
     {
-        for (int f117=f11; f117<bestfac; f117*=7) 
+        for (int f117 = f11; f117 < best_factor; f117 *= 7) 
         {
-            for (int f1175=f117; f1175<bestfac; f1175*=5)
+            for (int f1175 = f117; f1175 < best_factor; f1175 *= 5)
             {
-                int x=f1175;
-                while (x<n) x*=2;
+                int x = f1175;
+                while (x < n) x *= 2;
                 for (;;)
                 {
-                    if (x<n) 
+                    if (x < n) 
                     {
-                        x*=3;
+                        x *= 3;
                     } 
-                    else if (x>n)
+                    else if (x > n)
                     {
-                        if (x<bestfac) bestfac=x;
-                        if (x&1) break;
-                        x>>=1;
+                        if (x < best_factor) best_factor=x;
+                        if (x & 1) break;
+                        x >>= 1;
                     }
                     else 
                     {
@@ -186,19 +188,23 @@ int sdp_good_size_complex(int n)
             }
         }
     }
-    return bestfac;
+    return best_factor;
 }
 
+/**********************************************************************
+ * Calculates grid size, support and beta and from epsilon, image size 
+ * and input precision.
+ **********************************************************************/
 void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_precision, 
-                                int &grid_size, int &support, double &beta, sdp_Error* status)
+                                       int &grid_size, int &support, double &beta, sdp_Error* status)
 {
     if (*status) return;  // AG: temp to silence lint warning
     *status = SDP_SUCCESS;
     
-    // getAvailableKernels()
-    const int numKernels = 244;
-    enum {K_support, K_ofactor, K_epsilon, K_beta, K_e0, K_corr_range};
-    const double KernelDB[numKernels][6] = {
+    // get available kernels
+    const int num_kernels = 244;
+    enum {K_support, K_os_factor, K_epsilon, K_beta, K_e0, K_corr_range};
+    const double KernelDB[num_kernels][6] = {
         { 4, 1.15,   0.025654879, 1.3873426689, 0.5436851297, 10.3501},
         { 4, 1.20,   0.013809249, 1.3008419165, 0.5902137484, 8.02317},
         { 4, 1.25,  0.0085840685, 1.3274088935, 0.5953499486, 6.25302},
@@ -447,71 +453,50 @@ void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_p
 
     const int num_opts = 20;
     int idx[num_opts];
-    double ofactors[num_opts];
+    double os_factors[num_opts];
 
     for (int i = 0; i < num_opts; ++i)
     {
-        idx[i] = numKernels-1;
-        ofactors[i] = 2.6;
+        idx[i] = num_kernels-1;
+        os_factors[i] = 2.6;
     }
     
-    for (int i = 0; i < num_opts; ++i)
-    {
-        //printf("idx[%2i], ofactors[%2i] = %2i  %.2f\n", i, i, idx[i], ofactors[i] = 2.6);
-    }
-
-    //fprintf(stdout, "\nTrying epsilon of %e\n", epsilon);
-
     int max_support = (vis_precision == SDP_MEM_DOUBLE) ? 16 : 8;
     
-    //fprintf(stdout, "max_support is %i\n", max_support);
- 
-    for (int i = 0; i < numKernels; i++)
+    for (int i = 0; i < num_kernels; i++)
     {   
         int this_support = int(floor(KernelDB[i][K_support]));
         
-        if  (    (KernelDB[i][K_support]    <= max_support) 
-              && (KernelDB[i][K_epsilon]    <= epsilon)
-              && (KernelDB[i][K_corr_range] <= 10.)  // acceptable ??
-              && (KernelDB[i][K_ofactor]    <= ofactors[this_support])
-            )
+        if ((KernelDB[i][K_support]    <= max_support) &&
+            (KernelDB[i][K_epsilon]    <= epsilon) &&
+            (KernelDB[i][K_corr_range] <= 10.) &&   // acceptable ??
+            (KernelDB[i][K_os_factor]  <= os_factors[this_support])
+           )
         {
             idx[this_support] = i;
-            ofactors[this_support] = KernelDB[i][K_ofactor];            
+            os_factors[this_support] = KernelDB[i][K_os_factor];            
         }
     }
     
-    for (int i = 0; i < num_opts; ++i)
-    {
-    //  printf("idx[%2i], ofactors[%2i] = %2i  %.2f\n", i, i, idx[i], ofactors[i]);
-    }
-
-    //int min_nu=80000, minnv=0, min_idx=numKernels;
-    int min_nu=80000, min_idx=numKernels;
+    int min_nu=80000, min_idx=num_kernels;
 
     for (int i=0; i < num_opts; ++i)
     {
         int this_idx = idx[i];
-        //int support = int(floor(KernelDB[this_idx][K_support]));
-        //auto nvec = (supp+vlen-1)/vlen;
-        double ofactor = KernelDB[this_idx][K_ofactor];
-        int nu = 2*sdp_good_size_complex(int(image_size*ofactor*0.5)+1);
+        double os_factor = KernelDB[this_idx][K_os_factor];
+        int nu = 2*sdp_good_size_complex(int(image_size*os_factor*0.5)+1);
         
         if (nu <= min_nu)
         {
-            //printf("Choosing nu = %i, idx = %i\n", nu, this_idx);
             min_nu = nu;
             min_idx = this_idx;
         }
-        //printf("%2i: %2i, %.2f, %5i, numWgrids: %i\n", i, support, ofactor, nu, num_total_w_grids);       
     }
     
-    //printf("\n\n");
-    
     support = int(floor(KernelDB[min_idx][K_support]));
-    double ofactor = KernelDB[min_idx][K_ofactor];
+    double os_factor = KernelDB[min_idx][K_os_factor];
     beta = KernelDB[min_idx][K_beta];
-    int nu = 2*sdp_good_size_complex(int(image_size*ofactor*0.5)+1);
+    int nu = 2*sdp_good_size_complex(int(image_size*os_factor*0.5)+1);
 
     grid_size = nu;
 }

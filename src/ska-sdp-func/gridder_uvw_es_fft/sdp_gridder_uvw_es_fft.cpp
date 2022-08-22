@@ -185,7 +185,6 @@ void sdp_gridder_check_buffers(
     // check precision consistency
     if (sdp_mem_type(uvw)== SDP_MEM_DOUBLE)
     {
-        //SDP_LOG_INFO("All buffers should be double precision.");
         if ((sdp_mem_type(freq_hz)     != SDP_MEM_DOUBLE) ||
             (sdp_mem_type(vis)         != SDP_MEM_COMPLEX_DOUBLE) ||
             (sdp_mem_type(weight)      != SDP_MEM_DOUBLE) ||
@@ -198,7 +197,6 @@ void sdp_gridder_check_buffers(
     }
     else
     {
-        //SDP_LOG_INFO("All buffers should be single precision.");
         if ((sdp_mem_type(freq_hz)     != SDP_MEM_FLOAT) ||
             (sdp_mem_type(vis)         != SDP_MEM_COMPLEX_FLOAT) ||
             (sdp_mem_type(weight)      != SDP_MEM_FLOAT) ||
@@ -240,32 +238,6 @@ void sdp_gridder_check_buffers(
             SDP_LOG_ERROR("Dirty image must be writable.");
             return;
         }
-    }
-}
-
-void sdp_gridder_log_plan(
-        sdp_GridderUvwEsFft* plan,
-        const sdp_Error* status)
-{
-    if (*status) return;
-
-    if (1)
-    {
-        SDP_LOG_DEBUG("  plan->pixsize_x_rad is %.12e", plan->pixsize_x_rad);
-        SDP_LOG_DEBUG("  plan->pixsize_y_rad is %.12e", plan->pixsize_y_rad);
-        SDP_LOG_DEBUG("  plan->epsilon is %e",          plan->epsilon);
-        SDP_LOG_DEBUG("  plan->min_abs_w is %e",        plan->min_abs_w);
-        SDP_LOG_DEBUG("  plan->max_abs_w is %e",        plan->max_abs_w);
-        SDP_LOG_DEBUG("  plan->min_plane_w is %e",          plan->min_plane_w);
-        SDP_LOG_DEBUG("  plan->max_plane_w is %e",          plan->max_plane_w);
-        SDP_LOG_DEBUG("  plan->image_size is %i",           plan->image_size);
-        SDP_LOG_DEBUG("  plan->grid_size is %i",        plan->grid_size);
-        // SDP_LOG_DEBUG("  plan-> is %e",          plan->);
-
-        // SDP_LOG_DEBUG("  plan->uvw's     location is %i", sdp_mem_location(plan->uvw));
-        // SDP_LOG_DEBUG("  plan->freq_hz's location is %i", sdp_mem_location(plan->freq_hz));
-        // SDP_LOG_DEBUG("  plan->vis's     location is %i", sdp_mem_location(plan->vis));
-        // SDP_LOG_DEBUG("  plan->weight's  location is %i", sdp_mem_location(plan->weight));       
     }
 }
 
@@ -403,8 +375,6 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         return NULL;
     }
    
-    sdp_gridder_log_plan(plan, status);
-
     // Generate Gauss Legendre kernel for convolution correction.
     double *quadrature_kernel = nullptr, *quadrature_nodes = nullptr, *quadrature_weights = nullptr ;
     double *conv_corr_kernel = nullptr;
@@ -583,8 +553,6 @@ void sdp_grid_uvw_es_fft(
             {
                 if (dbl_vis && dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_3d<double, double2, double, double2, double3>";
-                } else if (!dbl_vis && dbl_coord) {
-                    k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, double, double2, double3>";
                 } else if (!dbl_vis && !dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, float, float2, float3>";
                 }
@@ -593,8 +561,6 @@ void sdp_grid_uvw_es_fft(
             {
                 if (dbl_vis && dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>";
-                } else if (!dbl_vis && dbl_coord) {
-                    k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, double, double2, double3>";
                 } else if (!dbl_vis && !dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, float, float2, float3>";
                 }
@@ -827,21 +793,17 @@ void sdp_ifft_degrid_uvw_es(
             {
                 if (dbl_vis && dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_3d<double, double2, double, double2, double3>";
-                } else if (!dbl_vis && dbl_coord) {
-                    k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, double, double2, double3>";
                 } else if (!dbl_vis && !dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_3d<float, float2, float, float2, float3>";
-}
+                }
             }
             else
             {
                 if (dbl_vis && dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>";
-                } else if (!dbl_vis && dbl_coord) {
-                    k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, double, double2, double3>";
                 } else if (!dbl_vis && !dbl_coord) {
                     k = "sdp_cuda_nifty_gridder_gridding_2d<float, float2, float, float2, float3>";
-}
+                }
             }
             if (k)
             {

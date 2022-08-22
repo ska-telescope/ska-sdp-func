@@ -47,7 +47,7 @@ static void run_and_check(
     const double pixel_size_rad = fov * PI / 180.0 / im_size;
     const double f_0 = 1e9;
 
-    SDP_LOG_ERROR("Running test: %s", test_name);
+    SDP_LOG_INFO("Running test: %s", test_name);
 
     int64_t uvw_shape[] = {num_vis, 3};
     int64_t vis_shape[] = {num_vis, num_channels};
