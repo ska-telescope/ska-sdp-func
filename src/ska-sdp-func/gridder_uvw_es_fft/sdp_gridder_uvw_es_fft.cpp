@@ -269,18 +269,26 @@ void sdp_gridder_log_plan(
     }
 }
 
+void sdp_gridder_check_parameters(
+    const double pixsize_x_rad,
+    const double pixsize_y_rad,
+    sdp_Error* status)
+{
+    if (pixsize_x_rad != pixsize_y_rad)
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_ERROR("Only square images supported, so pixsize_x_rad and pixsize_y_rad must be equal.");
+        SDP_LOG_ERROR("pixsize_x_rad is %.12e", pixsize_x_rad);
+        SDP_LOG_ERROR("pixsize_y_rad is %.12e", pixsize_y_rad);
+        return;
+    }
+}
+
 void sdp_gridder_check_plan(
         sdp_GridderUvwEsFft* plan,
         sdp_Error* status)
 {
-    if (plan->pixsize_x_rad != plan->pixsize_y_rad)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_ERROR("Only square images supported, so pixsize_x_rad and pixsize_y_rad must be equal.");
-        return;
-    }
-    
-    // should check range of epsilon !!
+    sdp_gridder_check_parameters(plan->pixsize_x_rad, plan->pixsize_y_rad, status);
 }
 
 sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
@@ -298,6 +306,9 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         sdp_Error* status)
 {
     if (*status) return NULL;
+    
+    sdp_gridder_check_parameters(pixsize_x_rad, pixsize_y_rad, status);
+    if (*status) return NULL;        
     
     sdp_gridder_check_buffers(uvw, freq_hz, vis, weight, dirty_image, false, status);
     if (*status) return NULL;    

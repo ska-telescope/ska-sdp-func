@@ -372,6 +372,34 @@ static void run_and_check(
                 status
             );
         }
+        else if  (test_name[1] == '6')
+        {
+            sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
+                uvw_gpu,  
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,  
+                dirty_image_gpu,  
+                pixel_size_rad, 
+                pixel_size_rad*2,  // pixels not square!! 
+                epsilon,
+                min_abs_w, 
+                max_abs_w, 
+                do_wstacking,
+                status);        
+                
+            if (*status) return;
+
+            sdp_grid_uvw_es_fft(
+                gridder, 
+                uvw_gpu,
+                freq_hz_gpu,
+                vis_gpu,
+                weight_gpu,
+                est_dirty_image_gpu,
+                status
+            );
+        }
         else  // just a "normal" fail test
         {
             sdp_GridderUvwEsFft* gridder = sdp_gridder_uvw_es_fft_create_plan(
@@ -648,6 +676,18 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("f5: bad dirty_image_gpu size", true, 1e-12,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_DOUBLE,
+            SDP_MEM_DOUBLE,
+            &status);
+        assert(status != SDP_SUCCESS);
+    }
+    
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f6: pixels not square", true, 1e-12,
             SDP_MEM_DOUBLE,
             SDP_MEM_DOUBLE,
             SDP_MEM_COMPLEX_DOUBLE,
