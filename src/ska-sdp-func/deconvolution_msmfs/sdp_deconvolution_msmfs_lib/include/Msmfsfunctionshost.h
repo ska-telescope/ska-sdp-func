@@ -47,7 +47,7 @@
 /**
  * Checks the Cuda status and logs any errors
  * @return any synchronous or asynchronous cuda error.
- **********************************************************************/
+ */
 cudaError_t checkCudaStatus();
 
 /**

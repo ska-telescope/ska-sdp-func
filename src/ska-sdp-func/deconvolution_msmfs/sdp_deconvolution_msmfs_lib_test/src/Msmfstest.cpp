@@ -1,5 +1,5 @@
 /*
- * Msmfstest.c
+ * Msmfstest.cpp
  * Andrew Ensor
  * C with C++ templates/CUDA program for testing steps of the MSMFS cleaning algorithm
 */
@@ -13,7 +13,7 @@
  **********************************************************************/
 int main(int argc, char *argv[])
 {
-    printf("Msmfs starting");
+    printf("Msmfs test starting");
     #ifdef MSMFS_PRECISION_SINGLE
         printf(" using single precision\n");
         #define PRECISION float
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         scale_moment_residuals_device, scale_moment_size, num_scales,
         shape_configs.variances_device, shape_configs.convolution_support_device, cuda_block_size_2D);
 
-    checkCudaStatus(); 
+    checkCudaStatus();
 
     // ***** temporary code to display the initial scale moment residuals *****
 //    display_scale_moment_residuals<PRECISION>(scale_moment_residuals_device, num_scales, num_taylor, scale_moment_size);
@@ -166,6 +166,6 @@ int main(int argc, char *argv[])
 
     checkCudaStatus();
 
-    printf("Msmfs ending\n");
+    printf("Msmfs test ending\n");
     return 0;
 }

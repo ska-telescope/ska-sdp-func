@@ -25,22 +25,22 @@ set(msmfs_cuda_source_file_list
     )
 
 # prepare the shared library for sdp_deconvolution_msmfs_cuda
-add_library(sdp_deconvolution_msmfs_cuda SHARED)
-target_include_directories(sdp_deconvolution_msmfs_cuda PRIVATE
+add_library(sdp_deconvolution_msmfs_lib SHARED)
+target_include_directories(sdp_deconvolution_msmfs_lib PRIVATE
     include)
-target_sources(sdp_deconvolution_msmfs_cuda
+target_sources(sdp_deconvolution_msmfs_lib
     PRIVATE ${msmfs_cuda_source_file_list}
     PUBLIC FILE_SET HEADERS
     BASE_DIRS ${PROJECT_SOURCE_DIR}
     FILES include/Msmfscommon.h include/Msmfslogger.h include/Msmfsfunctionshost.h include/Msmfssimpletest.h
     )
-set_target_properties(sdp_deconvolution_msmfs_cuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-set_target_properties(sdp_deconvolution_msmfs_cuda PROPERTIES CUDA_ARCHITECTURES native)
-target_link_libraries(sdp_deconvolution_msmfs_cuda PUBLIC
+set_target_properties(sdp_deconvolution_msmfs_lib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(sdp_deconvolution_msmfs_lib PROPERTIES CUDA_ARCHITECTURES native)
+target_link_libraries(sdp_deconvolution_msmfs_lib PUBLIC
     ${CUSOLVER_LIBRARY}
     m)
-target_compile_options(sdp_deconvolution_msmfs_cuda PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+target_compile_options(sdp_deconvolution_msmfs_lib PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
     -Xptxas;
     -O3
     >)
-install(TARGETS sdp_deconvolution_msmfs_cuda FILE_SET HEADERS)
+install(TARGETS sdp_deconvolution_msmfs_lib FILE_SET HEADERS)
