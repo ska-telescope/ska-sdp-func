@@ -62,6 +62,15 @@ static void run_and_check(
 
     sdp_Mem* est_vis_gpu = sdp_mem_create(vis_type,         SDP_MEM_GPU, 2, vis_shape, status);
     sdp_Mem* est_dirty_image_gpu = sdp_mem_create(dirty_image_type, SDP_MEM_GPU, 2, dirty_image_shape, status);
+
+    sdp_mem_clear_contents(uvw, status);
+    sdp_mem_clear_contents(freq_hz, status);
+    sdp_mem_clear_contents(weight, status);
+    sdp_mem_clear_contents(vis, status);
+    sdp_mem_clear_contents(dirty_image, status);
+
+    sdp_mem_clear_contents(est_vis_gpu, status);
+    sdp_mem_clear_contents(est_dirty_image_gpu, status);
     
     sdp_mem_random_fill(uvw, status);
     sdp_mem_random_fill(dirty_image, status);
