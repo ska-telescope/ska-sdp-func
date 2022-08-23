@@ -128,7 +128,7 @@ build-test-release:
     - cmake ../ -DCUDA_ARCH=$CUDA_ARCH
   script:
     - make -j
-    - ctest --output-junit unit-tests.xml
+    - ctest --rerun-failed --output-on-failure --output-junit unit-tests.xml
   after_script:
     - mv release/unit-tests.xml build/reports/
   artifacts:
