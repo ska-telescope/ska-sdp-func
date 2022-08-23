@@ -32,8 +32,8 @@ struct sdp_GridderUvwEsFft
 
     double min_plane_w;
     double max_plane_w;
-    double min_abs_w = 0.0;
-    double max_abs_w = 0.0;
+    double min_abs_w;
+    double max_abs_w;
     int num_total_w_grids;
     double w_scale; // scaling factor for converting w coord to signed w grid index
 
@@ -68,8 +68,6 @@ void sdp_gridder_uvw_es_fft_free_plan(sdp_GridderUvwEsFft* plan)
     sdp_mem_free(plan->conv_corr_kernel);
     
     free(plan);
-
-    SDP_LOG_INFO("Destroyed sdp_GridderUvwEsFft");
 }
 
 
@@ -477,10 +475,6 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         sdp_gridder_uvw_es_fft_free_plan(plan);
         return NULL;
     }
-
-    (void)uvw; // avoid compiler unused parameter warning
-    (void)freq_hz; // avoid compiler unused parameter warning
-    (void)weight; // avoid compiler unused parameter warning
  
     sdp_gridder_check_buffers(uvw, freq_hz, vis, weight, dirty_image, false, status);
     if (*status) 
@@ -489,7 +483,6 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         return NULL;
     }
 
-    SDP_LOG_INFO("Created sdp_GridderUvwEsFft");
     return plan;
 }
 
@@ -517,7 +510,7 @@ void sdp_grid_uvw_es_fft(
     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
     const int npix_y = (int)sdp_mem_shape_dim(dirty_image, 1);  // this should be the same as checked by check_params()
     
-    size_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
+    uint64_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
 
@@ -544,7 +537,7 @@ void sdp_grid_uvw_es_fft(
         );
         const int grid_start_w = batch * num_w_grids_batched;
         sdp_mem_clear_contents(plan->w_grid_stack, status);
-        if (*status) return;
+        if (*status) break;
 
         // Perform gridding on a "chunk" of w grids
         {
@@ -689,7 +682,7 @@ void sdp_ifft_degrid_uvw_es(
     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
     const int npix_y = (int)sdp_mem_shape_dim(dirty_image, 1);  // this should be the same as checked by check_params()
     
-    size_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
+    uint64_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
     //SDP_LOG_DEBUG("vis_type is %#06x", vis_type);
@@ -750,7 +743,7 @@ void sdp_ifft_degrid_uvw_es(
         );
         const int grid_start_w = batch * num_w_grids_batched;
         sdp_mem_clear_contents(plan->w_grid_stack, status);
-        if (*status) return;
+        if (*status) break;
 
         // Undo w-stacking and dirty image accumulation.
         {

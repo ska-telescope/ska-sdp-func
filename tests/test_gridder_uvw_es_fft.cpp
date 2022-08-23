@@ -535,6 +535,18 @@ static void run_and_check(
     printf(       "adj2 = %.15e\n", adj2);
     printf("adjointness test = %.6e\n", adj_error);
     printf("*****************************************\n");
+    
+    // check output
+    double threshold = 0;
+    if (sdp_mem_type(est_dirty_image)== SDP_MEM_DOUBLE)
+    {
+        threshold = 1e-12;
+    }
+    else
+    {
+        threshold = 1e-5;
+    }       
+    assert(adj_error <= threshold);
 
     // free memory
     sdp_gridder_uvw_es_fft_free_plan(gridder);

@@ -61,9 +61,9 @@ template<typename FP>
 )
 {
     FP correction = 0.0;
-    uint p = (uint)(ceil(FP(1.5)*support + FP(2.0)));
+    uint32_t p = (uint32_t)(ceil(FP(1.5)*support + FP(2.0)));
 
-    for (uint i = 0; i < p; i++)
+    for (uint32_t i = 0; i < p; i++)
         correction += quadrature_kernel[i] *
                 cos(PI * k * support * quadrature_nodes[i]) *
                 quadrature_weights[i];
@@ -119,9 +119,9 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
           
     const int  grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
     const int  grid_start_w, // signed index of first w grid in current subset stack
-    const uint num_w_grids_subset, // number of w grids bound in current subset stack
+    const uint32_t num_w_grids_subset, // number of w grids bound in current subset stack
 
-    const uint support, // full support for gridding kernel
+    const uint32_t support, // full support for gridding kernel
     const VFP  beta, // beta constant used in exponential of semicircle kernel
     const FP   uv_scale, // scaling factor for conversion of uv coords to grid coordinates (grid_size * cell_size)
     const FP   w_scale, // scaling factor for converting w coord to signed w grid index
@@ -214,7 +214,7 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
                         size_t(grid_u + origin_offset_uv) * grid_size +
                         size_t(grid_v + origin_offset_uv);
                         
-                    if(solving) // accumulation of visibility onto w-grid plane
+                if(solving) // accumulation of visibility onto w-grid plane
                 {
                     // accumulation of visibility onto w-grid plane
                     my_atomic_add<VFP>(
@@ -224,7 +224,7 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
                             &w_grid_stack[grid_offset_uvw].y,
                             vis_weighted.y * kernel_value);
                 }
-                    else // extraction of visibility from w-grid plane
+                else // extraction of visibility from w-grid plane
                 {
                         vis_weighted.x += w_grid_stack[grid_offset_uvw].x * kernel_value;
                         vis_weighted.y += w_grid_stack[grid_offset_uvw].y * kernel_value;
@@ -258,9 +258,9 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
 
     const int  grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
     const int  grid_start_w, // signed index of first w grid in current subset stack
-    const uint num_w_grids_subset, // number of w grids bound in current subset stack
+    const uint32_t num_w_grids_subset, // number of w grids bound in current subset stack
 
-    const uint support, // full support for gridding kernel
+    const uint32_t support, // full support for gridding kernel
     const VFP beta, // beta constant used in exponential of semicircle kernel
     const FP uv_scale, // scaling factor for conversion of uv coords to grid coordinates (grid_size * cell_size)
     const FP w_scale, // scaling factor for converting w coord to signed w grid index
@@ -306,19 +306,6 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
     const int grid_w_min = max((int)ceil(pos_w - half_support), grid_start_w);
     const int grid_w_max = min((int)floor(pos_w + half_support), grid_start_w + num_w_grids_subset - 1);
     
-    if (i_vis == -1)
-    {
-        printf("inv_wavelength is %.12e\n", inv_wavelength);
-        printf("uv_scale is %.12e\n", uv_scale);
-        printf("pos_u, pos_v is [%.12e, %.12e]\n", pos_u, pos_v);
-    }
-    if (i_vis == -1)
-    {
-        printf("grid_w_min   is %i\n", grid_w_min);
-        printf("grid_w_max   is %i\n", grid_w_max);
-        printf("grid_start_w is %i\n", grid_start_w);
-    }
-
     if (grid_w_min > grid_w_max ||
             grid_u_min > grid_u_max ||
             grid_v_min > grid_v_max)
@@ -336,24 +323,11 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
     {
         kernel_u[grid_u - grid_u_min] = exp_semicircle(beta,
                 (VFP)(grid_u - pos_u) * inv_half_support);
-
-        if (i_vis == -1)
-        {
-            printf("grid_u, pos_u is [%i, %.12e]\n", grid_u, pos_u);
-            printf("(VFP)(grid_u - pos_u) is %.12e\n", (VFP)(grid_u - pos_u));
-            printf("(VFP)(grid_u - pos_u) * inv_half_support is %.12e\n", (VFP)(grid_u - pos_u) * inv_half_support);
-            printf("kernel_u[%i] is %.12e\n", grid_u, kernel_u[grid_u - grid_u_min]);
-        }
     }
     for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
     {
         kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
                 (VFP)(grid_v - pos_v) * inv_half_support);
-
-        if (i_vis == -1)
-        {
-            printf("kernel_v[%i] is %.12e\n", grid_v, kernel_v[grid_v - grid_v_min]);
-        }
     }
 
     // Iterate through each w-grid
@@ -364,12 +338,6 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
                 (VFP)(grid_w - pos_w) * inv_half_support);
         const size_t grid_offset_w = (grid_w - grid_start_w) *
                 size_t(grid_size * grid_size);
-
-        if (i_vis == -1)
-        {
-            printf("grid_offset_w   is %li\n", grid_offset_w);
-            printf("kernel_w   is %f\n", kernel_w);
-        }
 
         // Swapped u and v for consistency with original nifty gridder.
         for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
@@ -401,8 +369,6 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
                 {
                         vis_weighted.x += w_grid_stack[grid_offset_uvw].x * kernel_value;
                         vis_weighted.y += w_grid_stack[grid_offset_uvw].y * kernel_value;
-
-                        //printf("vis_weighted is [%.12e, %.12e]\n\n", vis_weighted.x, vis_weighted.y);
                 }
             }
         }
@@ -422,12 +388,12 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
 template<typename FP, typename FP2>
 __global__ void apply_w_screen_and_sum(
     FP* __restrict__ dirty_image, // INPUT & OUTPUT: real plane for accumulating phase corrected w layers across batches
-    const uint image_size, // one dimensional size of image plane (grid_size / sigma), assumed square
+    const uint32_t image_size, // one dimensional size of image plane (grid_size / sigma), assumed square
     const FP pixel_size, // converts pixel index (x, y) to normalised image coordinate (l, m) where l, m between -0.5 and 0.5
     const FP2* const __restrict__ w_grid_stack, // INPUT: flat array containing 2D computed w layers (w layer = iFFT(w grid))
-    const uint grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
+    const uint32_t grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
     const int grid_start_w, // index of first w grid in current subset stack
-    const uint num_w_grids_subset, // number of w grids bound in current subset stack
+    const uint32_t num_w_grids_subset, // number of w grids bound in current subset stack
     const FP inv_w_scale, // inverse of scaling factor for converting w coord to signed w grid index
     const FP min_plane_w, // w coordinate of smallest w plane
     const bool perform_shift_fft,  // flag to (equivalently) rearrange each grid so origin is at lower-left corner for FFT
@@ -436,7 +402,7 @@ __global__ void apply_w_screen_and_sum(
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
-    const uint half_image_size = image_size / 2;
+    const uint32_t half_image_size = image_size / 2;
     
     if(i <= (int)half_image_size && j <= (int)half_image_size)  // allow extra in negative x and y directions, for asymmetric image centre
     {
@@ -525,12 +491,12 @@ __global__ void apply_w_screen_and_sum(
 template<typename FP, typename FP2>
 __global__ void reverse_w_screen_to_stack(
     const FP* const __restrict__ dirty_image, // INPUT: real plane for input dirty image
-    const uint image_size, // one dimensional size of image plane (grid_size / sigma), assumed square
+    const uint32_t image_size, // one dimensional size of image plane (grid_size / sigma), assumed square
     const FP pixel_size, // converts pixel index (x, y) to normalised image coordinate (l, m) where l, m between -0.5 and 0.5
     FP2* __restrict__ w_grid_stack, // OUTPUT: flat array containing 2D computed w layers (w layer = iFFT(w grid))
-    const uint grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
+    const uint32_t grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
     const int grid_start_w, // index of first w grid in current subset stack
-    const uint num_w_grids_subset, // number of w grids bound in current subset stack
+    const uint32_t num_w_grids_subset, // number of w grids bound in current subset stack
     const FP inv_w_scale, // inverse of scaling factor for converting w coord to signed w grid index
     const FP min_plane_w, // w coordinate of smallest w plane
     const bool perform_shift_fft,  // flag to (equivalently) rearrange each grid so origin is at lower-left corner for FFT
@@ -539,7 +505,7 @@ __global__ void reverse_w_screen_to_stack(
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
-    const uint half_image_size = image_size / 2;
+    const uint32_t half_image_size = image_size / 2;
 
     if (i <= (int)half_image_size && j <= (int)half_image_size)  // allow extra in negative x and y directions, for asymmetric image centre
     {
@@ -640,9 +606,9 @@ __global__ void reverse_w_screen_to_stack(
 template<typename FP>
 __global__ void conv_corr_and_scaling(
     FP *dirty_image,
-    const uint image_size,
+    const uint32_t image_size,
     const FP pixel_size,
-    const uint support,
+    const uint32_t support,
     const FP conv_corr_norm_factor,
     const FP *conv_corr_kernel,
     const FP inv_w_range,
@@ -656,7 +622,7 @@ __global__ void conv_corr_and_scaling(
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
-    const uint half_image_size = image_size / 2;
+    const uint32_t half_image_size = image_size / 2;
 
     if(i <= (int)half_image_size && j <= (int)half_image_size)
     {
@@ -706,24 +672,6 @@ __global__ void conv_corr_and_scaling(
     }
 }
 
-template<typename T>
-void get_w_range(const int num_rows, const T* uvw, const int num_chan, const T* freq_hz,
-        double& min_abs_w, double& max_abs_w)
-{
-    for (int i = 0; i < num_rows; ++i)
-    {
-        const double abs_w = std::fabs(uvw[3 * i + 2]);
-        if (abs_w < min_abs_w) min_abs_w = abs_w;
-        if (abs_w > max_abs_w) max_abs_w = abs_w;
-    }
-
-    double fscaleMin = freq_hz[0         ]/299792458.0;
-    double fscaleMax = freq_hz[num_chan-1]/299792458.0;
-    
-    min_abs_w *= fscaleMin;
-    max_abs_w *= fscaleMax; 
-}
-
 // register kernels
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_3d<double, double2, double, double2, double3>)
 SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_3d<float,  float2,  double, double2, double3>)
@@ -741,6 +689,3 @@ SDP_CUDA_KERNEL(reverse_w_screen_to_stack<float, float2>)
 
 SDP_CUDA_KERNEL(conv_corr_and_scaling<double>)
 SDP_CUDA_KERNEL(conv_corr_and_scaling<float>)
-
-SDP_CUDA_KERNEL(get_w_range<double>)
-SDP_CUDA_KERNEL(get_w_range<float>)
