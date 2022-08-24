@@ -22,3 +22,7 @@ tests/test_data/
 Makefile
 CMakeFiles/
 *.cmake
+CMakeCache.txt
+
+# Version file
+sdp_func_version.h

@@ -103,13 +103,13 @@ class GridderUvwEsFft:
             mem_freq_hz.handle(),
             mem_vis.handle(),
             mem_weight.handle(),
-            mem_dirty_image.handle(),
-            ctypes.c_double(pixel_size_x_rad),  # 5
+            mem_dirty_image.handle(),  # 5
+            ctypes.c_double(pixel_size_x_rad),
             ctypes.c_double(pixel_size_y_rad),
             ctypes.c_double(epsilon),
             ctypes.c_double(min_abs_w),
-            ctypes.c_double(max_abs_w),
-            ctypes.c_bool(do_w_stacking),  # 10
+            ctypes.c_double(max_abs_w),  # 10
+            ctypes.c_bool(do_w_stacking),
             error_status.handle(),
         )
         error_status.check()
@@ -127,7 +127,7 @@ class GridderUvwEsFft:
         Use this handle when calling the function in the compiled library.
 
         :return: Handle to wrapped function.
-        :rtype: ctypes.POINTER(FunctionExampleA.Handle)
+        :rtype: ctypes.POINTER(GridderUvwEsFft.Handle)
         """
         return self._handle
 
@@ -156,7 +156,7 @@ class GridderUvwEsFft:
         Use this when defining the list of argument types.
 
         :return: Type of the function handle.
-        :rtype: ctypes.POINTER(FunctionExampleA.Handle)
+        :rtype: ctypes.POINTER(GridderUvwEsFft.Handle)
         """
         return ctypes.POINTER(GridderUvwEsFft.Handle)
 
