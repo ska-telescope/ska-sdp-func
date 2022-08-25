@@ -5,3 +5,10 @@ src/ska-sdp-func/gridder_uvw_es_fft/ @DoctaGnz
 src/ska_sdp_func/gridder_uvw_es_fft.py @DoctaGnz
 tests/test_gridder_uvw_es_fft.cpp @DoctaGnz
 tests/test_gridder_uvw_es_fft.py @DoctaGnz
+
+# deconvolution_msmfs
+src/ska-sdp-func/deconvolution_msmfs/ @aensor
+src/ska_sdp_func/deconvolution_msmfs.py @DoctaGnz
+tests/test_deconvolution_msmfs.cpp @aensor
+tests/test_deconvolution_msmfs.py @DoctaGnz
+
