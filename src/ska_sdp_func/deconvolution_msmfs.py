@@ -4,12 +4,12 @@
 
 import ctypes
 
-try:
-    import cupy
-except ImportError:
-    cupy = None
+# try:
+#     import cupy
+# except ImportError:
+#     cupy = None
 
-import numpy as np
+# import numpy as np
 
 from .utility import Error, Lib, Mem
 
@@ -36,8 +36,8 @@ def perform_msmfs(
     :param dirty_moment_images: cupy.ndarray((num_taylor, dirty_moment_size,
         dirty_moment_size), dtype=numpy.float32 or numpy.float64)
         Taylor coefficient dirty images to be convolved.
-    :param psf_moment_images: cupy.ndarray((num_taylor, dirty_moment_size,
-        dirty_moment_size), dtype=numpy.float32 or numpy.float64)
+    :param psf_moment_images: cupy.ndarray((num_taylor, psf_moment_size,
+        psf_moment_size), dtype=numpy.float32 or numpy.float64)
         Taylor coefficient PSF images to be convolved.
     :param dirty_moment_size:  One dimensional size of image, assumed square.
     :param num_scales:  Number of scales to use in MSMFS cleaning.
