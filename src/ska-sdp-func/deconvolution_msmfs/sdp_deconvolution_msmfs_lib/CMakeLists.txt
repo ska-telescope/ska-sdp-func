@@ -1,4 +1,4 @@
-# CMakeLists.txt for the deconvolution_msmfs_cuda library
+# CMakeLists.txt for the sdp_deconvolution_msmfs_lib library
 cmake_minimum_required(VERSION 3.23)
 
 message(STATUS "CMake current directory is ${CMAKE_CURRENT_SOURCE_DIR}")
@@ -24,7 +24,7 @@ set(msmfs_cuda_source_file_list
     include/Msmfssimpletest.h
     )
 
-# prepare the shared library for sdp_deconvolution_msmfs_cuda
+# prepare the shared library for sdp_deconvolution_msmfs_lib
 add_library(sdp_deconvolution_msmfs_lib SHARED)
 target_include_directories(sdp_deconvolution_msmfs_lib PRIVATE
     include)
