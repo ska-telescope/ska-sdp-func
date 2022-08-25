@@ -1,18 +1,16 @@
 # See the LICENSE file at the top-level directory of this distribution.
-
 """ Module for MSMFS deconvolution function. """
 
 import ctypes
+
+from .utility import Error, Lib, Mem
 
 # try:
 #     import cupy
 # except ImportError:
 #     cupy = None
-
+#
 # import numpy as np
-
-from .utility import Error, Lib, Mem
-
 
 def perform_msmfs(
         dirty_moment_images,
