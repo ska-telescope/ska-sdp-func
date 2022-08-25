@@ -69,7 +69,7 @@ linting:
     - cmake ../ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
   script:
     - echo "Running lint check"
-    - run-clang-tidy -quiet > clang-tidy.out
+    - run-clang-tidy -quiet | tee clang-tidy.out
     - cat clang-tidy.out | ../scripts/clang-tidy-to-junit/clang-tidy-to-junit.py ../ > linting.xml
   after_script:
     - mv release/linting.xml build/reports/
@@ -128,7 +128,7 @@ build-test-release:
     - cmake ../ -DCUDA_ARCH=$CUDA_ARCH
   script:
     - make -j
-    - ctest --output-junit unit-tests.xml
+    - ctest --rerun-failed --output-on-failure --output-junit unit-tests.xml
   after_script:
     - mv release/unit-tests.xml build/reports/
   artifacts:

@@ -20,6 +20,8 @@ set(${libname}_SRC
     src/ska-sdp-func/utility/sdp_logging.c
     src/ska-sdp-func/utility/sdp_mem.c
     src/ska-sdp-func/utility/sdp_sky_coord.c
+	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft.cpp	
+	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft_utils.cpp	
 )
 
 # List of CUDA kernel source files.
@@ -27,6 +29,7 @@ set(${libname}_CUDA_SRC
     src/ska-sdp-func/dft/sdp_dft.cu
     src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cu
     src/ska-sdp-func/vector/sdp_vector_add.cu
+	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft_kernels.cu
 )
 
 # List of tests to build, in the "tests" directory.
@@ -38,6 +41,7 @@ set(${libname}_TESTS
     test_twosm_rfi_flagger
     test_vector_add
     test_function_example_a
+    test_gridder_uvw_es_fft
 )
 
 # Project version.
