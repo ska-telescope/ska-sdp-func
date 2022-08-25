@@ -1,4 +1,4 @@
-# CMakeLists.txt for the deconvolution_msmfs_lib_test executable
+# CMakeLists.txt for the sdp_deconvolution_msmfs_lib_test executable
 cmake_minimum_required(VERSION 3.23)
 
 message(STATUS "CMake current directory is ${CMAKE_CURRENT_SOURCE_DIR}")
