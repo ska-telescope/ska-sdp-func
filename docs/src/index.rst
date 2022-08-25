@@ -24,6 +24,7 @@ SDP Processing Function Library
   :caption: Processing functions
   :maxdepth: 1
 
+  proc_func_deconvolution_msmfs
   proc_func_dft
   proc_func_fft
   proc_func_phase_rotation

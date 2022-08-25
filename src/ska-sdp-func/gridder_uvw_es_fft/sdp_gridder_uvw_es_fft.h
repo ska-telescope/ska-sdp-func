@@ -4,7 +4,7 @@
 #define SDP_GRID_UVW_ES_FFT_H_
 
 /**
- * @file sdp_grid_uvw_es_fft.h
+ * @file sdp_gridder_uvw_es_fft.h
  */
 
 #include "ska-sdp-func/utility/sdp_mem.h"
