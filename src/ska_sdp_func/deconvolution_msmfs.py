@@ -1,5 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
-""" Module for MSMFS deconvolution functions. """
+
+""" Module for MSMFS deconvolution function. """
 
 import ctypes
 
@@ -13,207 +14,79 @@ import numpy as np
 from .utility import Error, Lib, Mem
 
 
-class DeconvolverMsmfs:
-    """Processing function DeconvolverMsmfs."""
+def perform_msmfs(
+        dirty_moment_images,
+        psf_moment_images,
+        dirty_moment_size,
+        num_scales,
+        num_taylor,  # 5
+        psf_moment_size,
+        image_border,
+        convolution_accuracy,
+        clean_loop_gain,
+        max_gaussian_sources_host,  # 10
+        scale_bias_factor,
+        clean_threshold):
+    """ Performs the entire MSMFS deconvolution.
 
-    class Handle(ctypes.Structure):
-        """Class handle for use by ctypes."""
+        dirty_moment_images and psf_moment_images assumed to be centred
+        around origin with dirty_moment_images and have sufficient border
+        for convolutions.
 
-    def __init__(
-        self,
-        uvw,
-        freq_hz,
-        vis,
-        weight,
-        dirty_image,
-        pixel_size_x_rad,
-        pixel_size_y_rad,
-        epsilon: float,
-        do_w_stacking: bool,
-    ):
-        """Creates a plan for MSMFS deconvolution using the supplied
-        parameters and input and output buffers.
-
-        This currently only supports processing on a GPU.
-
-        Parameters
-        ==========
-        uvw: cupy.ndarray((num_rows, 3), dtype=numpy.float32 or numpy.float64)
-            (u,v,w) coordinates.
-        freq_hz: cupy.ndarray((num_chan,), dtype=numpy.float32 or
-            numpy.float64)
-            Channel frequencies.
-        vis: cupy.ndarray((num_rows, num_chan), dtype=numpy.complex64 or
-            numpy.complex128)
-            The input/output visibility data.
-            Its data type determines the precision used for the (de)gridding.
-        weight: cupy.ndarray((num_rows, num_chan), same precision as **vis**)
-            Its values are used to multiply the input.
-        dirty_image: cupy.ndarray((num_pix, num_pix), dtype=numpy.float32 or
-            numpy.float64)
-            The input/output dirty image, **must be square**.
-        pixel_size_x_rad: float
-            Angular x pixel size (in radians) of the dirty image.
-        pixel_size_y_rad: float
-            Angular y pixel size (in radians) of the dirty image (must be the
-            same as pixel_size_x_rad).
-        epsilon: float
-            Accuracy at which the computation should be done.
-            Must be larger than 2e-13.
-            If **vis** has type numpy.complex64, it must be larger than 1e-5.
-        do_w_stacking: bool
-            If True, the full improved w-stacking algorithm is carried out,
-            otherwise the w values are assumed to be zero.
-        """
-
-        self._handle = None
-        mem_uvw = Mem(uvw)
-        mem_freq_hz = Mem(freq_hz)
-        mem_vis = Mem(vis)
-        mem_weight = Mem(weight)
-        mem_dirty_image = Mem(dirty_image)
-        error_status = Error()
-
-        # check types consistent here???
-
-        function_create = Lib.handle().sdp_deconvolution_msmfs_create_plan
-        function_create.restype = DeconvolverMsmfs.handle_type()
-        function_create.argtypes = [
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),  # 5
-            ctypes.c_double,
-            ctypes.c_double,
-            ctypes.c_double,
-            ctypes.c_double,
-            ctypes.c_double,  # 10
-            ctypes.c_bool,
-            Error.handle_type(),
-        ]
-        self._handle = function_create(
-            mem_uvw.handle(),
-            mem_freq_hz.handle(),
-            mem_vis.handle(),
-            mem_weight.handle(),
-            mem_dirty_image.handle(),
-            ctypes.c_double(pixel_size_x_rad),  # 5
-            ctypes.c_double(pixel_size_y_rad),
-            ctypes.c_double(epsilon),
-            ctypes.c_double(min_abs_w),
-            ctypes.c_double(max_abs_w),
-            ctypes.c_bool(do_w_stacking),  # 10
-            error_status.handle(),
-        )
-        error_status.check()
-
-    def __del__(self):
-        """Releases handle to the processing function."""
-        if self._handle:
-            function_free = Lib.handle().sdp_deconvolution_msmfs_free_plan
-            function_free.argtypes = [DeconvolverMsmfs.handle_type()]
-            function_free(self._handle)
-
-    def handle(self):
-        """Returns a handle to the wrapped processing function.
-
-        Use this handle when calling the function in the compiled library.
-
-        :return: Handle to wrapped function.
-        :rtype: ctypes.POINTER(FunctionExampleA.Handle)
-        """
-        return self._handle
-
-    @staticmethod
-    def handle_type():
-        """Static convenience method to return the ctypes handle type.
-
-        Use this when defining the list of argument types.
-
-        :return: Type of the function handle.
-        :rtype: ctypes.POINTER(DeconvolverMsmfs.Handle)
-        """
-        return ctypes.POINTER(DeconvolverMsmfs.Handle)
-
-    def grid_uvw_es_fft(self, uvw, freq_hz, vis, weight, dirty_image):
-        """Generate a dirty image from visibility data.
-
-        Parameters
-        ==========
-        uvw: as above.
-        freq_hz: as above.
-        vis: as above.
-        weight: as above.
-        dirty_image: as above.
-        """
-        if self._handle is None:
-            raise RuntimeError("Function plan not ready")
-
-        mem_uvw = Mem(uvw)
-        mem_freq_hz = Mem(freq_hz)
-        mem_vis = Mem(vis)
-        mem_weight = Mem(weight)
-        mem_dirty_image = Mem(dirty_image)
-        error_status = Error()
-        function_exec = Lib.handle().sdp_grid_uvw_es_fft
-        function_exec.argtypes = [
-            GridderUvwEsFft.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Error.handle_type(),
-        ]
-        function_exec(
-            self._handle,
-            mem_uvw.handle(),
-            mem_freq_hz.handle(),
-            mem_vis.handle(),
-            mem_weight.handle(),
-            mem_dirty_image.handle(),
-            error_status.handle(),
-        )
-        error_status.check()
-
-    def ifft_grid_uvw_es(self, uvw, freq_hz, vis, weight, dirty_image):
-        """Generate visibility data from a dirty image.
-
-        Parameters
-        ==========
-        uvw: as above.
-        freq_hz: as above.
-        vis: as above.
-        weight: as above.
-        dirty_image: as above.
-        """
-        if self._handle is None:
-            raise RuntimeError("Function plan not ready")
-
-        mem_uvw = Mem(uvw)
-        mem_freq_hz = Mem(freq_hz)
-        mem_vis = Mem(vis)
-        mem_weight = Mem(weight)
-        mem_dirty_image = Mem(dirty_image)
-        error_status = Error()
-        function_exec = Lib.handle().sdp_ifft_degrid_uvw_es
-        function_exec.argtypes = [
-            GridderUvwEsFft.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Error.handle_type(),
-        ]
-        function_exec(
-            self._handle,
-            mem_uvw.handle(),
-            mem_freq_hz.handle(),
-            mem_vis.handle(),
-            mem_weight.handle(),
-            mem_dirty_image.handle(),
-            error_status.handle(),
-        )
-        error_status.check()
+    :param dirty_moment_images: cupy.ndarray((num_taylor, dirty_moment_size,
+        dirty_moment_size), dtype=numpy.float32 or numpy.float64)
+        Taylor coefficient dirty images to be convolved.
+    :param psf_moment_images: cupy.ndarray((num_taylor, dirty_moment_size,
+        dirty_moment_size), dtype=numpy.float32 or numpy.float64)
+        Taylor coefficient PSF images to be convolved.
+    :param dirty_moment_size:  One dimensional size of image, assumed square.
+    :param num_scales:  Number of scales to use in MSMFS cleaning.
+    :param num_taylor:  Number of Taylor moments.
+    :param psf_moment_size:  One dimensional size of PSF, assumed square.
+    :param image_border:  Border around dirty moment images and PSFs to clip
+        when using convolved images or convolved PSFs.
+    :param convolution_accuracy:
+    :param clean_loop_gain:  Loop gain fraction of peak point to clean from
+        the peak each minor cycle.
+    :param max_gaussian_sources_host:  Upper bound on the number of gaussian
+        sources the list data structure will hold.
+    :param scale_bias_factor:  Bias multiplicative factor to favour cleaning
+        with smaller scales.
+    :param clean_threshold:  Set clean_threshold to 0 to disable checking
+        whether source to clean below cutoff threshold.
+    """
+    mem_dirty_moment_images = Mem(dirty_moment_images)
+    mem_psf_moment_images = Mem(psf_moment_images)
+    error_status = Error()
+    lib_perform_msmfs = Lib.handle().sdp_perform_msmfs
+    lib_perform_msmfs.argtypes = [
+        Mem.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_uint,
+        ctypes.c_uint,
+        ctypes.c_uint,  # 5
+        ctypes.c_uint,
+        ctypes.c_uint,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_uint,  # 10
+        ctypes.c_double,
+        ctypes.c_double,
+        Error.handle_type(),
+    ]
+    lib_perform_msmfs(
+        mem_dirty_moment_images.handle(),
+        mem_psf_moment_images.handle(),
+        ctypes.c_uint(dirty_moment_size),
+        ctypes.c_uint(num_scales),
+        ctypes.c_uint(num_taylor),  # 5
+        ctypes.c_uint(psf_moment_size),
+        ctypes.c_uint(image_border),
+        ctypes.c_double(convolution_accuracy),
+        ctypes.c_double(clean_loop_gain),
+        ctypes.c_uint(max_gaussian_sources_host),  # 10
+        ctypes.c_double(scale_bias_factor),
+        ctypes.c_double(clean_threshold),
+        error_status.handle(),
+    )
+    error_status.check()
