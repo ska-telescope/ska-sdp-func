@@ -107,7 +107,7 @@ __device__ PRECISION2 complex_multiply_by_neg_i(const PRECISION2 z)
 template<typename PRECISION2>
 __global__ void reset_gains
     (
-    PRECISION2 *gains, // complex gain for each receiver
+    PRECISION2 *gains, // output complex gain for each receiver
     const unsigned int num_receivers // total number of receivers
     )
 {
@@ -131,12 +131,12 @@ template __global__ void reset_gains<double2>(double2*, const unsigned int);
 template<typename VIS_PRECISION2, typename PRECISION2, typename PRECISION>
 __global__ void update_gain_calibration
     (
-    const VIS_PRECISION2 *vis_measured_array, // in array of measured visibilities
-    const VIS_PRECISION2 *vis_predicted_array, // in array of preducted visibilities
-    const PRECISION2 *gains_array, // out array of calculated complex gains
-    const uint2 *receiver_pairs, // in array giving receiver pair for each baseline
-    PRECISION *A_array, // inout 4N*4N Jacobian^transpose * Jacobian matrix 
-    PRECISION *Q_array, // inout 4N*1 Jacobian^transpose * Residuals matrix
+    const VIS_PRECISION2 *vis_measured_device, // input array of measured visibilities
+    const VIS_PRECISION2 *vis_predicted_device, // input array of preducted visibilities
+    const PRECISION2 *gains_device, // output array of calculated complex gains
+    const uint2 *receiver_pairs_device, // input array giving receiver pair for each baseline
+    PRECISION *jacobtjacob, // inout 4N*4N Jacobian^transpose * Jacobian matrix 
+    PRECISION *jacobtresidual, // inout 4N*1 Jacobian^transpose * Residuals matrix
     const unsigned int num_recievers, // number of receivers
     const unsigned int num_baselines // number of baselines
     )
@@ -145,12 +145,12 @@ __global__ void update_gain_calibration
     if(index >= num_baselines)
         return;
     PRECISION2 vis_measured;
-    vis_measured.x = (PRECISION)vis_measured_array[index].x; vis_measured.y = (PRECISION)vis_measured_array[index].y;
+    vis_measured.x = (PRECISION)vis_measured_device[index].x; vis_measured.y = (PRECISION)vis_measured_device[index].y;
     PRECISION2 vis_predicted;
-    vis_predicted.x = (PRECISION)vis_predicted_array[index].x; vis_predicted.y = (PRECISION)vis_predicted_array[index].y;
-    uint2 antennas = receiver_pairs[index];
-    PRECISION2 gainA = gains_array[antennas.x];
-    PRECISION2 gainB_conjugate = complex_conjugate(gains_array[antennas.y]);
+    vis_predicted.x = (PRECISION)vis_predicted_device[index].x; vis_predicted.y = (PRECISION)vis_predicted_device[index].y;
+    uint2 antennas = receiver_pairs_device[index];
+    PRECISION2 gainA = gains_device[antennas.x];
+    PRECISION2 gainB_conjugate = complex_conjugate(gains_device[antennas.y]);
 
     // note do not treat residual as a complex but as two reals
     PRECISION2 residual = complex_subtract(vis_measured, complex_multiply(vis_predicted,complex_multiply(gainA, gainB_conjugate)));
@@ -163,13 +163,13 @@ __global__ void update_gain_calibration
 
     // calculate Q[2a],Q[2a+1],Q[2b],Q[2b+1] arrays in this order and note need atomic update 
     double qValue = part_respect_to_real_gain_a.x * residual.x + part_respect_to_real_gain_a.y * residual.y;
-    atomicAdd(&(Q_array[2*antennas.x]), qValue);
+    atomicAdd(&(jacobtresidual[2*antennas.x]), qValue);
     qValue = part_respect_to_imag_gain_a.x * residual.x + part_respect_to_imag_gain_a.y * residual.y;
-    atomicAdd(&(Q_array[2*antennas.x+1]), qValue);
+    atomicAdd(&(jacobtresidual[2*antennas.x+1]), qValue);
     qValue = part_respect_to_real_gain_b.x * residual.x + part_respect_to_real_gain_b.y * residual.y;
-    atomicAdd(&(Q_array[2*antennas.y]), qValue);
+    atomicAdd(&(jacobtresidual[2*antennas.y]), qValue);
     qValue = part_respect_to_imag_gain_b.x * residual.x + part_respect_to_imag_gain_b.y * residual.y;
-    atomicAdd(&(Q_array[2*antennas.y+1]), qValue);
+    atomicAdd(&(jacobtresidual[2*antennas.y+1]), qValue);
 
     // calculate Jacobian product on A matrix at [2a,2a], [2a,2a+1], [2a,2b], [2a,2b+1]
     uint num_cols = 2*num_recievers;
@@ -177,100 +177,100 @@ __global__ void update_gain_calibration
     double aValue = part_respect_to_real_gain_a.x * part_respect_to_real_gain_a.x
         + part_respect_to_real_gain_a.y * part_respect_to_real_gain_a.y;
     uint aIndex = 2*antennas.x*num_cols + 2*antennas.x;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2a,2a+1
     aValue = part_respect_to_real_gain_a.x * part_respect_to_imag_gain_a.x
         + part_respect_to_real_gain_a.y * part_respect_to_imag_gain_a.y; 
     aIndex = 2*antennas.x*num_cols + 2*antennas.x+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2a,2b
     aValue = part_respect_to_real_gain_a.x * part_respect_to_real_gain_b.x
         + part_respect_to_real_gain_a.y * part_respect_to_real_gain_b.y;
     aIndex = 2*antennas.x*num_cols + 2*antennas.y;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2a,2b+1
     aValue = part_respect_to_real_gain_a.x * part_respect_to_imag_gain_b.x
         + part_respect_to_real_gain_a.y * part_respect_to_imag_gain_b.y;
     aIndex = 2*antennas.x*num_cols + 2*antennas.y+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // calculate Jacobian product on A matrix at [2a+1,2a], [2a+1,2a+1], [2a+1,2b], [2a+1,2b+1]
     // 2a+1, 2a
     aValue = part_respect_to_imag_gain_a.x * part_respect_to_real_gain_a.x
         + part_respect_to_imag_gain_a.y * part_respect_to_real_gain_a.y; 
     aIndex = (2*antennas.x+1)*num_cols + 2*antennas.x;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2a+1, 2a+1
     aValue = part_respect_to_imag_gain_a.x * part_respect_to_imag_gain_a.x
         + part_respect_to_imag_gain_a.y * part_respect_to_imag_gain_a.y; 
     aIndex = (2*antennas.x+1)*num_cols + 2*antennas.x+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2a+1, 2b
     aValue = part_respect_to_imag_gain_a.x * part_respect_to_real_gain_b.x
         + part_respect_to_imag_gain_a.y * part_respect_to_real_gain_b.y;
     aIndex = (2*antennas.x+1)*num_cols + 2*antennas.y;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2a+1, 2b+1
     aValue = part_respect_to_imag_gain_a.x * part_respect_to_imag_gain_b.x
         + part_respect_to_imag_gain_a.y * part_respect_to_imag_gain_b.y;
     aIndex = (2*antennas.x+1)*num_cols + 2*antennas.y+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // calculate Jacobian product on A matrix at [2b,2a], [2b,2a+1], [2b,2b], [2b,2b+1]
     // 2b, 2a
     aValue = part_respect_to_real_gain_b.x * part_respect_to_real_gain_a.x
         + part_respect_to_real_gain_b.y * part_respect_to_real_gain_a.y; 
     aIndex = 2*antennas.y*num_cols + 2*antennas.x;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2b, 2a+1
     aValue = part_respect_to_real_gain_b.x * part_respect_to_imag_gain_a.x
         + part_respect_to_real_gain_b.y * part_respect_to_imag_gain_a.y;
     aIndex = 2*antennas.y*num_cols + 2*antennas.x+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 	
     // 2b, 2b
     aValue = part_respect_to_real_gain_b.x * part_respect_to_real_gain_b.x
         + part_respect_to_real_gain_b.y * part_respect_to_real_gain_b.y;
     aIndex = 2*antennas.y*num_cols + 2*antennas.y;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2b, 2b+1
     aValue = part_respect_to_real_gain_b.x * part_respect_to_imag_gain_b.x
         + part_respect_to_real_gain_b.y * part_respect_to_imag_gain_b.y;
     aIndex = 2*antennas.y*num_cols + 2*antennas.y+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // calculate Jacobian product on A matrix at [2b+1,2a], [2b+1,2a+1], [2b+1,2b], [2b+1,2b+1]
     // 2b+1, 2a
     aValue =  part_respect_to_imag_gain_b.x * part_respect_to_real_gain_a.x
         + part_respect_to_imag_gain_b.y * part_respect_to_real_gain_a.y; 
     aIndex = (2*antennas.y+1)*num_cols + 2*antennas.x;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2b+1, 2a+1
     aValue =  part_respect_to_imag_gain_b.x * part_respect_to_imag_gain_a.x
         + part_respect_to_imag_gain_b.y * part_respect_to_imag_gain_a.y;
     aIndex = (2*antennas.y+1)*num_cols + 2*antennas.x+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2b+1, 2b
     aValue =  part_respect_to_imag_gain_b.x * part_respect_to_real_gain_b.x
         + part_respect_to_imag_gain_b.y * part_respect_to_real_gain_b.y;
     aIndex = (2*antennas.y+1)*num_cols + 2*antennas.y;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 
     // 2b+1, 2b+1
     aValue = part_respect_to_imag_gain_b.x * part_respect_to_imag_gain_b.x
         + part_respect_to_imag_gain_b.y * part_respect_to_imag_gain_b.y; 
     aIndex = (2*antennas.y+1)*num_cols + 2*antennas.y+1;
-    atomicAdd(&(A_array[aIndex]), aValue);
+    atomicAdd(&(jacobtjacob[aIndex]), aValue);
 }
 
 template __global__ void update_gain_calibration<half2, float2, float>
@@ -283,29 +283,30 @@ template __global__ void update_gain_calibration<float2, double2, double>
 
 /*****************************************************************************
  * Calculates the matrix product d_S inverse * d_U transpose * d_Q
- * Parallelised so each CUDA thread handles a single entry in the product
+ * Parallelised so each CUDA thread handles one of the 2N entries in the product
+ * where N is the number of receivers
  *****************************************************************************/
 template<typename PRECISION>
 __global__ void calculate_suq_product
     (
-    const PRECISION *d_S, // in array for the diagonal matrix S in the SVD of A
-    const PRECISION *d_U, // in array for the unitary matrix U in the SVD of A
-    const PRECISION *d_Q, // in array for the 4N*1 Jacobian^transpose * Residuals matrix
-    PRECISION *d_SUQ, // out array for the resulting product
-    const unsigned int num_entries // total number of entries in the product
+    const PRECISION *diagonalS, // input 2N*1 array for the diagonal matrix S in the SVD of A
+    const PRECISION *unitaryU, // input 2N*2N array for the unitary matrix U in the SVD of A
+    const PRECISION *jacobtresidual, // input 2Nx1 array Q for the 4N*1 Jacobian^transpose * Residuals matrix
+    PRECISION *diagonalSUQ, // output 2Nx1 array for the resulting SUQ product
+    const unsigned int num_entries // total number 2N of entries in the product
     )
 {
-    //qus 2Nx1, q = 2Nx1 , s=2Nx1, u=2N*2N
     const int index = threadIdx.x + blockDim.x * blockIdx.x;
     if(index >= num_entries)
         return;
-    PRECISION s_inverse = (abs(d_S[index]) > 1E-6) ? 1.0/d_S[index] : 0.0;
-    PRECISION product = 0;
+    PRECISION s_inverse = (abs(diagonalS[index]) > 1E-6) ? 1.0/diagonalS[index] : 0.0;
+    // form the sum of products of entries down column index of unitaryU (along row of transpose) with entries down column of jacobtresidual
+    PRECISION sum_product = 0;
     for (int i=0; i<num_entries; i++)
     {
-        product += d_Q[i] * d_U[index*num_entries + i];
+        sum_product += unitaryU[index*num_entries + i] * jacobtresidual[i];
     }
-    d_SUQ[index] = product * s_inverse;
+    diagonalSUQ[index] = s_inverse * sum_product;
 }
 
 template __global__ void calculate_suq_product<float>
@@ -315,17 +316,18 @@ template __global__ void calculate_suq_product<double>
 
 
 /*****************************************************************************
- * Calculates the matrix Delta as the product of d_V transpose * d_SUQ
+ * Calculates the matrix Delta as the product of d_V transpose * diagonalSUQ
  * and adds it to the gains
- * Parallelised so each CUDA thread handles a single gain
+ * Parallelised so each CUDA thread handles the two gains for one of the N antennas
  *****************************************************************************/
 template<typename PRECISION, typename PRECISION2>
 __global__ void calculate_delta_update_gains
-    (const PRECISION *d_V, // NOTE FINISH COMMENTING HERE
-    const PRECISION *d_SUQ,
-    PRECISION2 *d_gains,
-    const unsigned int num_recievers, // number of receivers
-    const unsigned int num_cols
+    (
+    const PRECISION *unitaryV, // input array for the unitary V matrix in the SVD of A
+    const PRECISION *diagonalSUQ, // input 2Nx1 array for the SUQ matrix product
+    PRECISION2 *gains_device, // inout array of antenna gains
+    const unsigned int num_recievers, // number N of receivers
+    const unsigned int num_entries // total number 2N of gain entries
     )
 {
     const int index = threadIdx.x + blockDim.x * blockIdx.x ;
@@ -334,13 +336,13 @@ __global__ void calculate_delta_update_gains
     PRECISION delta_top = 0;
     PRECISION delta_bottom = 0;
     int vindex = index * 2;
-    for (int i=0;i<num_cols; ++i)
+    for (int i=0;i<num_entries; ++i)
     {
-        delta_top += d_SUQ[i] * d_V[vindex*num_cols + i];//[i*num_cols + vindex];
-        delta_bottom += d_SUQ[i] * d_V[(vindex+1)*num_cols + i];//[i*num_cols + vindex+1];
+        delta_top += diagonalSUQ[i] * unitaryV[vindex*num_entries + i];
+        delta_bottom += diagonalSUQ[i] * unitaryV[(vindex+1)*num_entries + i];
     }
-    d_gains[index].x += delta_top;
-    d_gains[index].y += delta_bottom; 
+    gains_device[index].x += delta_top;
+    gains_device[index].y += delta_bottom; 
 }
 
 template __global__ void calculate_delta_update_gains<float, float2>
