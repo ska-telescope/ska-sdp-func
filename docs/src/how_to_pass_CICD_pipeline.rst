@@ -4,9 +4,9 @@
    <br /><br />
 
 
-**********************************
-What to do to pass CI/CD pipeline?
-**********************************
+***************************
+How to pass the CI pipeline
+***************************
 
 This guide describes what stages are performed by the CI\CD pipeline and 
 what steps you should take to catch any errors that could cause the pipeline
@@ -36,10 +36,11 @@ to fail.
    
    .. code-block:: bash
 
+      apt-get -y install doxygen
       pip install sphinx 
       pip install breathe 
       pip install sphinx-rtd-theme
-      ls docs
+      cd docs
       make html
    
    - Check that your processing function appears in the documentation at the correct place and that all parameters are mentioned and described.
@@ -58,6 +59,9 @@ to fail.
    .. code-block:: bash
 
       pip3 install black isort lint-python 
-      black --line-length 79 file.py
+      isort --profile black -w 79  src/ tests/  
+      black --line-length 79  src/ tests/  
+      flake8 src/ tests/  
+      pylint src/ tests/
    
 Removing all errors from these stages should get you through CI/CD pipeline.
