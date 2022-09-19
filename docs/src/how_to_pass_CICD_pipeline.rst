@@ -58,7 +58,7 @@ to fail.
    
    .. code-block:: bash
 
-      pip3 install black isort lint-python 
+      pip3 install black isort flake8 pylint 
       isort --profile black -w 79  src/ tests/  
       black --line-length 79  src/ tests/  
       flake8 src/ tests/  
