@@ -12,6 +12,7 @@ SDP Processing Function Library
   :caption: Developer guide
   :maxdepth: 1
 
+  code_style_guidelines
   adding_new_functions
   how_to_pass_CICD_pipeline
   how_to_contribute_to_PFL
