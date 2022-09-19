@@ -20,7 +20,7 @@ We strongly suggest the following workflow:
    
 2. Any branch should not live longer than two days. Plan work accordingly. We suggest the following:
    
-   - Add required files (documentation, header files, source files, etc.) and modify CMakelist and documentation list. 
+   - Add required files (documentation, header files, source files, etc.) and modify CMakelist and documentation list. Add "Work in progress" to the documentation of the processing function.
    
    - Add interfaces using processing function data models.
    
@@ -32,7 +32,7 @@ We strongly suggest the following workflow:
    
    - Add documentation
    
-3. Contain an unfinished processing function, so it does not cause trouble for users. You can contain an incomplete processing function by:
+3. Contain an unfinished processing function, so it does not cause trouble for users. Mark the processing function as "Work in progress" in the documentation to indicate that the function as not ready to be used. You can contain an incomplete processing function by:
    
    - not creating a public interface, 
    
@@ -40,7 +40,7 @@ We strongly suggest the following workflow:
    
    - instead of an error, issue a warning, but the processing function runs through.
    
-4) Contact maintainers for code review only with substantial changes outside of your function, or if you are unsure how to use, for example, data models etc., or if you are unsure if your code is following the philosophy of the processing function library. All code reviews are in the form of the pair programming session.
+4) Create merge request and contact maintainers for code review when the code is ready, relevant tests are passing and the CI/CD pipeline. Code reviews may by in the form of the pair programming session.
    
 5) When your code breaks any test (not just yours) or the CI/CD pipeline after the merge to the main, you are responsible for fixing it. 
    
