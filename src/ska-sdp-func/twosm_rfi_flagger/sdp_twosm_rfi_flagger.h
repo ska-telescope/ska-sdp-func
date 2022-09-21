@@ -1,10 +1,10 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#ifndef SKA_SDP_PROC_FUNC_RFI_FLAGGER_H_
-#define SKA_SDP_PROC_FUNC_RFI_FLAGGER_H_
+#ifndef SDP_FUNC_SDP_TWOSM_RFI_FLAGGER_H_
+#define SDP_FUNC_SDP_TWOSM_RFI_FLAGGER_H_
 
 /**
- * @file sdp_rfi_flagger.h
+ * @file sdp_2sm_rfi_flagger.h
  */
 
 #include "ska-sdp-func/utility/sdp_mem.h"
@@ -14,12 +14,12 @@ extern "C" {
 #endif
 
 /**
- * @defgroup rfi_flag_func
+ * @defgroup twosm_rfi_flag_func
  * @{
  */
 
 /**
- * @brief Basic RFI flagger based on sum-threshold algorithm.
+ * @brief Basic RFI flagger based on two-state machine model.
  *
  * Array dimensions are as follows, from slowest to fastest varying:
  *
@@ -31,28 +31,23 @@ extern "C" {
  *
  * - @p flags is 4D and integer-valued, with the same shape as @p vis .
  *
- * - @p max_sequence_length is the maximum length of the sum performed
- *   by the algorithm.
- *
  * @param vis Complex valued visibilities. Dimensions as above.
- * @param thresholds List of thresholds, one for each sequence length.
+ * @param thresholds thresholds for time and frequency domains.
+ * @param antennas indices of antennas (autocorrelation baselines) in the list of baselines
  * @param flags Output flags. Dimensions as above.
- * @param max_sequence_length Maximum length of the partial sum.
  * @param status Error status.
  */
-void sdp_sum_threshold_rfi_flagger(
+void sdp_twosm_algo_flagger(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
+        const sdp_Mem* antennas,
         sdp_Mem* flags,
-        const int64_t max_sequence_length,
         sdp_Error* status);
 
-/** @} */ /* End group rfi_flag_func. */
+/** @} */ /* End group twosm_rfi_flag_func. */
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
-

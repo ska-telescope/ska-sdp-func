@@ -31,6 +31,7 @@ SDP Processing Function Library
   proc_func_function_example_a
   proc_func_vector
   proc_func_degridding
+  proc_func_gridder_uvw_es_fft
 
 
 Indices and tables
