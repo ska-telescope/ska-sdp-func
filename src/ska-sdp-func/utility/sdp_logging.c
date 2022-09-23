@@ -6,8 +6,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "sdp_logging.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
-// #include "ska-sdp-func/utility/sdp_logging.h"
+// #include "sdp_logging.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 static sdp_LogLevel log_filter = SDP_LOG_LEVEL_UNDEF;
 

@@ -8,8 +8,8 @@
  */
 
 #include <stdint.h>
-#include "sdp_errors.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
-// #include "ska-sdp-func/utility/sdp_errors.h"
+// #include "sdp_errors.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
+#include "ska-sdp-func/utility/sdp_errors.h"
 
 #ifdef __cplusplus
 extern "C" {

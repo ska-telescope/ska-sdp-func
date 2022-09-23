@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "sdp_mem.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
-#include "sdp_logging.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
-// #include "ska-sdp-func/utility/sdp_mem.h"
-// #include "ska-sdp-func/utility/sdp_logging.h"
+// #include "sdp_mem.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
+// #include "sdp_logging.h" // NOTE TEMPORARY CHANGE UNTIL CMAKE SPFL BUILD REORGANISED
+#include "ska-sdp-func/utility/sdp_mem.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cuda_runtime_api.h>

@@ -158,3 +158,5 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/src/ska-sdp-func"
     COMPONENT headers
     FILES_MATCHING REGEX "(.*h)|(.*hpp)"
 )
+
+add_subdirectory(src/ska-sdp-func/deconvolution_msmfs) # Added by aensor on 23 September 2022
