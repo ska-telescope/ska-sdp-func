@@ -199,6 +199,30 @@ src/Gaincalfunctionsdevice.cu.s:
 	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionsdevice.cu.s
 .PHONY : src/Gaincalfunctionsdevice.cu.s
 
+src/Gaincalfunctionshost.o: src/Gaincalfunctionshost.cu.o
+.PHONY : src/Gaincalfunctionshost.o
+
+# target to build an object file
+src/Gaincalfunctionshost.cu.o:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o
+.PHONY : src/Gaincalfunctionshost.cu.o
+
+src/Gaincalfunctionshost.i: src/Gaincalfunctionshost.cu.i
+.PHONY : src/Gaincalfunctionshost.i
+
+# target to preprocess a source file
+src/Gaincalfunctionshost.cu.i:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.i
+.PHONY : src/Gaincalfunctionshost.cu.i
+
+src/Gaincalfunctionshost.s: src/Gaincalfunctionshost.cu.s
+.PHONY : src/Gaincalfunctionshost.s
+
+# target to generate assembly for a file
+src/Gaincalfunctionshost.cu.s:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.s
+.PHONY : src/Gaincalfunctionshost.cu.s
+
 src/Gaincallogger.o: src/Gaincallogger.c.o
 .PHONY : src/Gaincallogger.o
 
@@ -239,6 +263,9 @@ help:
 	@echo "... src/Gaincalfunctionsdevice.o"
 	@echo "... src/Gaincalfunctionsdevice.i"
 	@echo "... src/Gaincalfunctionsdevice.s"
+	@echo "... src/Gaincalfunctionshost.o"
+	@echo "... src/Gaincalfunctionshost.i"
+	@echo "... src/Gaincalfunctionshost.s"
 	@echo "... src/Gaincallogger.o"
 	@echo "... src/Gaincallogger.i"
 	@echo "... src/Gaincallogger.s"

@@ -15,11 +15,11 @@ message(STATUS "CUSOLVER_LIBRARY is ${CUSOLVER_LIBRARY}")
 set(gain_calibration_cuda_source_file_list 
     src/Gaincallogger.c
     src/Gaincalfunctionsdevice.cu
-#    src/Gaincalfunctionshost.cu
+    src/Gaincalfunctionshost.cu
 #    src/Gaincalsimpletest.cu
     include/Gaincallogger.h
     include/Gaincalfunctionsdevice.h
-#    include/Gaincalfunctionshost.h
+    include/Gaincalfunctionshost.h
 #    include/Gaincalsimpletest.h
     )
 
@@ -31,7 +31,7 @@ target_sources(sdp_gain_calibration_svd_lib
     PRIVATE ${gain_calibration_cuda_source_file_list}
     PUBLIC FILE_SET HEADERS
     BASE_DIRS ${PROJECT_SOURCE_DIR}
-    FILES include/Gaincallogger.h #             include/Gaincalfunctionshost.h include/Gaincalsimpletest.h
+    FILES include/Gaincallogger.h include/Gaincalfunctionshost.h #             include/Gaincalsimpletest.h
     )
 set_target_properties(sdp_gain_calibration_svd_lib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(sdp_gain_calibration_svd_lib PROPERTIES CUDA_ARCHITECTURES native)

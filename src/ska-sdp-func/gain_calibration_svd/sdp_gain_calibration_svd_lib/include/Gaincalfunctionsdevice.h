@@ -66,9 +66,9 @@ __global__ void reset_gains
  * @param vis_predicted_device Input array of preducted visibilities
  * @param gains_device Output array of calculated complex gains
  * @param receiver_pairs_device Input array giving receiver pair for each baseline
- * @param jacobtjacob Inout 4N*4N Jacobian^transpose * Jacobian matrix 
- * @param jacobtresidual Inout 4N*1 Jacobian^transpose * Residuals matrix
- * @param num_recievers Number of receivers
+ * @param jacobtjacob Inout 2Nx2N Jacobian^transpose * Jacobian matrix 
+ * @param jacobtresidual Inout 2Nx1 Jacobian^transpose * Residuals matrix
+ * @param num_receivers Number of receivers
  * @param num_baselines Number of baselines
  *****************************************************************************/
 template<typename VIS_PRECISION2, typename PRECISION2, typename PRECISION>
@@ -80,7 +80,7 @@ __global__ void update_gain_calibration
     const uint2 *receiver_pairs_device,
     PRECISION *jacobtjacob,
     PRECISION *jacobtresidual,
-    const unsigned int num_recievers,
+    const unsigned int num_receivers,
     const unsigned int num_baselines
     );
 
@@ -90,41 +90,41 @@ __global__ void update_gain_calibration
  *
  * Parallelised so each CUDA thread handles one of the 2N entries in the product
  * where N is the number of receivers
- * @param diagonalS Input 2N*1 array for the diagonal matrix S in the SVD of A
- * @param unitaryU Input 2N*2N array for the unitary matrix U in the SVD of A
+ * @param diagonalS Input 2N array for the diagonal matrix S in the SVD of Jacobian^transpose * Jacobian matrix
+ * @param unitaryU Input 2Nx2N array for the unitary matrix U in the SVD of Jacobian^transpose * Jacobian matrix
  * @param jacobtresidual Input 2Nx1 array Q for the 4N*1 Jacobian^transpose * Residuals matrix
- * @param diagonalSUQ Output 2Nx1 array for the resulting SUQ product
+ * @param productSUJR Output 2Nx1 array for the resulting S*U*JR product
  * @param num_entries Total number 2N of entries in the matrix product
  *****************************************************************************/
 template<typename PRECISION>
-__global__ void calculate_suq_product
+__global__ void calculate_product_sujr
     (
     const PRECISION *diagonalS,
     const PRECISION *unitaryU,
     const PRECISION *jacobtresidual,
-    PRECISION *diagonalSUQ,
+    PRECISION *productSUJR,
     const unsigned int num_entries
     );
 
 
 /*****************************************************************************
- * @brief Calculates the matrix Delta as the product of unitaryV transpose * diagonalSUQ
+ * @brief Calculates the matrix Delta as the product of unitaryV transpose * productSUJR
  * and adds it to the gains
  *
  * Parallelised so each CUDA thread handles the two gains for one of the N antennas
- * @param unitaryV Input array for the unitary V matrix in the SVD of A
- * @param diagonalSUQ Input 2Nx1 array for the SUQ matrix product
+ * @param unitaryV Input array for the unitary V matrix in the SVD of Jacobian^transpose * Jacobian matrix
+ * @param productSUJR Input 2Nx1 array for the SUQ matrix product
  * @param gains_device Inout array of antenna gains
- * @param num_recievers Number N of receivers
+ * @param num_receivers Number N of receivers
  * @param num_entries Total number 2N of gain entries
  *****************************************************************************/
 template<typename PRECISION, typename PRECISION2>
 __global__ void calculate_delta_update_gains
     (
     const PRECISION *unitaryV, // input array for the unitary V matrix in the SVD of A
-    const PRECISION *diagonalSUQ, // input 2Nx1 array for the SUQ matrix product
+    const PRECISION *productSUJR, // input 2Nx1 array for the SUQ matrix product
     PRECISION2 *gains_device, // inout array of antenna gains
-    const unsigned int num_recievers, // number N of receivers
+    const unsigned int num_receivers, // number N of receivers
     const unsigned int num_entries // total number 2N of gain entries
     );
 
