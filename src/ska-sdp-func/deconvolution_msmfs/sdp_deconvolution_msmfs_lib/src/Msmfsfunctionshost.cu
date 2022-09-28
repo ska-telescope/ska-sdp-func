@@ -653,6 +653,7 @@ void calculate_inverse_hessian_matrices
         }
     }
     // clean up resources used during cusolve
+    CUDA_CHECK_RETURN(cudaFree(cusolver_info_device));
     CUDA_CHECK_RETURN(cudaFree(working_space_device));
     CUDA_CHECK_RETURN(cudaFree(pivot_rows_device));
     if (cusolver != NULL)
