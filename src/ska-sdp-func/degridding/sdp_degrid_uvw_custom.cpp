@@ -29,7 +29,9 @@ static inline void calculate_coordinates(
         int *grid_offset, // offset in the image subgrid
         int *sub_offset_x, //
         int *sub_offset_y, // fractional coordinates
-        int *sub_offset_z //
+        int *sub_offset_z, //
+        int *grid_coord_x, // grid coordinates
+        int *grid_coord_y  // 
 )
 {
     // u or x coordinate
@@ -55,6 +57,8 @@ static inline void calculate_coordinates(
     *sub_offset_x = kernel_stride * frac_x;
     *sub_offset_y = kernel_stride * frac_y;
     *sub_offset_z = wkernel_stride * frac_z;
+    *grid_coord_x = home_x;
+    *grid_coord_y = home_y;
 }
 
 
@@ -98,6 +102,7 @@ static void degrid_uvw_custom(
 
                     int grid_offset = 0;
                     int sub_offset_x = 0, sub_offset_y = 0, sub_offset_z = 0;
+                    int grid_coord_x = 0, grid_coord_y = 0;
                     calculate_coordinates(
                             x_size,
                             1,
@@ -115,33 +120,41 @@ static void degrid_uvw_custom(
                             &grid_offset,
                             &sub_offset_x,
                             &sub_offset_y,
-                            &sub_offset_z
+                            &sub_offset_z,
+                            &grid_coord_x,
+                            &grid_coord_y
                     );
-
-                    std::complex<VIS_TYPE> vis_local(0, 0);
-                    for (int z = 0; z < w_kernel_stride_in_elements; z++)
+                    if(
+                        grid_coord_x > uv_kernel_stride_in_elements/2 &&
+                        grid_coord_x < grid_size - v_kernel_stride_in_elements/2 &&
+                        grid_coord_y > uv_kernel_stride_in_elements/2 &&
+                        grid_coord_y < grid_size - v_kernel_stride_in_elements/2) 
                     {
-                        std::complex<VIS_TYPE> visz(0, 0);
-                        for (int y = 0; y < uv_kernel_stride_in_elements; y++)
+                        std::complex<VIS_TYPE> vis_local(0, 0);
+                        for (int z = 0; z < w_kernel_stride_in_elements; z++)
                         {
-                            std::complex<VIS_TYPE> visy(0, 0);
-                            for (int x = 0; x < uv_kernel_stride_in_elements; x++)
+                            std::complex<VIS_TYPE> visz(0, 0);
+                            for (int y = 0; y < uv_kernel_stride_in_elements; y++)
                             {
-                                const std::complex<VIS_TYPE> grid_value = grid[
-                                        z * x_size * y_size + grid_offset +
-                                        y * y_size + x];
-                                visy += uv_kernel[sub_offset_x + x] * grid_value;
+                                std::complex<VIS_TYPE> visy(0, 0);
+                                for (int x = 0; x < uv_kernel_stride_in_elements; x++)
+                                {
+                                    const std::complex<VIS_TYPE> grid_value = grid[
+                                            z * x_size * y_size + grid_offset +
+                                            y * y_size + x];
+                                    visy += uv_kernel[sub_offset_x + x] * grid_value;
+                                }
+                                visz += uv_kernel[sub_offset_y + y] * visy;
                             }
-                            visz += uv_kernel[sub_offset_y + y] * visy;
+                            vis_local += w_kernel[sub_offset_z + z] * visz;
                         }
-                        vis_local += w_kernel[sub_offset_z + z] * visz;
-                    }
-                    if (conjugate) vis_local = std::conj(vis_local);
+                        if (conjugate) vis_local = std::conj(vis_local);
 
-                    const unsigned int i_out = INDEX_4D(
-                            num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
-                    vis[i_out] = vis_local;
+                        const unsigned int i_out = INDEX_4D(
+                                num_times, num_baselines, num_channels, num_pols,
+                                i_time, i_baseline, i_channel, i_pol);
+                        vis[i_out] = vis_local;
+                    }
                 }
             }
         }

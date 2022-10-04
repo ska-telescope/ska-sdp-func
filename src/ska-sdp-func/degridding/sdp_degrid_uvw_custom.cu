@@ -25,7 +25,9 @@ __device__ __inline__ void calculate_coordinates(
         int *grid_offset, // offset in the image subgrid
         int *sub_offset_x, //
         int *sub_offset_y, // fractional coordinates
-        int *sub_offset_z //
+        int *sub_offset_z, //
+        int *grid_coord_x,
+        int *grid_coord_y
 )
 {
     // u or x coordinate
@@ -53,6 +55,8 @@ __device__ __inline__ void calculate_coordinates(
     *sub_offset_x = kernel_stride * frac_x;
     *sub_offset_y = kernel_stride * frac_y;
     *sub_offset_z = wkernel_stride * frac_z;
+    *grid_coord_x = home_x;
+    *grid_coord_y = home_y;
 }
 
 template<typename VIS_TYPE2>
@@ -101,6 +105,7 @@ __global__ void degrid_uvw_custom(
 
         int grid_offset = 0;
         int sub_offset_x = 0, sub_offset_y = 0, sub_offset_z = 0;
+        int grid_coord_x = 0, grid_coord_y = 0;
         calculate_coordinates(
                 x_size,
                 1,
@@ -118,35 +123,45 @@ __global__ void degrid_uvw_custom(
                 &grid_offset,
                 &sub_offset_x,
                 &sub_offset_y,
-                &sub_offset_z
+                &sub_offset_z,
+                &grid_coord_x,
+                &grid_coord_y
         );
-
-        VIS_TYPE2 vis_local = {0, 0};
-        for (int z = 0; z < w_kernel_stride_in_elements; z++)
+        
+        if(
+            grid_coord_x > uv_kernel_stride_in_elements/2 &&
+            grid_coord_x < grid_size - v_kernel_stride_in_elements/2 &&
+            grid_coord_y > uv_kernel_stride_in_elements/2 &&
+            grid_coord_y < grid_size - v_kernel_stride_in_elements/2)
         {
+
+            VIS_TYPE2 vis_local = {0, 0};
+            for (int z = 0; z < w_kernel_stride_in_elements; z++)
+            {
                 VIS_TYPE2 visz = {0, 0};
                 for (int y = 0; y < uv_kernel_stride_in_elements; y++)
                 {
-                VIS_TYPE2 visy = {0, 0};
-                for (int x = 0; x < uv_kernel_stride_in_elements; x++)
-                {
-                        const VIS_TYPE2 grid_value = grid[
-                                z * x_size * y_size + grid_offset + y * y_size + x];
-                        visy.x += uv_kernel[sub_offset_x + x] * grid_value.x;
-                        visy.y += uv_kernel[sub_offset_x + x] * grid_value.y;
-                }
-                visz.x += uv_kernel[sub_offset_y + y] * visy.x;
-                visz.y += uv_kernel[sub_offset_y + y] * visy.y;
+                    VIS_TYPE2 visy = {0, 0};
+                    for (int x = 0; x < uv_kernel_stride_in_elements; x++)
+                    {
+                            const VIS_TYPE2 grid_value = grid[
+                                    z * x_size * y_size + grid_offset + y * y_size + x];
+                            visy.x += uv_kernel[sub_offset_x + x] * grid_value.x;
+                            visy.y += uv_kernel[sub_offset_x + x] * grid_value.y;
+                    }
+                    visz.x += uv_kernel[sub_offset_y + y] * visy.x;
+                    visz.y += uv_kernel[sub_offset_y + y] * visy.y;
                 }
                 vis_local.x += w_kernel[sub_offset_z + z] * visz.x;
                 vis_local.y += w_kernel[sub_offset_z + z] * visz.y;
-        }
-        if (conjugate) vis_local.y = -vis_local.y;
+            }
+            if (conjugate) vis_local.y = -vis_local.y;
 
-        const unsigned int i_out = INDEX_4D(
-                num_times, num_baselines, num_channels, num_pols,
-                i_time, i_baseline, i_channel, i_pol);
-        vis[i_out] = vis_local;
+            const unsigned int i_out = INDEX_4D(
+                    num_times, num_baselines, num_channels, num_pols,
+                    i_time, i_baseline, i_channel, i_pol);
+            vis[i_out] = vis_local;
+        }
     }
 }
 
