@@ -5,6 +5,10 @@ description = "SKA SDP Processing Function Library"
 authors = ["The SKA SDP Processing Function Library Developers"]
 license = "BSD-3-Clause"
 
+[tool.poetry.dependencies]
+python = "^3.7"
+numpy = "^1.7.0"
+
 [tool.poetry.dev-dependencies]
 black = "^22.3.0"
 pylint = "^2.8.2"
