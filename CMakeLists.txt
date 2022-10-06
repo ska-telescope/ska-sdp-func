@@ -2,47 +2,7 @@ cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 if (APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
 endif()
-project(SDP_FUNC CXX C)
-
-# Library name.
-set(libname ska_sdp_func)
-
-# List of C and C++ source files.
-set(${libname}_SRC
-    src/ska-sdp-func/rfi_flagger/sdp_rfi_flagger.cpp
-    src/ska-sdp-func/dft/sdp_dft.cpp
-    src/ska-sdp-func/fft/sdp_fft.cpp
-    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cpp
-    src/ska-sdp-func/twosm_rfi_flagger/sdp_twosm_rfi_flagger.cpp
-    src/ska-sdp-func/vector/sdp_vector_add.cpp
-    src/ska-sdp-func/function_example_a/sdp_function_example_a.cpp
-    src/ska-sdp-func/utility/sdp_device_wrapper.cpp
-    src/ska-sdp-func/utility/sdp_logging.c
-    src/ska-sdp-func/utility/sdp_mem.c
-    src/ska-sdp-func/utility/sdp_sky_coord.c
-	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft.cpp	
-	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft_utils.cpp	
-)
-
-# List of CUDA kernel source files.
-set(${libname}_CUDA_SRC
-    src/ska-sdp-func/dft/sdp_dft.cu
-    src/ska-sdp-func/phase_rotate/sdp_phase_rotate.cu
-    src/ska-sdp-func/vector/sdp_vector_add.cu
-	src/ska-sdp-func/gridder_uvw_es_fft/sdp_gridder_uvw_es_fft_kernels.cu
-)
-
-# List of tests to build, in the "tests" directory.
-set(${libname}_TESTS
-    test_rfi_flagger
-    test_dft
-    test_fft
-    test_phase_rotate
-    test_twosm_rfi_flagger
-    test_vector_add
-    test_function_example_a
-    test_gridder_uvw_es_fft
-)
+project(ska_sdp_func CXX C)
 
 # Project version.
 set(SDP_FUNC_VERSION_ID "0x000003")
@@ -102,6 +62,7 @@ find_package(OpenMP QUIET)
 
 # Set compiler options.
 include(compiler_options)
+include(sdp_func_macros)
 enable_testing()
 
 if (CMAKE_BUILD_TYPE MATCHES Debug AND COVERAGE_REPORT)
@@ -117,19 +78,22 @@ if (CMAKE_BUILD_TYPE MATCHES Debug AND COVERAGE_REPORT)
     setup_target_for_coverage_lcov(NAME coverage EXECUTABLE ctest)
 endif()
 
+# Generate source list from subdirectories.
+add_subdirectory(src)
+
 # Build library using list of source files.
 if (CUDA_FOUND)
     # Add CUDA kernel sources.
-    list(APPEND ${libname}_SRC ${${libname}_CUDA_SRC})
+    list(APPEND ${CMAKE_PROJECT_NAME}_SRC ${${CMAKE_PROJECT_NAME}_CUDA_SRC})
     set(CUDA_GENERATED_OUTPUT_DIR
-        ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${libname}.dir/src)
-    cuda_add_library(${libname} ${${libname}_SRC})
-    target_link_libraries(${libname} ${CUDA_CUFFT_LIBRARIES})
+        ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${CMAKE_PROJECT_NAME}.dir/src)
+    cuda_add_library(${CMAKE_PROJECT_NAME} ${${CMAKE_PROJECT_NAME}_SRC})
+    target_link_libraries(${CMAKE_PROJECT_NAME} ${CUDA_CUFFT_LIBRARIES})
 else()
-    add_library(${libname} ${${libname}_SRC})
+    add_library(${CMAKE_PROJECT_NAME} ${${CMAKE_PROJECT_NAME}_SRC})
 endif()
 if (NOT DEFINED PYTHON_EXECUTABLE)
-    set_target_properties(${libname} PROPERTIES
+    set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
         SOVERSION ${SDP_FUNC_VERSION}
         VERSION ${SDP_FUNC_VERSION})
 else()
@@ -138,17 +102,13 @@ endif()
 
 # Add OpenMP compiler flags if found.
 if (OpenMP_CXX_FOUND)
-    target_link_libraries(${libname} OpenMP::OpenMP_CXX)
+    target_link_libraries(${CMAKE_PROJECT_NAME} OpenMP::OpenMP_CXX)
 endif()
 
 # Build tests.
-foreach(test ${${libname}_TESTS})
-    add_executable(${test} tests/${test}.cpp)
-    target_link_libraries(${test} ${libname})
-    add_test(${test} ${test})
-endforeach()
+add_subdirectory(tests)
 
-install(TARGETS ${libname}
+install(TARGETS ${CMAKE_PROJECT_NAME}
     ARCHIVE DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
     LIBRARY DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
     RUNTIME DESTINATION ${SDP_FUNC_BIN_INSTALL_DIR} COMPONENT runtime
