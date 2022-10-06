@@ -14,7 +14,7 @@ SDP Processing Function Library
 
   adding_new_functions
   how_to_pass_CICD_pipeline
-  how_to_contribute_to_PFL
+  how_to_contribute
   mem
   kernels
   errors
