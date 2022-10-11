@@ -116,6 +116,7 @@ void sdp_weighting_uniform(
     sdp_data_model_check_uvw(uvw, &uvw_type, &uvw_location, 0, 0, status);
     sdp_data_model_check_weights(weights, &weights_type, &weights_location,
             &num_times, &num_baselines, &num_channels, &num_pols, status);
+    if (*status) return;
     if (uvw_location != weights_location ||
             sdp_mem_location(freq_hz) != weights_location ||
             sdp_mem_location(grid_uv) != weights_location)
