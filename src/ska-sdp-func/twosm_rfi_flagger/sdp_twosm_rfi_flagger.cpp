@@ -61,6 +61,23 @@ static void check_params(
     }
 }
 
+int compare (const void * a, const void * b){
+    if (*(double*)a > *(double*)b)
+        return 1;
+    else if (*(double*)a < *(double*)b)
+        return -1;
+    else
+        return 0;
+}
+
+double quantile(double* arr, double q, int n){
+    qsort(arr, n, sizeof(double), compare);
+    int cutpoint = round(q * n);
+    return arr[cutpoint];
+}
+
+
+
 template<typename FP>
 static void twosm_rfi_flagger(
         int* flags,
@@ -82,6 +99,48 @@ static void twosm_rfi_flagger(
     double dv_ratio = 0;
     double tol_margin_2sm_time = thresholds[0];
     double tol_margin_2sm_freq = thresholds[1];
+
+    double quant_ft = 0;
+    double quant_fd = 0;
+    double quant_td = 0;
+
+    for (uint64_t t = 0; t < num_timesamples; t++) {
+        if (t == 0) {
+            double *first_time = new double[num_channels - 1];
+            double *freq_diffs = new double[num_channels - 1];
+            for (uint64_t k = 0; k < num_channels - 1; k++) {
+                first_time[k] = abs(visibilities[t * num_channels + k]);
+                freq_diffs[k] = abs(abs(visibilities[t * num_channels + k + 1] -
+                                        abs(visibilities[t * num_channels + k])));
+            }
+            quant_ft = quantile(first_time, 0.7, num_channels - 1);
+            quant_fd = quantile(freq_diffs, 0.9, num_channels - 1);
+
+            delete[] first_time;
+            delete[] freq_diffs;
+        }
+
+        if (t == 1) {
+            double *time_diffs = new double[num_channels - 1];
+            for (uint64_t m = 0; m < num_channels; m++) {
+                time_diffs[m] = abs(
+                        abs(visibilities[t * num_channels + m] - abs(visibilities[(t - 1) * num_channels + m])));
+            }
+            quant_td = quantile(time_diffs, 0.9, num_channels);
+            delete[] time_diffs;
+        }
+        if (t == 0) {
+            for (uint64_t c; c < num_channels; c++) {
+                if (abs(visibilities[t * num_channels + c]) >= quant_ft) {
+                    flags[t * num_channels + c] = 1;
+                }
+            }
+        }
+    }
+
+
+
+
 
     // two-state machine algorithm applied to time dimension
     for (uint64_t a = 0; a < num_antennas; a++){
