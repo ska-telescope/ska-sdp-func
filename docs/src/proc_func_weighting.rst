@@ -4,6 +4,12 @@
 Weighting Functions
 *******************
 
+C/C++
+=====
+
+.. doxygengroup:: weight_func
+   :content-only:
+
 Python
 ======
 
