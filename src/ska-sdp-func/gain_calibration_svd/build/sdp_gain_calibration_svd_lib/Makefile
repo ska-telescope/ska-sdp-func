@@ -247,6 +247,30 @@ src/Gaincallogger.c.s:
 	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.s
 .PHONY : src/Gaincallogger.c.s
 
+src/Gaincalsimpletest.o: src/Gaincalsimpletest.cu.o
+.PHONY : src/Gaincalsimpletest.o
+
+# target to build an object file
+src/Gaincalsimpletest.cu.o:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o
+.PHONY : src/Gaincalsimpletest.cu.o
+
+src/Gaincalsimpletest.i: src/Gaincalsimpletest.cu.i
+.PHONY : src/Gaincalsimpletest.i
+
+# target to preprocess a source file
+src/Gaincalsimpletest.cu.i:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.i
+.PHONY : src/Gaincalsimpletest.cu.i
+
+src/Gaincalsimpletest.s: src/Gaincalsimpletest.cu.s
+.PHONY : src/Gaincalsimpletest.s
+
+# target to generate assembly for a file
+src/Gaincalsimpletest.cu.s:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.s
+.PHONY : src/Gaincalsimpletest.cu.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -269,6 +293,9 @@ help:
 	@echo "... src/Gaincallogger.o"
 	@echo "... src/Gaincallogger.i"
 	@echo "... src/Gaincallogger.s"
+	@echo "... src/Gaincalsimpletest.o"
+	@echo "... src/Gaincalsimpletest.i"
+	@echo "... src/Gaincalsimpletest.s"
 .PHONY : help
 
 

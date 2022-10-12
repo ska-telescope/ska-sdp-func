@@ -11,6 +11,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/src/Gaincallogger.c" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o" "gcc" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o.d"
   "/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/src/Gaincalfunctionsdevice.cu" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionsdevice.cu.o" "gcc" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionsdevice.cu.o.d"
   "/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/src/Gaincalfunctionshost.cu" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o" "gcc" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o.d"
+  "/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/src/Gaincalsimpletest.cu" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o" "gcc" "sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o.d"
   )
 
 # Targets to which this target links.

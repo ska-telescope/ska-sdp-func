@@ -6,6 +6,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o.d"
   "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o"
   "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o.d"
+  "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o"
+  "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o.d"
   "libsdp_gain_calibration_svd_lib.pdb"
   "libsdp_gain_calibration_svd_lib.so"
 )

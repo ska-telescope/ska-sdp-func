@@ -65,6 +65,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sdp_gain_calibration_svd_lib/include" TYPE FILE FILES
     "/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/include/Gaincallogger.h"
     "/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/include/Gaincalfunctionshost.h"
+    "/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/include/Gaincalsimpletest.h"
     )
 endif()
 

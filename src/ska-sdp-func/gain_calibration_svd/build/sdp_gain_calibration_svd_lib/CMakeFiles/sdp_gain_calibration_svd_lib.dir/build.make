@@ -111,11 +111,26 @@ sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gai
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CUDA source to assembly CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.s"
 	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE
 
+sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/flags.make
+sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o: /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/src/Gaincalsimpletest.cu
+sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CUDA object sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o"
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/sdp_gain_calibration_svd_lib && /usr/local/cuda-10.2/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o -MF CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o.d -x cu -rdc=true -c /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/sdp_gain_calibration_svd_lib/src/Gaincalsimpletest.cu -o CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o
+
+sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CUDA source to CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.i"
+	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_PREPROCESSED_SOURCE
+
+sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CUDA source to assembly CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.s"
+	$(CMAKE_COMMAND) -E cmake_unimplemented_variable CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE
+
 # Object files for target sdp_gain_calibration_svd_lib
 sdp_gain_calibration_svd_lib_OBJECTS = \
 "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o" \
 "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionsdevice.cu.o" \
-"CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o"
+"CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o" \
+"CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o"
 
 # External object files for target sdp_gain_calibration_svd_lib
 sdp_gain_calibration_svd_lib_EXTERNAL_OBJECTS =
@@ -123,10 +138,11 @@ sdp_gain_calibration_svd_lib_EXTERNAL_OBJECTS =
 sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o
 sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionsdevice.cu.o
 sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o
+sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o
 sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make
 sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o: /usr/local/cuda/lib64/libcusolver.so
 sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/dlink.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CUDA device code CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CUDA device code CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o"
 	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/sdp_gain_calibration_svd_lib && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/sdp_gain_calibration_svd_lib.dir/dlink.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -137,7 +153,8 @@ sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build: 
 sdp_gain_calibration_svd_lib_OBJECTS = \
 "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o" \
 "CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionsdevice.cu.o" \
-"CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o"
+"CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o" \
+"CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o"
 
 # External object files for target sdp_gain_calibration_svd_lib
 sdp_gain_calibration_svd_lib_EXTERNAL_OBJECTS =
@@ -145,11 +162,12 @@ sdp_gain_calibration_svd_lib_EXTERNAL_OBJECTS =
 sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincallogger.c.o
 sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionsdevice.cu.o
 sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalfunctionshost.cu.o
+sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/src/Gaincalsimpletest.cu.o
 sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make
 sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: /usr/local/cuda/lib64/libcusolver.so
 sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/cmake_device_link.o
 sdp_gain_calibration_svd_lib/libsdp_gain_calibration_svd_lib.so: sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CUDA shared library libsdp_gain_calibration_svd_lib.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CUDA shared library libsdp_gain_calibration_svd_lib.so"
 	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/sdp_gain_calibration_svd_lib && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/sdp_gain_calibration_svd_lib.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
