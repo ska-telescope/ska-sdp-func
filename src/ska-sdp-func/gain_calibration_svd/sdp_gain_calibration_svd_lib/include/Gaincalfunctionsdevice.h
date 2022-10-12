@@ -47,7 +47,6 @@
  * Parallelised so each CUDA thread resets a single receiver gain
  * @param gains Output complex gain for each receiver
  * @param num_receivers total number of receivers
-
  *****************************************************************************/
 template<typename PRECISION2>
 __global__ void reset_gains

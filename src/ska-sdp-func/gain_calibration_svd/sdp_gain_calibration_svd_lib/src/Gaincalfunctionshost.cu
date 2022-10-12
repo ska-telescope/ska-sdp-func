@@ -273,7 +273,7 @@ void perform_gain_calibration
         {
             logger(LOG_CRIT, "SVD unsuccessful for gain calibration cycle %u", calibration_cycle);
         }
-        else if (check_cusolver_info)
+        if (check_cusolver_info)
         {
             // copy the cusolver device info value back to host to optionally check for errors
             int cusolver_info_host = 0;
@@ -284,7 +284,7 @@ void perform_gain_calibration
                     calibration_cycle, cusolver_info_host);
             }
         }
-        else
+        if (cusolver_status == CUSOLVER_STATUS_SUCCESS)
         {
             calculate_product_sujr<<<cuda_grid_num_columns, cuda_block_size>>>
                 (jacobian_svd_matrices.diagonalS, jacobian_svd_matrices.unitaryU,
@@ -310,6 +310,8 @@ void perform_gain_calibration
     }
     CUDA_CHECK_RETURN(cudaFree(cusolver_info_device));
     CUDA_CHECK_RETURN(cudaFree(working_space_device)); // discard working_space_device as no longer needed 
+    if (cusolver != NULL)
+        cusolverDnDestroy(cusolver);
 }
 
 template void perform_gain_calibration<half2, float2, float>
