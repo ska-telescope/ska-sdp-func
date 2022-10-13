@@ -13,6 +13,8 @@ SDP Processing Function Library
   :maxdepth: 1
 
   adding_new_functions
+  how_to_pass_CICD_pipeline
+  how_to_contribute
   mem
   kernels
   errors
