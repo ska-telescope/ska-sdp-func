@@ -80,7 +80,7 @@ template void generate_sample_visibilities_host<double2>(double2*, const unsigne
  * Note should be paired with an earlier call to allocate_visibilities_host
  *****************************************************************************/
 template<typename VIS_PRECISION2>
-void free_visibilities_host(VIS_PRECISION2* visibilities_host)
+void free_visibilities_host(VIS_PRECISION2 *visibilities_host)
 {
     CUDA_CHECK_RETURN(cudaFreeHost(visibilities_host));
 }
@@ -137,7 +137,7 @@ void generate_sample_receiver_pairs_host
  * hold the receiver pairs for each baseline on the host.
  * Note should be paired with an earlier call to allocate_receiver_pairs_host
  *****************************************************************************/
-void free_receiver_pairs_host(uint2* receiver_pairs_host)
+void free_receiver_pairs_host(uint2 *receiver_pairs_host)
 {
     CUDA_CHECK_RETURN(cudaFreeHost(receiver_pairs_host));
 }
@@ -164,13 +164,13 @@ template double2* allocate_visibilities_device<double2>(const unsigned int);
 /*****************************************************************************
  * Temporary utility function that calculates some measured and predicted visibilities for given gains
  *****************************************************************************/
-template<typename VIS_PRECISION2>
+template<typename VIS_PRECISION2, typename VIS_PRECISION, typename PRECISION2>
 void calculate_measured_and_predicted_visibilities_device
     (
-    const VIS_PRECISION2 *vis_predicted_host, // input array of predicted visibilities
-    const uint2 *receiver_pairs_host, // input array giving receiver pair for each baseline
+    VIS_PRECISION2 *vis_predicted_host, // input array of predicted visibilities
+    uint2 *receiver_pairs_host, // input array giving receiver pair for each baseline
     const unsigned int num_baselines, // number of baselines
-    const VIS_PRECISION2 *actual_gains_host, // actual complex gains for each receiver
+    PRECISION2 *actual_gains_host, // actual complex gains for each receiver
     const unsigned int num_receivers, // number of receivers
     VIS_PRECISION2 *vis_measured_device, // output array of measured visibilities
     VIS_PRECISION2 *vis_predicted_device // output array of preducted visibilities
@@ -184,13 +184,13 @@ void calculate_measured_and_predicted_visibilities_device
     for (unsigned int baseline=0; baseline<num_baselines; baseline++)
     {
         // multiply predicted visibilities by conjugate of first receiver gain and then multiply by second receiver gain
-        VIS_PRECISION2 first_gain = actual_gains_host[receiver_pairs_host[baseline].x];
-        VIS_PRECISION2 second_gain = actual_gains_host[receiver_pairs_host[baseline].y];
-        VIS_PRECISION2 temp_product;
+        PRECISION2 first_gain = actual_gains_host[receiver_pairs_host[baseline].x];
+        PRECISION2 second_gain = actual_gains_host[receiver_pairs_host[baseline].y];
+        PRECISION2 temp_product;
         temp_product.x = vis_predicted_host[baseline].x*first_gain.x + vis_predicted_host[baseline].y*first_gain.y;
         temp_product.y = vis_predicted_host[baseline].x*first_gain.y - vis_predicted_host[baseline].y*first_gain.x;
-        vis_measured_host[baseline].x = temp_product.x*second_gain.x - temp_product.y*second_gain.y;
-        vis_measured_host[baseline].y = temp_product.x*second_gain.y + temp_product.y*second_gain.x;
+        vis_measured_host[baseline].x = (VIS_PRECISION)(temp_product.x*second_gain.x - temp_product.y*second_gain.y);
+        vis_measured_host[baseline].y = (VIS_PRECISION)(temp_product.x*second_gain.y + temp_product.y*second_gain.x);
     }
 
     // copy the test visibilities to the device
@@ -199,8 +199,8 @@ void calculate_measured_and_predicted_visibilities_device
     CUDA_CHECK_RETURN(cudaFreeHost(vis_measured_host));
 }
 
-template void calculate_measured_and_predicted_visibilities_device<float2>(const float2*, const uint2*, const unsigned int, const float2*, const unsigned int, float2*, float2*);
-template void calculate_measured_and_predicted_visibilities_device<double2>(const double2*, const uint2*, const unsigned int, const double2*, const unsigned int, double2*, double2*);
+template void calculate_measured_and_predicted_visibilities_device<float2, float, float2>(float2*, uint2*, const unsigned int, float2*, const unsigned int, float2*, float2*);
+template void calculate_measured_and_predicted_visibilities_device<double2, double, double2>(double2*, uint2*, const unsigned int, double2*, const unsigned int, double2*, double2*);
 
 
 /*****************************************************************************
@@ -209,7 +209,7 @@ template void calculate_measured_and_predicted_visibilities_device<double2>(cons
  * Note should be paired with an earlier call to allocate_visibilities_device
  *****************************************************************************/
 template<typename VIS_PRECISION2>
-void free_visibilities_device(VIS_PRECISION2* visibilities_device)
+void free_visibilities_device(VIS_PRECISION2 *visibilities_device)
 {
     CUDA_CHECK_RETURN(cudaFree(visibilities_device));
 }
@@ -240,8 +240,8 @@ uint2* allocate_receiver_pairs_device
  *****************************************************************************/
 void set_receiver_pairs_device
     (
-    const uint2* receiver_pairs_host, // input array of receiver pairs for each baseline
-    uint2* receiver_pairs_device, // inout array of receiver pairs for each baseline
+    uint2 *receiver_pairs_host, // input array of receiver pairs for each baseline
+    uint2 *receiver_pairs_device, // inout array of receiver pairs for each baseline
     const unsigned int num_baselines // number of baselines
     )
 {
@@ -254,24 +254,33 @@ void set_receiver_pairs_device
  * hold the receiver pairs for each baseline on the device.
  * Note should be paired with an earlier call to allocate_receiver_pairs_device
  *****************************************************************************/
-void free_receiver_pairs_device(uint2* receiver_pairs_device)
+void free_receiver_pairs_device(uint2 *receiver_pairs_device)
 {
     CUDA_CHECK_RETURN(cudaFree(receiver_pairs_device));
 }
 
 
 /*****************************************************************************
- * Gain calibration function that allocates and clears the data structure that will
- * hold the calculated gains on the device.
+ * Gain calibration function that allocates the data structure that will
+ * hold the calculated gains on the device and initialises each gain to 1+0i.
  * Note should be paired with a later call to free_gains_device
  *****************************************************************************/
-template<typename VIS_PRECISION2>
-VIS_PRECISION2* allocate_gains_device
+template<typename PRECISION2>
+PRECISION2* allocate_gains_device
     (const unsigned int num_receivers)
 {
-    VIS_PRECISION2 *gains_device;
-    CUDA_CHECK_RETURN(cudaMalloc((void**)&gains_device, num_receivers*sizeof(VIS_PRECISION2)));
-    CUDA_CHECK_RETURN(cudaMemset(gains_device, 0, num_receivers*sizeof(VIS_PRECISION2))); // clear the data to zero
+    PRECISION2 *gains_device;
+    CUDA_CHECK_RETURN(cudaMalloc((void**)&gains_device, num_receivers*sizeof(PRECISION2)));
+    // create the initial gains to be each 1+0i and copy to device
+    PRECISION2 *initial_gains_host;
+    CUDA_CHECK_RETURN(cudaHostAlloc(&initial_gains_host, num_receivers*sizeof(PRECISION2), 0));
+    for (unsigned int receiver=0; receiver<num_receivers; receiver++)
+    {
+        initial_gains_host[receiver].x = 1; // let compiler typecast to PRECISION
+        initial_gains_host[receiver].y = 0; // let compiler typecast to PRECISION
+    }
+    CUDA_CHECK_RETURN(cudaMemcpy(gains_device, initial_gains_host, num_receivers*sizeof(PRECISION2), cudaMemcpyHostToDevice));
+    CUDA_CHECK_RETURN(cudaFreeHost(initial_gains_host));
     return gains_device;
 }
 
@@ -283,18 +292,18 @@ template double2* allocate_gains_device<double2>(const unsigned int);
  * Gain calibration function that displays the actual and calculated gains with
  * all the calculated gains rotated so receiver 0 has zero phase.
  *****************************************************************************/
-template<typename VIS_PRECISION2>
+template<typename PRECISION2>
 void display_gains_actual_and_calculated
     (
-    VIS_PRECISION2 *actual_gains_host, // actual complex gains for each receiver
-    VIS_PRECISION2 *gains_device, // calculated gains
+    PRECISION2 *actual_gains_host, // actual complex gains for each receiver
+    PRECISION2 *gains_device, // calculated gains
     const unsigned int num_receivers
     )
 {
-    VIS_PRECISION2 *calculated_gains_host;
-    CUDA_CHECK_RETURN(cudaHostAlloc(&calculated_gains_host, num_receivers*sizeof(VIS_PRECISION2), 0));
-    memset(calculated_gains_host, 0, num_receivers*sizeof(VIS_PRECISION2));
-    CUDA_CHECK_RETURN(cudaMemcpy(calculated_gains_host, gains_device, num_receivers*sizeof(VIS_PRECISION2), cudaMemcpyDeviceToHost));
+    PRECISION2 *calculated_gains_host;
+    CUDA_CHECK_RETURN(cudaHostAlloc(&calculated_gains_host, num_receivers*sizeof(PRECISION2), 0));
+    memset(calculated_gains_host, 0, num_receivers*sizeof(PRECISION2));
+    CUDA_CHECK_RETURN(cudaMemcpy(calculated_gains_host, gains_device, num_receivers*sizeof(PRECISION2), cudaMemcpyDeviceToHost));
     // calculate the phase rotation required to align phase for receiver 0, just in float precision okay for display
     float rotationActualReal = (float)actual_gains_host[0].x
         / sqrt((float)(actual_gains_host[0].x*actual_gains_host[0].x+actual_gains_host[0].y*actual_gains_host[0].y));
@@ -325,8 +334,8 @@ template void display_gains_actual_and_calculated<double2>(double2*, double2*, c
  * hold the calculated gains on the device.
  * Note should be paired with an earlier call to allocate_visibilities_device
  *****************************************************************************/
-template<typename VIS_PRECISION2>
-void free_gains_device(VIS_PRECISION2* gains_device)
+template<typename PRECISION2>
+void free_gains_device(PRECISION2 *gains_device)
 {
     CUDA_CHECK_RETURN(cudaFree(gains_device));
 }

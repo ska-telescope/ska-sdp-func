@@ -70,7 +70,7 @@ void generate_sample_visibilities_host
  * @param visibilities_host Input array of visibilities.
  */
 template<typename VIS_PRECISION2>
-void free_visibilities_host(VIS_PRECISION2* visibilities_host);
+void free_visibilities_host(VIS_PRECISION2 *visibilities_host);
 
 /**
  * @brief Gain calibration function that allocates and clears the data structure that will
@@ -106,7 +106,7 @@ void generate_sample_receiver_pairs_host
  * Note should be paired with an earlier call to allocate_receiver_pairs_host
  * @param receiver_pairs_host Input array giving receiver pair for each baseline.
  */
-void free_receiver_pairs_host(uint2* receiver_pairs_host);
+void free_receiver_pairs_host(uint2 *receiver_pairs_host);
 
 /**
  * @brief Gain calibration function that allocates and clears the data structure that will
@@ -131,13 +131,13 @@ VIS_PRECISION2* allocate_visibilities_device
  * @param vis_measured_device Output array of measured visibilities.
  * @param vis_predicted_device Output array of preducted visibilities.
  */
-template<typename VIS_PRECISION2>
+template<typename VIS_PRECISION2, typename VIS_PRECISION, typename PRECISION2>
 void calculate_measured_and_predicted_visibilities_device
     (
-    const VIS_PRECISION2 *vis_predicted_host, // input array of predicted visibilities
-    const uint2 *receiver_pairs_host, // input array giving receiver pair for each baseline
+    VIS_PRECISION2 *vis_predicted_host, // input array of predicted visibilities
+    uint2 *receiver_pairs_host, // input array giving receiver pair for each baseline
     const unsigned int num_baselines, // number of baselines
-    const VIS_PRECISION2 *actual_gains_host, // actual complex gains for each receiver
+    PRECISION2 *actual_gains_host, // actual complex gains for each receiver
     const unsigned int num_receivers, // number of receivers
     VIS_PRECISION2 *vis_measured_device, // output array of measured visibilities
     VIS_PRECISION2 *vis_predicted_device // output array of preducted visibilities
@@ -151,7 +151,7 @@ void calculate_measured_and_predicted_visibilities_device
  * @param visibilities_device Visibility dataset held on device.
  */
 template<typename VIS_PRECISION2>
-void free_visibilities_device(VIS_PRECISION2* visibilities_device);
+void free_visibilities_device(VIS_PRECISION2 *visibilities_device);
 
 /**
  * @brief Gain calibration function that allocates and clears the data structure that will
@@ -171,8 +171,8 @@ uint2* allocate_receiver_pairs_device(const unsigned int num_baselines);
  */
 void set_receiver_pairs_device
     (
-    const uint2* receiver_pairs_host, // input array of receiver pairs for each baseline
-    uint2* receiver_pairs_device, // inout array of receiver pairs for each baseline
+    uint2 *receiver_pairs_host, // input array of receiver pairs for each baseline
+    uint2 *receiver_pairs_device, // inout array of receiver pairs for each baseline
     const unsigned int num_baselines // number of baselines
     );
 
@@ -183,7 +183,7 @@ void set_receiver_pairs_device
  * Note should be paired with an earlier call to allocate_receiver_pairs_device.
  * @param visibilities_device Visibility dataset held on device.
  */
-void free_receiver_pairs_device(uint2* receiver_pairs_device);
+void free_receiver_pairs_device(uint2 *receiver_pairs_device);
 
 /**
  * @brief Gain calibration function that allocates and clears the data structure that will
@@ -193,9 +193,25 @@ void free_receiver_pairs_device(uint2* receiver_pairs_device);
  * @param num_receivers Number of receivers.
  * @return The allocated gain data array on the device.
  */
-template<typename VIS_PRECISION2>
-VIS_PRECISION2* allocate_gains_device
+template<typename PRECISION2>
+PRECISION2* allocate_gains_device
     (const unsigned int num_receivers);
+
+/**
+ * @brief Gain calibration function that displays the actual and calculated gains with
+ * all the calculated gains rotated so receiver 0 has zero phase.
+ *
+ * @param actual_gains_host Input array giving actual complex gains for each receiver.
+ * @param gains_device Input array giving calculated complex gains for each receiver.
+ * @param num_receivers Number of receivers.
+ */
+template<typename PRECISION2>
+void display_gains_actual_and_calculated
+    (
+    PRECISION2 *actual_gains_host, // actual complex gains for each receiver
+    PRECISION2 *gains_device, // calculated gains
+    const unsigned int num_receivers
+    );
 
 /**
  * @brief Gain calibration function that deallocates device data structure that was used to
@@ -204,8 +220,8 @@ VIS_PRECISION2* allocate_gains_device
  * Note should be paired with an earlier call to allocate_gains_device.
  * @param gains_device Gain dataset held on device.
  */
-template<typename VIS_PRECISION2>
-void free_gains_device(VIS_PRECISION2* gains_device);
+template<typename PRECISION2>
+void free_gains_device(PRECISION2 *gains_device);
 
 
 

@@ -203,7 +203,7 @@ void perform_gain_calibration
     const unsigned int num_baselines, // number of baselines
     const unsigned int max_calibration_cycles, // maximum number of calibration cycles to perform
     Jacobian_SVD_matrices<PRECISION> jacobian_svd_matrices, // preallocated Jacobian SVD matrices
-    const PRECISION2 *gains_device, // output array of calculated complex gains
+    PRECISION2 *gains_device, // output array of calculated complex gains
     bool check_cusolver_info, // whether to explicitly check for cusolver errors during SVD
     int cuda_block_size
     )
@@ -241,10 +241,13 @@ void perform_gain_calibration
     CUDA_CHECK_RETURN(cudaMalloc((void**)&cusolver_info_device, sizeof(int)));
     CUDA_CHECK_RETURN(cudaMemset(cusolver_info_device, 0, sizeof(int))); // clear the device info to zero
 
+    checkCudaStatus();
+
     // perform the gain calibration cycles
     for (unsigned int calibration_cycle=0; calibration_cycle<max_calibration_cycles; calibration_cycle++)
     {
         logger(LOG_INFO, "Performing calibration cycle %u", calibration_cycle);
+        cudaEventRecord(start_time);
 
         // clear the Jacobian SVD matrices for this calibration iteration
         CUDA_CHECK_RETURN(cudaMemset(jacobian_svd_matrices.jacobtjacob, 0, 2*num_receivers*2*num_receivers*sizeof(PRECISION)));
@@ -255,6 +258,8 @@ void perform_gain_calibration
         CUDA_CHECK_RETURN(cudaMemset(jacobian_svd_matrices.productSUJR, 0, 2*num_receivers*sizeof(PRECISION)));
 
         CUDA_CHECK_RETURN(cudaMemset(working_space_device, 0, space_required*sizeof(PRECISION)));
+
+        checkCudaStatus();
 
         update_gain_calibration<<<cuda_grid_num_baselines, cuda_block_size>>>
             (vis_measured_device, vis_predicted_device, gains_device, receiver_pairs_device,
@@ -300,6 +305,7 @@ void perform_gain_calibration
             checkCudaStatus();
         }
 
+        // update cuda timings
         cudaEventRecord(stop_time);
         cudaEventSynchronize(stop_time);
         cudaEventElapsedTime(&execution_time, start_time, stop_time);
@@ -308,16 +314,20 @@ void perform_gain_calibration
 
         checkCudaStatus();
     }
+    logger(LOG_DEBUG, "Execution time total for calibration cycles is %.3fms", summed_time);
+
     CUDA_CHECK_RETURN(cudaFree(cusolver_info_device));
     CUDA_CHECK_RETURN(cudaFree(working_space_device)); // discard working_space_device as no longer needed 
     if (cusolver != NULL)
         cusolverDnDestroy(cusolver);
+    cudaEventDestroy(start_time);
+    cudaEventDestroy(stop_time);
 }
 
 template void perform_gain_calibration<half2, float2, float>
-    (const half2*, const half2*, const uint2*, const unsigned int, const unsigned int, const unsigned int, Jacobian_SVD_matrices<float>, const float2*, bool, int);
+    (const half2*, const half2*, const uint2*, const unsigned int, const unsigned int, const unsigned int, Jacobian_SVD_matrices<float>, float2*, bool, int);
 template void perform_gain_calibration<float2, float2, float>
-    (const float2*, const float2*, const uint2*, const unsigned int, const unsigned int, const unsigned int, Jacobian_SVD_matrices<float>, const float2*, bool, int);
+    (const float2*, const float2*, const uint2*, const unsigned int, const unsigned int, const unsigned int, Jacobian_SVD_matrices<float>, float2*, bool, int);
 template void perform_gain_calibration<float2, double2, double>
-    (const float2*, const float2*, const uint2*, const unsigned int, const unsigned int, const unsigned int, Jacobian_SVD_matrices<double>, const double2*, bool, int);
+    (const float2*, const float2*, const uint2*, const unsigned int, const unsigned int, const unsigned int, Jacobian_SVD_matrices<double>, double2*, bool, int);
 

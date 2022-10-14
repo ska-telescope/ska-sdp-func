@@ -132,14 +132,14 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build//CMakeFiles/progress.marks
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/sdp_gain_calibration_svd_lib_test//CMakeFiles/progress.marks
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sdp_gain_calibration_svd_lib_test/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sdp_gain_calibration_svd_lib_test/clean
 .PHONY : clean
 
 # The main clean target
@@ -148,44 +148,56 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sdp_gain_calibration_svd_lib_test/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sdp_gain_calibration_svd_lib_test/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
-#=============================================================================
-# Target rules for targets named sdp_gain_calibration_svd_lib
+# Convenience name for target.
+sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/rule:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/rule
+.PHONY : sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/rule
 
-# Build rule for target.
-sdp_gain_calibration_svd_lib: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sdp_gain_calibration_svd_lib
-.PHONY : sdp_gain_calibration_svd_lib
-
-# fast build rule for target.
-sdp_gain_calibration_svd_lib/fast:
-	$(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build.make sdp_gain_calibration_svd_lib/CMakeFiles/sdp_gain_calibration_svd_lib.dir/build
-.PHONY : sdp_gain_calibration_svd_lib/fast
-
-#=============================================================================
-# Target rules for targets named sdp_gain_calibration_svd_lib_test
-
-# Build rule for target.
-sdp_gain_calibration_svd_lib_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sdp_gain_calibration_svd_lib_test
+# Convenience name for target.
+sdp_gain_calibration_svd_lib_test: sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/rule
 .PHONY : sdp_gain_calibration_svd_lib_test
 
 # fast build rule for target.
 sdp_gain_calibration_svd_lib_test/fast:
-	$(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/build.make sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/build
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/build.make sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/build
 .PHONY : sdp_gain_calibration_svd_lib_test/fast
+
+src/Gaincaltest.o: src/Gaincaltest.cpp.o
+.PHONY : src/Gaincaltest.o
+
+# target to build an object file
+src/Gaincaltest.cpp.o:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/build.make sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/src/Gaincaltest.cpp.o
+.PHONY : src/Gaincaltest.cpp.o
+
+src/Gaincaltest.i: src/Gaincaltest.cpp.i
+.PHONY : src/Gaincaltest.i
+
+# target to preprocess a source file
+src/Gaincaltest.cpp.i:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/build.make sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/src/Gaincaltest.cpp.i
+.PHONY : src/Gaincaltest.cpp.i
+
+src/Gaincaltest.s: src/Gaincaltest.cpp.s
+.PHONY : src/Gaincaltest.s
+
+# target to generate assembly for a file
+src/Gaincaltest.cpp.s:
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(MAKE) $(MAKESILENT) -f sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/build.make sdp_gain_calibration_svd_lib_test/CMakeFiles/sdp_gain_calibration_svd_lib_test.dir/src/Gaincaltest.cpp.s
+.PHONY : src/Gaincaltest.cpp.s
 
 # Help Target
 help:
@@ -199,8 +211,10 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
-	@echo "... sdp_gain_calibration_svd_lib"
 	@echo "... sdp_gain_calibration_svd_lib_test"
+	@echo "... src/Gaincaltest.o"
+	@echo "... src/Gaincaltest.i"
+	@echo "... src/Gaincaltest.s"
 .PHONY : help
 
 
@@ -212,6 +226,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/aensor/ska/spfl-gaincalibration/ska-sdp-func/src/ska-sdp-func/gain_calibration_svd/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

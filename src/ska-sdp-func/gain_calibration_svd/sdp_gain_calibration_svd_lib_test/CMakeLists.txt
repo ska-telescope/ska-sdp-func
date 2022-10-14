@@ -22,7 +22,7 @@ target_include_directories(sdp_gain_calibration_svd_lib_test PUBLIC
     )
 
 target_sources(sdp_gain_calibration_svd_lib_test
-    PRIVATE # src/Gaincaltest.cpp include/Gaincaltest.h
+    PRIVATE src/Gaincaltest.cpp include/Gaincaltest.h
     PUBLIC FILE_SET HEADERS
     BASE_DIRS ${PROJECT_SOURCE_DIR}
     FILES include/Gaincaltest.h

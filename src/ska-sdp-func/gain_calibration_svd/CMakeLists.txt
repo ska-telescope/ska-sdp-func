@@ -18,7 +18,7 @@ message(STATUS "CUDA_INCLUDE_DIRS is ${CUDA_INCLUDE_DIRS}")
 message(STATUS "CUSOLVER_LIBRARY is ${CUSOLVER_LIBRARY}")
 
 add_subdirectory(sdp_gain_calibration_svd_lib)
-# add_subdirectory(sdp_gain_calibration_svd_lib_test)
+add_subdirectory(sdp_gain_calibration_svd_lib_test)
 # Note the following have not yet been implemented
 # add_subdirectory(sdp_gain_calibration_svd_int)
 # add_subdirectory(sdp_gain_calibration_svd_int_test)

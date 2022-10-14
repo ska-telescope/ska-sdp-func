@@ -137,7 +137,7 @@ void perform_gain_calibration
     const unsigned int num_baselines, // number of baselines
     const unsigned int max_calibration_cycles, // maximum number of calibration cycles to perform
     Jacobian_SVD_matrices<PRECISION> jacobian_svd_matrices, // input preallocated Jacobian SVD matrices
-    const PRECISION2 *gains_device, // output array of calculated complex gains
+    PRECISION2 *gains_device, // output array of calculated complex gains
     bool check_cusolver_info, // whether to explicitly check for cusolver errors during SVD
     int cuda_block_size
     );

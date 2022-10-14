@@ -330,13 +330,13 @@ __global__ void calculate_delta_update_gains
     const unsigned int num_entries // total number 2N of (real valued) gain entries
     )
 {
-    const int index = threadIdx.x + blockDim.x * blockIdx.x ;
+    const int index = threadIdx.x + blockDim.x * blockIdx.x;
     if(index >= num_receivers)
         return;
     PRECISION delta_top = 0;
     PRECISION delta_bottom = 0;
     int vindex = index * 2;
-    for (int i=0;i<num_entries; ++i)
+    for (int i=0;i<num_entries; i++)
     {
         delta_top += productSUJR[i] * unitaryV[vindex*num_entries + i];
         delta_bottom += productSUJR[i] * unitaryV[(vindex+1)*num_entries + i];

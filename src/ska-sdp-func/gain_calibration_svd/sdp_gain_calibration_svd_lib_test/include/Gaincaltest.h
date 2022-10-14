@@ -13,8 +13,8 @@
 #include <stdio.h>
 
 #include "Gaincallogger.h"
-// #include "Gaincalfunctionshost.h"
-// #include "Gaincalsimpletest.h"
+#include "Gaincalfunctionshost.h"
+#include "Gaincalsimpletest.h"
 
 // put any Gaincaltest.cpp function declarations here
 
