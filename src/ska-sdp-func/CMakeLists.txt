@@ -9,6 +9,7 @@ set(${CMAKE_PROJECT_NAME}_FOLDERS
     twosm_rfi_flagger
     utility
     vector
+    weighting
 )
 
 # Auto-generate the source lists and pass up to the parent.

@@ -2,7 +2,11 @@
 
 """Module for the weighting functions."""
 
-import numpy as np
+import ctypes
+
+import numpy
+
+from .utility import Error, Lib, Mem
 
 
 def get_uv_range(uvw, freq_hz):
@@ -10,8 +14,8 @@ def get_uv_range(uvw, freq_hz):
     Calculate uv-range in wavelength units given UVW-coordinates
     and frequency array.
 
-    :param uvw: List of UVW coordinates in meters, real-valued.
-                Dimensions are [num_times*num_baselines, 3]
+    :param uvw: List of UVW coordinates in metres, real-valued.
+                Dimensions are [num_times, num_baselines, 3]
     :type uvw: numpy.ndarray
 
     :param freq_hz: List of frequencies in Hz, real-valued.
@@ -21,7 +25,7 @@ def get_uv_range(uvw, freq_hz):
     :returns max_abs_uv: Maximum absolute value of UV coordinates
                          in wavelength units, real-valued
     """
-    max_abs_uv = np.amax(np.abs(uvw[:, 0:1]))
+    max_abs_uv = numpy.amax(numpy.abs(uvw[:, :, 0:1]))
     max_abs_uv *= freq_hz[-1] / 299792458.0
 
     return max_abs_uv
@@ -30,10 +34,10 @@ def get_uv_range(uvw, freq_hz):
 def uniform_weights(uvw, freq_hz, max_abs_uv, grid_uv, weights):
     """
     Calculate the number of hits per UV cell and use the inverse of this
-    as the weight
+    as the weight.
 
-    :param uvw: List of UVW coordinates in meters, real-valued.
-                Dimensions are [num_times*num_baselines, 3]
+    :param uvw: List of UVW coordinates in metres, real-valued.
+                Dimensions are [num_times, num_baselines, 3]
     :type uvw: numpy.ndarray
 
     :param freq_hz: List of frequencies in Hz, real-valued.
@@ -41,40 +45,38 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_uv, weights):
     :type freq_hz: numpy.ndarray
 
     :param max_abs_uv: Maximum absolute value of UV coordinates
-                         in wavelength units, real-valued
+                       in wavelength units, real-valued.
     :type max_abs_uv: float
 
-    :param grid_uv: A zero-valued 2D UV grid array, returns
-                      the number of hits per UV cell
+    :param grid_uv: A initially zero-valued 2D UV grid array.
+                    Returns the number of hits per UV cell.
     :type grid_uv: numpy.ndarray
 
-    :param weights: A zero-valued 3D array, returns the weights.
-                    Dimensions are [num_times*num_baselines, num_channels, 4]
+    :param weights: A real-valued 4D array, returns the weights.
+                    Dimensions are
+                    [num_times, num_baselines, num_channels, num_pols]
     :type weights: numpy.ndarray
-
     """
-
-    grid_size = grid_uv.shape[0]
-
-    uvw_range = range(len(uvw))
-    freq_hz_range = range(len(freq_hz))
-    for i in uvw_range:
-        for j in freq_hz_range:
-            grid_u = uvw[i, 0] * freq_hz[j] / 299792458.0
-            grid_v = uvw[i, 1] * freq_hz[j] / 299792458.0
-            idx_u = int(grid_u / max_abs_uv * grid_size / 2 + grid_size / 2)
-            idx_v = int(grid_v / max_abs_uv * grid_size / 2 + grid_size / 2)
-            if idx_u >= grid_size:
-                idx_u = grid_size - 1
-            if idx_v >= grid_size:
-                idx_v = grid_size - 1
-            grid_uv[idx_u, idx_v] += 1.0
-            weights[i, j, 0] = idx_u
-            weights[i, j, 1] = idx_v
-
-    for i in uvw_range:
-        for j in freq_hz_range:
-            idx_u = int(weights[i, j, 0])
-            idx_v = int(weights[i, j, 1])
-            weight_g = 1.0 / grid_uv[idx_u, idx_v]
-            weights[i, j, :] = weight_g
+    mem_uvw = Mem(uvw)
+    mem_freq_hz = Mem(freq_hz)
+    mem_grid_uv = Mem(grid_uv)
+    mem_weights = Mem(weights)
+    error_status = Error()
+    lib_weighting_uniform = Lib.handle().sdp_weighting_uniform
+    lib_weighting_uniform.argtypes = [
+        Mem.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_double,
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Error.handle_type(),
+    ]
+    lib_weighting_uniform(
+        mem_uvw.handle(),
+        mem_freq_hz.handle(),
+        ctypes.c_double(max_abs_uv),
+        mem_grid_uv.handle(),
+        mem_weights.handle(),
+        error_status.handle(),
+    )
+    error_status.check()
