@@ -10,11 +10,243 @@
 #include <cufft.h>
 #endif
 
+struct sdp_float2 {
+    float x;
+    float y;
+};
+
+struct sdp_double2 {
+    double x;
+    double y;
+};
+
+int is_power_of_two(int n, int *bits) {
+    int cnt = 0;
+    (*bits) = -1;
+    while(n > 0) 
+    {
+        if ((n & 1) == 1) cnt++;
+        n = n >> 1;
+        (*bits)++;
+    }
+ 
+    if (cnt == 1) 
+    {
+        return (1);
+    }
+    return (0);
+}
+
+template<typename T>
+void get_twiddle_value(
+    int64_t N, 
+    int64_t m, 
+    int inverse, 
+    T *W
+){
+    T twidle_factor;
+    double division = ((double) m)/((double) N);
+    if(inverse)
+    {
+        twidle_factor.x = cos( 2.0f*M_PI*division );
+        twidle_factor.y = sin( 2.0f*M_PI*division );
+    }
+    else 
+    {
+        twidle_factor.x = cos( -2.0f*M_PI*division );
+        twidle_factor.y = sin( -2.0f*M_PI*division );
+    }
+    (*W) = twidle_factor;
+}
+
+// This uses Stockham autosort FFT algorithm. More at Computational 
+// Frameworks for the FFT by Charles van Loan
+template<typename T>
+void perform_cpu_fft_power_of_two_inplace(
+    T *input, 
+    T *temp, 
+    int64_t N, 
+    int bits, 
+    int inverse
+){
+    T DFT_value_even, DFT_value_odd, ftemp2, ftemp;
+    T W; // Twidle factor for used in Fourier transform
+    int r, j, k, PoT, PoTm1, A_index, B_index, Nhalf;
+    Nhalf=N>>1;
+    
+    PoT=1;
+    PoTm1=0;
+    for(r = 1; r <= bits; r++)
+    {
+        PoTm1=PoT;
+        PoT=PoT<<1;
+        for(int64_t s = 0; s < Nhalf; s++)
+        {
+            j = s>>(r-1);
+            k = s & (PoTm1-1);
+            get_twiddle_value(PoT, k, inverse, &W);
+            A_index = j*PoTm1 + k;
+            B_index = j*PoTm1 + k + Nhalf;
+            
+            ftemp2 = input[B_index];
+            ftemp  = input[A_index];
+            
+            DFT_value_even.x = ftemp.x + W.x*ftemp2.x - W.y*ftemp2.y;
+            DFT_value_even.y = ftemp.y + W.x*ftemp2.y + W.y*ftemp2.x;
+            
+            DFT_value_odd.x = ftemp.x - W.x*ftemp2.x + W.y*ftemp2.y;
+            DFT_value_odd.y = ftemp.y - W.x*ftemp2.y - W.y*ftemp2.x;
+            
+            temp[j*PoT + k        ] = DFT_value_even;
+            temp[j*PoT + k + PoTm1] = DFT_value_odd;
+        }
+        memcpy(input, temp, N*sizeof(T));
+    }
+}
+
+template<typename T>
+void perform_cpu_dft_general(
+    T *input, 
+    T *temp, 
+    int64_t N, 
+    int inverse
+){
+    for(int64_t n = 0; n < N; n++)
+    {
+        T sum, DFT_value;
+        T W; // Twidle factor for used in Fourier Transform
+        sum.x = 0; sum.y = 0;
+        for(int64_t s = 0; s < N; s++)
+        {
+            get_twiddle_value(N, n*s, inverse, &W);
+            DFT_value.x = W.x*input[s].x - W.y*input[s].y;
+            DFT_value.y = W.x*input[s].y + W.y*input[s].x;
+            sum.x = sum.x + DFT_value.x;
+            sum.y = sum.y + DFT_value.y;
+        }
+        temp[n] = sum;
+    }
+}
+
+template<typename T>
+void sdp_1d_fft_inplace(
+    T *input, 
+    T *temp, 
+    int64_t Nx, 
+    int64_t batch_size, 
+    int do_inverse
+){
+    int bits = 0;
+    int ispoweroftwo = is_power_of_two(Nx, &bits);
+    int64_t f = 0;
+    
+    #pragma omp parallel default( none ) shared( input, temp, Nx, batch_size, do_inverse, ispoweroftwo, bits ) private( f )
+    {
+        #pragma omp for
+        for(f = 0; f < batch_size; f++)
+        {
+            if(ispoweroftwo) 
+            {
+                perform_cpu_fft_power_of_two_inplace(&input[f*Nx], &temp[f*Nx], Nx, bits, do_inverse);
+            }
+            else 
+            {
+                perform_cpu_dft_general(&input[f*Nx], &temp[f*Nx], Nx, do_inverse);
+                memcpy(&input[f*Nx], &temp[f*Nx], Nx*sizeof(T));
+            }
+        }
+    }
+}
+
+template<typename T>
+void sdp_1d_fft(
+    T *output, 
+    T *input, 
+    T *temp, 
+    int64_t Nx, 
+    int64_t batch_size, 
+    int do_inverse, 
+    sdp_Error* status
+){
+    if (*status) return;
+    if(input != output) 
+    { // out-of-place transform
+        memcpy(output, input, Nx*batch_size*sizeof(T));
+    }
+    sdp_1d_fft_inplace(output, temp, Nx, batch_size, do_inverse);
+}
+
+
+// This could be a processing function...
+template<typename T>
+void sdp_transpose_simple(
+    T *out, 
+    T *in, 
+    int64_t Nx, 
+    int64_t Ny
+){
+    for(int64_t i = 0; i < Ny; i++)
+    { 
+        for(int64_t j = 0; j < Nx; j++)
+        { 
+            out[j*Ny + i] = in[i*Nx + j];
+        }
+    }
+}
+
+template<typename T>
+void sdp_2d_fft_inplace(
+    T *input, 
+    T *temp, 
+    int64_t Nx, 
+    int64_t Ny, 
+    int64_t batch_size, 
+    int do_inverse
+){
+    for(int64_t f = 0; f < batch_size; f++)
+    {
+        int64_t pos = Nx*Ny*f;
+        // Apply FFT on columns
+        sdp_transpose_simple(&temp[pos], &input[pos], Ny, Nx);
+        sdp_1d_fft_inplace(&temp[pos], &input[pos], Nx, Ny, do_inverse);
+        
+        // Apply FFT on Rows
+        sdp_transpose_simple(&input[pos], &temp[pos], Nx, Ny);
+        sdp_1d_fft_inplace(&input[pos], &temp[pos], Ny, Nx, do_inverse);
+    }
+}
+
+// Performs 2D FFT with Nx fastest moving dimension and Ny slow moving dimension
+template<typename T>
+static void sdp_2d_fft(
+    T *output, 
+    T *input, 
+    T *temp, 
+    int64_t Nx, 
+    int64_t Ny, 
+    int64_t batch_size, 
+    int do_inverse, 
+    sdp_Error* status
+){
+    if (*status) return;
+    if(input != output) 
+    { // out-of-place transform
+        memcpy(output, input, Nx*Ny*batch_size*sizeof(T));
+    }
+    sdp_2d_fft_inplace(output, temp, Nx, Ny, batch_size, do_inverse);
+}
+
+
+
+
 struct sdp_Fft
 {
     sdp_Mem* input;
     sdp_Mem* output;
+    sdp_Mem* temp;
     int num_dims;
+    int Nx;
+    int Ny;
     int batch_size;
     int is_forward;
     int cufft_plan;
@@ -65,6 +297,10 @@ static void check_params(
             }
         }
     }
+    else {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types");
+    }
     if (num_dims_fft != sdp_mem_num_dims(input) &&
             num_dims_fft != sdp_mem_num_dims(input) - 1)
     {
@@ -84,16 +320,21 @@ sdp_Fft* sdp_fft_create(
         sdp_Error* status)
 {
     sdp_Fft* fft = 0;
+    sdp_Mem* temp = NULL;
     int cufft_plan = 0;
     int batch_size = 1;
+    int Nx = 0;
+    int Ny = 0;
     check_params(input, output, num_dims_fft, status);
     if (*status) return fft;
+    
+    const int32_t num_dims = sdp_mem_num_dims(input);
+    const int32_t last_dim = num_dims - 1;
+    
     if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
 #ifdef SDP_HAVE_CUDA
         int idist = 0, istride = 0, odist = 0, ostride = 0;
-        const int32_t num_dims = sdp_mem_num_dims(input);
-        const int32_t last_dim = num_dims - 1;
         cufftType cufft_type = CUFFT_C2C;
         if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
@@ -151,8 +392,61 @@ sdp_Fft* sdp_fft_create(
         return fft;
 #endif
     }
-    else
+    else if(sdp_mem_location(input) == SDP_MEM_CPU)
     {
+        int64_t Nx_stride = 0, Ny_stride = 0, batch_stride = 0;
+        if( num_dims_fft == 1 )
+        {
+            Nx = sdp_mem_shape_dim(input, last_dim);
+            Nx_stride = sdp_mem_stride_elements_dim(input, last_dim);
+            Ny = 1;
+            Ny_stride = Nx;
+        }
+        if( num_dims_fft == 2 )
+        {
+            Nx = sdp_mem_shape_dim(input, last_dim);
+            Ny = sdp_mem_shape_dim(input, last_dim - 1);
+            Nx_stride = sdp_mem_stride_elements_dim(input, last_dim);
+            Ny_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
+        }
+        if( num_dims_fft > 2) {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported FFT dimension");
+        }
+        batch_stride = Nx*Ny;
+        if (num_dims != num_dims_fft)
+        {
+            batch_size = sdp_mem_shape_dim(input, 0);
+            batch_stride = sdp_mem_stride_elements_dim(input, 0);
+        }
+        
+        if(
+            Nx_stride != 1
+            && Ny_stride != Nx
+            && batch_stride != Nx*Ny) 
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data strides");
+        }
+        
+        if (!*status)
+        {
+            int64_t *shape = (int64_t *) calloc(num_dims, sizeof(int64_t));
+            for(int f = 0; f < num_dims; f++) 
+            {
+                shape[f] = sdp_mem_shape_dim(input, f);
+            }
+            temp = sdp_mem_create(
+                sdp_mem_type(input),
+                SDP_MEM_CPU,
+                num_dims,
+                shape,
+                status
+            );
+            free(shape);
+        }
+    }
+    else {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Unsupported FFT location");
         return fft;
@@ -162,7 +456,10 @@ sdp_Fft* sdp_fft_create(
         fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
         fft->input = sdp_mem_create_alias(input);
         fft->output = sdp_mem_create_alias(output);
+        fft->temp = temp;
         fft->num_dims = num_dims_fft;
+        fft->Nx = Nx;
+        fft->Ny = Ny;
         fft->batch_size = batch_size;
         fft->is_forward = is_forward;
         fft->cufft_plan = cufft_plan;
@@ -217,6 +514,76 @@ void sdp_fft_exec(
                 "without CUDA support");
 #endif
     }
+    else if (sdp_mem_location(input) == SDP_MEM_CPU) {
+        int do_inverse = ( fft->is_forward == 1? 0 : 1 );
+        
+        if(fft->num_dims==1)
+        {
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT 
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+            {
+                sdp_1d_fft(
+                    (sdp_float2 *) sdp_mem_data(output), 
+                    (sdp_float2 *) sdp_mem_data(input), 
+                    (sdp_float2 *) sdp_mem_data(fft->temp), 
+                    fft->Nx, 
+                    fft->batch_size, 
+                    do_inverse,
+                    status
+                );
+            }
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE 
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+            {
+                sdp_1d_fft(
+                    (sdp_double2 *) sdp_mem_data(output), 
+                    (sdp_double2 *) sdp_mem_data(input), 
+                    (sdp_double2 *) sdp_mem_data(fft->temp), 
+                    fft->Nx, 
+                    fft->batch_size, 
+                    do_inverse,
+                    status
+                );
+            }
+        }
+        if(fft->num_dims==2)
+        {
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT 
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+            {
+                sdp_2d_fft(
+                    (sdp_float2 *) sdp_mem_data(output), 
+                    (sdp_float2 *) sdp_mem_data(input), 
+                    (sdp_float2 *) sdp_mem_data(fft->temp), 
+                    fft->Nx, 
+                    fft->Ny, 
+                    fft->batch_size, 
+                    do_inverse,
+                    status
+                );
+            }
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE 
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+            {
+                sdp_2d_fft(
+                    (sdp_double2 *) sdp_mem_data(output), 
+                    (sdp_double2 *) sdp_mem_data(input), 
+                    (sdp_double2 *) sdp_mem_data(fft->temp), 
+                    fft->Nx, 
+                    fft->Ny, 
+                    fft->batch_size, 
+                    do_inverse,
+                    status
+                );
+            }
+        }
+        if(fft->num_dims>2)
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_ERROR("3D FFT is not supported on host memory.");
+            return;
+        }
+    }
 }
 
 
@@ -231,5 +598,9 @@ void sdp_fft_free(sdp_Fft* fft)
 #endif
     sdp_mem_ref_dec(fft->input);
     sdp_mem_ref_dec(fft->output);
+    if(fft->temp != NULL) 
+    {
+        sdp_mem_free(fft->temp);
+    }
     free(fft);
 }

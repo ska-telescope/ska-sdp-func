@@ -150,12 +150,25 @@ int main()
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif
+    
+    // Happy paths.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, double precision", false, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE,
+        run_and_check("CPU, float precision", true, false,
+                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status);
-        assert(status == SDP_ERR_MEM_LOCATION);
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("CPU, double precision", true, false,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status == SDP_SUCCESS);
     }
     return 0;
 }
+
+
+
+
