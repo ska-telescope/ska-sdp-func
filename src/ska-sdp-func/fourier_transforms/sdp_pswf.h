@@ -1,7 +1,7 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#ifndef SKA_SDP_PROC_FUNC_SWIFTLY_H_
-#define SKA_SDP_PROC_FUNC_SWIFTLY_H_
+#ifndef SKA_SDP_PROC_FUNC_PSWF_H_
+#define SKA_SDP_PROC_FUNC_PSWF_H_
 
 /**
  * @file sdp_swiftly.h
