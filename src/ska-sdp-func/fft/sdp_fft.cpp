@@ -167,10 +167,8 @@ static void sdp_1d_fft(
     T *temp, 
     int64_t Nx, 
     int64_t batch_size, 
-    int do_inverse, 
-    sdp_Error* status
-){
-    if (*status) return;
+    int do_inverse)
+{
     if(input != output) 
     { // out-of-place transform
         memcpy(output, input, Nx*batch_size*sizeof(T));
@@ -227,10 +225,8 @@ static void sdp_2d_fft(
     int64_t Nx, 
     int64_t Ny, 
     int64_t batch_size, 
-    int do_inverse, 
-    sdp_Error* status)
+    int do_inverse)
 {
-    if (*status) return;
     if(input != output) 
     { // out-of-place transform
         memcpy(output, input, Nx*Ny*batch_size*sizeof(T));
@@ -530,8 +526,7 @@ void sdp_fft_exec(
                     (sdp_Float2 *) sdp_mem_data(fft->temp), 
                     fft->Nx, 
                     fft->batch_size, 
-                    do_inverse,
-                    status
+                    do_inverse
                 );
             }
             if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE 
@@ -543,8 +538,7 @@ void sdp_fft_exec(
                     (sdp_Double2 *) sdp_mem_data(fft->temp), 
                     fft->Nx, 
                     fft->batch_size, 
-                    do_inverse,
-                    status
+                    do_inverse
                 );
             }
         }
@@ -560,8 +554,7 @@ void sdp_fft_exec(
                     fft->Nx, 
                     fft->Ny, 
                     fft->batch_size, 
-                    do_inverse,
-                    status
+                    do_inverse
                 );
             }
             if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE 
@@ -574,8 +567,7 @@ void sdp_fft_exec(
                     fft->Nx, 
                     fft->Ny, 
                     fft->batch_size, 
-                    do_inverse,
-                    status
+                    do_inverse
                 );
             }
         }
