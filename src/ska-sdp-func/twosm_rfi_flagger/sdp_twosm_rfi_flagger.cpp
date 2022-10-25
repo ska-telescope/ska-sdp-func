@@ -57,6 +57,21 @@ static void check_params(
     }
 }
 
+int compare (const void * a, const void * b){
+    if (*(double*)a > *(double*)b)
+        return 1;
+    else if (*(double*)a < *(double*)b)
+        return -1;
+    else
+        return 0;
+}
+
+double quantile(double* arr, double q, int n){
+    qsort(arr, n, sizeof(double), compare);
+    int cutpoint = round(q * n);
+    return arr[cutpoint];
+}
+
 template<typename FP>
 static void twosm_rfi_flagger(
         int* flags,
@@ -71,7 +86,85 @@ static void twosm_rfi_flagger(
     double tol_margin_2sm_freq = thresholds[1];
     uint64_t num_elements = num_timesamples * num_channels;
 
-    for (uint64_t c = 0; c < num_channels; c++){
+    double quant_ft = 0;
+    double quant_fd = 0;
+    double quant_td = 0;
+
+    double *reasonable_value = new double[num_channels];
+    double *transit_score = new double[num_channels];
+
+    for (uint64_t t = 0; t < num_timesamples; t++) {
+        if (t == 0) {
+            double *first_time = new double[num_channels - 1];
+            double *freq_diffs = new double[num_channels - 1];
+            for (uint64_t k = 0; k < num_channels - 1; k++) {
+                first_time[k] = abs(visibilities[t * num_channels + k]);
+                freq_diffs[k] = abs(abs(visibilities[t * num_channels + k + 1] -
+                                        abs(visibilities[t * num_channels + k])));
+            }
+            quant_ft = quantile(first_time, 0.7, num_channels - 1);
+            quant_fd = quantile(freq_diffs, 0.9, num_channels - 1);
+
+            delete[] first_time;
+            delete[] freq_diffs;
+        }
+
+        if (t == 1) {
+            double *time_diffs = new double[num_channels - 1];
+            for (uint64_t m = 0; m < num_channels; m++) {
+                time_diffs[m] = abs(
+                        abs(visibilities[t * num_channels + m] - abs(visibilities[(t - 1) * num_channels + m])));
+            }
+            quant_td = quantile(time_diffs, 0.9, num_channels);
+            delete[] time_diffs;
+        }
+        if (t == 0) {
+            bool a_healthy_val_found = false;
+            double current_reasonable_val = -1;
+            int loc_of_first_healthy = 0;
+            for (uint64_t c; c < num_channels; c++) {
+                double vis0 = abs(visibilities[t * num_channels + c]);
+                if (vis0 >= quant_ft) {
+                    flags[t * num_channels + c] = 1;
+                }
+                if (flags[t * num_channels + c] == 0 && !a_healthy_val_found){
+                    a_healthy_val_found = true;
+                    current_reasonable_val = vis0;
+                    loc_of_first_healthy = c;
+                    reasonable_value[c] = current_reasonable_val;
+                }
+                if (flags[t * num_channels + c] == 0 && a_healthy_val_found){
+                    current_reasonable_val = vis0;
+                    reasonable_value[c] = current_reasonable_val;
+                }
+                if (flags[t * num_channels + c] == 1 && a_healthy_val_found){
+                    reasonable_value[c] = current_reasonable_val;
+                }
+                int h = loc_of_first_healthy;
+                while (h > 0){
+                    h = h - 1;
+                    reasonable_value[t * num_channels + h] = abs(visibilities[t * num_channels + loc_of_first_healthy]);
+                }
+
+
+            }
+        }
+        if (t == 1 || t == 2){
+            for (uint64_t c; c < num_channels; c++) {
+                double vis1 = abs(visibilities[t * num_channels + c]);
+                double vis0 = abs(visibilities[(t - 1) * num_channels + c]);
+                double diff = abs(vis1 - vis0);
+                transit_score[c] = (transit_score[c] * (t - 1) + diff)/t;
+                bool cnd0 = diff >= quant_td;
+                if (cnd0) {
+                    flags[t * num_channels + c] = 1;
+                }
+            }
+        }
+    }
+
+
+    /*for (uint64_t c = 0; c < num_channels; c++){
         for (uint64_t t = 1; t < num_timesamples; t++) {
             uint64_t pos_current = t * num_channels + c; // current position
             uint64_t pos_minusone = (t - 1) * num_channels + c; //position at t-1
@@ -153,7 +246,7 @@ static void twosm_rfi_flagger(
         if (flags[i] > 0){
             flags[i] = 1;
         }
-    }
+    }*/
 }
 
 
