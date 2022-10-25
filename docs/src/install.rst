@@ -4,11 +4,12 @@
 Installation Guide
 ******************
 
+If GPU acceleration is required, make sure the CUDA toolkit is installed first.
+
 The C Library
 =============
 
-The processing function library should be compiled from source using CMake.
-If GPU acceleration is required, make sure the CUDA toolkit is installed first.
+The processing function library is compiled from source using CMake.
 
 From the top-level directory, run the following commands to compile and
 install the library:
@@ -17,9 +18,19 @@ install the library:
 
      mkdir build
      cd build
-     cmake ..
+     cmake .. [OPTIONS]
      make -j8
      make install
+
+The CMake options are as follows:
+
+- Use ``-DFIND_CUDA=OFF|ON`` to specify whether or not CUDA should be used.
+  The default value for this is ``ON``.
+
+- Use ``-DCUDA_ARCH="x.y"`` to compile CUDA code for the specified GPU
+  architecture(s). The default value for this is all architectures
+  from 6.0 to 8.6 (Pascal to Ampere). Multiple architectures should be
+  separated by semi-colons.
 
 The C unit tests can then be run from the same build directory:
 
@@ -27,23 +38,23 @@ The C unit tests can then be run from the same build directory:
 
      ctest
 
-The Python Bindings
-===================
+The Python Library
+==================
 
-The Python bindings are implemented using ctypes to call the compiled C
-functions - this module is pure Python, so no compilation or external
-packages are needed to install it.
-
-After compiling the C library (above), from the top-level directory, run:
+From the top-level directory, run the following commands to install
+the Python package:
 
   .. code-block:: bash
 
      pip3 install .
 
-to install the Python package.
+The compiled library will be built as part of this step, so it does not need to
+be installed separately. If extra CMake arguments need to be specified, set the
+environment variable ``CMAKE_ARGS`` first, for example:
 
-If the C library is not installed into ``/usr/local/lib``, then its location
-must be specified by setting the environment variable ``SKA_SDP_FUNC_LIB_DIR``.
+  .. code-block:: bash
+
+     CMAKE_ARGS="-DCUDA_ARCH=8.0" pip3 install .
 
 The Python unit tests can then be run using `pytest <https://pytest.org>`_,
 from the top-level directory:
