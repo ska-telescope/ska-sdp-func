@@ -1,5 +1,6 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 
@@ -10,17 +11,17 @@
 #include <cufft.h>
 #endif
 
-struct sdp_float2 {
+struct sdp_Float2 {
     float x;
     float y;
 };
 
-struct sdp_double2 {
+struct sdp_Double2 {
     double x;
     double y;
 };
 
-int is_power_of_two(int n, int *bits) {
+static int is_power_of_two(int n, int *bits) {
     int cnt = 0;
     (*bits) = -1;
     while(n > 0) 
@@ -38,7 +39,7 @@ int is_power_of_two(int n, int *bits) {
 }
 
 template<typename T>
-void get_twiddle_value(
+static void get_twiddle_value(
     int64_t N, 
     int64_t m, 
     int inverse, 
@@ -62,7 +63,7 @@ void get_twiddle_value(
 // This uses Stockham autosort FFT algorithm. More at Computational 
 // Frameworks for the FFT by Charles van Loan
 template<typename T>
-void perform_cpu_fft_power_of_two_inplace(
+static void perform_cpu_fft_power_of_two_inplace(
     T *input, 
     T *temp, 
     int64_t N, 
@@ -71,8 +72,9 @@ void perform_cpu_fft_power_of_two_inplace(
 ){
     T DFT_value_even, DFT_value_odd, ftemp2, ftemp;
     T W; // Twidle factor for used in Fourier transform
-    int r, j, k, PoT, PoTm1, A_index, B_index, Nhalf;
-    Nhalf=N>>1;
+    int r = 0, j = 0, k = 0, PoT = 0, PoTm1 = 0;
+    int A_index = 0, B_index = 0;
+    int Nhalf = N>>1;
     
     PoT=1;
     PoTm1=0;
@@ -105,7 +107,7 @@ void perform_cpu_fft_power_of_two_inplace(
 }
 
 template<typename T>
-void perform_cpu_dft_general(
+static void perform_cpu_dft_general(
     T *input, 
     T *temp, 
     int64_t N, 
@@ -129,7 +131,7 @@ void perform_cpu_dft_general(
 }
 
 template<typename T>
-void sdp_1d_fft_inplace(
+static void sdp_1d_fft_inplace(
     T *input, 
     T *temp, 
     int64_t Nx, 
@@ -159,7 +161,7 @@ void sdp_1d_fft_inplace(
 }
 
 template<typename T>
-void sdp_1d_fft(
+static void sdp_1d_fft(
     T *output, 
     T *input, 
     T *temp, 
@@ -179,7 +181,7 @@ void sdp_1d_fft(
 
 // This could be a processing function...
 template<typename T>
-void sdp_transpose_simple(
+static void sdp_transpose_simple(
     T *out, 
     T *in, 
     int64_t Nx, 
@@ -195,7 +197,7 @@ void sdp_transpose_simple(
 }
 
 template<typename T>
-void sdp_2d_fft_inplace(
+static void sdp_2d_fft_inplace(
     T *input, 
     T *temp, 
     int64_t Nx, 
@@ -226,8 +228,8 @@ static void sdp_2d_fft(
     int64_t Ny, 
     int64_t batch_size, 
     int do_inverse, 
-    sdp_Error* status
-){
+    sdp_Error* status)
+{
     if (*status) return;
     if(input != output) 
     { // out-of-place transform
@@ -523,9 +525,9 @@ void sdp_fft_exec(
                 && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
             {
                 sdp_1d_fft(
-                    (sdp_float2 *) sdp_mem_data(output), 
-                    (sdp_float2 *) sdp_mem_data(input), 
-                    (sdp_float2 *) sdp_mem_data(fft->temp), 
+                    (sdp_Float2 *) sdp_mem_data(output), 
+                    (sdp_Float2 *) sdp_mem_data(input), 
+                    (sdp_Float2 *) sdp_mem_data(fft->temp), 
                     fft->Nx, 
                     fft->batch_size, 
                     do_inverse,
@@ -536,9 +538,9 @@ void sdp_fft_exec(
                 && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
             {
                 sdp_1d_fft(
-                    (sdp_double2 *) sdp_mem_data(output), 
-                    (sdp_double2 *) sdp_mem_data(input), 
-                    (sdp_double2 *) sdp_mem_data(fft->temp), 
+                    (sdp_Double2 *) sdp_mem_data(output), 
+                    (sdp_Double2 *) sdp_mem_data(input), 
+                    (sdp_Double2 *) sdp_mem_data(fft->temp), 
                     fft->Nx, 
                     fft->batch_size, 
                     do_inverse,
@@ -552,9 +554,9 @@ void sdp_fft_exec(
                 && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
             {
                 sdp_2d_fft(
-                    (sdp_float2 *) sdp_mem_data(output), 
-                    (sdp_float2 *) sdp_mem_data(input), 
-                    (sdp_float2 *) sdp_mem_data(fft->temp), 
+                    (sdp_Float2 *) sdp_mem_data(output), 
+                    (sdp_Float2 *) sdp_mem_data(input), 
+                    (sdp_Float2 *) sdp_mem_data(fft->temp), 
                     fft->Nx, 
                     fft->Ny, 
                     fft->batch_size, 
@@ -566,9 +568,9 @@ void sdp_fft_exec(
                 && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
             {
                 sdp_2d_fft(
-                    (sdp_double2 *) sdp_mem_data(output), 
-                    (sdp_double2 *) sdp_mem_data(input), 
-                    (sdp_double2 *) sdp_mem_data(fft->temp), 
+                    (sdp_Double2 *) sdp_mem_data(output), 
+                    (sdp_Double2 *) sdp_mem_data(input), 
+                    (sdp_Double2 *) sdp_mem_data(fft->temp), 
                     fft->Nx, 
                     fft->Ny, 
                     fft->batch_size, 
