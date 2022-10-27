@@ -134,27 +134,27 @@ template<typename T>
 static void sdp_1d_fft_inplace(
     T *input, 
     T *temp, 
-    int64_t Nx, 
+    int64_t num_x, 
     int64_t batch_size, 
     int do_inverse
 ){
     int bits = 0;
-    int ispoweroftwo = is_power_of_two(Nx, &bits);
+    int ispoweroftwo = is_power_of_two(num_x, &bits);
     int64_t f = 0;
     
-    #pragma omp parallel default( none ) shared( input, temp, Nx, batch_size, do_inverse, ispoweroftwo, bits ) private( f )
+    #pragma omp parallel default( none ) shared( input, temp, num_x, batch_size, do_inverse, ispoweroftwo, bits ) private( f )
     {
         #pragma omp for
         for(f = 0; f < batch_size; f++)
         {
             if(ispoweroftwo) 
             {
-                perform_cpu_fft_power_of_two_inplace(&input[f*Nx], &temp[f*Nx], Nx, bits, do_inverse);
+                perform_cpu_fft_power_of_two_inplace(&input[f*num_x], &temp[f*num_x], num_x, bits, do_inverse);
             }
             else 
             {
-                perform_cpu_dft_general(&input[f*Nx], &temp[f*Nx], Nx, do_inverse);
-                memcpy(&input[f*Nx], &temp[f*Nx], Nx*sizeof(T));
+                perform_cpu_dft_general(&input[f*num_x], &temp[f*num_x], num_x, do_inverse);
+                memcpy(&input[f*num_x], &temp[f*num_x], num_x*sizeof(T));
             }
         }
     }
@@ -165,15 +165,15 @@ static void sdp_1d_fft(
     T *output, 
     T *input, 
     T *temp, 
-    int64_t Nx, 
+    int64_t num_x, 
     int64_t batch_size, 
     int do_inverse)
 {
     if(input != output) 
     { // out-of-place transform
-        memcpy(output, input, Nx*batch_size*sizeof(T));
+        memcpy(output, input, num_x*batch_size*sizeof(T));
     }
-    sdp_1d_fft_inplace(output, temp, Nx, batch_size, do_inverse);
+    sdp_1d_fft_inplace(output, temp, num_x, batch_size, do_inverse);
 }
 
 
@@ -182,14 +182,14 @@ template<typename T>
 static void sdp_transpose_simple(
     T *out, 
     T *in, 
-    int64_t Nx, 
-    int64_t Ny
+    int64_t num_x, 
+    int64_t num_y
 ){
-    for(int64_t i = 0; i < Ny; i++)
+    for(int64_t i = 0; i < num_y; i++)
     { 
-        for(int64_t j = 0; j < Nx; j++)
+        for(int64_t j = 0; j < num_x; j++)
         { 
-            out[j*Ny + i] = in[i*Nx + j];
+            out[j*num_y + i] = in[i*num_x + j];
         }
     }
 }
@@ -198,40 +198,40 @@ template<typename T>
 static void sdp_2d_fft_inplace(
     T *input, 
     T *temp, 
-    int64_t Nx, 
-    int64_t Ny, 
+    int64_t num_x, 
+    int64_t num_y, 
     int64_t batch_size, 
     int do_inverse
 ){
     for(int64_t f = 0; f < batch_size; f++)
     {
-        int64_t pos = Nx*Ny*f;
+        int64_t pos = num_x*num_y*f;
         // Apply FFT on columns
-        sdp_transpose_simple(&temp[pos], &input[pos], Ny, Nx);
-        sdp_1d_fft_inplace(&temp[pos], &input[pos], Nx, Ny, do_inverse);
+        sdp_transpose_simple(&temp[pos], &input[pos], num_y, num_x);
+        sdp_1d_fft_inplace(&temp[pos], &input[pos], num_x, num_y, do_inverse);
         
         // Apply FFT on Rows
-        sdp_transpose_simple(&input[pos], &temp[pos], Nx, Ny);
-        sdp_1d_fft_inplace(&input[pos], &temp[pos], Ny, Nx, do_inverse);
+        sdp_transpose_simple(&input[pos], &temp[pos], num_x, num_y);
+        sdp_1d_fft_inplace(&input[pos], &temp[pos], num_y, num_x, do_inverse);
     }
 }
 
-// Performs 2D FFT with Nx fastest moving dimension and Ny slow moving dimension
+// Performs 2D FFT with num_x fastest moving dimension and num_y slow moving dimension
 template<typename T>
 static void sdp_2d_fft(
     T *output, 
     T *input, 
     T *temp, 
-    int64_t Nx, 
-    int64_t Ny, 
+    int64_t num_x, 
+    int64_t num_y, 
     int64_t batch_size, 
     int do_inverse)
 {
     if(input != output) 
     { // out-of-place transform
-        memcpy(output, input, Nx*Ny*batch_size*sizeof(T));
+        memcpy(output, input, num_x*num_y*batch_size*sizeof(T));
     }
-    sdp_2d_fft_inplace(output, temp, Nx, Ny, batch_size, do_inverse);
+    sdp_2d_fft_inplace(output, temp, num_x, num_y, batch_size, do_inverse);
 }
 
 
@@ -243,8 +243,8 @@ struct sdp_Fft
     sdp_Mem* output;
     sdp_Mem* temp;
     int num_dims;
-    int Nx;
-    int Ny;
+    int num_x;
+    int num_y;
     int batch_size;
     int is_forward;
     int cufft_plan;
@@ -321,8 +321,8 @@ sdp_Fft* sdp_fft_create(
     sdp_Mem* temp = NULL;
     int cufft_plan = 0;
     int batch_size = 1;
-    int Nx = 0;
-    int Ny = 0;
+    int num_x = 0;
+    int num_y = 0;
     check_params(input, output, num_dims_fft, status);
     if (*status) return fft;
     
@@ -392,26 +392,26 @@ sdp_Fft* sdp_fft_create(
     }
     else if(sdp_mem_location(input) == SDP_MEM_CPU)
     {
-        int64_t Nx_stride = 0, Ny_stride = 0, batch_stride = 0;
+        int64_t num_x_stride = 0, num_y_stride = 0, batch_stride = 0;
         if( num_dims_fft == 1 )
         {
-            Nx = sdp_mem_shape_dim(input, last_dim);
-            Nx_stride = sdp_mem_stride_elements_dim(input, last_dim);
-            Ny = 1;
-            Ny_stride = Nx;
+            num_x = sdp_mem_shape_dim(input, last_dim);
+            num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
+            num_y = 1;
+            num_y_stride = num_x;
         }
         if( num_dims_fft == 2 )
         {
-            Nx = sdp_mem_shape_dim(input, last_dim - 1);
-            Ny = sdp_mem_shape_dim(input, last_dim);
-            Nx_stride = sdp_mem_stride_elements_dim(input, last_dim);
-            Ny_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
+            num_x = sdp_mem_shape_dim(input, last_dim - 1);
+            num_y = sdp_mem_shape_dim(input, last_dim);
+            num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
+            num_y_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
         }
         if( num_dims_fft > 2) {
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported FFT dimension");
         }
-        batch_stride = Nx*Ny;
+        batch_stride = num_x*num_y;
         if (num_dims != num_dims_fft)
         {
             batch_size = sdp_mem_shape_dim(input, 0);
@@ -419,9 +419,9 @@ sdp_Fft* sdp_fft_create(
         }
         
         if(
-            Nx_stride != 1
-            && Ny_stride != Nx
-            && batch_stride != Nx*Ny) 
+            num_x_stride != 1
+            && num_y_stride != num_x
+            && batch_stride != num_x*num_y) 
         {
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported data strides");
@@ -456,8 +456,8 @@ sdp_Fft* sdp_fft_create(
         fft->output = sdp_mem_create_alias(output);
         fft->temp = temp;
         fft->num_dims = num_dims_fft;
-        fft->Nx = Nx;
-        fft->Ny = Ny;
+        fft->num_x = num_x;
+        fft->num_y = num_y;
         fft->batch_size = batch_size;
         fft->is_forward = is_forward;
         fft->cufft_plan = cufft_plan;
@@ -524,7 +524,7 @@ void sdp_fft_exec(
                     (sdp_Float2 *) sdp_mem_data(output), 
                     (sdp_Float2 *) sdp_mem_data(input), 
                     (sdp_Float2 *) sdp_mem_data(fft->temp), 
-                    fft->Nx, 
+                    fft->num_x, 
                     fft->batch_size, 
                     do_inverse
                 );
@@ -536,7 +536,7 @@ void sdp_fft_exec(
                     (sdp_Double2 *) sdp_mem_data(output), 
                     (sdp_Double2 *) sdp_mem_data(input), 
                     (sdp_Double2 *) sdp_mem_data(fft->temp), 
-                    fft->Nx, 
+                    fft->num_x, 
                     fft->batch_size, 
                     do_inverse
                 );
@@ -551,8 +551,8 @@ void sdp_fft_exec(
                     (sdp_Float2 *) sdp_mem_data(output), 
                     (sdp_Float2 *) sdp_mem_data(input), 
                     (sdp_Float2 *) sdp_mem_data(fft->temp), 
-                    fft->Nx, 
-                    fft->Ny, 
+                    fft->num_x, 
+                    fft->num_y, 
                     fft->batch_size, 
                     do_inverse
                 );
@@ -564,8 +564,8 @@ void sdp_fft_exec(
                     (sdp_Double2 *) sdp_mem_data(output), 
                     (sdp_Double2 *) sdp_mem_data(input), 
                     (sdp_Double2 *) sdp_mem_data(fft->temp), 
-                    fft->Nx, 
-                    fft->Ny, 
+                    fft->num_x, 
+                    fft->num_y, 
                     fft->batch_size, 
                     do_inverse
                 );
