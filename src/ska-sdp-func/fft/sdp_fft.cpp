@@ -402,8 +402,8 @@ sdp_Fft* sdp_fft_create(
         }
         if( num_dims_fft == 2 )
         {
-            Nx = sdp_mem_shape_dim(input, last_dim);
-            Ny = sdp_mem_shape_dim(input, last_dim - 1);
+            Nx = sdp_mem_shape_dim(input, last_dim - 1);
+            Ny = sdp_mem_shape_dim(input, last_dim);
             Nx_stride = sdp_mem_stride_elements_dim(input, last_dim);
             Ny_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
         }
