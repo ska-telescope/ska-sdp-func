@@ -21,13 +21,11 @@ class Fft:
         in the arrays, then the FFT batch size is assumed to be the size of the
         first (slowest varying) dimension.
 
-        This wraps cuFFT, so only GPU FFTs are currently supported.
-
         :param input_data: Input data.
-        :type input_data: cupy.ndarray
+        :type input_data: numpy.ndarray or cupy.ndarray
 
         :param output_data: Output data.
-        :type output_data: cupy.ndarray
+        :type output_data: numpy.ndarray or cupy.ndarray
 
         :param num_dims_fft: The number of dimensions for the FFT.
         :type num_dims_fft: int
