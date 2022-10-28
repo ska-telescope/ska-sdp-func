@@ -1,0 +1,17 @@
+SKA_SDP_FUNC_SRC(
+    Msmfscommon.h
+    Msmfslogger.h
+    Msmfslogger.c
+    Msmfsfunctionsdevice.h
+    Msmfsfunctionsdevice.cu
+    Msmfsfunctionshost.h
+    Msmfsfunctionshost.cu
+    Msmfssimpletest.h
+    Msmfssimpletest.cu
+    Msmfslibrarytest.h
+    Msmfslibrarytest.cpp
+    Msmfsprocessingfunctioninterface.h
+    Msmfsprocessingfunctioninterface.cpp
+    Msmfsprocessingfunctiontest.h
+    Msmfsprocessingfunctiontest.cpp
+)

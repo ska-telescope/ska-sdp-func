@@ -1,5 +1,6 @@
 # Define list of folders containing source files.
 set(${CMAKE_PROJECT_NAME}_FOLDERS
+    deconvolution_msmfs
     dft
     fft
     function_example_a
