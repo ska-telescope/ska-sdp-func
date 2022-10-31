@@ -72,6 +72,61 @@ double quantile(double* arr, double q, int n){
     return arr[cutpoint];
 }
 
+double extrapolate(double mrec, int mrecloc, double minone,
+                  int minoneloc, double mintwo, int mintwoloc, uint64_t current_time){
+    double extrapolated_val;
+    if (mrecloc != -1 && minoneloc == -1 && mintwoloc == -1){
+        extrapolated_val = mrec;
+    }
+    if (mrecloc != -1 && minoneloc != -1 && mintwoloc == -1){
+        extrapolated_val = mrec + ((mrec - minone)/(mrecloc - minoneloc)) * (current_time - mrecloc);
+    }
+    if (mrecloc != -1 && minoneloc != -1 && mintwoloc != -1){
+        double firstdev1 = (mrec - minone)/(mrecloc - minoneloc);
+        double firstdev2 = (minone - mintwo)/(minoneloc - mintwoloc);
+        double seconddev = firstdev1 - firstdev2;
+        double predicted_firstdev = firstdev1 + seconddev;
+        extrapolated_val = mrec + (current_time - mrecloc) * predicted_firstdev;
+    }
+
+    return extrapolated_val;
+}
+
+
+template<typename AA, typename VL>
+void filler(AA* arr, VL val, int length){
+    for (int i = 0; i < length; i++){
+        arr[i] = val;
+    }
+}
+
+/*double moving_first_dev(double* arr, int window){
+   double val1 = 0;
+   double val2 = 0;
+   for (int j = 0; j < window; j++){
+       val1 = val1 + arr[j];
+   }
+    for (int k = 0; k < window; k++){
+        val2 = val2 + arr[k + 1];
+    }
+    return val2 - val1;
+}
+
+double moving_second_dev(double* arr, int window){
+    double *for_first_dev1 = new double[window];
+    double *for_first_dev2 = new double[window];
+    for (int i = 0; i < window; i++){
+        for_first_dev1[i] = arr[i];
+    }
+    for (int k = 0; k < window; k++){
+        for_first_dev2[k] = arr[k + 1];
+    }
+    double first_dev1 =
+
+}*/
+
+
+
 template<typename FP>
 static void twosm_rfi_flagger(
         int* flags,
@@ -80,33 +135,45 @@ static void twosm_rfi_flagger(
         const uint64_t num_timesamples,
         const uint64_t num_channels)
 {
-    double dv_between_cur_one = 0;
-    double dv_ratio = 0;
-    double tol_margin_2sm_time = thresholds[0];
-    double tol_margin_2sm_freq = thresholds[1];
-    uint64_t num_elements = num_timesamples * num_channels;
-
-    double quant_ft = 0;
-    double quant_fd = 0;
+    double quant_ft_low = 0;
+    double quant_ft_high = 0;
     double quant_td = 0;
 
-    double *reasonable_value = new double[num_channels];
+    double *most_rec = new double[num_channels];
+    int *most_rec_loc = new int[num_channels];
+    double *minus_one = new double[num_channels];
+    int *minus_one_loc = new int[num_channels];
+    double *minus_two = new double[num_channels];
+    int *minus_two_loc = new int[num_channels];
     double *transit_score = new double[num_channels];
+
+    filler(most_rec, 0, num_channels);
+    filler(most_rec_loc, -1, num_channels);
+    filler(minus_one, 0, num_channels);
+    filler(minus_one_loc, -1, num_channels);
+    filler(minus_two, 0, num_channels);
+    filler(minus_two_loc, -1, num_channels);
+    filler(transit_score, 0, num_channels);
+
 
     for (uint64_t t = 0; t < num_timesamples; t++) {
         if (t == 0) {
             double *first_time = new double[num_channels - 1];
-            double *freq_diffs = new double[num_channels - 1];
             for (uint64_t k = 0; k < num_channels - 1; k++) {
                 first_time[k] = abs(visibilities[t * num_channels + k]);
-                freq_diffs[k] = abs(abs(visibilities[t * num_channels + k + 1] -
-                                        abs(visibilities[t * num_channels + k])));
             }
-            quant_ft = quantile(first_time, 0.7, num_channels - 1);
-            quant_fd = quantile(freq_diffs, 0.9, num_channels - 1);
-
+            quant_ft_high = quantile(first_time, 0.9, num_channels - 1);
+            quant_ft_low = quantile(first_time, 0.1, num_channels - 1);
             delete[] first_time;
-            delete[] freq_diffs;
+            for (uint64_t c = 0; c < num_channels; c++){
+                double vis0 = abs(visibilities[t * num_channels + c]);
+                if (vis0 < quant_ft_low || vis0 > quant_ft_high){
+                    flags[t * num_channels + c] = 1;
+                }else{
+                    most_rec_loc[t * num_channels + c] = 0;
+                    most_rec[t * num_channels + c] = vis0;
+                }
+            }
         }
 
         if (t == 1) {
@@ -117,38 +184,19 @@ static void twosm_rfi_flagger(
             }
             quant_td = quantile(time_diffs, 0.9, num_channels);
             delete[] time_diffs;
-        }
-        if (t == 0) {
-            bool a_healthy_val_found = false;
-            double current_reasonable_val = -1;
-            int loc_of_first_healthy = 0;
-            for (uint64_t c; c < num_channels; c++) {
+            for (int c = 0; c < num_channels; c++){
+                double vis1 = abs(visibilities[t * num_channels + c]);
                 double vis0 = abs(visibilities[t * num_channels + c]);
-                if (vis0 >= quant_ft) {
+                if (vis1 > quant_ft_high || vis1 < quant_ft_low || abs(vis1 - vis0) > quant_td){
                     flags[t * num_channels + c] = 1;
+                }else{
+                    most_rec_loc[t * num_channels + c] = 0;
+                    most_rec[t * num_channels + c] = vis0;
                 }
-                if (flags[t * num_channels + c] == 0 && !a_healthy_val_found){
-                    a_healthy_val_found = true;
-                    current_reasonable_val = vis0;
-                    loc_of_first_healthy = c;
-                    reasonable_value[c] = current_reasonable_val;
-                }
-                if (flags[t * num_channels + c] == 0 && a_healthy_val_found){
-                    current_reasonable_val = vis0;
-                    reasonable_value[c] = current_reasonable_val;
-                }
-                if (flags[t * num_channels + c] == 1 && a_healthy_val_found){
-                    reasonable_value[c] = current_reasonable_val;
-                }
-                int h = loc_of_first_healthy;
-                while (h > 0){
-                    h = h - 1;
-                    reasonable_value[t * num_channels + h] = abs(visibilities[t * num_channels + loc_of_first_healthy]);
-                }
-
 
             }
         }
+
         if (t == 1 || t == 2){
             for (uint64_t c; c < num_channels; c++) {
                 double vis1 = abs(visibilities[t * num_channels + c]);
