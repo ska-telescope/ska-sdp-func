@@ -8,7 +8,7 @@
 #include <complex>
 #include <math.h>
 
-#include "ska-sdp-func/degridding/sdp_degrid_uvw_custom.h"
+#include "ska-sdp-func/degrid_uvw_custom/sdp_degrid_uvw_custom.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
@@ -16,7 +16,7 @@
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
-void calculate_coordinates(
+static void calculate_coordinates(
     int64_t grid_size, //dimension of the image's subgrid grid_size x grid_size x 4?
     int x_stride, // padding in x dimension
     int y_stride, // padding in y dimension
