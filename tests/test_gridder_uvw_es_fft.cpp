@@ -93,121 +93,104 @@ static void run_and_check(
         SDP_LOG_INFO("Preparing test data");
 
         // fill weight with ones
+        void* weights = (void*)sdp_mem_data(weight);
+        for (size_t i = 0; i < num_vis * num_channels; i++)
         {
-            void* weights = (void*)sdp_mem_data(weight);
-            for (size_t i = 0; i < num_vis * num_channels; i++)
+            if (sdp_mem_type(weight) == SDP_MEM_DOUBLE)
             {
-                if (sdp_mem_type(weight) == SDP_MEM_DOUBLE)
-                {
-                    double* temp = (double*)weights;
-                    temp[i] = 1.0;
-                }
-                else
-                {
-                    float* temp = (float*)weights;
-                    temp[i] = 1.0f;
-                }
+                double* temp = (double*)weights;
+                temp[i] = 1.0;
+            }
+            else
+            {
+                float* temp = (float*)weights;
+                temp[i] = 1.0f;
             }
         }
 
         // fill freq_hz
+        void* freqs = (void*)sdp_mem_data(freq_hz);
+        for (size_t i = 0; i < num_channels; i++)
         {
-            void* freqs = (void*)sdp_mem_data(freq_hz);
-            for (size_t i = 0; i < num_channels; i++)
+            if (sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE)
             {
-                if (sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE)
-                {
-                    double* temp = (double*)freqs;
-                    temp[i] = f_0 + double(i) * (f_0 / double(num_channels));
-                    if (i == 0) min_freq = temp[i];
-                    if (i == num_channels - 1) max_freq = temp[i];
-                }
-                else
-                {
-                    float* temp = (float*)freqs;
-                    temp[i] = (float)f_0 + float(i) *
-                            (((float)f_0) / float(num_channels));
-                    if (i == 0) min_freq = temp[i];
-                    if (i == num_channels - 1) max_freq = temp[i];
-                }
+                double* temp = (double*)freqs;
+                temp[i] = f_0 + double(i) * (f_0 / double(num_channels));
+                if (i == 0) min_freq = temp[i];
+                if (i == num_channels - 1) max_freq = temp[i];
+            }
+            else
+            {
+                float* temp = (float*)freqs;
+                temp[i] = (float)f_0 + float(i) *
+                        (((float)f_0) / float(num_channels));
+                if (i == 0) min_freq = temp[i];
+                if (i == num_channels - 1) max_freq = temp[i];
             }
         }
 
         // modify uvw, vis, and dirty_image from raw random numbers
+        void* uvws = (void*)sdp_mem_data(uvw);
+        for (size_t i = 0; i < num_vis * 3; i++)
         {
-            void* uvws = (void*)sdp_mem_data(uvw);
-            for (size_t i = 0; i < num_vis * 3; i++)
+            if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
             {
-                if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
-                {
-                    double* temp = (double*)uvws;
-                    temp[i] -= 0.5;
-                    temp[i] /= pixel_size_rad * f_0 / speed_of_light;
-                }
-                else
-                {
-                    float* temp = (float*)uvws;
-                    temp[i] -= 0.5;
-                    temp[i] /= pixel_size_rad * f_0 / speed_of_light;
-                }
+                double* temp = (double*)uvws;
+                temp[i] -= 0.5;
+                temp[i] /= pixel_size_rad * f_0 / speed_of_light;
+            }
+            else
+            {
+                float* temp = (float*)uvws;
+                temp[i] -= 0.5;
+                temp[i] /= pixel_size_rad * f_0 / speed_of_light;
             }
         }
+        void* vis_1 = (void*)sdp_mem_data(vis);
+        for (size_t i = 0; i < num_vis * num_channels * 2; i++)
         {
-            void* vis_1 = (void*)sdp_mem_data(vis);
-            for (size_t i = 0; i < num_vis * num_channels * 2; i++)
+            if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
             {
-                if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
-                {
-                    double* temp = (double*)vis_1;
-                    temp[i] -= 0.5;
-                }
-                else
-                {
-                    float* temp = (float*)vis_1;
-                    temp[i] -= 0.5;
-                }
+                double* temp = (double*)vis_1;
+                temp[i] -= 0.5;
+            }
+            else
+            {
+                float* temp = (float*)vis_1;
+                temp[i] -= 0.5;
             }
         }
+        void* image = (void*)sdp_mem_data(dirty_image);
+        for (size_t i = 0; i < im_size * im_size; i++)
         {
-            void* image = (void*)sdp_mem_data(dirty_image);
-            for (size_t i = 0; i < im_size * im_size; i++)
+            if (sdp_mem_type(dirty_image) == SDP_MEM_DOUBLE)
             {
-                if (sdp_mem_type(dirty_image) == SDP_MEM_DOUBLE)
-                {
-                    double* temp = (double*)image;
-                    temp[i] -= 0.5;
-                }
-                else
-                {
-                    float* temp = (float*)image;
-                    temp[i] -= 0.5f;
-                }
+                double* temp = (double*)image;
+                temp[i] -= 0.5;
+            }
+            else
+            {
+                float* temp = (float*)image;
+                temp[i] -= 0.5f;
             }
         }
 
         // find min_abs_w and max_abs_w
+        for (size_t i = 0; i < num_vis; i++)
         {
-            const void* uvws = (const void*)sdp_mem_data_const(uvw);
-            for (size_t i = 0; i < num_vis; i++)
-            {
-                size_t ind = 3 * i + 2;
+            size_t ind = 3 * i + 2;
 
-                if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
-                {
-                    const double* temp = (const double*)uvws;
-                    if (min_abs_w > fabs(temp[ind]))
-                        min_abs_w = fabs(temp[ind]);
-                    if (max_abs_w < fabs(temp[ind]))
-                        max_abs_w = fabs(temp[ind]);
-                }
-                else
-                {
-                    const float* temp = (const float*)uvws;
-                    if (min_abs_w > fabs(temp[ind]))
-                        min_abs_w = fabs(temp[ind]);
-                    if (max_abs_w < fabs(temp[ind]))
-                        max_abs_w = fabs(temp[ind]);
-                }
+            if (sdp_mem_type(uvw) == SDP_MEM_DOUBLE)
+            {
+                const double* temp = (const double*)uvws;
+                if (min_abs_w > fabs(temp[ind])) min_abs_w = fabs(temp[ind]);
+                if (max_abs_w < fabs(temp[ind])) max_abs_w = fabs(temp[ind]);
+            }
+            else
+            {
+                const float* temp = (const float*)uvws;
+                if (min_abs_w > fabs(temp[ind])) min_abs_w = fabs(temp[ind]);
+                if (max_abs_w < fabs(temp[ind])) max_abs_w = fabs(temp[ind]);
             }
         }
 

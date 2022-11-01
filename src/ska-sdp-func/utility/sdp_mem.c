@@ -316,7 +316,7 @@ int32_t sdp_mem_is_c_contiguous(const sdp_Mem* mem)
 int32_t sdp_mem_is_complex(const sdp_Mem* mem)
 {
     if (!mem || !mem->data) return 0;
-    return ((mem->type & SDP_MEM_COMPLEX) == SDP_MEM_COMPLEX);
+    return (mem->type & SDP_MEM_COMPLEX) == SDP_MEM_COMPLEX;
 }
 
 

@@ -183,7 +183,9 @@ int sdp_good_size_complex(int n)
             {
                 int x = f1175;
                 while (x < n)
+                {
                     x *= 2;
+                }
                 for (;;)
                 {
                     if (x < n)

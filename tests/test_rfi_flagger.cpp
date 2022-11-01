@@ -54,6 +54,13 @@ static void threshold_calc(
 }
 
 
+static double rnd_norm()
+{
+    // NOLINTNEXTLINE: rand() is not a problem for our use case.
+    return (double) rand() / (double) RAND_MAX;
+}
+
+
 template<typename input_type>
 static void data_preparation(
         std::complex<input_type>* visibilities,
@@ -72,14 +79,8 @@ static void data_preparation(
     double threshold = thresholds[0];
     for (int s = 0; s < num_rfi_spikes; s++)
     {
-        // NOLINTNEXTLINE: rand() is not a problem for our use case.
-        uint64_t time =
-                (uint64_t) (((double) rand() / (double) RAND_MAX) *
-                (num_timesamples - 1));
-        // NOLINTNEXTLINE: rand() is not a problem for our use case.
-        uint64_t freq =
-                (uint64_t) (((double) rand() / (double) RAND_MAX) *
-                (num_channels - 1));
+        uint64_t time = (uint64_t) (rnd_norm() * (num_timesamples - 1));
+        uint64_t freq = (uint64_t) (rnd_norm() * (num_channels - 1));
         for (uint64_t b = 0; b < num_baselines; b++)
         {
             uint64_t pos = time * timesample_block + b * baseline_block +

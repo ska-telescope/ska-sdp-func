@@ -37,9 +37,9 @@ static int is_power_of_two(int n, int* bits)
 
     if (cnt == 1)
     {
-        return (1);
+        return 1;
     }
-    return (0);
+    return 0;
 }
 
 

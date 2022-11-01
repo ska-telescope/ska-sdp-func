@@ -567,14 +567,20 @@ __global__ void reverse_w_screen_to_stack(
         FP dirty_image_neg_neg = FP(0.0);
 
         if (j < (int)half_image_size && i < (int)half_image_size)
+        {
             dirty_image_pos_pos = dirty_image[image_index_offset_image_centre +
                             j * ((int)image_size) + i];
+        }
         if (j < (int)half_image_size)
+        {
             dirty_image_neg_pos = dirty_image[image_index_offset_image_centre +
                             j * ((int)image_size) - i];
+        }
         if (i < (int)half_image_size)
+        {
             dirty_image_pos_neg = dirty_image[image_index_offset_image_centre -
                             j * ((int)image_size) + i];
+        }
 
         dirty_image_neg_neg = dirty_image[image_index_offset_image_centre - j *
                         ((int)image_size) - i];
@@ -708,10 +714,14 @@ __global__ void conv_corr_and_scaling(
         // correction /= ((n + FP(1.0)) * inv_w_range); // see above note
 
         if (solving)
+        {
             // correction = FP(1.0)/(correction*weight_channel_product);
             correction = FP(1.0) / (correction);
+        }
         else
+        {
             correction = FP(1.0) / (correction);
+        }
 
         // Going to need offsets to stride from pixel to pixel for this thread
         const int origin_offset_image_centre = (int)half_image_size; // offset of origin (in dirty image) along l or m axes
