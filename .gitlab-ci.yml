@@ -84,8 +84,7 @@ cpp-format:
     - apk update
     - apk add uncrustify
   script:
-    - find src/ska-sdp-func/ -iname '*.h' -o -iname '*.cpp' -o -iname '*.c' -o -iname '*.cu' | xargs uncrustify -c uncrustify.cfg -l CPP --check
-    - find tests/ -iname '*.cpp' -o -iname '*.c' | xargs uncrustify -c uncrustify.cfg -l CPP --check
+    - find src tests -iname '*.h' -o -iname '*.cpp' -o -iname '*.c' -o -iname '*.cu' | xargs uncrustify -c uncrustify.cfg -l CPP --check
 
 # Need to override the template as it doesn't appear to work with this repo.
 python-gemnasium-scan:
