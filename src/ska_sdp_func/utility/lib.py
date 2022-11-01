@@ -2,11 +2,10 @@
 
 """Private module to find and return a handle to the compiled library."""
 
+import ctypes
 import glob
 import os
 import threading
-
-import numpy
 
 # We don't want a module-level variable for the library handle,
 # as that would mean the documentation doesn't build properly if the library
@@ -30,13 +29,11 @@ class Lib:
     def handle():
         """Return a handle to the library for use by ctypes."""
         if not Lib.lib:
-            lib_dir = Lib.find_dir(Lib.search_dirs)
+            lib_path = Lib.find_lib(Lib.search_dirs)
             with Lib.mutex:
                 if not Lib.lib:
                     try:
-                        Lib.lib = numpy.ctypeslib.load_library(
-                            Lib.name, lib_dir
-                        )
+                        Lib.lib = ctypes.CDLL(lib_path)
                     except OSError:
                         pass
             if not Lib.lib:
@@ -47,14 +44,15 @@ class Lib:
         return Lib.lib
 
     @staticmethod
-    def find_dir(lib_search_dirs):
+    def find_lib(lib_search_dirs):
         """Try to find the shared library in the listed directories."""
-        lib_dir = ""
+        lib_path = ""
         env_dir = os.environ.get(Lib.env_name)
         if env_dir and env_dir not in Lib.search_dirs:
             lib_search_dirs.insert(0, env_dir)
         for test_dir in lib_search_dirs:
-            if glob.glob(os.path.join(test_dir, Lib.name) + "*"):
-                lib_dir = test_dir
+            lib_list = glob.glob(os.path.join(test_dir, Lib.name) + "*")
+            if lib_list:
+                lib_path = os.path.abspath(lib_list[0])
                 break
-        return lib_dir
+        return lib_path

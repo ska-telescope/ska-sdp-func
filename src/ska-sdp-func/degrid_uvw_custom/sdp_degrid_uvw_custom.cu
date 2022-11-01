@@ -130,9 +130,9 @@ __global__ void degrid_uvw_custom(
         
         if(
             grid_coord_x > uv_kernel_stride_in_elements/2 &&
-            grid_coord_x < grid_size - v_kernel_stride_in_elements/2 &&
+            grid_coord_x < x_size - uv_kernel_stride_in_elements/2 &&
             grid_coord_y > uv_kernel_stride_in_elements/2 &&
-            grid_coord_y < grid_size - v_kernel_stride_in_elements/2)
+            grid_coord_y < x_size - uv_kernel_stride_in_elements/2)
         {
 
             VIS_TYPE2 vis_local = {0, 0};

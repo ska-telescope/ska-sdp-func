@@ -29,7 +29,9 @@ typedef struct sdp_Fft sdp_Fft;
  * in the arrays, then the FFT batch size is assumed to be the size of the
  * first (slowest varying) dimension.
  *
- * This wraps cuFFT, so only GPU FFTs are currently supported.
+ * This wraps cuFFT in addition to CPU FFT code. Advanced data
+ * layouts although supported for GPU are not supported for CPU
+ * version and thus are discouraged.
  *
  * @param input Input data.
  * @param output Output data.

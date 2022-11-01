@@ -77,6 +77,15 @@ linting:
     paths:
       - build/
 
+# Need to override the template as it doesn't appear to work with this repo.
+python-gemnasium-scan:
+  rules:
+    - when: never
+
+python-gemnasium-scan-legacy:
+  rules:
+    - when: never
+
 build-test-debug:
   stage: test
   image: nvidia/cuda:11.6.0-devel-ubuntu20.04
@@ -137,6 +146,14 @@ build-test-release:
     reports:
       junit: build/reports/unit-tests.xml
 
+# Need to override the template as we have to use setup.py instead of poetry
+# to build the package.
+# This is handled by "python-build-for-development-legacy"
+# instead of the stage below.
+python-build-for-development:
+  rules:
+    - when: never
+
 # Need to override the template stage because we want to run this on a GPU.
 python-test:
   stage: test
@@ -150,11 +167,6 @@ python-test:
     - CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}" pip3 install .
   script:
     - pytest --junitxml=build/reports/unit-tests.xml tests/
-
-# Need to override the template as it doesn't appear to work with this repo.
-python-gemnasium-scan-legacy:
-  rules:
-    - when: never
 
 pages:
   stage: publish

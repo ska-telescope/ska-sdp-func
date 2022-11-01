@@ -13,6 +13,8 @@ SDP Processing Function Library
   :maxdepth: 1
 
   adding_new_functions
+  how_to_pass_CICD_pipeline
+  how_to_contribute
   mem
   kernels
   errors
@@ -32,6 +34,7 @@ SDP Processing Function Library
   proc_func_vector
   proc_func_degridding
   proc_func_gridder_uvw_es_fft
+  proc_func_weighting
 
 
 Indices and tables
