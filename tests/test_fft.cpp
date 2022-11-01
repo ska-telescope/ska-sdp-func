@@ -17,6 +17,7 @@
 
 using std::complex;
 
+
 static void run_and_check(
         const char* test_name,
         bool expect_pass,
@@ -25,8 +26,7 @@ static void run_and_check(
         sdp_MemType output_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status
-)
+        sdp_Error* status)
 {
     // Generate some test data.
     const int num_dims = 2;
@@ -101,6 +101,7 @@ static void run_and_check(
     sdp_mem_ref_dec(output_cpu);
 }
 
+
 int main()
 {
 #ifdef SDP_HAVE_CUDA
@@ -150,7 +151,7 @@ int main()
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif
-    
+
     // Happy paths.
     {
         sdp_Error status = SDP_SUCCESS;
@@ -168,7 +169,3 @@ int main()
     }
     return 0;
 }
-
-
-
-

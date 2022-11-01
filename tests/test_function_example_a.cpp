@@ -14,6 +14,7 @@
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
+
 static void run_and_check(
         const char* test_name,
         bool expect_pass,
@@ -24,8 +25,7 @@ static void run_and_check(
         int par_a,
         int par_b,
         float par_c,
-        sdp_Error* status
-)
+        sdp_Error* status)
 {
     // Generate some test data.
     int num_dims = 1;
@@ -49,6 +49,7 @@ static void run_and_check(
     }
     sdp_mem_ref_dec(output);
 }
+
 
 int main()
 {

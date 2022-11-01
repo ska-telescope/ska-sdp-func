@@ -17,9 +17,11 @@
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
-#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, \
+            I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 using std::complex;
+
 
 template<typename FP>
 static void check_results_rotate_uvw(
@@ -50,9 +52,9 @@ static void check_results_rotate_uvw(
     const double cos_d_d = cos(d_d);
     const double tol = 1e-5;
     double mat[9];
-    mat[0] =  cos_d_a;           mat[1] = 0.0;     mat[2] =  sin_d_a;
-    mat[3] =  sin_d_a * sin_d_d; mat[4] = cos_d_d; mat[5] = -cos_d_a * sin_d_d;
-    mat[6] = -sin_d_a * cos_d_d; mat[7] = sin_d_d; mat[8] =  cos_d_a * cos_d_d;
+    mat[0] = cos_d_a;           mat[1] = 0.0;     mat[2] = sin_d_a;
+    mat[3] = sin_d_a * sin_d_d; mat[4] = cos_d_d; mat[5] = -cos_d_a * sin_d_d;
+    mat[6] = -sin_d_a * cos_d_d; mat[7] = sin_d_d; mat[8] = cos_d_a * cos_d_d;
 
     for (int64_t i_uvw = 0; i_uvw < num; ++i_uvw)
     {
@@ -67,9 +69,12 @@ static void check_results_rotate_uvw(
                 pow(uvw_out[i_uvw3 + 2], 2.0));
 
         // Check coordinates.
-        assert(fabs(uvw_out[i_uvw3 + 0] - (mat[0] * uu + mat[1] * vv + mat[2] * ww)) < tol);
-        assert(fabs(uvw_out[i_uvw3 + 1] - (mat[3] * uu + mat[4] * vv + mat[5] * ww)) < tol);
-        assert(fabs(uvw_out[i_uvw3 + 2] - (mat[6] * uu + mat[7] * vv + mat[8] * ww)) < tol);
+        assert(fabs(uvw_out[i_uvw3 + 0] -
+                (mat[0] * uu + mat[1] * vv + mat[2] * ww)) < tol);
+        assert(fabs(uvw_out[i_uvw3 + 1] -
+                (mat[3] * uu + mat[4] * vv + mat[5] * ww)) < tol);
+        assert(fabs(uvw_out[i_uvw3 + 2] -
+                (mat[6] * uu + mat[7] * vv + mat[8] * ww)) < tol);
         assert(fabs(new_length - original_length) < tol);
     }
     SDP_LOG_INFO("%s: Test passed", test_name);
@@ -108,9 +113,9 @@ static void check_results_rotate_vis(
     const double cos_d_a = cos(d_a);
     const double sin_dec0 = sin(orig_dec_rad);
     const double cos_dec0 = cos(orig_dec_rad);
-    const double sin_dec  = sin(new_dec_rad);
-    const double cos_dec  = cos(new_dec_rad);
-    const double l1 = cos_dec  * -sin_d_a;
+    const double sin_dec = sin(new_dec_rad);
+    const double cos_dec = cos(new_dec_rad);
+    const double l1 = cos_dec * -sin_d_a;
     const double m1 = cos_dec0 * sin_dec - sin_dec0 * cos_dec * cos_d_a;
     const double n1 = sin_dec0 * sin_dec + cos_dec0 * cos_dec * cos_d_a;
     const double delta_l = 0.0 - l1;
@@ -130,10 +135,10 @@ static void check_results_rotate_vis(
             const COORD_TYPE ww = uvw[i_uvw + 2];
             for (int64_t i_channel = 0; i_channel < num_channels; ++i_channel)
             {
-                const double inv_wavelength = (
-                        channel_start_hz + i_channel * channel_step_hz) / C_0;
-                const double phase = 2.0 * M_PI * inv_wavelength * (
-                        uu * delta_l + vv * delta_m + ww * delta_n);
+                const double inv_wavelength =
+                        (channel_start_hz + i_channel * channel_step_hz) / C_0;
+                const double phase = 2.0 * M_PI * inv_wavelength *
+                        (uu * delta_l + vv * delta_m + ww * delta_n);
                 const double cos_phase = cos(phase), sin_phase = sin(phase);
                 const std::complex<VIS_TYPE> phasor(cos_phase, sin_phase);
                 for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
@@ -141,7 +146,8 @@ static void check_results_rotate_vis(
                     const int64_t i_vis = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
                             i_time, i_baseline, i_channel, i_pol);
-                    complex<VIS_TYPE> diff = vis_out[i_vis] - vis_in[i_vis] * phasor;
+                    complex<VIS_TYPE> diff = vis_out[i_vis] - vis_in[i_vis] *
+                            phasor;
                     assert(fabs(real(diff)) < tol);
                     assert(fabs(imag(diff)) < tol);
                 }
@@ -159,8 +165,7 @@ static void run_and_check_rotate_uvw(
         sdp_MemType coord_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status
-)
+        sdp_Error* status)
 {
     // Generate some test data.
     sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(
@@ -221,6 +226,7 @@ static void run_and_check_rotate_uvw(
     sdp_sky_coord_free(new_phase_centre);
 }
 
+
 static void run_and_check_rotate_vis(
         const char* test_name,
         bool expect_pass,
@@ -229,8 +235,7 @@ static void run_and_check_rotate_vis(
         sdp_MemType vis_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status
-)
+        sdp_Error* status)
 {
     // Generate some test data.
     sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(
@@ -303,6 +308,7 @@ static void run_and_check_rotate_vis(
     sdp_sky_coord_free(original_phase_centre);
     sdp_sky_coord_free(new_phase_centre);
 }
+
 
 int main()
 {
@@ -385,7 +391,8 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("Location mismatch (rotate_uvw)",
-                false, false, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_GPU, &status);
+                false, false, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_GPU,
+                &status);
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {

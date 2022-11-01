@@ -17,16 +17,18 @@
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
-#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
+    (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 using std::complex;
+
 
 template<
         typename DIR_TYPE,
         typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
->
+        >
 static void check_results_v00(
         const char* test_name,
         int num_components,
@@ -34,10 +36,10 @@ static void check_results_v00(
         int num_channels,
         int num_baselines,
         int num_times,
-        const DIR_TYPE *const __restrict__ source_directions,
-        const complex<FLUX_TYPE> *const __restrict__ source_fluxes,
-        const UVW_TYPE *const __restrict__ uvw_lambda,
-        const complex<VIS_TYPE> *const __restrict__ vis,
+        const DIR_TYPE* const __restrict__ source_directions,
+        const complex<FLUX_TYPE>* const __restrict__ source_fluxes,
+        const UVW_TYPE* const __restrict__ uvw_lambda,
+        const complex<VIS_TYPE>* const __restrict__ vis,
         const sdp_Error* status)
 {
     if (*status)
@@ -71,8 +73,8 @@ static void check_results_v00(
                     const DIR_TYPE l = source_directions[i_dir];
                     const DIR_TYPE m = source_directions[i_dir + 1];
                     const DIR_TYPE n = source_directions[i_dir + 2];
-                    const double phase = -2.0 * M_PI * (
-                            l * uu + m * vv + n * ww);
+                    const double phase = -2.0 * M_PI *
+                            (l * uu + m * vv + n * ww);
                     const double cos_phase = cos(phase), sin_phase = sin(phase);
                     const complex<VIS_TYPE> phasor(cos_phase, sin_phase);
 
@@ -106,6 +108,7 @@ static void check_results_v00(
     SDP_LOG_INFO("%s: Test passed", test_name);
 }
 
+
 static void run_and_check_v00(
         const char* test_name,
         bool expect_pass,
@@ -116,8 +119,7 @@ static void run_and_check_v00(
         sdp_MemType vis_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status
-)
+        sdp_Error* status)
 {
     // Generate some test data.
     const int num_components = 20;
@@ -190,12 +192,13 @@ static void run_and_check_v00(
     sdp_mem_ref_dec(vis_out);
 }
 
+
 template<
         typename DIR_TYPE,
         typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
->
+        >
 static void check_results_v01(
         const char* test_name,
         int num_components,
@@ -203,12 +206,12 @@ static void check_results_v01(
         int num_channels,
         int num_baselines,
         int num_times,
-        const DIR_TYPE *const __restrict__ source_directions,
-        const complex<FLUX_TYPE> *const __restrict__ source_fluxes,
-        const UVW_TYPE *const __restrict__ uvw_metres,
+        const DIR_TYPE* const __restrict__ source_directions,
+        const complex<FLUX_TYPE>* const __restrict__ source_fluxes,
+        const UVW_TYPE* const __restrict__ uvw_metres,
         const double channel_start_hz,
         const double channel_step_hz,
-        const complex<VIS_TYPE> *const __restrict__ vis,
+        const complex<VIS_TYPE>* const __restrict__ vis,
         const sdp_Error* status)
 {
     if (*status)
@@ -235,8 +238,8 @@ static void check_results_v01(
                 vis_local[0] = vis_local[1] = vis_local[2] = vis_local[3] = 0;
 
                 // Get the inverse wavelength.
-                const double inv_wavelength = (
-                        channel_start_hz + i_channel * channel_step_hz) / C_0;
+                const double inv_wavelength =
+                        (channel_start_hz + i_channel * channel_step_hz) / C_0;
 
                 // Loop over components and calculate phase for each.
                 for (int i_component = 0;
@@ -246,8 +249,8 @@ static void check_results_v01(
                     const DIR_TYPE l = source_directions[i_dir];
                     const DIR_TYPE m = source_directions[i_dir + 1];
                     const DIR_TYPE n = source_directions[i_dir + 2];
-                    const double phase = -2.0 * M_PI * inv_wavelength * (
-                            l * uu + m * vv + n * ww);
+                    const double phase = -2.0 * M_PI * inv_wavelength *
+                            (l * uu + m * vv + n * ww);
                     const double cos_phase = cos(phase), sin_phase = sin(phase);
                     const complex<VIS_TYPE> phasor(cos_phase, sin_phase);
 
@@ -281,6 +284,7 @@ static void check_results_v01(
     SDP_LOG_INFO("%s: Test passed", test_name);
 }
 
+
 static void run_and_check_v01(
         const char* test_name,
         bool expect_pass,
@@ -291,8 +295,7 @@ static void run_and_check_v01(
         sdp_MemType vis_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status
-)
+        sdp_Error* status)
 {
     // Generate some test data.
     const int num_components = 20;
@@ -372,6 +375,7 @@ static void run_and_check_v01(
     sdp_mem_ref_dec(vis_out);
 }
 
+
 int main()
 {
     // Happy paths.
@@ -444,7 +448,8 @@ int main()
     }
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check_v00("Unsupported number of polarisations", false, 3, false,
+        run_and_check_v00("Unsupported number of polarisations",
+                false, 3, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status);
         assert(status != SDP_SUCCESS);
@@ -557,7 +562,8 @@ int main()
     }
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check_v01("Unsupported number of polarisations", false, 3, false,
+        run_and_check_v01("Unsupported number of polarisations",
+                false, 3, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status);
         assert(status != SDP_SUCCESS);
