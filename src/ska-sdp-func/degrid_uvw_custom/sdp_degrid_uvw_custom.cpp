@@ -1,6 +1,6 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include "ska-sdp-func/degridding/sdp_degrid_uvw_custom.h"
+#include "ska-sdp-func/degrid_uvw_custom/sdp_degrid_uvw_custom.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
