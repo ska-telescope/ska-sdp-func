@@ -12,12 +12,12 @@ struct sdp_FunctionExampleA
     float* workarea;
 };
 
+
 sdp_FunctionExampleA* sdp_function_example_a_create_plan(
         int a,
         int b,
         float c,
-        sdp_Error* status
-)
+        sdp_Error* status)
 {
     if (*status) return NULL;
     if (a == 10)
@@ -39,10 +39,9 @@ sdp_FunctionExampleA* sdp_function_example_a_create_plan(
 
 
 void sdp_function_example_a_exec(
-    sdp_FunctionExampleA* plan,
-    sdp_Mem *output,
-    sdp_Error* status
-)
+        sdp_FunctionExampleA* plan,
+        sdp_Mem* output,
+        sdp_Error* status)
 {
     if (*status || !plan) return;
     if (sdp_mem_type(output) != SDP_MEM_FLOAT)
@@ -86,6 +85,7 @@ void sdp_function_example_a_exec(
         output_pointer[f] = ftemp;
     }
 }
+
 
 void sdp_function_example_a_free_plan(sdp_FunctionExampleA* plan)
 {

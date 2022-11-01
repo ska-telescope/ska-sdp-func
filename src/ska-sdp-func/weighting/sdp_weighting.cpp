@@ -10,7 +10,9 @@
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
-#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
+    (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+
 
 template<typename UVW_TYPE, typename FREQ_TYPE, typename WEIGHT_TYPE>
 static void uniform_weights_grid_write(
@@ -21,8 +23,7 @@ static void uniform_weights_grid_write(
         const UVW_TYPE* uvw,
         const FREQ_TYPE* freq_hz,
         const double max_abs_uv,
-        WEIGHT_TYPE* grid_uv
-)
+        WEIGHT_TYPE* grid_uv)
 {
     const int64_t half_grid_size = grid_size / 2;
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
@@ -37,14 +38,19 @@ static void uniform_weights_grid_write(
                 const UVW_TYPE inv_wavelength = freq_hz[i_channel] / C_0;
                 const UVW_TYPE grid_u = uvw[i_uv + 0] * inv_wavelength;
                 const UVW_TYPE grid_v = uvw[i_uv + 1] * inv_wavelength;
-                const int64_t idx_u = (int64_t) (grid_u / max_abs_uv * half_grid_size + half_grid_size);
-                const int64_t idx_v = (int64_t) (grid_v / max_abs_uv * half_grid_size + half_grid_size);
+                const int64_t idx_u =
+                        (int64_t) (grid_u / max_abs_uv * half_grid_size +
+                        half_grid_size);
+                const int64_t idx_v =
+                        (int64_t) (grid_v / max_abs_uv * half_grid_size +
+                        half_grid_size);
                 if (idx_u >= grid_size || idx_v >= grid_size) continue;
                 grid_uv[idx_v * grid_size + idx_u] += 1.0;
             }
         }
     }
 }
+
 
 template<typename UVW_TYPE, typename FREQ_TYPE, typename WEIGHT_TYPE>
 static void uniform_weights_grid_read(
@@ -57,8 +63,7 @@ static void uniform_weights_grid_read(
         const FREQ_TYPE* freq_hz,
         const double max_abs_uv,
         const WEIGHT_TYPE* grid_uv,
-        WEIGHT_TYPE* weights
-)
+        WEIGHT_TYPE* weights)
 {
     const int64_t half_grid_size = grid_size / 2;
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
@@ -74,8 +79,12 @@ static void uniform_weights_grid_read(
                 const UVW_TYPE inv_wavelength = freq_hz[i_channel] / C_0;
                 const UVW_TYPE grid_u = uvw[i_uv + 0] * inv_wavelength;
                 const UVW_TYPE grid_v = uvw[i_uv + 1] * inv_wavelength;
-                const int64_t idx_u = (int64_t) (grid_u / max_abs_uv * half_grid_size + half_grid_size);
-                const int64_t idx_v = (int64_t) (grid_v / max_abs_uv * half_grid_size + half_grid_size);
+                const int64_t idx_u =
+                        (int64_t) (grid_u / max_abs_uv * half_grid_size +
+                        half_grid_size);
+                const int64_t idx_v =
+                        (int64_t) (grid_v / max_abs_uv * half_grid_size +
+                        half_grid_size);
                 if (idx_u < grid_size && idx_v < grid_size)
                 {
                     weight_val = 1.0 / grid_uv[idx_v * grid_size + idx_u];
@@ -92,6 +101,7 @@ static void uniform_weights_grid_read(
         }
     }
 }
+
 
 void sdp_weighting_uniform(
         const sdp_Mem* uvw,
@@ -148,27 +158,25 @@ void sdp_weighting_uniform(
                 sdp_mem_type(grid_uv) == SDP_MEM_DOUBLE)
         {
             uniform_weights_grid_write(
-                num_times,
-                num_baselines,
-                num_channels,
-                grid_size,
-                (const double*)sdp_mem_data_const(uvw),
-                (const double*)sdp_mem_data_const(freq_hz),
-                max_abs_uv,
-                (double*)sdp_mem_data(grid_uv)
-            );
+                    num_times,
+                    num_baselines,
+                    num_channels,
+                    grid_size,
+                    (const double*)sdp_mem_data_const(uvw),
+                    (const double*)sdp_mem_data_const(freq_hz),
+                    max_abs_uv,
+                    (double*)sdp_mem_data(grid_uv));
             uniform_weights_grid_read(
-                num_times,
-                num_baselines,
-                num_channels,
-                num_pols,
-                grid_size,
-                (const double*)sdp_mem_data_const(uvw),
-                (const double*)sdp_mem_data_const(freq_hz),
-                max_abs_uv,
-                (const double*)sdp_mem_data_const(grid_uv),
-                (double*)sdp_mem_data(weights)
-            );
+                    num_times,
+                    num_baselines,
+                    num_channels,
+                    num_pols,
+                    grid_size,
+                    (const double*)sdp_mem_data_const(uvw),
+                    (const double*)sdp_mem_data_const(freq_hz),
+                    max_abs_uv,
+                    (const double*)sdp_mem_data_const(grid_uv),
+                    (double*)sdp_mem_data(weights));
         }
         else if (uvw_type == SDP_MEM_DOUBLE &&
                 weights_type == SDP_MEM_FLOAT &&
@@ -176,27 +184,25 @@ void sdp_weighting_uniform(
                 sdp_mem_type(grid_uv) == SDP_MEM_FLOAT)
         {
             uniform_weights_grid_write(
-                num_times,
-                num_baselines,
-                num_channels,
-                grid_size,
-                (const double*)sdp_mem_data_const(uvw),
-                (const double*)sdp_mem_data_const(freq_hz),
-                max_abs_uv,
-                (float*)sdp_mem_data(grid_uv)
-            );
+                    num_times,
+                    num_baselines,
+                    num_channels,
+                    grid_size,
+                    (const double*)sdp_mem_data_const(uvw),
+                    (const double*)sdp_mem_data_const(freq_hz),
+                    max_abs_uv,
+                    (float*)sdp_mem_data(grid_uv));
             uniform_weights_grid_read(
-                num_times,
-                num_baselines,
-                num_channels,
-                num_pols,
-                grid_size,
-                (const double*)sdp_mem_data_const(uvw),
-                (const double*)sdp_mem_data_const(freq_hz),
-                max_abs_uv,
-                (const float*)sdp_mem_data_const(grid_uv),
-                (float*)sdp_mem_data(weights)
-            );
+                    num_times,
+                    num_baselines,
+                    num_channels,
+                    num_pols,
+                    grid_size,
+                    (const double*)sdp_mem_data_const(uvw),
+                    (const double*)sdp_mem_data_const(freq_hz),
+                    max_abs_uv,
+                    (const float*)sdp_mem_data_const(grid_uv),
+                    (float*)sdp_mem_data(weights));
         }
         else
         {

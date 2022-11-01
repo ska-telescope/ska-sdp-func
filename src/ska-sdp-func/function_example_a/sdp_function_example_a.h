@@ -35,8 +35,7 @@ sdp_FunctionExampleA* sdp_function_example_a_create_plan(
         int a,
         int b,
         float c,
-        sdp_Error* status
-    );
+        sdp_Error* status);
 
 /**
  * @brief Demonstrate a function utilising a plan.
@@ -48,8 +47,7 @@ sdp_FunctionExampleA* sdp_function_example_a_create_plan(
 void sdp_function_example_a_exec(
         sdp_FunctionExampleA* plan,
         sdp_Mem* output,
-        sdp_Error* status
-    );
+        sdp_Error* status);
 
 /**
  * @brief Releases handle to processing function A.

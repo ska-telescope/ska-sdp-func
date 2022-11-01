@@ -54,5 +54,3 @@ void sdp_sum_threshold_rfi_flagger(
 #endif
 
 #endif
-
-

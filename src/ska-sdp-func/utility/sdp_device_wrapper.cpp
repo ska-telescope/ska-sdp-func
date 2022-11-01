@@ -7,6 +7,7 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
+
 void sdp_launch_cuda_kernel(
         const char* name,
         const uint64_t num_blocks[3],

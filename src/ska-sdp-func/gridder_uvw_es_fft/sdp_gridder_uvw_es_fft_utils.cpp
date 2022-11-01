@@ -5,25 +5,26 @@
 
 #include "sdp_gridder_uvw_es_fft_utils.h"
 
+
 /**********************************************************************
  * Calculate the n-th Legendre Polynomial P_n at x
  * optionally also calculates the (first) derivate P_n' at x when -1<x<1
  **********************************************************************/
-double sdp_get_legendre(double x, int n, double *derivative)
+double sdp_get_legendre(double x, int n, double* derivative)
 {
-    if (n==0)
+    if (n == 0)
     {
-        if (derivative != NULL) 
+        if (derivative != NULL)
         {
-             *derivative = 0.0;
+            *derivative = 0.0;
         }
         return 1.0;
     }
-    else if (n==1)
+    else if (n == 1)
     {
-        if (derivative != NULL) 
+        if (derivative != NULL)
         {
-             *derivative = 1.0;
+            *derivative = 1.0;
         }
         return x;
     }
@@ -35,9 +36,9 @@ double sdp_get_legendre(double x, int n, double *derivative)
     double p_im1 = x; // P_{i-1}(x)
     double p_i = 0;
 
-    for (int32_t i=2; i<=n; i++)
+    for (int32_t i = 2; i <= n; i++)
     {
-        p_i = x*p_im1 + (((double)i-1.0)/(double)i)*(x*p_im1-p_im2);
+        p_i = x * p_im1 + (((double)i - 1.0) / (double)i) * (x * p_im1 - p_im2);
         // prepare for next iteration if required
         p_im2 = p_im1;
         p_im1 = p_i;
@@ -45,12 +46,13 @@ double sdp_get_legendre(double x, int n, double *derivative)
 
     // optionally calculate the derivate of P_n at x
     // note this is given by P_n'(x) = n/(1-x*x)(P_{n-1}(x)-x*P_n(x))
-    if (derivative != NULL && x>-1.0 && x<1.0)
+    if (derivative != NULL && x > -1.0 && x < 1.0)
     {
-        *derivative = (double)n/(1.0-(x*x))*(p_im2-x*p_i); // note p_im2 currently holds P_{n-1}(x)
+        *derivative = (double)n / (1.0 - (x * x)) * (p_im2 - x * p_i); // note p_im2 currently holds P_{n-1}(x)
     }
     return p_i;
 }
+
 
 /**********************************************************************
  * Calculate an initial estimate of i-th root of n-th Legendre Polynomial
@@ -61,18 +63,24 @@ double sdp_get_legendre(double x, int n, double *derivative)
  **********************************************************************/
 double sdp_get_approx_legendre_root(int32_t i, int32_t n)
 {
-    double improvement = 1.0 - (1.0-1.0/(double)n)/(8.0*(double)n*(double)n);
-    double estimate = cos(M_PI*(4.0*(double)i-1.0)/(4.0*(double)n+2.0));
-    return improvement*estimate;
+    double improvement = 1.0 - (1.0 - 1.0 / (double)n) / (8.0 * n * n);
+    double estimate = cos(M_PI * (4.0 * (double)i - 1.0) / (4.0 * n + 2.0));
+    return improvement * estimate;
 }
+
 
 /**********************************************************************
  * Calculates an estimate of i-th root of n-th Legendre Polynomial
  * where i=1,2,...,n ordered from largest root to smallest
  * using Newton-Ralphson iterations until the specified
- * accuracy is reached and then also calculate its weight for Gauss-Legendre quadrature
+ * accuracy is reached and then also calculate its weight for Gauss-Legendre
+ * quadrature
  **********************************************************************/
-double sdp_calculate_legendre_root(int32_t i, int32_t n, double accuracy, double *weight)
+double sdp_calculate_legendre_root(
+        int32_t i,
+        int32_t n,
+        double accuracy,
+        double* weight)
 {
     double next_estimate = sdp_get_approx_legendre_root(i, n);
     double derivative = 1.0; // AG: just a dummy value to fix lint warning
@@ -82,20 +90,23 @@ double sdp_calculate_legendre_root(int32_t i, int32_t n, double accuracy, double
     {
         estimate = next_estimate;
         double p_n = sdp_get_legendre(estimate, n, &derivative);
-        next_estimate = estimate - p_n/derivative;
+        next_estimate = estimate - p_n / derivative;
         iterations++;
     }
-    while (fdim(next_estimate,estimate)>accuracy && iterations<MAX_NEWTON_RAPHSON_ITERATIONS);
+    while (fdim(next_estimate,estimate) > accuracy && iterations <
+            MAX_NEWTON_RAPHSON_ITERATIONS);
 
     // Gauss-Legendre quadrature weight for x is given by w = 2/((1-x*x)P_n'(x)*P_n'(x))
     // double p_n = sdp_get_legendre(next_estimate, n, &derivative);
     sdp_get_legendre(next_estimate, n, &derivative);  // AG: avoid lint warning
-    *weight = 2.0/((1.0-next_estimate*next_estimate)*derivative*derivative);
+    *weight = 2.0 / ((1.0 - next_estimate * next_estimate) * derivative *
+            derivative);
     return next_estimate;
 }
 
+
 /**********************************************************************
- * Calculates guass-legendre quadrature values (nodes, weights)
+ * Calculates Gauss-Legendre quadrature values (nodes, weights)
  * and scaled nodes (the conv corr kernel), ie: exp_semicircle() of nodes.
  * Also precalculates fixed half image_size conv kernel (l, m),
  * conv correction for n coord will be done on GPU
@@ -111,19 +122,20 @@ void sdp_generate_gauss_legendre_conv_kernel(
         double* quadrature_kernel,
         double* quadrature_nodes,
         double* quadrature_weights,
-        double* conv_corr_kernel
-)
+        double* conv_corr_kernel)
 {
     // p based on formula in first paragraph under equation 3.10, page 8 of paper:
-    // A parallel non-uniform fast Fourier transform library based on an "exponential of semicircle" kernel
-    //uint32_t p = (uint32_t)ceil(1.5 * support + 2.0);
+    // A parallel non-uniform fast Fourier transform library
+    // based on an "exponential of semicircle" kernel
+    // uint32_t p = (uint32_t)ceil(1.5 * support + 2.0);
     uint32_t p = (uint32_t)int(1.5 * support + 2.0);
     uint32_t n = (uint32_t)(p * 2);
 
     for (uint32_t i = 1; i <= n / 2; i++)
     {
         double w_i = 0.0;
-        double x_i = sdp_calculate_legendre_root((int32_t)i, (int32_t)n, 1e-16, &w_i);
+        double x_i = sdp_calculate_legendre_root(
+                (int32_t)i, (int32_t)n, 1e-16, &w_i);
         double k_i = exp(beta * (sqrt(1.0 - x_i * x_i) - 1.0));
         quadrature_nodes[i - 1] = (double) x_i;
         quadrature_weights[i - 1] = (double) w_i;
@@ -131,26 +143,29 @@ void sdp_generate_gauss_legendre_conv_kernel(
     }
 
     double conv_corr_norm_factor = 0.0;
-    for (uint32_t i = 0; i < p; i++) 
+    for (uint32_t i = 0; i < p; i++)
     {
         conv_corr_norm_factor += quadrature_kernel[i] * quadrature_weights[i];
     }
     conv_corr_norm_factor *= (double)support;
 
-    // Precalculate one side of convolutional correction kernel out to one more than half the image size
+    // Precalculate one side of convolutional correction kernel out to
+    // one more than half the image size
     for (uint32_t l_m = 0; l_m <= (uint32_t)image_size / 2; l_m++)
     {
-        double l_m_norm =  ((double)l_m) * (1.0 / grid_size); // between 0.0 .. 0.5
+        double l_m_norm = ((double)l_m) * (1.0 / grid_size);  // between 0.0 .. 0.5
         double correction = 0.0;
 
-        for (uint32_t i = 0; i < p; i++) 
+        for (uint32_t i = 0; i < p; i++)
         {
             correction += quadrature_kernel[i] * quadrature_weights[i] *
-                    cos(M_PI * l_m_norm * ((double)support) * quadrature_nodes[i]);
+                    cos(M_PI * l_m_norm * support * quadrature_nodes[i]);
         }
-        conv_corr_kernel[l_m] = (double)(correction * ((double)support)) / conv_corr_norm_factor;
+        conv_corr_kernel[l_m] = (double)(correction * support) /
+                conv_corr_norm_factor;
     }
 }
+
 
 /**********************************************************************
  * Calculates a value for nu to help choose the best grid size.
@@ -159,28 +174,29 @@ int sdp_good_size_complex(int n)
 {
     if (n <= 12) return n;
 
-    int best_factor=2*n;
-    for (int f11 = 1; f11 < best_factor; f11 *= 11) 
+    int best_factor = 2 * n;
+    for (int f11 = 1; f11 < best_factor; f11 *= 11)
     {
-        for (int f117 = f11; f117 < best_factor; f117 *= 7) 
+        for (int f117 = f11; f117 < best_factor; f117 *= 7)
         {
             for (int f1175 = f117; f1175 < best_factor; f1175 *= 5)
             {
                 int x = f1175;
-                while (x < n) x *= 2;
+                while (x < n)
+                    x *= 2;
                 for (;;)
                 {
-                    if (x < n) 
+                    if (x < n)
                     {
                         x *= 3;
-                    } 
+                    }
                     else if (x > n)
                     {
-                        if (x < best_factor) best_factor=x;
+                        if (x < best_factor) best_factor = x;
                         if (x & 1) break;
                         x >>= 1;
                     }
-                    else 
+                    else
                     {
                         return n;
                     }
@@ -191,16 +207,23 @@ int sdp_good_size_complex(int n)
     return best_factor;
 }
 
+
 /**********************************************************************
- * Calculates grid size, support and beta and from epsilon, image size 
+ * Calculates grid size, support and beta and from epsilon, image size
  * and input precision.
  **********************************************************************/
-void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_precision, 
-                                       int &grid_size, int &support, double &beta, sdp_Error* status)
+void sdp_calculate_params_from_epsilon(
+        double epsilon,
+        int image_size,
+        int vis_precision,
+        int &grid_size,
+        int &support,
+        double &beta,
+        sdp_Error* status)
 {
     if (*status) return;  // AG: temp to silence lint warning
     *status = SDP_SUCCESS;
-    
+
     // get available kernels
     const int num_kernels = 244;
     enum {K_support, K_os_factor, K_epsilon, K_beta, K_e0, K_corr_range};
@@ -457,46 +480,46 @@ void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_p
 
     for (int i = 0; i < num_opts; ++i)
     {
-        idx[i] = num_kernels-1;
+        idx[i] = num_kernels - 1;
         os_factors[i] = 2.6;
     }
-    
+
     int max_support = (vis_precision == SDP_MEM_DOUBLE) ? 16 : 8;
-    
+
     for (int i = 0; i < num_kernels; i++)
-    {   
+    {
         int this_support = int(floor(KernelDB[i][K_support]));
-        
-        if ((KernelDB[i][K_support]    <= max_support) &&
-            (KernelDB[i][K_epsilon]    <= epsilon) &&
-            (KernelDB[i][K_corr_range] <= 10.) &&   // acceptable ??
-            (KernelDB[i][K_os_factor]  <= os_factors[this_support])
-           )
+
+        if ((KernelDB[i][K_support] <= max_support) &&
+                (KernelDB[i][K_epsilon] <= epsilon) &&
+                (KernelDB[i][K_corr_range] <= 10.) && // acceptable ??
+                (KernelDB[i][K_os_factor] <= os_factors[this_support]))
         {
             idx[this_support] = i;
-            os_factors[this_support] = KernelDB[i][K_os_factor];            
+            os_factors[this_support] = KernelDB[i][K_os_factor];
         }
     }
-    
-    int min_nu=80000, min_idx=num_kernels;
 
-    for (int i=0; i < num_opts; ++i)
+    int min_nu = 80000, min_idx = num_kernels;
+
+    for (int i = 0; i < num_opts; ++i)
     {
         int this_idx = idx[i];
         double os_factor = KernelDB[this_idx][K_os_factor];
-        int nu = 2*sdp_good_size_complex(int(image_size*os_factor*0.5)+1);
-        
+        int nu = 2 * sdp_good_size_complex(
+                int(image_size * os_factor * 0.5) + 1);
+
         if (nu <= min_nu)
         {
             min_nu = nu;
             min_idx = this_idx;
         }
     }
-    
+
     support = int(floor(KernelDB[min_idx][K_support]));
     double os_factor = KernelDB[min_idx][K_os_factor];
     beta = KernelDB[min_idx][K_beta];
-    int nu = 2*sdp_good_size_complex(int(image_size*os_factor*0.5)+1);
+    int nu = 2 * sdp_good_size_complex(int(image_size * os_factor * 0.5) + 1);
 
     grid_size = nu;
 }

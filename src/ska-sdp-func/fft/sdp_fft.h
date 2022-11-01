@@ -56,7 +56,10 @@ sdp_Fft* sdp_fft_create(
  * @param output Output data.
  * @param status Error status.
  */
-void sdp_fft_exec(sdp_Fft* fft, sdp_Mem* input, sdp_Mem* output,
+void sdp_fft_exec(
+        sdp_Fft* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
         sdp_Error* status);
 
 /**

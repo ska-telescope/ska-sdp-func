@@ -300,7 +300,9 @@ int32_t sdp_mem_is_complex(const sdp_Mem* mem);
  * @param check_location If true, check the data locations also match.
  * @return True if memory blocks have matching meta-data.
  */
-int32_t sdp_mem_is_matching(const sdp_Mem* mem1, const sdp_Mem* mem2,
+int32_t sdp_mem_is_matching(
+        const sdp_Mem* mem1,
+        const sdp_Mem* mem2,
         int32_t check_location);
 
 /**

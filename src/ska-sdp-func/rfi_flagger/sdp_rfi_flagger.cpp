@@ -7,6 +7,7 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
+
 static void check_params(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
@@ -66,20 +67,27 @@ static void sum_threshold_on_block(
         const uint64_t num_timesamples,
         int* flags_on_block)
 {
-    for (uint64_t k = 0; k < seqlen; k++) {
+    for (uint64_t k = 0; k < seqlen; k++)
+    {
         const uint64_t current_seqlen = sequence_lengths[k];
         const FP current_threshold = thresholds[k] * current_seqlen;
-        for (uint64_t j = 0; j < num_channels; j++) {
-            for (uint64_t i = 0; i < num_timesamples - current_seqlen; i++) {
+        for (uint64_t j = 0; j < num_channels; j++)
+        {
+            for (uint64_t i = 0; i < num_timesamples - current_seqlen; i++)
+            {
                 FP sum = (FP) 0;
-                for (uint64_t m = 0; m < current_seqlen; m++) {
-                    if (flags_on_block[(i + m) * num_channels + j] == 1) {
+                for (uint64_t m = 0; m < current_seqlen; m++)
+                {
+                    if (flags_on_block[(i + m) * num_channels + j] == 1)
+                    {
                         block[(i + m) * num_channels + j] = thresholds[k];
                     }
                     sum = sum + block[(i + m) * num_channels + j];
                 }
-                if (sum > current_threshold) {
-                    for (uint64_t m = 0; m < current_seqlen; m++) {
+                if (sum > current_threshold)
+                {
+                    for (uint64_t m = 0; m < current_seqlen; m++)
+                    {
                         flags_on_block[(i + m) * num_channels + j] = 1;
                     }
                 }
@@ -105,18 +113,23 @@ static void sum_threshold_rfi_flagger(
     uint64_t channel_block = num_pols;
     int num_sequence_elements = (int) (log(max_sequence_length) / log(2)) + 1;
     int* sequence_lengths = new int[num_sequence_elements];
-    for (int f = 0; f < num_sequence_elements; f++) {
+    for (int f = 0; f < num_sequence_elements; f++)
+    {
         sequence_lengths[f] = (1 << f);
     }
 
     FP* block = new FP[num_timesamples * num_channels];
     int* flags_on_the_block = new int[num_timesamples * num_channels];
-    for (uint64_t b = 0; b < num_baselines; b++) {
-        for (uint64_t p = 0; p < num_pols; p++) {
+    for (uint64_t b = 0; b < num_baselines; b++)
+    {
+        for (uint64_t p = 0; p < num_pols; p++)
+        {
             memset(flags_on_the_block, 0,
                     num_timesamples * num_channels * sizeof(int));
-            for (uint64_t t = 0; t < num_timesamples; t++) {
-                for (uint64_t c = 0; c < num_channels; c++) {
+            for (uint64_t t = 0; t < num_timesamples; t++)
+            {
+                for (uint64_t c = 0; c < num_channels; c++)
+                {
                     uint64_t pos = t * timesample_block +
                             b * baseline_block + c * channel_block + p;
                     std::complex<FP> temp = visibilities[pos];
@@ -128,8 +141,10 @@ static void sum_threshold_rfi_flagger(
                     sequence_lengths, block, num_channels, num_timesamples,
                     flags_on_the_block);
 
-            for (uint64_t t = 0; t < num_timesamples; t++) {
-                for (uint64_t c = 0; c < num_channels; c++) {
+            for (uint64_t t = 0; t < num_timesamples; t++)
+            {
+                for (uint64_t c = 0; c < num_channels; c++)
+                {
                     uint64_t pos = t * timesample_block +
                             b * baseline_block + c * channel_block + p;
                     flags[pos] = flags_on_the_block[t * num_channels + c];
@@ -154,10 +169,10 @@ void sdp_sum_threshold_rfi_flagger(
     check_params(vis, thresholds, flags, status);
     if (*status) return;
 
-    const uint64_t num_timesamples   = (uint64_t) sdp_mem_shape_dim(vis, 0);
-    const uint64_t num_baselines     = (uint64_t) sdp_mem_shape_dim(vis, 1);
-    const uint64_t num_channels      = (uint64_t) sdp_mem_shape_dim(vis, 2);
-    const uint64_t num_pols          = (uint64_t) sdp_mem_shape_dim(vis, 3);
+    const uint64_t num_timesamples = (uint64_t) sdp_mem_shape_dim(vis, 0);
+    const uint64_t num_baselines = (uint64_t) sdp_mem_shape_dim(vis, 1);
+    const uint64_t num_channels = (uint64_t) sdp_mem_shape_dim(vis, 2);
+    const uint64_t num_pols = (uint64_t) sdp_mem_shape_dim(vis, 3);
 
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
@@ -166,30 +181,28 @@ void sdp_sum_threshold_rfi_flagger(
                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             sum_threshold_rfi_flagger(
-                (int*) sdp_mem_data(flags),
-                (const std::complex<float>*) sdp_mem_data_const(vis),
-                (const float*) sdp_mem_data_const(thresholds),
-                num_timesamples,
-                num_baselines,
-                num_channels,
-                num_pols,
-                max_sequence_length
-            );
+                    (int*) sdp_mem_data(flags),
+                    (const std::complex<float>*) sdp_mem_data_const(vis),
+                    (const float*) sdp_mem_data_const(thresholds),
+                    num_timesamples,
+                    num_baselines,
+                    num_channels,
+                    num_pols,
+                    max_sequence_length);
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(thresholds) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             sum_threshold_rfi_flagger(
-                (int*) sdp_mem_data(flags),
-                (const std::complex<double>*) sdp_mem_data_const(vis),
-                (const double*) sdp_mem_data_const(thresholds),
-                num_timesamples,
-                num_baselines,
-                num_channels,
-                num_pols,
-                max_sequence_length
-            );
+                    (int*) sdp_mem_data(flags),
+                    (const std::complex<double>*) sdp_mem_data_const(vis),
+                    (const double*) sdp_mem_data_const(thresholds),
+                    num_timesamples,
+                    num_baselines,
+                    num_channels,
+                    num_pols,
+                    max_sequence_length);
         }
         else
         {

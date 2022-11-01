@@ -4,16 +4,20 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
+
 template<typename T>
 static void sdp_vector_add(
-        int64_t num_elements, const T* input_a, const T* input_b, T* output
-)
+        int64_t num_elements,
+        const T* input_a,
+        const T* input_b,
+        T* output)
 {
     for (int64_t i = 0; i < num_elements; ++i)
     {
         output[i] = input_a[i] + input_b[i];
     }
 }
+
 
 void sdp_vector_add(
         const sdp_Mem* input_a,
@@ -79,7 +83,7 @@ void sdp_vector_add(
     {
         const uint64_t num_threads[] = {256, 1, 1};
         const uint64_t num_blocks[] = {
-                (num_elements + num_threads[0] - 1) / num_threads[0], 1, 1
+            (num_elements + num_threads[0] - 1) / num_threads[0], 1, 1
         };
         const char* kernel_name = 0;
         if (type == SDP_MEM_DOUBLE)
@@ -96,10 +100,10 @@ void sdp_vector_add(
             SDP_LOG_ERROR("Unsupported data type");
         }
         const void* args[] = {
-                &num_elements,
-                sdp_mem_gpu_buffer_const(input_a, status),
-                sdp_mem_gpu_buffer_const(input_b, status),
-                sdp_mem_gpu_buffer(output, status)
+            &num_elements,
+            sdp_mem_gpu_buffer_const(input_a, status),
+            sdp_mem_gpu_buffer_const(input_b, status),
+            sdp_mem_gpu_buffer(output, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, args, status);

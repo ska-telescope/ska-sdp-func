@@ -3,6 +3,7 @@
 #include "ska-sdp-func/utility/sdp_data_model_checks.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
+
 void sdp_data_model_check_uvw(
         const sdp_Mem* uvw,
         sdp_MemType* type,
@@ -22,7 +23,7 @@ void sdp_data_model_check_uvw(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR(
-            "The last dimension of the uvw array must be of length 3");
+                "The last dimension of the uvw array must be of length 3");
         return;
     }
     if (sdp_mem_type(uvw) != SDP_MEM_DOUBLE &&
@@ -37,6 +38,7 @@ void sdp_data_model_check_uvw(
     if (num_times) *num_times = sdp_mem_shape_dim(uvw, 0);
     if (num_baselines) *num_baselines = sdp_mem_shape_dim(uvw, 1);
 }
+
 
 void sdp_data_model_check_vis(
         const sdp_Mem* vis,
@@ -68,6 +70,7 @@ void sdp_data_model_check_vis(
     if (num_channels) *num_channels = sdp_mem_shape_dim(vis, 2);
     if (num_pols) *num_pols = sdp_mem_shape_dim(vis, 3);
 }
+
 
 void sdp_data_model_check_weights(
         const sdp_Mem* weights,

@@ -2,13 +2,14 @@
 
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
+
 template<typename T>
 __global__
 void vector_add (
-    const int64_t num_elements,
-    const T *const __restrict__ input_a,
-    const T *const __restrict__ input_b,
-    T *__restrict__ output)
+        const int64_t num_elements,
+        const T* const __restrict__ input_a,
+        const T* const __restrict__ input_b,
+        T* __restrict__ output)
 {
     const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < num_elements)
