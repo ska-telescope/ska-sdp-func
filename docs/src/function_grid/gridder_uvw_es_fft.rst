@@ -1,7 +1,5 @@
-.. _gridder_functions:
-
 ****************************
-Gridder UVW ES FFT Functions
+Gridder UVW ES FFT functions
 ****************************
 
 C/C++

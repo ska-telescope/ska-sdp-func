@@ -1,8 +1,6 @@
-.. _rfi_flagger_functions:
-
-*********************
-RFI Flagger Functions
-*********************
+***********************************
+Sum-threshold RFI flagger functions
+***********************************
 
 C/C++
 =====

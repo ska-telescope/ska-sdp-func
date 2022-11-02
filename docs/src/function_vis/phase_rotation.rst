@@ -1,7 +1,5 @@
-.. _phase_rotation_functions:
-
 ************************
-Phase Rotation Functions
+Phase rotation functions
 ************************
 
 C/C++

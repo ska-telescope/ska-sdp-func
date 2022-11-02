@@ -5,7 +5,7 @@
 
 
 ********************
-Adding New Functions
+Adding new functions
 ********************
 
 To add a new function to the processing function library, the
@@ -296,7 +296,7 @@ processing functions without needlessly copying data.
       pytest
 
 
-Updating Documentation
+Updating documentation
 ======================
 
 Descriptions from the Doxygen comments and Python docstrings should be
@@ -304,8 +304,8 @@ included in the Sphinx documentation, so they can be found easily.
 
 1. Find (or create) an appropriate reStructuredText file inside
    the ``docs/src/`` directory.
-   Processing functions are currently documented in
-   ``proc_func_<function_name>.rst`` files.
+   Processing functions are currently documented under top-level function
+   groups in directory names starting with ``function_``.
 
 2. In the file, use the Sphinx directives from Breathe
    (e.g. ``doxygenfunction``) to document the C function using the
@@ -319,7 +319,7 @@ included in the Sphinx documentation, so they can be found easily.
       .. _vector_functions:
 
       ****************
-      Vector Functions
+      Vector functions
       ****************
 
       C/C++
@@ -333,11 +333,11 @@ included in the Sphinx documentation, so they can be found easily.
 
       .. autofunction:: ska_sdp_func.vector_add
 
-   - Remember to update the ``index.rst`` file to add the page to the table
+   - Remember to update the ``index.rst`` files to add the page to the table
      of contents, if necessary.
 
 
-Worked Example
+Worked example
 ==============
 
 For a very simple example of how to implement a function both in C++ and call
@@ -356,4 +356,4 @@ For the Python wrapper:
 
 For the documentation:
 
-1. The reStructuredText markup is in ``docs/src/proc_func_vector.rst``
+1. The reStructuredText markup is in ``docs/src/function_examples/vector.rst``

@@ -1,7 +1,5 @@
-.. _weighting_functions:
-
 *******************
-Weighting Functions
+Weighting functions
 *******************
 
 C/C++

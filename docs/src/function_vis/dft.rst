@@ -1,7 +1,5 @@
-.. _dft_functions:
-
 *************
-DFT Functions
+DFT functions
 *************
 
 C/C++

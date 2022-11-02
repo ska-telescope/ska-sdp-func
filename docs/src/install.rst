@@ -1,12 +1,10 @@
-.. _install_guide:
-
 ******************
-Installation Guide
+Installation guide
 ******************
 
 If GPU acceleration is required, make sure the CUDA toolkit is installed first.
 
-The C Library
+The C library
 =============
 
 The processing function library is compiled from source using CMake.
@@ -38,7 +36,7 @@ The C unit tests can then be run from the same build directory:
 
      ctest
 
-The Python Library
+The Python library
 ==================
 
 From the top-level directory, run the following commands to install
