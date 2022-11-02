@@ -74,7 +74,7 @@ double quantile(double* arr, double q, int n){
 
 double extrapolate(double mrec, int mrecloc, double minone,
                   int minoneloc, double mintwo, int mintwoloc, uint64_t current_time){
-    double extrapolated_val;
+    double extrapolated_val = 0;
     if (mrecloc != -1 && minoneloc == -1 && mintwoloc == -1){
         extrapolated_val = mrec;
     }
@@ -88,8 +88,16 @@ double extrapolate(double mrec, int mrecloc, double minone,
         double predicted_firstdev = firstdev1 + seconddev;
         extrapolated_val = mrec + (current_time - mrecloc) * predicted_firstdev;
     }
-
     return extrapolated_val;
+}
+
+double transit_sc_threshold_calc(double stat, double alpha, double beta, int time){
+    double val = beta * stat;
+    double threshold = 0;
+    for (int t = 0; t < time; t++){
+        threshold = threshold + val * pow(alpha, t);
+    }
+    return threshold;
 }
 
 
@@ -99,32 +107,6 @@ void filler(AA* arr, VL val, int length){
         arr[i] = val;
     }
 }
-
-/*double moving_first_dev(double* arr, int window){
-   double val1 = 0;
-   double val2 = 0;
-   for (int j = 0; j < window; j++){
-       val1 = val1 + arr[j];
-   }
-    for (int k = 0; k < window; k++){
-        val2 = val2 + arr[k + 1];
-    }
-    return val2 - val1;
-}
-
-double moving_second_dev(double* arr, int window){
-    double *for_first_dev1 = new double[window];
-    double *for_first_dev2 = new double[window];
-    for (int i = 0; i < window; i++){
-        for_first_dev1[i] = arr[i];
-    }
-    for (int k = 0; k < window; k++){
-        for_first_dev2[k] = arr[k + 1];
-    }
-    double first_dev1 =
-
-}*/
-
 
 
 template<typename FP>
@@ -220,7 +202,9 @@ static void twosm_rfi_flagger(
                     bool cnd0 = !(vis1 > quant_ft_high || vis1< quant_ft_low);
                     bool cnd1 = transit_score[c] < thresholds[0] * quant_td;
                     bool cnd2 = abs(vis1 - extpl) < thresholds[1] * quant_td;
-                    if (cnd0 && cnd1 && cnd2){
+                    bool cnd3 = l0 == -1 && l1 == -1 && l2 == -1;
+
+                    if ((cnd0 && cnd1 && cnd2 && !cnd3) || (cnd0 && cnd1 && cnd3)){
                         flags[t * num_channels + c] = 1;
                     } else{
                         minus_two[c] = minus_one[c];
@@ -231,95 +215,18 @@ static void twosm_rfi_flagger(
                         most_rec_loc[c] = t;
                     }
                 }
-            }
-        }
-    }
-
-
-
-    /*for (uint64_t c = 0; c < num_channels; c++){
-        for (uint64_t t = 1; t < num_timesamples; t++) {
-            uint64_t pos_current = t * num_channels + c; // current position
-            uint64_t pos_minusone = (t - 1) * num_channels + c; //position at t-1
-            double vis0 = std::abs(visibilities[pos_current]);
-            double vis1 = std::abs(visibilities[pos_minusone]);
-            dv_between_cur_one = vis0 - vis1;
-            dv_ratio =  dv_between_cur_one/vis1;
-            if (flags[pos_current] != 1){
-                bool cnd0 = dv_ratio > tol_margin_2sm_time;
-                bool cnd1 = dv_ratio < (-1) * tol_margin_2sm_time;
-                bool cnd2 = dv_ratio > (-1) * tol_margin_2sm_time;
-                bool cnd3 = dv_ratio < tol_margin_2sm_time;
-                bool cnd4 = dv_ratio < 0;
-                bool cnd5 = dv_ratio > 0;
-                bool cnd6 = flags[pos_minusone] == 1;
-                bool cnd7 = flags[pos_minusone] == 0;
-
-                //detecting uphill transition ('good' to 'bad') or remaining in the bad position
-                if (cnd0 || (((cnd2 && cnd4) || (cnd3 && cnd5)) && cnd6)){
-                    uint64_t pos = t * num_channels + c;
-                    flags[pos] = 1;
-                }
-                // downhill transition detection and back-tracking (if we detect a big downhill we know that we
-                // have been in the 'bad' state, so we flag the previous samples)
-                if (cnd1 && (cnd7 == 0)){
-                    uint64_t i = 0;
-                    uint64_t pos = pos_minusone;
-                    while (flags[pos] == 0 && t > i){
-                        flags[pos] = 1;
-                        i = i + 1;
-                        pos = (t - i) * num_channels + c;
-                    }
-                }
-
-            }
-
-        }
-    }
-    // two-state machine algorithm applied to frequency dimension
-    // we register the flag with number 2 in here to make calculating the union
-    // of the flags in frequency and time directions easier.
-    for (uint64_t t = 0; t < num_timesamples; t++){
-        for (uint64_t c = 1; c < num_channels; c++) {
-            uint64_t pos_current = t * num_channels + c;
-            uint64_t pos_minusone = t * num_channels + c - 1;
-            double vis0 = std::abs(visibilities[pos_current]);
-            double vis1 = std::abs(visibilities[pos_minusone]);
-            dv_between_cur_one = vis0 - vis1;
-            dv_ratio =  dv_between_cur_one/vis1;
-            if (flags[pos_current] != 1){
-                bool cnd0 = dv_ratio > tol_margin_2sm_freq;
-                bool cnd1 = dv_ratio < (-1) * tol_margin_2sm_freq;
-                bool cnd2 = dv_ratio > (-1) * tol_margin_2sm_freq;
-                bool cnd3 = dv_ratio < tol_margin_2sm_freq;
-                bool cnd4 = dv_ratio < 0;
-                bool cnd5 = dv_ratio > 0;
-                bool cnd6 = flags[pos_minusone] == 2;
-                bool cnd7 = flags[pos_minusone] == 0 || flags[pos_minusone] == 1;
-                //detecting uphill transition ('good' to 'bad') or remaining in the bad position
-                if (cnd0 || (((cnd2 && cnd4) || (cnd3 && cnd5)) && cnd6)){
-                   flags[pos_current] = 2;
-                }
-                // downhill transition detection and back-tracking (if we detect a big downhill we know that we
-                // have been in the 'bad' state, so we flag the previous samples)
-                if (cnd1 && (cnd7 == 0)){
-                    uint64_t i = 0;
-                    uint64_t pos = pos_minusone;
-                    while ((flags[pos] == 0 || flags[pos] == 1) && t > i){
-                        flags[pos] = 2;
-                        i = i + 1;
-                        pos = t * num_channels + (c - i) ;
+                if (c < num_channels - 1){
+                    if (flags[t * num_channels + c] == 1 && transit_score[c + 1] > thresholds[3] * quant_td){
+                        flags[c + 1] = 1;
                     }
                 }
             }
         }
+
     }
-    // calculating the union (replace all 2's and 1's with 1)
-    for (uint64_t i = 0; i < num_elements; i++){
-        if (flags[i] > 0){
-            flags[i] = 1;
-        }
-    }*/
+
+
+
 }
 
 
