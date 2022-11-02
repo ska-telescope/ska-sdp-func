@@ -186,30 +186,55 @@ static void twosm_rfi_flagger(
             delete[] time_diffs;
             for (int c = 0; c < num_channels; c++){
                 double vis1 = abs(visibilities[t * num_channels + c]);
-                double vis0 = abs(visibilities[t * num_channels + c]);
+                double vis0 = abs(visibilities[(t - 1) * num_channels + c]);
                 if (vis1 > quant_ft_high || vis1 < quant_ft_low || abs(vis1 - vis0) > quant_td){
                     flags[t * num_channels + c] = 1;
                 }else{
-                    most_rec_loc[t * num_channels + c] = 0;
-                    most_rec[t * num_channels + c] = vis0;
-                }
+                    if (most_rec_loc[c] == -1){
+                        most_rec_loc[c] = 0;
+                        most_rec[c] = vis1;
+                    } else{
+                        most_rec_loc[c] = 1;
+                        most_rec[c] = vis1;
+                        minus_one[c] = vis0;
+                        minus_one_loc[c] = 0;
+                    }
 
+                }
+                transit_score[c] = abs(vis1 - vis0);
             }
         }
-
-        if (t == 1 || t == 2){
-            for (uint64_t c; c < num_channels; c++) {
+        if (t > 1){
+            for (int c = 0; c < num_channels; c++){
                 double vis1 = abs(visibilities[t * num_channels + c]);
                 double vis0 = abs(visibilities[(t - 1) * num_channels + c]);
-                double diff = abs(vis1 - vis0);
-                transit_score[c] = (transit_score[c] * (t - 1) + diff)/t;
-                bool cnd0 = diff >= quant_td;
-                if (cnd0) {
-                    flags[t * num_channels + c] = 1;
+                transit_score[c] = abs(vis1 - vis0) + thresholds[2] * transit_score[c];
+                if (flags[(t - 1) * num_channels + c] == 1){
+                    double m0 = most_rec[c];
+                    int l0 = most_rec_loc[c];
+                    double m1 = minus_one[c];
+                    int l1 = minus_one_loc[c];
+                    double m2 = minus_two[c];
+                    int l2 = minus_two_loc[c];
+                    double extpl = extrapolate(m0, l0, m1, l1, m2, l2, t);
+                    bool cnd0 = !(vis1 > quant_ft_high || vis1< quant_ft_low);
+                    bool cnd1 = transit_score[c] < thresholds[0] * quant_td;
+                    bool cnd2 = abs(vis1 - extpl) < thresholds[1] * quant_td;
+                    if (cnd0 && cnd1 && cnd2){
+                        flags[t * num_channels + c] = 1;
+                    } else{
+                        minus_two[c] = minus_one[c];
+                        minus_two_loc[c] = minus_one_loc[c];
+                        minus_one[c] = most_rec[c];
+                        minus_one_loc[c] = most_rec_loc[c];
+                        most_rec[c] = vis1;
+                        most_rec_loc[c] = t;
+                    }
                 }
             }
         }
     }
+
 
 
     /*for (uint64_t c = 0; c < num_channels; c++){
