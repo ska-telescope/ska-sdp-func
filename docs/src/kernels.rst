@@ -1,6 +1,5 @@
-
 *****************
-Launching Kernels
+Launching kernels
 *****************
 
 CUDA kernels should be defined in their own source files with a ``.cu``

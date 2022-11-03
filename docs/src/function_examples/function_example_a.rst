@@ -1,8 +1,9 @@
-.. _example_functions:
+*********
+Example A
+*********
 
-*****************
-Example Functions
-*****************
+A fictitious function that does nothing useful, but shows how a function
+plan can be used.
 
 C/C++
 =====

@@ -1,4 +1,4 @@
-Error Conditions
+Error conditions
 ================
 
   .. doxygenenum:: sdp_Error

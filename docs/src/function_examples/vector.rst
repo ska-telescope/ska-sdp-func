@@ -1,7 +1,7 @@
 .. _vector_functions:
 
 ****************
-Vector Functions
+Vector functions
 ****************
 
 C/C++

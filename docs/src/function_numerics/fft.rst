@@ -1,7 +1,5 @@
-.. _fft_functions:
-
 *************
-FFT Functions
+FFT functions
 *************
 
 C/C++
