@@ -34,7 +34,8 @@ static void run_and_check(
         sdp_MemType vis_type,
         sdp_MemType weight_type,
         sdp_MemType image_type,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     const int num_vis = 1024;

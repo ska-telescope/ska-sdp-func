@@ -26,7 +26,8 @@ static void run_and_check(
         sdp_MemType output_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     const int num_dims = 2;

@@ -25,7 +25,8 @@ static void run_and_check(
         int par_a,
         int par_b,
         float par_c,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     int num_dims = 1;

@@ -21,7 +21,8 @@ void get_w_range(
         const int num_chan,
         const T* freq_hz,
         double& min_abs_w,
-        double& max_abs_w)
+        double& max_abs_w
+)
 {
     for (int i = 0; i < num_rows; ++i)
     {
@@ -45,7 +46,8 @@ void sdp_generate_gauss_legendre_conv_kernel(
         double* quadrature_kernel,
         double* quadrature_nodes,
         double* quadrature_weights,
-        double* conv_corr_kernel);
+        double* conv_corr_kernel
+);
 
 void sdp_calculate_params_from_epsilon(
         double epsilon,
@@ -54,13 +56,15 @@ void sdp_calculate_params_from_epsilon(
         int &grid_size,
         int &support,
         double &beta,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 void sdp_calculate_support_and_beta(
         double upsampling,
         double epsilon,
         int &support,
         double &beta,
-        int &status);
+        int &status
+);
 
 #endif /* include guard */

@@ -70,7 +70,8 @@ __device__ FP conv_corr(
         const FP k,
         const FP* const __restrict__ quadrature_kernel,
         const FP* const __restrict__ quadrature_nodes,
-        const FP* const __restrict__ quadrature_weights)
+        const FP* const __restrict__ quadrature_weights
+)
 {
     FP correction = 0.0;
     uint32_t p = (uint32_t)(ceil(FP(1.5) * support + FP(2.0)));
@@ -423,7 +424,8 @@ __global__ void apply_w_screen_and_sum(
         const FP inv_w_scale, // inverse of scaling factor for converting w coord to signed w grid index
         const FP min_plane_w, // w coordinate of smallest w plane
         const bool perform_shift_fft, // flag to (equivalently) rearrange each grid so origin is at lower-left corner for FFT
-        const bool do_wstacking)
+        const bool do_wstacking
+)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -547,7 +549,8 @@ __global__ void reverse_w_screen_to_stack(
         const FP inv_w_scale, // inverse of scaling factor for converting w coord to signed w grid index
         const FP min_plane_w, // w coordinate of smallest w plane
         const bool perform_shift_fft, // flag to (equivalently) rearrange each grid so origin is at lower-left corner for FFT
-        const bool do_wstacking)
+        const bool do_wstacking
+)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -684,7 +687,8 @@ __global__ void conv_corr_and_scaling(
         const FP* const __restrict__ quadrature_nodes,
         const FP* const __restrict__ quadrature_weights,
         const bool solving,
-        const bool do_wstacking)
+        const bool do_wstacking
+)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;

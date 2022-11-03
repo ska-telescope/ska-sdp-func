@@ -16,7 +16,7 @@ template<
         typename FLUX_TYPE2,
         typename UVW_TYPE3,
         typename VIS_TYPE2
-        >
+>
 __global__ void dft_point_v00(
         const int num_components,
         const int num_pols,
@@ -26,7 +26,8 @@ __global__ void dft_point_v00(
         const DIR_TYPE3* const __restrict__ source_directions,
         const FLUX_TYPE2* const __restrict__ source_fluxes,
         const UVW_TYPE3* const __restrict__ uvw_lambda,
-        VIS_TYPE2* __restrict__ vis)
+        VIS_TYPE2* __restrict__ vis
+)
 {
     // Local (per-thread) visibility. Allow up to 4 polarisations.
     VIS_TYPE2 vis_local[4];
@@ -103,7 +104,7 @@ template<
         typename FLUX_TYPE2,
         typename UVW_TYPE3,
         typename VIS_TYPE2
-        >
+>
 __global__ void dft_point_v01(
         const int num_components,
         const int num_pols,
@@ -115,7 +116,8 @@ __global__ void dft_point_v01(
         const UVW_TYPE3* const __restrict__ uvw_metres,
         const double channel_start_hz,
         const double channel_step_hz,
-        VIS_TYPE2* __restrict__ vis)
+        VIS_TYPE2* __restrict__ vis
+)
 {
     // Local (per-thread) visibility. Allow up to 4 polarisations.
     VIS_TYPE2 vis_local[4];

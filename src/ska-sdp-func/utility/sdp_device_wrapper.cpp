@@ -15,7 +15,8 @@ void sdp_launch_cuda_kernel(
         uint64_t shared_mem_bytes,
         void* stream,
         const void** args,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (!name)

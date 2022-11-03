@@ -20,7 +20,7 @@ template<
         typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
-        >
+>
 static void dft_point_v00(
         const int num_components,
         const int num_pols,
@@ -30,7 +30,8 @@ static void dft_point_v00(
         const DIR_TYPE* const __restrict__ source_directions,
         const complex<FLUX_TYPE>* const __restrict__ source_fluxes,
         const UVW_TYPE* const __restrict__ uvw_lambda,
-        complex<VIS_TYPE>* __restrict__ vis)
+        complex<VIS_TYPE>* __restrict__ vis
+)
 {
     for (int i_time = 0; i_time < num_times; ++i_time)
     {
@@ -97,7 +98,8 @@ static void check_params_v00(
         const sdp_Mem* source_fluxes,
         const sdp_Mem* uvw_lambda,
         sdp_Mem* vis,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     const sdp_MemLocation location = sdp_mem_location(vis);
@@ -185,7 +187,8 @@ void sdp_dft_point_v00(
         const sdp_Mem* source_fluxes,
         const sdp_Mem* uvw_lambda,
         sdp_Mem* vis,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     check_params_v00(source_directions, source_fluxes, uvw_lambda, vis, status);
     if (*status) return;
@@ -284,7 +287,7 @@ template<
         typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
-        >
+>
 static void dft_point_v01(
         const int num_components,
         const int num_pols,
@@ -296,7 +299,8 @@ static void dft_point_v01(
         const UVW_TYPE* const __restrict__ uvw_metres,
         const double channel_start_hz,
         const double channel_step_hz,
-        complex<VIS_TYPE>* __restrict__ vis)
+        complex<VIS_TYPE>* __restrict__ vis
+)
 {
     for (int i_time = 0; i_time < num_times; ++i_time)
     {
@@ -366,7 +370,8 @@ static void check_params_v01(
         const sdp_Mem* source_fluxes,
         const sdp_Mem* uvw,
         sdp_Mem* vis,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     const sdp_MemLocation location = sdp_mem_location(vis);
@@ -455,7 +460,8 @@ void sdp_dft_point_v01(
         const double channel_start_hz,
         const double channel_step_hz,
         sdp_Mem* vis,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     check_params_v01(source_directions, source_fluxes, uvw, vis, status);
     if (*status) return;

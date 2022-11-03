@@ -48,7 +48,8 @@ static void get_twiddle_value(
         int64_t n,
         int64_t m,
         int inverse,
-        T* twid)
+        T* twid
+)
 {
     double division = ((double) m) / ((double) n);
     if (inverse)
@@ -72,7 +73,8 @@ static void perform_cpu_fft_power_of_two_inplace(
         T* temp,
         int64_t n,
         int bits,
-        int inverse)
+        int inverse
+)
 {
     T DFT_value_even, DFT_value_odd, ftemp2, ftemp;
     T twid; // Twiddle factor for use in Fourier transform
@@ -116,7 +118,8 @@ static void perform_cpu_dft_general(
         T* input,
         T* temp,
         int64_t N,
-        int inverse)
+        int inverse
+)
 {
     for (int64_t i = 0; i < N; i++)
     {
@@ -142,7 +145,8 @@ static void sdp_1d_fft_inplace(
         T* temp,
         int64_t num_x,
         int64_t batch_size,
-        int do_inverse)
+        int do_inverse
+)
 {
     int bits = 0;
     int ispoweroftwo = is_power_of_two(num_x, &bits);
@@ -172,7 +176,8 @@ static void sdp_1d_fft(
         T* temp,
         int64_t num_x,
         int64_t batch_size,
-        int do_inverse)
+        int do_inverse
+)
 {
     if (input != output)
     { // out-of-place transform
@@ -188,7 +193,8 @@ static void sdp_transpose_simple(
         T* out,
         T* in,
         int64_t num_x,
-        int64_t num_y)
+        int64_t num_y
+)
 {
     for (int64_t i = 0; i < num_y; i++)
     {
@@ -207,7 +213,8 @@ static void sdp_2d_fft_inplace(
         int64_t num_x,
         int64_t num_y,
         int64_t batch_size,
-        int do_inverse)
+        int do_inverse
+)
 {
     for (int64_t f = 0; f < batch_size; f++)
     {
@@ -232,7 +239,8 @@ static void sdp_2d_fft(
         int64_t num_x,
         int64_t num_y,
         int64_t batch_size,
-        int do_inverse)
+        int do_inverse
+)
 {
     if (input != output)
     { // out-of-place transform
@@ -260,7 +268,8 @@ static void check_params(
         const sdp_Mem* input,
         const sdp_Mem* output,
         int32_t num_dims_fft,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_is_read_only(output))
@@ -322,7 +331,8 @@ sdp_Fft* sdp_fft_create(
         const sdp_Mem* output,
         int32_t num_dims_fft,
         int32_t is_forward,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     sdp_Fft* fft = 0;
     sdp_Mem* temp = NULL;
@@ -473,7 +483,8 @@ void sdp_fft_exec(
         sdp_Fft* fft,
         sdp_Mem* input,
         sdp_Mem* output,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status || !fft || !input || !output) return;
     check_params(input, output, fft->num_dims, status);

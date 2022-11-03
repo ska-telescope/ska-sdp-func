@@ -18,7 +18,8 @@ sdp_SkyCoord* sdp_sky_coord_create(
         const char* type,
         double coord0,
         double coord1,
-        double coord2)
+        double coord2
+)
 {
     sdp_SkyCoord* sky_coord = (sdp_SkyCoord*) calloc(1, sizeof(sdp_SkyCoord));
     const size_t type_len = 1 + strlen(type);

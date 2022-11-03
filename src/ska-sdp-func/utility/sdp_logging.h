@@ -85,7 +85,8 @@ void sdp_log_message(
         const char* file,
         int line,
         const char* message,
-        ...);
+        ...
+);
 
 #ifdef __cplusplus
 }

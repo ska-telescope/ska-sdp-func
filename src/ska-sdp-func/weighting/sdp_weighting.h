@@ -49,7 +49,8 @@ void sdp_weighting_uniform(
         double max_abs_uv,
         sdp_Mem* grid_uv,
         sdp_Mem* weights,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /** @} */ /* End group weight_func. */
 

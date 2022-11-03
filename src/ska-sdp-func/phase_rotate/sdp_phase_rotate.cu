@@ -22,7 +22,8 @@ __global__ void rotate_uvw(
         const double matrix21,
         const double matrix22,
         const COORD_TYPE3* uvw_in,
-        COORD_TYPE3* uvw_out)
+        COORD_TYPE3* uvw_out
+)
 {
     const int64_t i_uvw = blockDim.x * blockIdx.x + threadIdx.x;
     if (i_uvw >= num) return;
@@ -51,7 +52,8 @@ __global__ void rotate_vis(
         const double delta_n,
         const COORD_TYPE3* const __restrict__ uvw_metres,
         const VIS_TYPE2* vis_in,
-        VIS_TYPE2* vis_out)
+        VIS_TYPE2* vis_out
+)
 {
     const int64_t i_baseline = blockDim.x * blockIdx.x + threadIdx.x;
     const int64_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;

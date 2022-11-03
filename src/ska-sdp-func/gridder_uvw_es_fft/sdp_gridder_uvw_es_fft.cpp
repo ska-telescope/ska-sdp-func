@@ -77,7 +77,8 @@ void sdp_gridder_check_buffers(
         const sdp_Mem* weight,
         const sdp_Mem* dirty_image,
         bool do_degridding,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // check location of parameters (CPU or GPU)
     const sdp_MemLocation location = sdp_mem_location(uvw);
@@ -241,7 +242,8 @@ void sdp_gridder_check_buffers(
 void sdp_gridder_check_parameters(
         const double pixsize_x_rad,
         const double pixsize_y_rad,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (pixsize_x_rad != pixsize_y_rad)
     {
@@ -257,7 +259,8 @@ void sdp_gridder_check_parameters(
 
 void sdp_gridder_check_plan(
         sdp_GridderUvwEsFft* plan,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     sdp_gridder_check_parameters(plan->pixsize_x_rad,
             plan->pixsize_y_rad, status);
@@ -276,7 +279,8 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         const double min_abs_w,
         const double max_abs_w,
         bool do_wstacking,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return NULL;
 
@@ -516,7 +520,8 @@ void sdp_grid_uvw_es_fft(
         const sdp_Mem* vis,
         const sdp_Mem* weight,
         sdp_Mem* dirty_image,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     SDP_LOG_DEBUG("Executing sdp_GridderUvwEsFft...");
     if (*status || !plan) return;
@@ -722,7 +727,8 @@ void sdp_ifft_degrid_uvw_es(
         sdp_Mem* vis,
         const sdp_Mem* weight,
         sdp_Mem* dirty_image,   // even though this is an input, it is modified in place so can't be constant
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     SDP_LOG_DEBUG("Executing sdp_GridderUvwEsFft...");
     if (*status || !plan) return;

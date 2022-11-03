@@ -53,7 +53,8 @@ sdp_SkyCoord* sdp_sky_coord_create(
         const char* type,
         double coord0,
         double coord1,
-        double coord2);
+        double coord2
+);
 
 /**
  * @brief Releases memory held by the sdp_SkyCoord handle.

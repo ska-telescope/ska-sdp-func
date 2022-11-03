@@ -31,7 +31,8 @@ static void check_results_rotate_uvw(
         const int64_t num,
         const FP* uvw_in,
         const FP* uvw_out,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -95,7 +96,8 @@ static void check_results_rotate_vis(
         const COORD_TYPE* uvw,
         const complex<VIS_TYPE>* vis_in,
         const complex<VIS_TYPE>* vis_out,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -165,7 +167,8 @@ static void run_and_check_rotate_uvw(
         sdp_MemType coord_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(
@@ -235,7 +238,8 @@ static void run_and_check_rotate_vis(
         sdp_MemType vis_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(

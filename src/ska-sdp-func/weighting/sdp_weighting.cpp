@@ -23,7 +23,8 @@ static void uniform_weights_grid_write(
         const UVW_TYPE* uvw,
         const FREQ_TYPE* freq_hz,
         const double max_abs_uv,
-        WEIGHT_TYPE* grid_uv)
+        WEIGHT_TYPE* grid_uv
+)
 {
     const int64_t half_grid_size = grid_size / 2;
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
@@ -63,7 +64,8 @@ static void uniform_weights_grid_read(
         const FREQ_TYPE* freq_hz,
         const double max_abs_uv,
         const WEIGHT_TYPE* grid_uv,
-        WEIGHT_TYPE* weights)
+        WEIGHT_TYPE* weights
+)
 {
     const int64_t half_grid_size = grid_size / 2;
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
@@ -109,7 +111,8 @@ void sdp_weighting_uniform(
         double max_abs_uv,
         sdp_Mem* grid_uv,
         sdp_Mem* weights,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     sdp_MemType uvw_type = SDP_MEM_VOID;

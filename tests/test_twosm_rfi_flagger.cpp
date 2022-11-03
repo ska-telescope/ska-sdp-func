@@ -22,7 +22,8 @@ static void check_results(
         const int* flags,
         const int* predicted_flags,
         uint64_t num_elements,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -58,7 +59,8 @@ static void check_results(
 
 template<typename input_type>
 static void threshold_calc(
-        input_type* thresholds)
+        input_type* thresholds
+)
 {
     thresholds[0] = 0.015;
     thresholds[1] = 0.015;
@@ -81,7 +83,8 @@ static void data_preparation(
         uint64_t num_timesamples,
         uint64_t num_channels,
         uint64_t num_pols,
-        int num_rfi_spikes)
+        int num_rfi_spikes
+)
 {
     uint64_t num_baselines = num_antennas * (num_antennas + 1) / 2;
     uint64_t timesample_block = num_channels * num_pols * num_baselines;
@@ -122,7 +125,8 @@ static void run_and_check(
         sdp_MemLocation thresholds_location,
         sdp_MemLocation antennas_location,
         sdp_MemLocation flags_location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     const uint64_t num_timesamples = 1000;

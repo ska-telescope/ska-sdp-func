@@ -21,7 +21,8 @@ static void check_results(
         const sdp_Mem* a,
         const sdp_Mem* b,
         const sdp_Mem* out,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -51,7 +52,8 @@ static void run_and_check(
         sdp_MemLocation output_location,
         int64_t input_num_elements,
         int64_t output_num_elements,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     sdp_Mem* a = sdp_mem_create(

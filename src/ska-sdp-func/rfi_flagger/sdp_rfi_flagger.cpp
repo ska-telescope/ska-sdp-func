@@ -12,7 +12,8 @@ static void check_params(
         const sdp_Mem* vis,
         const sdp_Mem* thresholds,
         sdp_Mem* flags,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_is_read_only(flags))
@@ -65,7 +66,8 @@ static void sum_threshold_on_block(
         FP* block,
         const uint64_t num_channels,
         const uint64_t num_timesamples,
-        int* flags_on_block)
+        int* flags_on_block
+)
 {
     for (uint64_t k = 0; k < seqlen; k++)
     {
@@ -106,7 +108,8 @@ static void sum_threshold_rfi_flagger(
         const uint64_t num_baselines,
         const uint64_t num_channels,
         const uint64_t num_pols,
-        const uint64_t max_sequence_length)
+        const uint64_t max_sequence_length
+)
 {
     uint64_t timesample_block = num_channels * num_pols * num_baselines;
     uint64_t baseline_block = num_channels * num_pols;
@@ -164,7 +167,8 @@ void sdp_sum_threshold_rfi_flagger(
         const sdp_Mem* thresholds,
         sdp_Mem* flags,
         const int64_t max_sequence_length,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     check_params(vis, thresholds, flags, status);
     if (*status) return;

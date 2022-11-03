@@ -10,7 +10,8 @@ static void sdp_vector_add(
         int64_t num_elements,
         const T* input_a,
         const T* input_b,
-        T* output)
+        T* output
+)
 {
     for (int64_t i = 0; i < num_elements; ++i)
     {
@@ -23,7 +24,8 @@ void sdp_vector_add(
         const sdp_Mem* input_a,
         const sdp_Mem* input_b,
         sdp_Mem* output,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     const sdp_MemType type = sdp_mem_type(output);

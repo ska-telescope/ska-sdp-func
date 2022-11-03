@@ -28,7 +28,7 @@ template<
         typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
-        >
+>
 static void check_results_v00(
         const char* test_name,
         int num_components,
@@ -40,7 +40,8 @@ static void check_results_v00(
         const complex<FLUX_TYPE>* const __restrict__ source_fluxes,
         const UVW_TYPE* const __restrict__ uvw_lambda,
         const complex<VIS_TYPE>* const __restrict__ vis,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -119,7 +120,8 @@ static void run_and_check_v00(
         sdp_MemType vis_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     const int num_components = 20;
@@ -198,7 +200,7 @@ template<
         typename FLUX_TYPE,
         typename UVW_TYPE,
         typename VIS_TYPE
-        >
+>
 static void check_results_v01(
         const char* test_name,
         int num_components,
@@ -212,7 +214,8 @@ static void check_results_v01(
         const double channel_start_hz,
         const double channel_step_hz,
         const complex<VIS_TYPE>* const __restrict__ vis,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -295,7 +298,8 @@ static void run_and_check_v01(
         sdp_MemType vis_type,
         sdp_MemLocation input_location,
         sdp_MemLocation output_location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     const int num_components = 20;

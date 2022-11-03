@@ -41,7 +41,8 @@ void sdp_data_model_check_uvw(
         sdp_MemLocation* location,
         int64_t* num_times,
         int64_t* num_baselines,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Check visibility array matches data model convention.
@@ -68,7 +69,8 @@ void sdp_data_model_check_vis(
         int64_t* num_baselines,
         int64_t* num_channels,
         int64_t* num_pols,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Check weights array matches data model convention.
@@ -95,7 +97,8 @@ void sdp_data_model_check_weights(
         int64_t* num_baselines,
         int64_t* num_channels,
         int64_t* num_pols,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 #ifdef __cplusplus
 }

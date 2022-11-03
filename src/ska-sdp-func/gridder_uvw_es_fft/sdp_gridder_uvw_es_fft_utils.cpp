@@ -80,7 +80,8 @@ double sdp_calculate_legendre_root(
         int32_t i,
         int32_t n,
         double accuracy,
-        double* weight)
+        double* weight
+)
 {
     double next_estimate = sdp_get_approx_legendre_root(i, n);
     double derivative = 1.0; // AG: just a dummy value to fix lint warning
@@ -122,7 +123,8 @@ void sdp_generate_gauss_legendre_conv_kernel(
         double* quadrature_kernel,
         double* quadrature_nodes,
         double* quadrature_weights,
-        double* conv_corr_kernel)
+        double* conv_corr_kernel
+)
 {
     // p based on formula in first paragraph under equation 3.10, page 8 of paper:
     // A parallel non-uniform fast Fourier transform library
@@ -221,7 +223,8 @@ void sdp_calculate_params_from_epsilon(
         int &grid_size,
         int &support,
         double &beta,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;  // AG: temp to silence lint warning
     *status = SDP_SUCCESS;

@@ -21,7 +21,8 @@ static void check_results(
         const int* flags,
         const int* predicted_flags,
         uint64_t num_elements,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -44,7 +45,8 @@ static void threshold_calc(
         input_type* thresholds,
         double initial_value,
         double rho,
-        int num_sequence_el)
+        int num_sequence_el
+)
 {
     for (int f = 0; f < num_sequence_el; f++)
     {
@@ -70,7 +72,8 @@ static void data_preparation(
         uint64_t num_channels,
         uint64_t num_baselines,
         uint64_t num_pols,
-        int num_rfi_spikes)
+        int num_rfi_spikes
+)
 {
     uint64_t timesample_block = num_channels * num_pols * num_baselines;
     uint64_t baseline_block = num_channels * num_pols;
@@ -103,7 +106,8 @@ static void run_and_check(
         sdp_MemLocation visibilities_location,
         sdp_MemLocation thresholds_location,
         sdp_MemLocation flags_location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     // Generate some test data.
     const uint64_t num_timesamples = 1000;

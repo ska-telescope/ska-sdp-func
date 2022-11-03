@@ -51,7 +51,8 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         const double min_abs_w,
         const double max_abs_w,
         const bool do_w_stacking,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Generate a dirty image from visibility data.
@@ -74,7 +75,8 @@ void sdp_grid_uvw_es_fft(
         const sdp_Mem* vis,
         const sdp_Mem* weight,
         sdp_Mem* dirty_image,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Generate visibility data from a dirty image.
@@ -97,7 +99,8 @@ void sdp_ifft_degrid_uvw_es(
         sdp_Mem* vis,
         const sdp_Mem* weight,
         sdp_Mem* dirty_image,         // even though this is an input, it is modified in place so can't be constant
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Frees memory allocated to Gridder's plan.

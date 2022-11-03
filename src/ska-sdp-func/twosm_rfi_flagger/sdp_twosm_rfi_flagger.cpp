@@ -11,7 +11,8 @@ static void check_params(
         const sdp_Mem* thresholds,
         const sdp_Mem* antennas,
         sdp_Mem* flags,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_is_read_only(flags))
@@ -75,7 +76,8 @@ static void twosm_rfi_flagger(
         const uint64_t num_timesamples,
         const uint64_t num_antennas,
         const uint64_t num_channels,
-        const uint64_t num_pols)
+        const uint64_t num_pols
+)
 {
     uint64_t num_baselines = num_antennas * (num_antennas + 1) / 2;
     uint64_t timesample_block = num_channels * num_pols * num_baselines;
@@ -245,7 +247,8 @@ void sdp_twosm_algo_flagger(
         const sdp_Mem* thresholds,
         const sdp_Mem* antennas,
         sdp_Mem* flags,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     check_params(vis, thresholds, antennas, flags, status);
     if (*status) return;

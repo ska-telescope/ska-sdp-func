@@ -20,7 +20,8 @@ static void rotate_uvw(
         const int64_t num,
         const double* matrix,
         const FP* uvw_in,
-        FP* uvw_out)
+        FP* uvw_out
+)
 {
     for (int64_t i_uvw = 0; i_uvw < num; ++i_uvw)
     {
@@ -48,7 +49,8 @@ static void rotate_vis(
         const double delta_n,
         const COORD_TYPE* uvw,
         const complex<VIS_TYPE>* vis_in,
-        complex<VIS_TYPE>* vis_out)
+        complex<VIS_TYPE>* vis_out
+)
 {
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
     {
@@ -85,7 +87,8 @@ void sdp_phase_rotate_uvw(
         const sdp_SkyCoord* phase_centre_new,
         const sdp_Mem* uvw_in,
         sdp_Mem* uvw_out,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_num_dims(uvw_in) != 3 || sdp_mem_num_dims(uvw_out) != 3)
@@ -212,7 +215,8 @@ void sdp_phase_rotate_vis(
         const sdp_Mem* uvw,
         const sdp_Mem* vis_in,
         sdp_Mem* vis_out,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_num_dims(uvw) != 3)

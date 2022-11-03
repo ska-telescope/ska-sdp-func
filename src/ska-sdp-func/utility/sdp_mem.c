@@ -81,7 +81,8 @@ sdp_Mem* sdp_mem_create(
         sdp_MemLocation location,
         int32_t num_dims,
         const int64_t* shape,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     sdp_Mem* mem = sdp_mem_create_wrapper(
             0, type, location, num_dims, shape, 0, status);
@@ -97,7 +98,8 @@ sdp_Mem* sdp_mem_create_wrapper(
         int32_t num_dims,
         const int64_t* shape,
         const int64_t* stride,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     sdp_Mem* mem = (sdp_Mem*) calloc(1, sizeof(sdp_Mem));
     mem->data = data;
@@ -154,7 +156,8 @@ sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src)
 sdp_Mem* sdp_mem_create_copy(
         const sdp_Mem* src,
         sdp_MemLocation location,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     sdp_Mem* mem = sdp_mem_create_wrapper(0, src->type, location,
             src->num_dims, src->shape, src->stride, status);
@@ -196,7 +199,8 @@ void sdp_mem_copy_contents(
         int64_t offset_dst,
         int64_t offset_src,
         int64_t num_elements,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
 #ifdef SDP_HAVE_CUDA
     cudaError_t cuda_error = cudaSuccess;
@@ -323,7 +327,8 @@ int32_t sdp_mem_is_complex(const sdp_Mem* mem)
 int32_t sdp_mem_is_matching(
         const sdp_Mem* mem1,
         const sdp_Mem* mem2,
-        int32_t check_location)
+        int32_t check_location
+)
 {
     if (mem1->type != mem2->type) return 0;
     if (check_location && (mem1->location != mem2->location)) return 0;
