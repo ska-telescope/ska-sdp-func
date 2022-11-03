@@ -24,7 +24,8 @@ void sdp_data_model_check_uvw(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR(
-                "The last dimension of the uvw array must be of length 3");
+                "The last dimension of the uvw array must be of length 3"
+        );
         return;
     }
     if (sdp_mem_type(uvw) != SDP_MEM_DOUBLE &&

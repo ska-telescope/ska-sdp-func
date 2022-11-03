@@ -36,7 +36,9 @@ __device__ __forceinline__ void my_atomic_add(double* addr, double value)
         old_ = atomicCAS(laddr,
                 assumed,
                 __double_as_longlong(value +
-                __longlong_as_double(assumed)));
+                __longlong_as_double(assumed)
+                )
+        );
     }
     while (assumed != old_);
 #endif
@@ -183,7 +185,8 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
     const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv);
     const int grid_w_min = max((int)ceil(pos_w - half_support), grid_start_w);
     const int grid_w_max = min((int)floor(pos_w + half_support),
-            grid_start_w + num_w_grids_subset - 1);
+            grid_start_w + num_w_grids_subset - 1
+    );
     if (grid_w_min > grid_w_max ||
             grid_u_min > grid_u_max ||
             grid_v_min > grid_v_max)
@@ -199,12 +202,14 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
     for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
     {
         kernel_u[grid_u - grid_u_min] = exp_semicircle(beta,
-                (VFP)(grid_u - pos_u) * inv_half_support);
+                (VFP)(grid_u - pos_u) * inv_half_support
+        );
     }
     for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
     {
         kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
-                (VFP)(grid_v - pos_v) * inv_half_support);
+                (VFP)(grid_v - pos_v) * inv_half_support
+        );
     }
 
     // Iterate through each w-grid
@@ -212,7 +217,8 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
     for (int grid_w = grid_w_min; grid_w <= grid_w_max; grid_w++)
     {
         const VFP kernel_w = exp_semicircle(beta,
-                (VFP)(grid_w - pos_w) * inv_half_support);
+                (VFP)(grid_w - pos_w) * inv_half_support
+        );
         const size_t grid_offset_w = (grid_w - grid_start_w) *
                 size_t(grid_size * grid_size);
 
@@ -238,10 +244,12 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
                     // accumulation of visibility onto w-grid plane
                     my_atomic_add<VFP>(
                             &w_grid_stack[grid_offset_uvw].x,
-                            vis_weighted.x * kernel_value);
+                            vis_weighted.x * kernel_value
+                    );
                     my_atomic_add<VFP>(
                             &w_grid_stack[grid_offset_uvw].y,
-                            vis_weighted.y * kernel_value);
+                            vis_weighted.y * kernel_value
+                    );
                 }
                 else // extraction of visibility from w-grid plane
                 {
@@ -327,7 +335,8 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
     const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv);
     const int grid_w_min = max((int)ceil(pos_w - half_support), grid_start_w);
     const int grid_w_max = min((int)floor(pos_w + half_support),
-            grid_start_w + num_w_grids_subset - 1);
+            grid_start_w + num_w_grids_subset - 1
+    );
 
     if (grid_w_min > grid_w_max ||
             grid_u_min > grid_u_max ||
@@ -345,12 +354,14 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
     for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
     {
         kernel_u[grid_u - grid_u_min] = exp_semicircle(beta,
-                (VFP)(grid_u - pos_u) * inv_half_support);
+                (VFP)(grid_u - pos_u) * inv_half_support
+        );
     }
     for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
     {
         kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
-                (VFP)(grid_v - pos_v) * inv_half_support);
+                (VFP)(grid_v - pos_v) * inv_half_support
+        );
     }
 
     // Iterate through each w-grid
@@ -358,7 +369,8 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
     for (int grid_w = grid_w_min; grid_w <= grid_w_max; grid_w++)
     {
         const VFP kernel_w = exp_semicircle(beta,
-                (VFP)(grid_w - pos_w) * inv_half_support);
+                (VFP)(grid_w - pos_w) * inv_half_support
+        );
         const size_t grid_offset_w = (grid_w - grid_start_w) *
                 size_t(grid_size * grid_size);
 
@@ -384,10 +396,12 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
                     // accumulation of visibility onto w-grid plane
                     my_atomic_add<VFP>(
                             &w_grid_stack[grid_offset_uvw].x,
-                            vis_weighted.x * kernel_value);
+                            vis_weighted.x * kernel_value
+                    );
                     my_atomic_add<VFP>(
                             &w_grid_stack[grid_offset_uvw].y,
-                            vis_weighted.y * kernel_value);
+                            vis_weighted.y * kernel_value
+                    );
                 }
                 else // extraction of visibility from w-grid plane
                 {
@@ -706,7 +720,8 @@ __global__ void conv_corr_and_scaling(
                 n * inv_w_scale,
                 quadrature_kernel,
                 quadrature_nodes,
-                quadrature_weights);
+                quadrature_weights
+        );
         n_conv *= (conv_corr_norm_factor * conv_corr_norm_factor);
 
         // Note: scaling (everything after division) does not appear to be present in reference NIFTY code

@@ -142,15 +142,20 @@ static void run_and_check(
     int64_t antennas_shape[] = {num_antennas};
     int64_t threshold_shape[] = {2};
     sdp_Mem* visibilities = sdp_mem_create(
-            visibilities_type, SDP_MEM_CPU, 4, visibilities_shape, status);
+            visibilities_type, SDP_MEM_CPU, 4, visibilities_shape, status
+    );
     sdp_Mem* antennas = sdp_mem_create(
-            antennas_type, SDP_MEM_CPU, 1, antennas_shape, status);
+            antennas_type, SDP_MEM_CPU, 1, antennas_shape, status
+    );
     sdp_Mem* predicted_flags = sdp_mem_create(
-            SDP_MEM_INT, SDP_MEM_CPU, 4, visibilities_shape, status);
+            SDP_MEM_INT, SDP_MEM_CPU, 4, visibilities_shape, status
+    );
     sdp_Mem* flags = sdp_mem_create(
-            flags_type, SDP_MEM_CPU, 4, visibilities_shape, status);
+            flags_type, SDP_MEM_CPU, 4, visibilities_shape, status
+    );
     sdp_Mem* thresholds = sdp_mem_create(
-            threshold_type, SDP_MEM_CPU, 1, threshold_shape, status);
+            threshold_type, SDP_MEM_CPU, 1, threshold_shape, status
+    );
 
     sdp_mem_clear_contents(visibilities, status);
     sdp_mem_clear_contents(thresholds, status);
@@ -179,7 +184,8 @@ static void run_and_check(
                 num_timesamples,
                 num_channels,
                 num_pols,
-                num_rfi_spikes);
+                num_rfi_spikes
+        );
     }
     else if (visibilities_type == SDP_MEM_COMPLEX_DOUBLE &&
             threshold_type == SDP_MEM_DOUBLE)
@@ -192,17 +198,21 @@ static void run_and_check(
                 num_timesamples,
                 num_channels,
                 num_pols,
-                num_rfi_spikes);
+                num_rfi_spikes
+        );
     }
 
     // Copy inputs to specified location.
     sdp_Mem* visibilities_in = sdp_mem_create_copy(
-            visibilities, visibilities_location, status);
+            visibilities, visibilities_location, status
+    );
     sdp_Mem* thresholds_in = sdp_mem_create_copy(
-            thresholds, thresholds_location, status);
+            thresholds, thresholds_location, status
+    );
     sdp_Mem* antennas_in = sdp_mem_create_copy(antennas,
             antennas_location,
-            status);
+            status
+    );
     sdp_Mem* flags_in = sdp_mem_create_copy(flags, flags_location, status);
     sdp_mem_set_read_only(flags_in, read_only_output);
     const uint64_t num_elems = (uint64_t) sdp_mem_num_elements(visibilities);
@@ -216,7 +226,8 @@ static void run_and_check(
             thresholds_in,
             antennas_in,
             flags_in,
-            status);
+            status
+    );
     sdp_mem_ref_dec(visibilities_in);
     sdp_mem_ref_dec(thresholds_in);
 
@@ -232,7 +243,8 @@ static void run_and_check(
                 (int*) sdp_mem_data(flags_out),
                 (int*) sdp_mem_data(predicted_flags),
                 num_elems,
-                status);
+                status
+        );
     }
     sdp_mem_ref_dec(flags_out);
     sdp_mem_ref_dec(predicted_flags);
@@ -247,7 +259,8 @@ int main()
         run_and_check("CPU, double precision", true, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,
                 SDP_MEM_INT, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -255,7 +268,8 @@ int main()
         run_and_check("CPU, single precision", true, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_SUCCESS);
     }
 
@@ -265,7 +279,8 @@ int main()
         run_and_check("Read-only output", false, true,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
@@ -273,7 +288,8 @@ int main()
         run_and_check("Wrong flags type", false, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,SDP_MEM_FLOAT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
@@ -281,7 +297,8 @@ int main()
         run_and_check("Wrong visibility type", false, false,
                 SDP_MEM_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
@@ -289,7 +306,8 @@ int main()
         run_and_check("Wrong threshold type", false, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_DOUBLE, SDP_MEM_INT, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
@@ -297,7 +315,8 @@ int main()
         run_and_check("Wrong antennas type", false, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_DOUBLE, SDP_MEM_FLOAT,
                 SDP_MEM_INT, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
@@ -305,7 +324,8 @@ int main()
         run_and_check("Unsupported GPU location", false, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,SDP_MEM_INT,
                 SDP_MEM_GPU, SDP_MEM_GPU, SDP_MEM_GPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {
@@ -313,7 +333,8 @@ int main()
         run_and_check("Wrong flag location", false, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,
                 SDP_MEM_INT, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_GPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
 

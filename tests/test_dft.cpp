@@ -61,7 +61,8 @@ static void check_results_v00(
                 // Load uvw-coordinates.
                 const unsigned int i_uvw = INDEX_4D(
                         num_times, num_baselines, num_channels, 3,
-                        i_time, i_baseline, i_channel, 0);
+                        i_time, i_baseline, i_channel, 0
+                );
                 const UVW_TYPE uu = uvw_lambda[i_uvw];
                 const UVW_TYPE vv = uvw_lambda[i_uvw + 1];
                 const UVW_TYPE ww = uvw_lambda[i_uvw + 2];
@@ -82,7 +83,8 @@ static void check_results_v00(
                     // Multiply by flux in each polarisation and accumulate.
                     const unsigned int i_pol_start = INDEX_3D(
                             num_components, num_channels, num_pols,
-                            i_component, i_channel, 0);
+                            i_component, i_channel, 0
+                    );
                     for (int i_pol = 0; i_pol < num_pols; ++i_pol)
                     {
                         const complex<FLUX_TYPE> flux =
@@ -98,7 +100,8 @@ static void check_results_v00(
                 {
                     const unsigned int i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     complex<VIS_TYPE> diff = vis[i_out] - vis_local[i_pol];
                     assert(fabs(real(diff)) < 1e-5);
                     assert(fabs(imag(diff)) < 1e-5);
@@ -133,13 +136,17 @@ static void run_and_check_v00(
     int64_t uvw_shape[] = {num_times, num_baselines, num_channels, 3};
     int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
     sdp_Mem* source_dirs = sdp_mem_create(
-            coord_type, SDP_MEM_CPU, 2, source_dirs_shape, status);
+            coord_type, SDP_MEM_CPU, 2, source_dirs_shape, status
+    );
     sdp_Mem* source_flux = sdp_mem_create(
-            flux_type, SDP_MEM_CPU, 3, source_flux_shape, status);
+            flux_type, SDP_MEM_CPU, 3, source_flux_shape, status
+    );
     sdp_Mem* uvw = sdp_mem_create(
-            coord_type, SDP_MEM_CPU, 4, uvw_shape, status);
+            coord_type, SDP_MEM_CPU, 4, uvw_shape, status
+    );
     sdp_Mem* vis = sdp_mem_create(
-            vis_type, output_location, 4, vis_shape, status);
+            vis_type, output_location, 4, vis_shape, status
+    );
     sdp_mem_random_fill(source_dirs, status);
     sdp_mem_random_fill(source_flux, status);
     sdp_mem_random_fill(uvw, status);
@@ -148,9 +155,11 @@ static void run_and_check_v00(
 
     // Copy inputs to specified location.
     sdp_Mem* source_dirs_in = sdp_mem_create_copy(
-            source_dirs, input_location, status);
+            source_dirs, input_location, status
+    );
     sdp_Mem* source_flux_in = sdp_mem_create_copy(
-            source_flux, input_location, status);
+            source_flux, input_location, status
+    );
     sdp_Mem* uvw_in = sdp_mem_create_copy(uvw, input_location, status);
 
     // Call the function to test.
@@ -175,7 +184,8 @@ static void run_and_check_v00(
                     (const complex<double>*)sdp_mem_data_const(source_flux),
                     (const double*)sdp_mem_data_const(uvw),
                     (const complex<double>*)sdp_mem_data_const(vis_out),
-                    status);
+                    status
+            );
         }
         else
         {
@@ -185,7 +195,8 @@ static void run_and_check_v00(
                     (const complex<double>*)sdp_mem_data_const(source_flux),
                     (const double*)sdp_mem_data_const(uvw),
                     (const complex<float>*)sdp_mem_data_const(vis_out),
-                    status);
+                    status
+            );
         }
     }
     sdp_mem_ref_dec(source_dirs);
@@ -229,7 +240,8 @@ static void check_results_v01(
             // Load uvw-coordinates.
             const unsigned int i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             const UVW_TYPE uu = uvw_metres[i_uvw];
             const UVW_TYPE vv = uvw_metres[i_uvw + 1];
             const UVW_TYPE ww = uvw_metres[i_uvw + 2];
@@ -260,7 +272,8 @@ static void check_results_v01(
                     // Multiply by flux in each polarisation and accumulate.
                     const unsigned int i_pol_start = INDEX_3D(
                             num_components, num_channels, num_pols,
-                            i_component, i_channel, 0);
+                            i_component, i_channel, 0
+                    );
                     for (int i_pol = 0; i_pol < num_pols; ++i_pol)
                     {
                         const complex<FLUX_TYPE> flux =
@@ -276,7 +289,8 @@ static void check_results_v01(
                 {
                     const unsigned int i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     complex<VIS_TYPE> diff = vis[i_out] - vis_local[i_pol];
                     assert(fabs(real(diff)) < 1e-5);
                     assert(fabs(imag(diff)) < 1e-5);
@@ -313,13 +327,17 @@ static void run_and_check_v01(
     int64_t uvw_shape[] = {num_times, num_baselines, 3};
     int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
     sdp_Mem* source_dirs = sdp_mem_create(
-            coord_type, SDP_MEM_CPU, 2, source_dirs_shape, status);
+            coord_type, SDP_MEM_CPU, 2, source_dirs_shape, status
+    );
     sdp_Mem* source_flux = sdp_mem_create(
-            flux_type, SDP_MEM_CPU, 3, source_flux_shape, status);
+            flux_type, SDP_MEM_CPU, 3, source_flux_shape, status
+    );
     sdp_Mem* uvw = sdp_mem_create(
-            coord_type, SDP_MEM_CPU, 3, uvw_shape, status);
+            coord_type, SDP_MEM_CPU, 3, uvw_shape, status
+    );
     sdp_Mem* vis = sdp_mem_create(
-            vis_type, output_location, 4, vis_shape, status);
+            vis_type, output_location, 4, vis_shape, status
+    );
     sdp_mem_random_fill(source_dirs, status);
     sdp_mem_random_fill(source_flux, status);
     sdp_mem_random_fill(uvw, status);
@@ -328,15 +346,18 @@ static void run_and_check_v01(
 
     // Copy inputs to specified location.
     sdp_Mem* source_dirs_in = sdp_mem_create_copy(
-            source_dirs, input_location, status);
+            source_dirs, input_location, status
+    );
     sdp_Mem* source_flux_in = sdp_mem_create_copy(
-            source_flux, input_location, status);
+            source_flux, input_location, status
+    );
     sdp_Mem* uvw_in = sdp_mem_create_copy(uvw, input_location, status);
 
     // Call the function to test.
     SDP_LOG_INFO("Running test (v01): %s", test_name);
     sdp_dft_point_v01(source_dirs_in, source_flux_in, uvw_in,
-            channel_start_hz, channel_step_hz, vis, status);
+            channel_start_hz, channel_step_hz, vis, status
+    );
     sdp_mem_ref_dec(source_flux_in);
     sdp_mem_ref_dec(source_dirs_in);
     sdp_mem_ref_dec(uvw_in);
@@ -358,7 +379,8 @@ static void run_and_check_v01(
                     channel_start_hz,
                     channel_step_hz,
                     (const complex<double>*)sdp_mem_data_const(vis_out),
-                    status);
+                    status
+            );
         }
         else
         {
@@ -370,7 +392,8 @@ static void run_and_check_v01(
                     channel_start_hz,
                     channel_step_hz,
                     (const complex<float>*)sdp_mem_data_const(vis_out),
-                    status);
+                    status
+            );
         }
     }
     sdp_mem_ref_dec(source_dirs);
@@ -387,28 +410,32 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("CPU, double precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("CPU, single precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("CPU, double precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("CPU, single precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #ifdef SDP_HAVE_CUDA
@@ -416,28 +443,32 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("GPU, double precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("GPU, single precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("GPU, double precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("GPU, single precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #endif
@@ -447,7 +478,8 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("Read-only output", false, 4, true,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
@@ -455,28 +487,32 @@ int main()
         run_and_check_v00("Unsupported number of polarisations",
                 false, 3, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("Wrong visibility type", false, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("Unsupported coordinate types", false, 4, false,
                 SDP_MEM_FLOAT, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("Unsupported flux type", false, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #ifdef SDP_HAVE_CUDA
@@ -484,14 +520,16 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("Memory location mismatch", false, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_GPU, &status);
+                SDP_MEM_CPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v00("Unsupported coordinate types", false, 4, false,
                 SDP_MEM_FLOAT, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif
@@ -501,28 +539,32 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("CPU, double precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("CPU, single precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("CPU, double precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("CPU, single precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #ifdef SDP_HAVE_CUDA
@@ -530,28 +572,32 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("GPU, double precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("GPU, single precision, 1 pol", true, 1, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("GPU, double precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("GPU, single precision, 4 pols", true, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #endif
@@ -561,7 +607,8 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("Read-only output", false, 4, true,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
@@ -569,28 +616,32 @@ int main()
         run_and_check_v01("Unsupported number of polarisations",
                 false, 3, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("Wrong visibility type", false, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("Unsupported coordinate types", false, 4, false,
                 SDP_MEM_FLOAT, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("Unsupported flux type", false, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #ifdef SDP_HAVE_CUDA
@@ -598,14 +649,16 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("Memory location mismatch", false, 4, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_GPU, &status);
+                SDP_MEM_CPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_v01("Unsupported coordinate types", false, 4, false,
                 SDP_MEM_FLOAT, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif

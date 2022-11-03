@@ -67,15 +67,22 @@ static void check_results_rotate_uvw(
         const FP new_length = sqrt(
                 pow(uvw_out[i_uvw3 + 0], 2.0) +
                 pow(uvw_out[i_uvw3 + 1], 2.0) +
-                pow(uvw_out[i_uvw3 + 2], 2.0));
+                pow(uvw_out[i_uvw3 + 2], 2.0)
+        );
 
         // Check coordinates.
         assert(fabs(uvw_out[i_uvw3 + 0] -
-                (mat[0] * uu + mat[1] * vv + mat[2] * ww)) < tol);
+                (mat[0] * uu + mat[1] * vv + mat[2] * ww)
+                ) < tol
+        );
         assert(fabs(uvw_out[i_uvw3 + 1] -
-                (mat[3] * uu + mat[4] * vv + mat[5] * ww)) < tol);
+                (mat[3] * uu + mat[4] * vv + mat[5] * ww)
+                ) < tol
+        );
         assert(fabs(uvw_out[i_uvw3 + 2] -
-                (mat[6] * uu + mat[7] * vv + mat[8] * ww)) < tol);
+                (mat[6] * uu + mat[7] * vv + mat[8] * ww)
+                ) < tol
+        );
         assert(fabs(new_length - original_length) < tol);
     }
     SDP_LOG_INFO("%s: Test passed", test_name);
@@ -131,7 +138,8 @@ static void check_results_rotate_vis(
         {
             const int64_t i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             const COORD_TYPE uu = uvw[i_uvw + 0];
             const COORD_TYPE vv = uvw[i_uvw + 1];
             const COORD_TYPE ww = uvw[i_uvw + 2];
@@ -147,7 +155,8 @@ static void check_results_rotate_vis(
                 {
                     const int64_t i_vis = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     complex<VIS_TYPE> diff = vis_out[i_vis] - vis_in[i_vis] *
                             phasor;
                     assert(fabs(real(diff)) < tol);
@@ -172,16 +181,20 @@ static void run_and_check_rotate_uvw(
 {
     // Generate some test data.
     sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(
-            "icrs", 123.5 * M_PI / 180, 17.8 * M_PI / 180, 0.0);
+            "icrs", 123.5 * M_PI / 180, 17.8 * M_PI / 180, 0.0
+    );
     sdp_SkyCoord* new_phase_centre = sdp_sky_coord_create(
-            "icrs", 148.3 * M_PI / 180, 38.9 * M_PI / 180, 0.0);
+            "icrs", 148.3 * M_PI / 180, 38.9 * M_PI / 180, 0.0
+    );
     const int num_baselines = 351;
     const int num_times = 10;
     int64_t uvw_shape[] = {num_times, num_baselines, 3};
     sdp_Mem* uvw_in_cpu = sdp_mem_create(
-            coord_type, SDP_MEM_CPU, 3, uvw_shape, status);
+            coord_type, SDP_MEM_CPU, 3, uvw_shape, status
+    );
     sdp_Mem* uvw_out = sdp_mem_create(
-            coord_type, output_location, 3, uvw_shape, status);
+            coord_type, output_location, 3, uvw_shape, status
+    );
     sdp_mem_random_fill(uvw_in_cpu, status);
     sdp_mem_clear_contents(uvw_out, status);
     sdp_mem_set_read_only(uvw_out, read_only_output);
@@ -192,7 +205,8 @@ static void run_and_check_rotate_uvw(
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
     sdp_phase_rotate_uvw(original_phase_centre, new_phase_centre,
-            uvw_in, uvw_out, status);
+            uvw_in, uvw_out, status
+    );
     sdp_mem_ref_dec(uvw_in);
 
     // Copy the output for checking.
@@ -210,7 +224,8 @@ static void run_and_check_rotate_uvw(
                     num_times * num_baselines,
                     (const double*)sdp_mem_data_const(uvw_in_cpu),
                     (const double*)sdp_mem_data_const(uvw_out_cpu),
-                    status);
+                    status
+            );
         }
         else
         {
@@ -220,7 +235,8 @@ static void run_and_check_rotate_uvw(
                     num_times * num_baselines,
                     (const float*)sdp_mem_data_const(uvw_in_cpu),
                     (const float*)sdp_mem_data_const(uvw_out_cpu),
-                    status);
+                    status
+            );
         }
     }
     sdp_mem_ref_dec(uvw_in_cpu);
@@ -243,9 +259,11 @@ static void run_and_check_rotate_vis(
 {
     // Generate some test data.
     sdp_SkyCoord* original_phase_centre = sdp_sky_coord_create(
-            "icrs", 123.5 * M_PI / 180, 17.8 * M_PI / 180, 0.0);
+            "icrs", 123.5 * M_PI / 180, 17.8 * M_PI / 180, 0.0
+    );
     sdp_SkyCoord* new_phase_centre = sdp_sky_coord_create(
-            "icrs", 148.3 * M_PI / 180, 38.9 * M_PI / 180, 0.0);
+            "icrs", 148.3 * M_PI / 180, 38.9 * M_PI / 180, 0.0
+    );
     const double channel_start_hz = 100e6;
     const double channel_step_hz = 10e6;
     const int num_channels = 3;
@@ -255,11 +273,14 @@ static void run_and_check_rotate_vis(
     int64_t uvw_shape[] = {num_times, num_baselines, 3};
     int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
     sdp_Mem* uvw = sdp_mem_create(
-            coord_type, SDP_MEM_CPU, 3, uvw_shape, status);
+            coord_type, SDP_MEM_CPU, 3, uvw_shape, status
+    );
     sdp_Mem* vis_in_cpu = sdp_mem_create(
-            vis_type, SDP_MEM_CPU, 4, vis_shape, status);
+            vis_type, SDP_MEM_CPU, 4, vis_shape, status
+    );
     sdp_Mem* vis_out = sdp_mem_create(
-            vis_type, output_location, 4, vis_shape, status);
+            vis_type, output_location, 4, vis_shape, status
+    );
     sdp_mem_random_fill(uvw, status);
     sdp_mem_random_fill(vis_in_cpu, status);
     sdp_mem_clear_contents(vis_out, status);
@@ -272,7 +293,8 @@ static void run_and_check_rotate_vis(
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
     sdp_phase_rotate_vis(original_phase_centre, new_phase_centre,
-            channel_start_hz, channel_step_hz, uvw_in, vis_in, vis_out, status);
+            channel_start_hz, channel_step_hz, uvw_in, vis_in, vis_out, status
+    );
     sdp_mem_ref_dec(uvw_in);
     sdp_mem_ref_dec(vis_in);
 
@@ -292,7 +314,8 @@ static void run_and_check_rotate_vis(
                     (const double*)sdp_mem_data_const(uvw),
                     (const complex<double>*)sdp_mem_data_const(vis_in_cpu),
                     (const complex<double>*)sdp_mem_data_const(vis_out_cpu),
-                    status);
+                    status
+            );
         }
         else
         {
@@ -303,7 +326,8 @@ static void run_and_check_rotate_vis(
                     (const float*)sdp_mem_data_const(uvw),
                     (const complex<float>*)sdp_mem_data_const(vis_in_cpu),
                     (const complex<float>*)sdp_mem_data_const(vis_out_cpu),
-                    status);
+                    status
+            );
         }
     }
     sdp_mem_ref_dec(uvw);
@@ -320,13 +344,15 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("CPU, phase_rotate_uvw, double precision",
-                true, false, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                true, false, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("CPU, phase_rotate_uvw, single precision",
-                true, false, SDP_MEM_FLOAT, SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                true, false, SDP_MEM_FLOAT, SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -334,7 +360,8 @@ int main()
         run_and_check_rotate_vis("CPU, phase_rotate_vis, double precision",
                 true, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -342,20 +369,23 @@ int main()
         run_and_check_rotate_vis("CPU, phase_rotate_vis, single precision",
                 true, false,
                 SDP_MEM_FLOAT, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #ifdef SDP_HAVE_CUDA
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("GPU, phase_rotate_uvw, double precision",
-                true, false, SDP_MEM_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                true, false, SDP_MEM_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("GPU, phase_rotate_uvw, single precision",
-                true, false, SDP_MEM_FLOAT, SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                true, false, SDP_MEM_FLOAT, SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -363,7 +393,8 @@ int main()
         run_and_check_rotate_vis("GPU, phase_rotate_vis, double precision",
                 true, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -371,7 +402,8 @@ int main()
         run_and_check_rotate_vis("GPU, phase_rotate_vis, single precision",
                 true, false,
                 SDP_MEM_FLOAT, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #endif
@@ -380,7 +412,8 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("Read-only output (rotate_uvw)",
-                false, true, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                false, true, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
@@ -388,7 +421,8 @@ int main()
         run_and_check_rotate_vis("Read-only output (rotate_vis)",
                 false, true,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
 #ifdef SDP_HAVE_CUDA
@@ -396,7 +430,8 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("Location mismatch (rotate_uvw)",
                 false, false, SDP_MEM_DOUBLE, SDP_MEM_CPU, SDP_MEM_GPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {
@@ -404,7 +439,8 @@ int main()
         run_and_check_rotate_vis("Location mismatch (rotate_vis)",
                 false, false,
                 SDP_MEM_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_GPU, &status);
+                SDP_MEM_CPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
 #endif
@@ -412,7 +448,8 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check_rotate_uvw("Bad data type (rotate_uvw)",
                 false, false, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
@@ -420,7 +457,8 @@ int main()
         run_and_check_rotate_vis("Bad data type (rotate_vis)",
                 false, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
 

@@ -225,7 +225,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -236,7 +237,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
         else if (test_name[1] == '1')
         {
@@ -252,7 +254,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -263,7 +266,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
         else if (test_name[1] == '2')
         {
@@ -279,7 +283,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -290,7 +295,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
         else if (test_name[1] == '3')
         {
@@ -306,7 +312,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -317,7 +324,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
         else if (test_name[1] == '4')
         {
@@ -333,7 +341,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -344,7 +353,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
         else if (test_name[1] == '5')
         {
@@ -360,7 +370,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -371,7 +382,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
         else if (test_name[1] == '6')
         {
@@ -387,7 +399,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -398,7 +411,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
         else  // just a "normal" fail test
         {
@@ -414,7 +428,8 @@ static void run_and_check(
                     min_abs_w,
                     max_abs_w,
                     do_wstacking,
-                    status);
+                    status
+            );
 
             if (*status) return;
 
@@ -425,7 +440,8 @@ static void run_and_check(
                     vis_gpu,
                     weight_gpu,
                     est_dirty_image_gpu,
-                    status);
+                    status
+            );
         }
     }
 
@@ -441,7 +457,8 @@ static void run_and_check(
             min_abs_w,
             max_abs_w,
             do_wstacking,
-            status);
+            status
+    );
 
     SDP_LOG_INFO("Running test: %s", test_name);
 
@@ -452,12 +469,14 @@ static void run_and_check(
             vis_gpu,
             weight_gpu,
             est_dirty_image_gpu,
-            status);
+            status
+    );
 
     // copy output to CPU
     sdp_Mem* est_dirty_image = sdp_mem_create_copy(est_dirty_image_gpu,
             SDP_MEM_CPU,
-            status);
+            status
+    );
 
     // calc dot product of dirty_image and est_dirty_image
     double adj1 = 0;
@@ -493,7 +512,8 @@ static void run_and_check(
             est_vis_gpu,
             weight_gpu,
             dirty_image_gpu,
-            status);
+            status
+    );
 
     // copy output to CPU
     sdp_Mem* est_vis = sdp_mem_create_copy(est_vis_gpu, SDP_MEM_CPU, status);
@@ -582,7 +602,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -593,7 +614,8 @@ int main()
                 SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_FLOAT,
                 SDP_MEM_FLOAT,
-                &status);
+                &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -604,7 +626,8 @@ int main()
                 SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_FLOAT,
                 SDP_MEM_FLOAT,
-                &status);
+                &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -615,7 +638,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
 
         assert(status == SDP_SUCCESS);
     }
@@ -633,7 +657,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -645,7 +670,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -657,7 +683,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -669,7 +696,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -681,7 +709,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -693,7 +722,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -705,7 +735,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -717,7 +748,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -729,7 +761,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -741,7 +774,8 @@ int main()
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -753,7 +787,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -765,7 +800,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_COMPLEX_DOUBLE,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -777,7 +813,8 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_FLOAT,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 
@@ -789,7 +826,8 @@ int main()
                 SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_FLOAT,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
 

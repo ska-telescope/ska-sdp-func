@@ -137,7 +137,8 @@ void sdp_generate_gauss_legendre_conv_kernel(
     {
         double w_i = 0.0;
         double x_i = sdp_calculate_legendre_root(
-                (int32_t)i, (int32_t)n, 1e-16, &w_i);
+                (int32_t)i, (int32_t)n, 1e-16, &w_i
+        );
         double k_i = exp(beta * (sqrt(1.0 - x_i * x_i) - 1.0));
         quadrature_nodes[i - 1] = (double) x_i;
         quadrature_weights[i - 1] = (double) w_i;
@@ -512,7 +513,8 @@ void sdp_calculate_params_from_epsilon(
         int this_idx = idx[i];
         double os_factor = KernelDB[this_idx][K_os_factor];
         int nu = 2 * sdp_good_size_complex(
-                int(image_size * os_factor * 0.5) + 1);
+                int(image_size * os_factor * 0.5) + 1
+        );
 
         if (nu <= min_nu)
         {

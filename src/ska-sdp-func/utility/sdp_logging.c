@@ -68,7 +68,8 @@ void sdp_log_message(
             "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
             timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
             timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec,
-            (int)(tv.tv_usec) / 1000);
+            (int)(tv.tv_usec) / 1000
+    );
 
     // Convert level to string.
     const char* level_str = 0;
@@ -101,7 +102,8 @@ void sdp_log_message(
     va_list args;
     va_start(args, message);
     fprintf(stream, "1|%s|%s||%s|%s#%i|| ",
-            time_str, level_str, func, file, line);
+            time_str, level_str, func, file, line
+    );
     vfprintf(stream, message, args);
     fprintf(stream, "\n");
     va_end(args);

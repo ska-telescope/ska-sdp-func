@@ -134,7 +134,8 @@ void sdp_gridder_check_buffers(
         SDP_LOG_ERROR("The number of rows in uvw and vis must match.");
         SDP_LOG_ERROR("uvw is %i by %i",
                 sdp_mem_shape_dim(uvw, 0),
-                sdp_mem_shape_dim(uvw, 1));
+                sdp_mem_shape_dim(uvw, 1)
+        );
         SDP_LOG_ERROR("vis is %i by %i", num_vis, num_channels);
         return;
     }
@@ -144,7 +145,8 @@ void sdp_gridder_check_buffers(
         SDP_LOG_ERROR("uvw must be N x 3.");
         SDP_LOG_ERROR("uvw is %i by %i",
                 sdp_mem_shape_dim(uvw, 0),
-                sdp_mem_shape_dim(uvw, 1));
+                sdp_mem_shape_dim(uvw, 1)
+        );
         return;
     }
     if (sdp_mem_shape_dim(freq_hz, 0) != num_channels)
@@ -153,7 +155,8 @@ void sdp_gridder_check_buffers(
         SDP_LOG_ERROR("The number of channels in vis and freq_hz must match.");
         SDP_LOG_ERROR("freq_hz is %i by %i",
                 sdp_mem_shape_dim(freq_hz, 0),
-                sdp_mem_shape_dim(freq_hz, 1));
+                sdp_mem_shape_dim(freq_hz, 1)
+        );
         SDP_LOG_ERROR("vis is %i by %i", num_vis, num_channels);
         return;
     }
@@ -164,7 +167,8 @@ void sdp_gridder_check_buffers(
         SDP_LOG_ERROR("weight and vis must be the same size.");
         SDP_LOG_ERROR("weight is %i by %i",
                 sdp_mem_shape_dim(weight, 0),
-                sdp_mem_shape_dim(weight, 1));
+                sdp_mem_shape_dim(weight, 1)
+        );
         SDP_LOG_ERROR("vis is %i by %i", num_vis, num_channels);
         return;
     }
@@ -175,7 +179,8 @@ void sdp_gridder_check_buffers(
         SDP_LOG_ERROR("Dirty image must be square.");
         SDP_LOG_ERROR("dirty_image is %i by %i",
                 sdp_mem_shape_dim(dirty_image, 0),
-                sdp_mem_shape_dim(dirty_image, 1));
+                sdp_mem_shape_dim(dirty_image, 1)
+        );
         return;
     }
 
@@ -249,7 +254,8 @@ void sdp_gridder_check_parameters(
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         SDP_LOG_ERROR("Only square images supported, so pixsize_x_rad and "
-                "pixsize_y_rad must be equal.");
+                "pixsize_y_rad must be equal."
+        );
         SDP_LOG_ERROR("pixsize_x_rad is %.12e", pixsize_x_rad);
         SDP_LOG_ERROR("pixsize_y_rad is %.12e", pixsize_y_rad);
         return;
@@ -263,7 +269,8 @@ void sdp_gridder_check_plan(
 )
 {
     sdp_gridder_check_parameters(plan->pixsize_x_rad,
-            plan->pixsize_y_rad, status);
+            plan->pixsize_y_rad, status
+    );
 }
 
 
@@ -288,11 +295,13 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
     if (*status) return NULL;
 
     sdp_gridder_check_buffers(
-            uvw, freq_hz, vis, weight, dirty_image, false, status);
+            uvw, freq_hz, vis, weight, dirty_image, false, status
+    );
     if (*status) return NULL;
 
     sdp_GridderUvwEsFft* plan = (sdp_GridderUvwEsFft*) calloc(1,
-            sizeof(sdp_GridderUvwEsFft));
+            sizeof(sdp_GridderUvwEsFft)
+    );
 
     plan->pixsize_x_rad = pixsize_x_rad;
     plan->pixsize_y_rad = pixsize_y_rad;
@@ -316,7 +325,8 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
                 SDP_MEM_DOUBLE : SDP_MEM_FLOAT;
 
     sdp_calculate_params_from_epsilon(plan->epsilon, plan->image_size,
-            vis_precision, grid_size, support, beta, status);
+            vis_precision, grid_size, support, beta, status
+    );
     if (*status)
     {
         sdp_gridder_uvw_es_fft_free_plan(plan);
@@ -399,7 +409,8 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
     sdp_generate_gauss_legendre_conv_kernel(
             plan->image_size, plan->grid_size, plan->support, plan->beta,
             quadrature_kernel, quadrature_nodes, quadrature_weights,
-            conv_corr_kernel);
+            conv_corr_kernel
+    );
 
     // Need to determine normalisation factor for scaling runtime calculated
     // conv correction values for coordinate n (where n = sqrt(1 - l^2 - m^2) - 1)
@@ -479,13 +490,17 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
 
     // Copy arrays to GPU.
     plan->quadrature_kernel = sdp_mem_create_copy(m_quadrature_kernel,
-            SDP_MEM_GPU, status);
+            SDP_MEM_GPU, status
+    );
     plan->quadrature_nodes = sdp_mem_create_copy(m_quadrature_nodes,
-            SDP_MEM_GPU, status);
+            SDP_MEM_GPU, status
+    );
     plan->quadrature_weights = sdp_mem_create_copy(m_quadrature_weights,
-            SDP_MEM_GPU, status);
+            SDP_MEM_GPU, status
+    );
     plan->conv_corr_kernel = sdp_mem_create_copy(m_conv_corr_kernel,
-            SDP_MEM_GPU, status);
+            SDP_MEM_GPU, status
+    );
 
     sdp_mem_free(m_quadrature_kernel);
     sdp_mem_free(m_quadrature_nodes);
@@ -495,14 +510,16 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
     // allocate memory
     int64_t w_grid_stack_shape[] = {plan->grid_size, plan->grid_size};
     plan->w_grid_stack = sdp_mem_create(
-            vis_type, SDP_MEM_GPU, 2, w_grid_stack_shape, status);
+            vis_type, SDP_MEM_GPU, 2, w_grid_stack_shape, status
+    );
     if (*status)
     {
         sdp_gridder_uvw_es_fft_free_plan(plan);
         return NULL;
     }
     sdp_gridder_check_buffers(
-            uvw, freq_hz, vis, weight, dirty_image, false, status);
+            uvw, freq_hz, vis, weight, dirty_image, false, status
+    );
     if (*status)
     {
         sdp_gridder_uvw_es_fft_free_plan(plan);
@@ -530,7 +547,8 @@ void sdp_grid_uvw_es_fft(
     if (*status) return;
 
     sdp_gridder_check_buffers(
-            uvw, freq_hz, vis, weight, dirty_image, false, status);
+            uvw, freq_hz, vis, weight, dirty_image, false, status
+    );
     if (*status) return;
 
     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
@@ -548,7 +566,8 @@ void sdp_grid_uvw_es_fft(
 
     // Create the FFT plan.
     sdp_Fft* fft = sdp_fft_create(
-            plan->w_grid_stack, plan->w_grid_stack, 2, 0, status);
+            plan->w_grid_stack, plan->w_grid_stack, 2, 0, status
+    );
 
     if (*status) return;
 
@@ -562,7 +581,8 @@ void sdp_grid_uvw_es_fft(
         const int num_w_grids_subset = std::min(
                 num_w_grids_batched,
                 plan->num_total_w_grids - ((batch * num_w_grids_batched) %
-                plan->num_total_w_grids));
+                plan->num_total_w_grids)
+        );
         const int grid_start_w = batch * num_w_grids_batched;
         sdp_mem_clear_contents(plan->w_grid_stack, status);
         if (*status) break;
@@ -632,7 +652,8 @@ void sdp_grid_uvw_es_fft(
                     &solving
                 };
                 sdp_launch_cuda_kernel(kernel_name,
-                        num_blocks, num_threads, 0, 0, args, status);
+                        num_blocks, num_threads, 0, 0, args, status
+                );
             }
         }
 
@@ -672,7 +693,8 @@ void sdp_grid_uvw_es_fft(
                 &plan->do_wstacking
             };
             sdp_launch_cuda_kernel(
-                    kernel_name, num_blocks, num_threads, 0, 0, args, status);
+                    kernel_name, num_blocks, num_threads, 0, 0, args, status
+            );
         }
     }
 
@@ -715,7 +737,8 @@ void sdp_grid_uvw_es_fft(
             &plan->do_wstacking
         };
         sdp_launch_cuda_kernel(
-                kernel_name, num_blocks, num_threads, 0, 0, args, status);
+                kernel_name, num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }
 
@@ -737,7 +760,8 @@ void sdp_ifft_degrid_uvw_es(
     if (*status) return;
 
     sdp_gridder_check_buffers(
-            uvw, freq_hz, vis, weight, dirty_image, true, status);
+            uvw, freq_hz, vis, weight, dirty_image, true, status
+    );
     if (*status) return;
 
     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
@@ -756,7 +780,8 @@ void sdp_ifft_degrid_uvw_es(
 
     // Create the FFT plan.
     sdp_Fft* fft = sdp_fft_create(
-            plan->w_grid_stack, plan->w_grid_stack, 2, true, status);
+            plan->w_grid_stack, plan->w_grid_stack, 2, true, status
+    );
 
     if (*status) return;
 
@@ -796,7 +821,8 @@ void sdp_ifft_degrid_uvw_es(
             &plan->do_wstacking
         };
         sdp_launch_cuda_kernel(
-                kernel_name, num_blocks, num_threads, 0, 0, args, status);
+                kernel_name, num_blocks, num_threads, 0, 0, args, status
+        );
     }
 
     // Determine how many w grid subset batches to process in total
@@ -809,7 +835,8 @@ void sdp_ifft_degrid_uvw_es(
         const int num_w_grids_subset = std::min(
                 num_w_grids_batched,
                 plan->num_total_w_grids - ((batch * num_w_grids_batched) %
-                plan->num_total_w_grids));
+                plan->num_total_w_grids)
+        );
         const int grid_start_w = batch * num_w_grids_batched;
         sdp_mem_clear_contents(plan->w_grid_stack, status);
         if (*status) break;
@@ -847,7 +874,8 @@ void sdp_ifft_degrid_uvw_es(
                 &plan->do_wstacking
             };
             sdp_launch_cuda_kernel(
-                    kernel_name, num_blocks, num_threads, 0, 0, args, status);
+                    kernel_name, num_blocks, num_threads, 0, 0, args, status
+            );
         }
 
         // Perform 2D FFT on each bound w grid
@@ -918,7 +946,8 @@ void sdp_ifft_degrid_uvw_es(
                     &solving
                 };
                 sdp_launch_cuda_kernel(kernel_name,
-                        num_blocks, num_threads, 0, 0, args, status);
+                        num_blocks, num_threads, 0, 0, args, status
+                );
             }
         }
     } // for (int batch = 0; batch < total_w_grid_batches; batch++)

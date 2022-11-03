@@ -47,7 +47,8 @@ static void dft_point_v00(
                 // Load uvw-coordinates.
                 const unsigned int i_uvw = INDEX_4D(
                         num_times, num_baselines, num_channels, 3,
-                        i_time, i_baseline, i_channel, 0);
+                        i_time, i_baseline, i_channel, 0
+                );
                 const UVW_TYPE uu = uvw_lambda[i_uvw];
                 const UVW_TYPE vv = uvw_lambda[i_uvw + 1];
                 const UVW_TYPE ww = uvw_lambda[i_uvw + 2];
@@ -68,7 +69,8 @@ static void dft_point_v00(
                     // Multiply by flux in each polarisation and accumulate.
                     const unsigned int i_pol_start = INDEX_3D(
                             num_components, num_channels, num_pols,
-                            i_component, i_channel, 0);
+                            i_component, i_channel, 0
+                    );
                     for (int i_pol = 0; i_pol < num_pols; ++i_pol)
                     {
                         const complex<FLUX_TYPE> flux =
@@ -84,7 +86,8 @@ static void dft_point_v00(
                 {
                     const unsigned int i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     vis[i_out] = vis_local[i_pol];
                 }
             }
@@ -153,7 +156,8 @@ static void check_params_v00(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The source_directions array must have shape "
-                "[num_components, 3] (expected [%d, 3])", num_components);
+                "[num_components, 3] (expected [%d, 3])", num_components
+        );
         return;
     }
     if (sdp_mem_shape_dim(source_fluxes, 0) != num_components ||
@@ -164,7 +168,8 @@ static void check_params_v00(
         SDP_LOG_ERROR("The source_fluxes array must have shape "
                 "[num_components, num_channels, num_pols] "
                 "(expected [%d, %d, %d])",
-                num_components, num_channels, num_pols);
+                num_components, num_channels, num_pols
+        );
         return;
     }
     if (sdp_mem_shape_dim(uvw_lambda, 0) != num_times ||
@@ -176,7 +181,8 @@ static void check_params_v00(
         SDP_LOG_ERROR("The uvw_lamda array must have shape "
                 "[num_times, num_baselines, num_channels, 3] "
                 "(expected [%d, %d, %d, 3])",
-                num_times, num_baselines, num_channels);
+                num_times, num_baselines, num_channels
+        );
         return;
     }
 }
@@ -213,7 +219,8 @@ void sdp_dft_point_v00(
                     (const double*)sdp_mem_data_const(source_directions),
                     (const complex<double>*)sdp_mem_data_const(source_fluxes),
                     (const double*)sdp_mem_data_const(uvw_lambda),
-                    (complex<double>*)sdp_mem_data(vis));
+                    (complex<double>*)sdp_mem_data(vis)
+            );
         }
         else if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
@@ -229,7 +236,8 @@ void sdp_dft_point_v00(
                     (const double*)sdp_mem_data_const(source_directions),
                     (const complex<double>*)sdp_mem_data_const(source_fluxes),
                     (const double*)sdp_mem_data_const(uvw_lambda),
-                    (complex<float>*)sdp_mem_data(vis));
+                    (complex<float>*)sdp_mem_data(vis)
+            );
         }
         else
         {
@@ -277,7 +285,8 @@ void sdp_dft_point_v00(
             sdp_mem_gpu_buffer(vis, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }
 
@@ -310,7 +319,8 @@ static void dft_point_v01(
             // Load uvw-coordinates.
             const unsigned int i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             const UVW_TYPE uu = uvw_metres[i_uvw];
             const UVW_TYPE vv = uvw_metres[i_uvw + 1];
             const UVW_TYPE ww = uvw_metres[i_uvw + 2];
@@ -340,7 +350,8 @@ static void dft_point_v01(
                     // Multiply by flux in each polarisation and accumulate.
                     const unsigned int i_pol_start = INDEX_3D(
                             num_components, num_channels, num_pols,
-                            i_component, i_channel, 0);
+                            i_component, i_channel, 0
+                    );
                     for (int i_pol = 0; i_pol < num_pols; ++i_pol)
                     {
                         const complex<FLUX_TYPE> flux =
@@ -356,7 +367,8 @@ static void dft_point_v01(
                 {
                     const unsigned int i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     vis[i_out] = vis_local[i_pol];
                 }
             }
@@ -425,7 +437,8 @@ static void check_params_v01(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The source_directions array must have shape "
-                "[num_components, 3] (expected [%d, 3])", num_components);
+                "[num_components, 3] (expected [%d, 3])", num_components
+        );
         return;
     }
     if (sdp_mem_shape_dim(source_fluxes, 0) != num_components ||
@@ -436,7 +449,8 @@ static void check_params_v01(
         SDP_LOG_ERROR("The source_fluxes array must have shape "
                 "[num_components, num_channels, num_pols] "
                 "(expected [%d, %d, %d])",
-                num_components, num_channels, num_pols);
+                num_components, num_channels, num_pols
+        );
         return;
     }
     if (sdp_mem_shape_dim(uvw, 0) != num_times ||
@@ -447,7 +461,8 @@ static void check_params_v01(
         SDP_LOG_ERROR("The uvw array must have shape "
                 "[num_times, num_baselines, 3] "
                 "(expected [%d, %d, 3])",
-                num_times, num_baselines);
+                num_times, num_baselines
+        );
         return;
     }
 }
@@ -488,7 +503,8 @@ void sdp_dft_point_v01(
                     (const double*)sdp_mem_data_const(uvw),
                     channel_start_hz,
                     channel_step_hz,
-                    (complex<double>*)sdp_mem_data(vis));
+                    (complex<double>*)sdp_mem_data(vis)
+            );
         }
         else if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(source_fluxes) == SDP_MEM_COMPLEX_DOUBLE &&
@@ -506,7 +522,8 @@ void sdp_dft_point_v01(
                     (const double*)sdp_mem_data_const(uvw),
                     channel_start_hz,
                     channel_step_hz,
-                    (complex<float>*)sdp_mem_data(vis));
+                    (complex<float>*)sdp_mem_data(vis)
+            );
         }
         else
         {
@@ -556,6 +573,7 @@ void sdp_dft_point_v01(
             sdp_mem_gpu_buffer(vis, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }

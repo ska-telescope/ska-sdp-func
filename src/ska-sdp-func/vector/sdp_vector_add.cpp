@@ -65,7 +65,8 @@ void sdp_vector_add(
                     num_elements,
                     (const double*)sdp_mem_data_const(input_a),
                     (const double*)sdp_mem_data_const(input_b),
-                    (double*)sdp_mem_data((output)));
+                    (double*)sdp_mem_data((output))
+            );
         }
         else if (type == SDP_MEM_FLOAT)
         {
@@ -73,7 +74,8 @@ void sdp_vector_add(
                     num_elements,
                     (const float*)sdp_mem_data_const(input_a),
                     (const float*)sdp_mem_data_const(input_b),
-                    (float*)sdp_mem_data((output)));
+                    (float*)sdp_mem_data((output))
+            );
         }
         else
         {
@@ -108,6 +110,7 @@ void sdp_vector_add(
             sdp_mem_gpu_buffer(output, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }

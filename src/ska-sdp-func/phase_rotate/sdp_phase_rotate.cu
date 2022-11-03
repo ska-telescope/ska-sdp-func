@@ -76,7 +76,8 @@ __global__ void rotate_vis(
     {
         const int64_t i_vis = INDEX_4D(
                 num_times, num_baselines, num_channels, num_pols,
-                i_time, i_baseline, i_channel, i_pol);
+                i_time, i_baseline, i_channel, i_pol
+        );
         const VIS_TYPE2 vis = vis_in[i_vis];
         vis_out[i_vis].x = phasor.x * vis.x - phasor.y * vis.y;
         vis_out[i_vis].y = phasor.x * vis.y + phasor.y * vis.x;

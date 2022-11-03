@@ -58,7 +58,8 @@ static void rotate_vis(
         {
             const int64_t i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             const COORD_TYPE uu = uvw[i_uvw + 0];
             const COORD_TYPE vv = uvw[i_uvw + 1];
             const COORD_TYPE ww = uvw[i_uvw + 2];
@@ -73,7 +74,8 @@ static void rotate_vis(
                 {
                     const int64_t i_vis = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     vis_out[i_vis] = vis_in[i_vis] * phasor;
                 }
             }
@@ -150,14 +152,16 @@ void sdp_phase_rotate_uvw(
         {
             rotate_uvw<double>(num_total, mat,
                     (const double*)sdp_mem_data_const(uvw_in),
-                    (double*)sdp_mem_data(uvw_out));
+                    (double*)sdp_mem_data(uvw_out)
+            );
         }
         else if (sdp_mem_type(uvw_in) == SDP_MEM_FLOAT &&
                 sdp_mem_type(uvw_out) == SDP_MEM_FLOAT)
         {
             rotate_uvw<float>(num_total, mat,
                     (const float*)sdp_mem_data_const(uvw_in),
-                    (float*)sdp_mem_data(uvw_out));
+                    (float*)sdp_mem_data(uvw_out)
+            );
         }
         else
         {
@@ -202,7 +206,8 @@ void sdp_phase_rotate_uvw(
             sdp_mem_gpu_buffer(uvw_out, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }
 
@@ -302,7 +307,8 @@ void sdp_phase_rotate_vis(
                     delta_n,
                     (const double*)sdp_mem_data_const(uvw),
                     (const complex<double>*)sdp_mem_data_const(vis_in),
-                    (complex<double>*)sdp_mem_data(vis_out));
+                    (complex<double>*)sdp_mem_data(vis_out)
+            );
         }
         else if (sdp_mem_type(uvw) == SDP_MEM_FLOAT &&
                 sdp_mem_type(vis_in) == SDP_MEM_COMPLEX_FLOAT &&
@@ -320,7 +326,8 @@ void sdp_phase_rotate_vis(
                     delta_n,
                     (const float*)sdp_mem_data_const(uvw),
                     (const complex<float>*)sdp_mem_data_const(vis_in),
-                    (complex<float>*)sdp_mem_data(vis_out));
+                    (complex<float>*)sdp_mem_data(vis_out)
+            );
         }
         else
         {
@@ -369,6 +376,7 @@ void sdp_phase_rotate_vis(
             sdp_mem_gpu_buffer(vis_out, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }

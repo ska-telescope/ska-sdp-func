@@ -51,7 +51,8 @@ __global__ void dft_point_v00(
     // Load uvw-coordinates.
     const unsigned int i_uvw = INDEX_3D(
             num_times, num_baselines, num_channels,
-            i_time, i_baseline, i_channel);
+            i_time, i_baseline, i_channel
+    );
     const UVW_TYPE3 uvw = uvw_lambda[i_uvw];
 
     // Loop over components and calculate phase for each.
@@ -66,7 +67,8 @@ __global__ void dft_point_v00(
         // Multiply by flux in each polarisation and accumulate.
         const unsigned int i_pol_start = INDEX_3D(
                 num_components, num_channels, num_pols,
-                i_component, i_channel, 0);
+                i_component, i_channel, 0
+        );
         if (num_pols == 1)
         {
             const FLUX_TYPE2 flux = source_fluxes[i_pol_start];
@@ -90,7 +92,8 @@ __global__ void dft_point_v00(
     {
         const unsigned int i_out = INDEX_4D(
                 num_times, num_baselines, num_channels, num_pols,
-                i_time, i_baseline, i_channel, i_pol);
+                i_time, i_baseline, i_channel, i_pol
+        );
         vis[i_out] = vis_local[i_pol];
     }
 }
@@ -141,7 +144,8 @@ __global__ void dft_point_v01(
     // Load uvw-coordinates.
     const unsigned int i_uvw = INDEX_2D(
             num_times, num_baselines,
-            i_time, i_baseline);
+            i_time, i_baseline
+    );
     const UVW_TYPE3 uvw = uvw_metres[i_uvw];
     const double inv_wavelength =
             (channel_start_hz + i_channel * channel_step_hz) / C_0;
@@ -158,7 +162,8 @@ __global__ void dft_point_v01(
         // Multiply by flux in each polarisation and accumulate.
         const unsigned int i_pol_start = INDEX_3D(
                 num_components, num_channels, num_pols,
-                i_component, i_channel, 0);
+                i_component, i_channel, 0
+        );
         if (num_pols == 1)
         {
             const FLUX_TYPE2 flux = source_fluxes[i_pol_start];
@@ -182,7 +187,8 @@ __global__ void dft_point_v01(
     {
         const unsigned int i_out = INDEX_4D(
                 num_times, num_baselines, num_channels, num_pols,
-                i_time, i_baseline, i_channel, i_pol);
+                i_time, i_baseline, i_channel, i_pol
+        );
         vis[i_out] = vis_local[i_pol];
     }
 }

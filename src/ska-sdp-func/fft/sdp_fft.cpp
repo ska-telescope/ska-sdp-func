@@ -157,12 +157,14 @@ static void sdp_1d_fft_inplace(
         if (ispoweroftwo)
         {
             perform_cpu_fft_power_of_two_inplace(&input[f * num_x],
-                    &temp[f * num_x], num_x, bits, do_inverse);
+                    &temp[f * num_x], num_x, bits, do_inverse
+            );
         }
         else
         {
             perform_cpu_dft_general(&input[f * num_x],
-                    &temp[f * num_x], num_x, do_inverse);
+                    &temp[f * num_x], num_x, do_inverse
+            );
             memcpy(&input[f * num_x], &temp[f * num_x], num_x * sizeof(T));
         }
     }
@@ -288,7 +290,8 @@ static void check_params(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("Input and output arrays must have the same "
-                "number of dimensions");
+                "number of dimensions"
+        );
         return;
     }
     if (!sdp_mem_is_c_contiguous(input) || !sdp_mem_is_c_contiguous(output))
@@ -320,7 +323,8 @@ static void check_params(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("Number of FFT dimensions must be equal to "
-                "or one smaller than the number of array dimensions");
+                "or one smaller than the number of array dimensions"
+        );
         return;
     }
 }
@@ -390,7 +394,8 @@ sdp_Fft* sdp_fft_create(
         const cufftResult error = cufftPlanMany(
                 &cufft_plan, num_dims_fft, dim_size,
                 inembed, istride, idist, onembed, ostride, odist,
-                cufft_type, batch_size);
+                cufft_type, batch_size
+        );
         free(onembed);
         free(inembed);
         free(dim_size);
@@ -403,7 +408,8 @@ sdp_Fft* sdp_fft_create(
 #else
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The processing function library was compiled "
-                "without CUDA support");
+                "without CUDA support"
+        );
         return fft;
 #endif
     }
@@ -452,7 +458,8 @@ sdp_Fft* sdp_fft_create(
                 shape[f] = sdp_mem_shape_dim(input, f);
             }
             temp = sdp_mem_create(
-                    sdp_mem_type(input), SDP_MEM_CPU, num_dims, shape, status);
+                    sdp_mem_type(input), SDP_MEM_CPU, num_dims, shape, status
+            );
             free(shape);
         }
     }
@@ -506,14 +513,16 @@ void sdp_fft_exec(
         {
             error = cufftExecC2C(fft->cufft_plan,
                     (cufftComplex*)sdp_mem_data(input),
-                    (cufftComplex*)sdp_mem_data(output), fft_dir);
+                    (cufftComplex*)sdp_mem_data(output), fft_dir
+            );
         }
         else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
         {
             error = cufftExecZ2Z(fft->cufft_plan,
                     (cufftDoubleComplex*)sdp_mem_data(input),
-                    (cufftDoubleComplex*)sdp_mem_data(output), fft_dir);
+                    (cufftDoubleComplex*)sdp_mem_data(output), fft_dir
+            );
         }
         if (error != CUFFT_SUCCESS)
         {
@@ -523,7 +532,8 @@ void sdp_fft_exec(
 #else
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The processing function library was compiled "
-                "without CUDA support");
+                "without CUDA support"
+        );
 #endif
     }
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
@@ -541,7 +551,8 @@ void sdp_fft_exec(
                         (sdp_Float2*) sdp_mem_data(fft->temp),
                         fft->num_x,
                         fft->batch_size,
-                        do_inverse);
+                        do_inverse
+                );
             }
             if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
                     && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
@@ -552,7 +563,8 @@ void sdp_fft_exec(
                         (sdp_Double2*) sdp_mem_data(fft->temp),
                         fft->num_x,
                         fft->batch_size,
-                        do_inverse);
+                        do_inverse
+                );
             }
         }
         if (fft->num_dims == 2)
@@ -567,7 +579,8 @@ void sdp_fft_exec(
                         fft->num_x,
                         fft->num_y,
                         fft->batch_size,
-                        do_inverse);
+                        do_inverse
+                );
             }
             if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
                     && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
@@ -579,7 +592,8 @@ void sdp_fft_exec(
                         fft->num_x,
                         fft->num_y,
                         fft->batch_size,
-                        do_inverse);
+                        do_inverse
+                );
             }
         }
         if (fft->num_dims > 2)

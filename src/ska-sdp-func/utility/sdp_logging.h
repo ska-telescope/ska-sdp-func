@@ -27,7 +27,8 @@ extern "C" {
 #define SDP_LOG_CRITICAL(...) \
     sdp_log_message( \
         SDP_LOG_LEVEL_CRITICAL, stderr, __func__, FILENAME, __LINE__, \
-        __VA_ARGS__)
+        __VA_ARGS__ \
+    )
 
 /**
  * @brief Writes a log message to stderr, with severity "ERROR".
@@ -35,7 +36,8 @@ extern "C" {
 #define SDP_LOG_ERROR(...) \
     sdp_log_message( \
         SDP_LOG_LEVEL_ERROR, stderr, __func__, FILENAME, __LINE__, \
-        __VA_ARGS__)
+        __VA_ARGS__ \
+    )
 
 /**
  * @brief Writes a log message to stderr, with severity "WARNING".
@@ -43,7 +45,8 @@ extern "C" {
 #define SDP_LOG_WARNING(...) \
     sdp_log_message( \
         SDP_LOG_LEVEL_WARNING, stderr, __func__, FILENAME, __LINE__, \
-        __VA_ARGS__)
+        __VA_ARGS__ \
+    )
 
 /**
  * @brief Writes a log message to stdout, with severity "INFO".
@@ -51,7 +54,8 @@ extern "C" {
 #define SDP_LOG_INFO(...) \
     sdp_log_message( \
         SDP_LOG_LEVEL_INFO, stdout, __func__, FILENAME, __LINE__, \
-        __VA_ARGS__)
+        __VA_ARGS__ \
+    )
 
 /**
  * @brief Writes a log message to stdout, with severity "DEBUG".
@@ -59,7 +63,8 @@ extern "C" {
 #define SDP_LOG_DEBUG(...) \
     sdp_log_message( \
         SDP_LOG_LEVEL_DEBUG, stdout, __func__, FILENAME, __LINE__, \
-        __VA_ARGS__)
+        __VA_ARGS__ \
+    )
 
 #ifndef SOURCE_PATH_SIZE
 #define SOURCE_PATH_SIZE 0

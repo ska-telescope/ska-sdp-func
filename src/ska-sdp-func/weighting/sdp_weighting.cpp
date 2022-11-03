@@ -33,7 +33,8 @@ static void uniform_weights_grid_write(
         {
             const int64_t i_uv = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             for (int64_t i_channel = 0; i_channel < num_channels; ++i_channel)
             {
                 const UVW_TYPE inv_wavelength = freq_hz[i_channel] / C_0;
@@ -74,7 +75,8 @@ static void uniform_weights_grid_read(
         {
             const int64_t i_uv = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             for (int64_t i_channel = 0; i_channel < num_channels; ++i_channel)
             {
                 WEIGHT_TYPE weight_val = 1.0;
@@ -94,7 +96,8 @@ static void uniform_weights_grid_read(
 
                 const int64_t i_pol_start = INDEX_4D(
                         num_times, num_baselines, num_channels, num_pols,
-                        i_time, i_baseline, i_channel, 0);
+                        i_time, i_baseline, i_channel, 0
+                );
                 for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
                 {
                     weights[i_pol_start + i_pol] = weight_val;
@@ -128,7 +131,8 @@ void sdp_weighting_uniform(
     // Check parameters.
     sdp_data_model_check_uvw(uvw, &uvw_type, &uvw_location, 0, 0, status);
     sdp_data_model_check_weights(weights, &weights_type, &weights_location,
-            &num_times, &num_baselines, &num_channels, &num_pols, status);
+            &num_times, &num_baselines, &num_channels, &num_pols, status
+    );
     if (*status) return;
     if (uvw_location != weights_location ||
             sdp_mem_location(freq_hz) != weights_location ||
@@ -168,7 +172,8 @@ void sdp_weighting_uniform(
                     (const double*)sdp_mem_data_const(uvw),
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
-                    (double*)sdp_mem_data(grid_uv));
+                    (double*)sdp_mem_data(grid_uv)
+            );
             uniform_weights_grid_read(
                     num_times,
                     num_baselines,
@@ -179,7 +184,8 @@ void sdp_weighting_uniform(
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
                     (const double*)sdp_mem_data_const(grid_uv),
-                    (double*)sdp_mem_data(weights));
+                    (double*)sdp_mem_data(weights)
+            );
         }
         else if (uvw_type == SDP_MEM_DOUBLE &&
                 weights_type == SDP_MEM_FLOAT &&
@@ -194,7 +200,8 @@ void sdp_weighting_uniform(
                     (const double*)sdp_mem_data_const(uvw),
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
-                    (float*)sdp_mem_data(grid_uv));
+                    (float*)sdp_mem_data(grid_uv)
+            );
             uniform_weights_grid_read(
                     num_times,
                     num_baselines,
@@ -205,7 +212,8 @@ void sdp_weighting_uniform(
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
                     (const float*)sdp_mem_data_const(grid_uv),
-                    (float*)sdp_mem_data(weights));
+                    (float*)sdp_mem_data(weights)
+            );
         }
         else
         {
@@ -217,6 +225,7 @@ void sdp_weighting_uniform(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("A GPU version of the uniform weighting function "
-                "is not currently implemented");
+                "is not currently implemented"
+        );
     }
 }

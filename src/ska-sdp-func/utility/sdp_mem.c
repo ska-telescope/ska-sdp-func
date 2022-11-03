@@ -40,7 +40,8 @@ static void sdp_mem_alloc(sdp_Mem* mem, sdp_Error* status)
         {
             *status = SDP_ERR_MEM_ALLOC_FAILURE;
             SDP_LOG_CRITICAL("Host memory allocation failure "
-                    "(requested %zu bytes)", bytes);
+                    "(requested %zu bytes)", bytes
+            );
             return;
         }
     }
@@ -53,7 +54,8 @@ static void sdp_mem_alloc(sdp_Mem* mem, sdp_Error* status)
             *status = SDP_ERR_MEM_ALLOC_FAILURE;
             SDP_LOG_CRITICAL("GPU memory allocation failure: %s "
                     "(requested %zu bytes)",
-                    cudaGetErrorString(cuda_error), bytes);
+                    cudaGetErrorString(cuda_error), bytes
+            );
             if (mem->data)
             {
                 cudaFree(mem->data);
@@ -65,7 +67,8 @@ static void sdp_mem_alloc(sdp_Mem* mem, sdp_Error* status)
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_CRITICAL("Cannot allocate GPU memory: "
                 "The processing function library was compiled without "
-                "CUDA support");
+                "CUDA support"
+        );
 #endif
     }
     else
@@ -85,7 +88,8 @@ sdp_Mem* sdp_mem_create(
 )
 {
     sdp_Mem* mem = sdp_mem_create_wrapper(
-            0, type, location, num_dims, shape, 0, status);
+            0, type, location, num_dims, shape, 0, status
+    );
     sdp_mem_alloc(mem, status);
     return mem;
 }
@@ -148,7 +152,8 @@ sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src)
 {
     sdp_Error status = SDP_SUCCESS;
     sdp_Mem* mem = sdp_mem_create_wrapper(src->data, src->type, src->location,
-            src->num_dims, src->shape, src->stride, &status);
+            src->num_dims, src->shape, src->stride, &status
+    );
     return mem;
 }
 
@@ -160,7 +165,8 @@ sdp_Mem* sdp_mem_create_copy(
 )
 {
     sdp_Mem* mem = sdp_mem_create_wrapper(0, src->type, location,
-            src->num_dims, src->shape, src->stride, status);
+            src->num_dims, src->shape, src->stride, status
+    );
     sdp_mem_alloc(mem, status);
     sdp_mem_copy_contents(mem, src, 0, 0, src->num_elements, status);
     return mem;
@@ -182,7 +188,8 @@ void sdp_mem_clear_contents(sdp_Mem* mem, sdp_Error* status)
 #else
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("The processing function library was compiled "
-                "without CUDA support");
+                "without CUDA support"
+        );
 #endif
     }
     else
@@ -244,7 +251,8 @@ void sdp_mem_copy_contents(
     {
         *status = SDP_ERR_MEM_COPY_FAILURE;
         SDP_LOG_CRITICAL("cudaMemcpy error: %s",
-                cudaGetErrorString(cuda_error));
+                cudaGetErrorString(cuda_error)
+        );
     }
 #endif
 }

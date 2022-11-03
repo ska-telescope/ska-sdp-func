@@ -26,7 +26,8 @@ static void check_params(
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR(
-                "Number of baselines must be compatible with number of antennas");
+                "Number of baselines must be compatible with number of antennas"
+        );
         return;
     }
     if (!sdp_mem_is_c_contiguous(vis) ||
@@ -272,7 +273,8 @@ void sdp_twosm_algo_flagger(
                     num_timesamples,
                     num_antennas,
                     num_channels,
-                    num_pols);
+                    num_pols
+            );
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(thresholds) == SDP_MEM_DOUBLE &&
@@ -286,13 +288,15 @@ void sdp_twosm_algo_flagger(
                     num_timesamples,
                     num_antennas,
                     num_channels,
-                    num_pols);
+                    num_pols
+            );
         }
         else
         {
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported data type(s): visibilities and "
-                    "thresholds arrays must have the same precision.");
+                    "thresholds arrays must have the same precision."
+            );
         }
     }
     else

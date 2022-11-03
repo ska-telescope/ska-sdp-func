@@ -125,13 +125,17 @@ static void run_and_check(
     };
     int64_t threshold_shape[] = {num_sequence_el};
     sdp_Mem* visibilities = sdp_mem_create(
-            visibilities_type, SDP_MEM_CPU, 4, visibilities_shape, status);
+            visibilities_type, SDP_MEM_CPU, 4, visibilities_shape, status
+    );
     sdp_Mem* predicted_flags = sdp_mem_create(
-            SDP_MEM_INT, SDP_MEM_CPU, 4, visibilities_shape, status);
+            SDP_MEM_INT, SDP_MEM_CPU, 4, visibilities_shape, status
+    );
     sdp_Mem* flags = sdp_mem_create(
-            flags_type, SDP_MEM_CPU, 4, visibilities_shape, status);
+            flags_type, SDP_MEM_CPU, 4, visibilities_shape, status
+    );
     sdp_Mem* thresholds = sdp_mem_create(
-            threshold_type, SDP_MEM_CPU, 1, threshold_shape, status);
+            threshold_type, SDP_MEM_CPU, 1, threshold_shape, status
+    );
 
     sdp_mem_clear_contents(visibilities, status);
     sdp_mem_clear_contents(thresholds, status);
@@ -143,12 +147,14 @@ static void run_and_check(
     if (threshold_type == SDP_MEM_FLOAT)
     {
         threshold_calc((float*) sdp_mem_data(thresholds),
-                initial_threshold, rho, num_sequence_el);
+                initial_threshold, rho, num_sequence_el
+        );
     }
     else if (threshold_type == SDP_MEM_DOUBLE)
     {
         threshold_calc((double*) sdp_mem_data(thresholds),
-                initial_threshold, rho, num_sequence_el);
+                initial_threshold, rho, num_sequence_el
+        );
     }
     // Visibilities and predicted flags
     if (visibilities_type == SDP_MEM_COMPLEX_FLOAT &&
@@ -162,7 +168,8 @@ static void run_and_check(
                 num_channels,
                 num_baselines,
                 num_pols,
-                num_rfi_spikes);
+                num_rfi_spikes
+        );
     }
     else if (visibilities_type == SDP_MEM_COMPLEX_DOUBLE &&
             threshold_type == SDP_MEM_DOUBLE)
@@ -175,14 +182,17 @@ static void run_and_check(
                 num_channels,
                 num_baselines,
                 num_pols,
-                num_rfi_spikes);
+                num_rfi_spikes
+        );
     }
 
     // Copy inputs to specified location.
     sdp_Mem* visibilities_in = sdp_mem_create_copy(
-            visibilities, visibilities_location, status);
+            visibilities, visibilities_location, status
+    );
     sdp_Mem* thresholds_in = sdp_mem_create_copy(
-            thresholds, thresholds_location, status);
+            thresholds, thresholds_location, status
+    );
     sdp_Mem* flags_in = sdp_mem_create_copy(flags, flags_location, status);
     sdp_mem_set_read_only(flags_in, read_only_output);
     sdp_mem_ref_dec(visibilities);
@@ -192,7 +202,8 @@ static void run_and_check(
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
     sdp_sum_threshold_rfi_flagger(visibilities_in, thresholds_in, flags_in,
-            max_sequence_length, status);
+            max_sequence_length, status
+    );
     sdp_mem_ref_dec(visibilities_in);
     sdp_mem_ref_dec(thresholds_in);
 
@@ -208,7 +219,8 @@ static void run_and_check(
                 (int*) sdp_mem_data(flags_out),
                 (int*) sdp_mem_data(predicted_flags),
                 (uint64_t) sdp_mem_num_elements(visibilities),
-                status);
+                status
+        );
     }
     sdp_mem_ref_dec(flags_out);
     sdp_mem_ref_dec(predicted_flags);
@@ -223,7 +235,8 @@ int main()
         run_and_check("CPU, double precision", true, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
@@ -231,7 +244,8 @@ int main()
         run_and_check("CPU, single precision", true, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_SUCCESS);
     }
 
@@ -241,7 +255,8 @@ int main()
         run_and_check("Read-only output", false, true,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
@@ -249,7 +264,8 @@ int main()
         run_and_check("Wrong flags type", false, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_FLOAT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
@@ -257,7 +273,8 @@ int main()
         run_and_check("Wrong visibility type", false, false,
                 SDP_MEM_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
@@ -265,7 +282,8 @@ int main()
         run_and_check("Wrong threshold type", false, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_DOUBLE, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
@@ -273,7 +291,8 @@ int main()
         run_and_check("Unsupported GPU location", false, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,
                 SDP_MEM_GPU, SDP_MEM_GPU, SDP_MEM_GPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {
@@ -281,7 +300,8 @@ int main()
         run_and_check("Wrong flag location", false, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_GPU,
-                &status);
+                &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
 

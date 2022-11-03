@@ -128,7 +128,8 @@ static void sum_threshold_rfi_flagger(
         for (uint64_t p = 0; p < num_pols; p++)
         {
             memset(flags_on_the_block, 0,
-                    num_timesamples * num_channels * sizeof(int));
+                    num_timesamples * num_channels * sizeof(int)
+            );
             for (uint64_t t = 0; t < num_timesamples; t++)
             {
                 for (uint64_t c = 0; c < num_channels; c++)
@@ -142,7 +143,8 @@ static void sum_threshold_rfi_flagger(
 
             sum_threshold_on_block(thresholds, num_sequence_elements,
                     sequence_lengths, block, num_channels, num_timesamples,
-                    flags_on_the_block);
+                    flags_on_the_block
+            );
 
             for (uint64_t t = 0; t < num_timesamples; t++)
             {
@@ -192,7 +194,8 @@ void sdp_sum_threshold_rfi_flagger(
                     num_baselines,
                     num_channels,
                     num_pols,
-                    max_sequence_length);
+                    max_sequence_length
+            );
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(thresholds) == SDP_MEM_DOUBLE &&
@@ -206,13 +209,15 @@ void sdp_sum_threshold_rfi_flagger(
                     num_baselines,
                     num_channels,
                     num_pols,
-                    max_sequence_length);
+                    max_sequence_length
+            );
         }
         else
         {
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported data type(s): visibilities and "
-                    "thresholds arrays must have the same precision.");
+                    "thresholds arrays must have the same precision."
+            );
         }
     }
     else
