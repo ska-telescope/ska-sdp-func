@@ -742,6 +742,58 @@ void sdp_mem_check_shape_at(
     )
 
 /**
+ * @brief Checks that dimensions of two given memory objects have the
+ * same size
+ *
+ * ``status`` will be set if the check fails. Note that this function
+ * will *not* fail if the dimension in question does not exist on
+ * either memory object, use #sdp_mem_check_num_dims additionally. Use
+ * #sdp_mem_check_same_shape macro to automatically fill ``func``,
+ * ``expr``, ``file`` and ``line`` by call location.
+ *
+ * @param mem Handle to memory block to check
+ * @param dim Dimension to check
+ * @param mem2 Handle to memory block to check against
+ * @param dim2 Dimension to check against
+ * @param status Output error status
+ * @param func Function to report in error message
+ * @param expr Expression string to report in error message
+ * @param expr2 Second expression string to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_same_shape_at(
+        sdp_Mem* mem,
+        int32_t dim,
+        sdp_Mem* mem2,
+        int32_t dim2,
+        sdp_Error* status,
+        const char* func,
+        const char* expr,
+        const char* expr2,
+        const char* file,
+        int line
+);
+
+/**
+ * @brief Checks that a dimension of given memory has expected size
+ *
+ * ``status`` will be set if the check fails. Note that this function
+ * will *not* fail if the dimension in question does not exist, use
+ * #sdp_mem_check_num_dims additionally.
+ *
+ * @param mem Handle to memory block to check
+ * @param dim Dimension to check
+ * @param mem2 Handle to memory block to check against
+ * @param dim2 Dimension to check against
+ * @param status Output error status
+ */
+#define sdp_mem_check_same_shape(mem, dim, mem2, dim2, status) \
+        sdp_mem_check_same_shape_at(mem, dim, mem2, dim2, status, __func__, \
+        #mem, #mem2, __FILE__, __LINE__ \
+        )
+
+/**
  * @brief Checks that an array has the expected data type.
  *
  * Use the ::sdp_mem_check_type macro to automatically

@@ -6,9 +6,8 @@
 #endif
 
 #include "ska-sdp-func/fourier_transforms/sdp_swiftly.h"
-#include "ska-sdp-func/fourier_transforms/sdp_mem_utils.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
-#include "ska-sdp-func/utility/sdp_mem.h"
 
 #include <complex>
 #include <assert.h>

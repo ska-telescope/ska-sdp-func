@@ -749,6 +749,59 @@ void sdp_mem_check_shape_at(
 }
 
 
+void sdp_mem_check_same_shape_at(
+        sdp_Mem* mem,
+        int32_t dim,
+        sdp_Mem* mem2,
+        int32_t dim2,
+        sdp_Error* status,
+        const char* func,
+        const char* expr,
+        const char* expr2,
+        const char* file,
+        int line
+)
+{
+    // Skip the check if the memory object has fewer dimension - we
+    // assume there will be an sdp_mem_check_num_dims that will
+    // already have objected to the wrong dimensionality.
+    if (dim < sdp_mem_num_dims(mem) && dim2 < sdp_mem_num_dims(mem2) &&
+            sdp_mem_shape_dim(mem, dim) != sdp_mem_shape_dim(mem2, dim2))
+    {
+        // Same memory object? Reflect in error message
+        if (mem == mem2)
+        {
+            sdp_log_message(
+                    SDP_LOG_LEVEL_ERROR,
+                    stderr,
+                    func,
+                    file,
+                    line,
+                    "%s: '%s' dimensions %d and %d do not have same size (%d != %d)!",
+                    func,
+                    expr,
+                    dim,
+                    dim2,
+                    sdp_mem_shape_dim(mem, dim),
+                    sdp_mem_shape_dim(mem2, dim2)
+            );
+        }
+        else
+        {
+            sdp_log_message(
+                    SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+                    "%s: '%s' dimension %d and '%s' dimension %d do not"
+                    " have the same size (%d != %d)!",
+                    func, expr, dim, expr2, dim2,
+                    sdp_mem_shape_dim(mem, dim),
+                    sdp_mem_shape_dim(mem2, dim2)
+            );
+        }
+        *status = SDP_ERR_INVALID_ARGUMENT;
+    }
+}
+
+
 void sdp_mem_check_type_at(
         const sdp_Mem* mem,
         sdp_MemType expected_type,

@@ -21,11 +21,27 @@ from any environment (and further wrapped, if deemed necessary).
 
 Include the header *"ska-sdp-func/utility/sdp_mem.h"* to use these functions.
 
+Structures
+----------
+
 .. doxygengroup:: Mem_struct
    :content-only:
 
 .. doxygengroup:: Mem_enum
    :content-only:
 
+Functions
+---------
+
 .. doxygengroup:: Mem_func
+   :content-only:
+
+Views (C++ only)
+----------------
+
+.. doxygengroup:: Mem_view_struct
+   :content-only:
+   :members:
+
+.. doxygengroup:: Mem_view
    :content-only:

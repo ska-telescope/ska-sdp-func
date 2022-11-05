@@ -1,11 +1,11 @@
 
 #include "ska-sdp-func/utility/sdp_mem.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
 #include "sdp_swiftly.h"
 #include "sdp_pswf.h"
 #include "pocketfft_hdronly.h"
-#include "sdp_mem_utils.h"
 
 struct sdp_SwiFTly
 {
@@ -121,16 +121,17 @@ void sdp_swiftly_prepare_facet(
 
     // Parameter checks
     const int64_t yN_size = swiftly->yN_size;
-    if (sdp_mem_shape_dim(facet, 0) > yN_size) {
+    if (sdp_mem_num_dims(facet) > 0 && sdp_mem_shape_dim(facet, 0) > yN_size) {
         SDP_LOG_ERROR("Facet data too large (%d>%d)!", sdp_mem_shape_dim(facet, 0), yN_size);
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
-    sdp_CpuVec<const std::complex<double>, 1> fct;
-    sdp_mem_checked_get_vec(facet, &fct, status);
-    sdp_CpuVec<std::complex<double>, 1> out;
-    sdp_mem_checked_get_vec(prep_facet_out, &out, status);
-    sdp_CpuVec<double, 1> Fb;
-    sdp_mem_checked_get_vec(swiftly->Fb, &Fb, status);
+    sdp_MemViewCpu<const std::complex<double>, 1> fct;
+    sdp_mem_check_and_view(facet, &fct, status);
+    sdp_MemViewCpu<std::complex<double>, 1> out;
+    sdp_mem_check_and_view(prep_facet_out, &out, status);
+    sdp_mem_check_shape(prep_facet_out, 0, yN_size, status);
+    sdp_MemViewCpu<double, 1> Fb;
+    sdp_mem_check_and_view(swiftly->Fb, &Fb, status);
     if (*status) return;
 
     // We shift the facet centre to its correct global position modulo
@@ -144,24 +145,26 @@ void sdp_swiftly_prepare_facet(
     // Does the facet data alias around the edges?
     int64_t i;
     if (start < end) {
+        // Establish something along the lines of "00<data>00000"
         for (i = 0; i < start; i++) {
-            out[i] = 0;
+            out(i) = 0;
         }
         for (i = start; i < end; i++) {
-            out[i] = fct[i - start] * Fb[i + Fb_off];
+            out(i) = fct(i - start) * Fb(i + Fb_off);
         }
         for (i = end; i < yN_size; i++) {
-            out[i] = 0;
+            out(i) = 0;
         }
     } else {
+        // ... or alternatively "ta>00000<da"
         for (i = 0; i < end; i++) {
-            out[i] = fct[i + yN_size - start] * Fb[i + yN_size + Fb_off];
+            out(i) = fct(i + yN_size - start) * Fb(i + yN_size + Fb_off);
         }
         for (i = end; i < start; i++) {
-            out[i] = 0;
+            out(i) = 0;
         }
         for (i = start; i < yN_size; i++) {
-            out[i] = fct[i - start] * Fb[i + Fb_off];
+            out(i) = fct(i - start) * Fb(i + Fb_off);
         }
     }
 
