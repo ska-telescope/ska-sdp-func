@@ -8,3 +8,4 @@ These are functions related to Fourier tranforms.
   :maxdepth: 1
 
   fft
+  swiftly
