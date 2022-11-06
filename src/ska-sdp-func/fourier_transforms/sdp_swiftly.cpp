@@ -131,15 +131,16 @@ void sdp_swiftly_prepare_facet(
 
     // Parameter checks
     const int64_t yN_size = swiftly->yN_size;
-    if (sdp_mem_num_dims(facet) > 0 && sdp_mem_shape_dim(facet, 0) > yN_size) {
-        SDP_LOG_ERROR("Facet data too large (%d>%d)!", sdp_mem_shape_dim(facet, 0), yN_size);
+    if (sdp_mem_num_dims(facet) > 1 && sdp_mem_shape_dim(facet, 1) > yN_size) {
+        SDP_LOG_ERROR("Facet data too large (%d>%d)!", sdp_mem_shape_dim(facet, 1), yN_size);
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
-    sdp_MemViewCpu<const std::complex<double>, 1> fct;
+    sdp_MemViewCpu<const std::complex<double>, 2> fct;
     sdp_mem_check_and_view(facet, &fct, status);
-    sdp_MemViewCpu<std::complex<double>, 1> out;
+    sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(prep_facet_out, &out, status);
-    sdp_mem_check_shape(prep_facet_out, 0, yN_size, status);
+    sdp_mem_check_shape(prep_facet_out, 1, yN_size, status);
+    sdp_mem_check_same_shape(facet, 0, prep_facet_out, 0, status);
     sdp_MemViewCpu<double, 1> Fb;
     sdp_mem_check_and_view(swiftly->Fb, &Fb, status);
     if (*status) return;
@@ -147,41 +148,51 @@ void sdp_swiftly_prepare_facet(
     // We shift the facet centre to its correct global position modulo
     // yN_size (non-centered for FFT, i.e. apply ifftshift). Determine
     // start & end index accordingly.
-    const int64_t start = mod_p(facet_offset - fct.shape[0] / 2,  yN_size);
-    const int64_t end = (start + fct.shape[0]) % yN_size;
-    const int64_t Fb_off = (yN_size / 2 - fct.shape[0] / 2) - start;
+    const int64_t start = mod_p(facet_offset - fct.shape[1] / 2,  yN_size);
+    const int64_t end = (start + fct.shape[1]) % yN_size;
+    const int64_t Fb_off = (yN_size / 2 - fct.shape[1] / 2) - start;
 
-    // Does the facet data alias around the edges?
-    int64_t i;
-    if (start < end) {
-        // Establish something along the lines of "00<data>00000"
-        for (i = 0; i < start; i++) {
-            out(i) = 0;
-        }
-        for (i = start; i < end; i++) {
-            out(i) = fct(i - start) * Fb(i + Fb_off);
-        }
-        for (i = end; i < yN_size; i++) {
-            out(i) = 0;
-        }
-    } else {
-        // ... or alternatively "ta>00000<da"
-        for (i = 0; i < end; i++) {
-            out(i) = fct(i + yN_size - start) * Fb(i + yN_size + Fb_off);
-        }
-        for (i = end; i < start; i++) {
-            out(i) = 0;
-        }
-        for (i = start; i < yN_size; i++) {
-            out(i) = fct(i - start) * Fb(i + Fb_off);
+    // Broadcast along first axis
+    const int64_t bc0_size = out.shape[0]; int64_t i0;
+    for (i0 = 0; i0 < bc0_size; i0++) {
+        // Does the facet data alias around the edges?
+        int64_t i;
+        if (start < end) {
+            // Establish something along the lines of "00<data>00000"
+            for (i = 0; i < start; i++) {
+                out(i0, i) = 0;
+            }
+            for (i = start; i < end; i++) {
+                out(i0, i) = fct(i0, i - start) * Fb(i + Fb_off);
+            }
+            for (i = end; i < yN_size; i++) {
+                out(i0, i) = 0;
+            }
+        } else {
+            // ... or alternatively "ta>00000<da"
+            for (i = 0; i < end; i++) {
+                out(i0, i) = fct(i0, i + yN_size - start) * Fb(i + yN_size + Fb_off);
+            }
+            for (i = end; i < start; i++) {
+                out(i0, i) = 0;
+            }
+            for (i = start; i < yN_size; i++) {
+                out(i0, i) = fct(i0, i - start) * Fb(i + Fb_off);
+            }
         }
     }
 
-    // Perform FFT
-    const pocketfft::shape_t shape = { static_cast<size_t>(yN_size) };
+    // Perform FFT(s)
+    const pocketfft::shape_t shape = {
+        static_cast<size_t>(bc0_size),
+        static_cast<size_t>(yN_size)
+    };
     const ptrdiff_t cpx_size = sizeof(std::complex<double>);
-    const pocketfft::stride_t stride = { out.stride[0] * cpx_size };
-    pocketfft::c2c(shape, stride, stride, { 0 }, pocketfft::BACKWARD,
+    const pocketfft::stride_t stride = {
+        out.stride[0] * cpx_size,
+        out.stride[1] * cpx_size
+    };
+    pocketfft::c2c(shape, stride, stride, { 1 }, pocketfft::BACKWARD,
                    out.ptr, out.ptr, 1. / yN_size);
 
     // missing shift will be corrected for in sdp_swiftly_extract_from_facet
@@ -201,12 +212,13 @@ void sdp_swiftly_extract_from_facet(
     const int64_t yN_size = swiftly->yN_size;
     const int64_t image_size = swiftly->image_size;
     const int64_t xM_yN_size = (swiftly->xM_size * yN_size) / image_size;
-    sdp_MemViewCpu<const std::complex<double>, 1> fct;
+    sdp_MemViewCpu<const std::complex<double>, 2> fct;
     sdp_mem_check_and_view(prep_facet, &fct, status);
-    sdp_mem_check_shape(prep_facet, 0, yN_size, status);
-    sdp_MemViewCpu<std::complex<double>, 1> out;
+    sdp_mem_check_shape(prep_facet, 1, yN_size, status);
+    sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(contribution_out, &out, status);
-    sdp_mem_check_shape(contribution_out, 0, xM_yN_size, status);
+    sdp_mem_check_shape(contribution_out, 1, xM_yN_size, status);
+    sdp_mem_check_same_shape(prep_facet, 0, contribution_out, 0, status);
     if (*status) return;
 
     // Calculate grid offsets (still in yN_size image
@@ -218,30 +230,40 @@ void sdp_swiftly_extract_from_facet(
     const int64_t offs1 = mod_p(offs + xM_yN_size, yN_size);
     const int64_t offs2 = mod_p(offs, yN_size);
 
-    int64_t i = 0;
-    int64_t stop1 = yN_size - offs1;
-    if (stop1 > aliased_sg_offs) stop1 = aliased_sg_offs;
-    for ( ; i < stop1; i++) {
-        out(i) = fct(i + offs1);
-    }
-    for ( ; i < aliased_sg_offs; i++) {
-        out(i) = fct(i + offs1 - yN_size);
+    // Broadcast along first axis
+    const int64_t bc0_size = out.shape[0]; int64_t i0;
+    for (i0 = 0; i0 < bc0_size; i0++) {
+        int64_t i = 0;
+        int64_t stop1 = yN_size - offs1;
+        if (stop1 > aliased_sg_offs) stop1 = aliased_sg_offs;
+        for ( ; i < stop1; i++) {
+            out(i0, i) = fct(i0, i + offs1);
+        }
+        for ( ; i < aliased_sg_offs; i++) {
+            out(i0, i) = fct(i0, i + offs1 - yN_size);
+        }
+
+        int64_t stop2 = yN_size - offs2;
+        if (stop2 > xM_yN_size) stop2 = xM_yN_size;
+        for ( ; i < stop2; i++) {
+            out(i0, i) = fct(i0, i + offs2);
+        }
+        for ( ; i < xM_yN_size; i++) {
+            out(i0, i) = fct(i0, i + offs2 - yN_size);
+        }
     }
 
-    int64_t stop2 = yN_size - offs2;
-    if (stop2 > xM_yN_size) stop2 = xM_yN_size;
-    for ( ; i < stop2; i++) {
-        out(i) = fct(i + offs2);
-    }
-    for ( ; i < xM_yN_size; i++) {
-        out(i) = fct(i + offs2 - yN_size);
-    }
-
-    // Perform FFT
-    const pocketfft::shape_t shape = { static_cast<size_t>(xM_yN_size) };
+    // Perform FFT(s)
+    const pocketfft::shape_t shape = {
+        static_cast<size_t>(bc0_size),
+        static_cast<size_t>(xM_yN_size)
+    };
     const ptrdiff_t cpx_size = sizeof(std::complex<double>);
-    const pocketfft::stride_t stride = { out.stride[0] * cpx_size };
-    pocketfft::c2c(shape, stride, stride, { 0 }, pocketfft::FORWARD,
+    const pocketfft::stride_t stride = {
+        out.stride[0] * cpx_size,
+        out.stride[1] * cpx_size
+    };
+    pocketfft::c2c(shape, stride, stride, { 1 }, pocketfft::FORWARD,
                    out.ptr, out.ptr, 1.);
 
 }
@@ -259,29 +281,36 @@ void sdp_swiftly_add_to_subgrid(
     const int64_t xM_size = swiftly->xM_size;
     const int64_t image_size = swiftly->image_size;
     const int64_t xM_yN_size = (xM_size * swiftly->yN_size) / image_size;
-    sdp_MemViewCpu<const std::complex<double>, 1> contrib;
+    sdp_MemViewCpu<const std::complex<double>, 2> contrib;
     sdp_mem_check_and_view(contribution, &contrib, status);
-    sdp_mem_check_shape(contribution, 0, xM_yN_size, status);
-    sdp_MemViewCpu<std::complex<double>, 1> out;
+    sdp_mem_check_shape(contribution, 1, xM_yN_size, status);
+    sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(subgrid_image_inout, &out, status);
-    sdp_mem_check_shape(subgrid_image_inout, 0, xM_size, status);
+    sdp_mem_check_shape(subgrid_image_inout, 1, xM_size, status);
     sdp_MemViewCpu<double, 1> Fn;
     sdp_mem_check_and_view(swiftly->Fn, &Fn, status);
     if (*status) return;
 
-    // Calculate facet offsets (in xM_size resolution).
-    const int64_t fct_offs = facet_offset / (image_size / xM_size);
-    const int64_t offs = mod_p(-xM_yN_size / 2 + xM_size/2 + fct_offs, xM_size);
-    int64_t i = 0;
-    int64_t stop1 = xM_size - offs;
-    if (stop1 > xM_yN_size) stop1 = xM_yN_size;
-    for (i = 0; i < stop1; i++) {
-        out(i + offs) = Fn(i) * contrib((i + fct_offs + xM_yN_size / 2) % xM_yN_size);
-    }
-    for (; i < xM_yN_size; i++) {
-        out(i + offs - xM_size) = Fn(i) * contrib((i + fct_offs + xM_yN_size / 2) % xM_yN_size);
-    }
+    // Broadcast along first axis
+    const int64_t bc0_size = out.shape[0]; int64_t i0;
+    for (i0 = 0; i0 < bc0_size; i0++) {
 
+        // Calculate facet offsets (in xM_size resolution).
+        const int64_t fct_offs = facet_offset / (image_size / xM_size);
+        const int64_t offs = mod_p(-xM_yN_size / 2 + xM_size/2 + fct_offs, xM_size);
+        int64_t i = 0;
+        int64_t stop1 = xM_size - offs;
+        if (stop1 > xM_yN_size) stop1 = xM_yN_size;
+        for (i = 0; i < stop1; i++) {
+            out(i0, i + offs) = Fn(i) *
+                contrib(i0, (i + fct_offs + xM_yN_size / 2) % xM_yN_size);
+        }
+        for (; i < xM_yN_size; i++) {
+            out(i0, i + offs - xM_size) = Fn(i) *
+                contrib(i0, (i + fct_offs + xM_yN_size / 2) % xM_yN_size);
+        }
+
+    }
 }
 
 void sdp_swiftly_finish_subgrid_inplace(
@@ -294,10 +323,11 @@ void sdp_swiftly_finish_subgrid_inplace(
 
     // Parameter checks
     const int64_t xM_size = swiftly->xM_size;
-    sdp_MemViewCpu<std::complex<double>, 1> sg;
+    sdp_MemViewCpu<std::complex<double>, 2> sg;
     sdp_mem_check_and_view(subgrid_inout, &sg, status);
-    sdp_mem_check_shape(subgrid_inout, 0, xM_size, status);
+    sdp_mem_check_shape(subgrid_inout, 1, xM_size, status);
     if (*status) return;
+    const int64_t bc0_size = sg.shape[0];
 
     // Perform shift for input and output. We use a phase ramp to do
     // all of this in-place - not sure whether that's truly the most
@@ -309,16 +339,27 @@ void sdp_swiftly_finish_subgrid_inplace(
     std::complex<double> step2(cos(phase_step2), sin(phase_step2));
     int i;
     for (i = 0; i < xM_size / 2; i++, phasor *= step) {
-        std::complex<double> tmp = sg(i);
-        sg(i) = phasor * sg(i + xM_size / 2);
-        sg(i + xM_size / 2) = phasor * step2 * tmp;
+
+        // Broadcast along first axis
+        int64_t i0;
+        for (i0 = 0; i0 < bc0_size; i0++) {
+            std::complex<double> tmp = sg(i0, i);
+            sg(i0, i) = phasor * sg(i0, i + xM_size / 2);
+            sg(i0, i + xM_size / 2) = phasor * step2 * tmp;
+        }
     }
 
     // Perform FFT
-    const pocketfft::shape_t shape = { static_cast<size_t>(xM_size) };
+    const pocketfft::shape_t shape = {
+        static_cast<size_t>(bc0_size),
+        static_cast<size_t>(xM_size)
+    };
     const ptrdiff_t cpx_size = sizeof(std::complex<double>);
-    const pocketfft::stride_t stride = { sg.stride[0] * cpx_size };
-    pocketfft::c2c(shape, stride, stride, { 0 }, pocketfft::BACKWARD,
+    const pocketfft::stride_t stride = {
+        sg.stride[0] * cpx_size,
+        sg.stride[1] * cpx_size
+    };
+    pocketfft::c2c(shape, stride, stride, { 1 }, pocketfft::BACKWARD,
                    sg.ptr, sg.ptr, 1. / xM_size);
 
 }
