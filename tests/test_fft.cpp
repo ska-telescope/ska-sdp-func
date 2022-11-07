@@ -17,6 +17,7 @@
 
 using std::complex;
 
+
 static void run_and_check(
         const char* test_name,
         bool expect_pass,
@@ -37,9 +38,11 @@ static void run_and_check(
         data_shape[i] = num_points;
     }
     sdp_Mem* input_cpu = sdp_mem_create(
-            input_type, SDP_MEM_CPU, num_dims, data_shape, status);
+            input_type, SDP_MEM_CPU, num_dims, data_shape, status
+    );
     sdp_Mem* output = sdp_mem_create(
-            output_type, output_location, num_dims, data_shape, status);
+            output_type, output_location, num_dims, data_shape, status
+    );
     free(data_shape);
     sdp_mem_clear_contents(output, status);
     sdp_mem_set_read_only(output, read_only_output);
@@ -101,6 +104,7 @@ static void run_and_check(
     sdp_mem_ref_dec(output_cpu);
 }
 
+
 int main()
 {
 #ifdef SDP_HAVE_CUDA
@@ -109,14 +113,16 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU, double precision", true, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU, single precision", true, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 
@@ -125,50 +131,52 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Read-only output", false, true,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Inconsistent data types", false, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Inconsistent locations", false, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_GPU, &status);
+                SDP_MEM_CPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Wrong data type", false, false,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif
-    
+
     // Happy paths.
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, float precision", true, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, double precision", true, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     return 0;
 }
-
-
-
-

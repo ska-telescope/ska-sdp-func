@@ -25,7 +25,8 @@ void sdp_vector_add(
         const sdp_Mem* input_a,
         const sdp_Mem* input_b,
         sdp_Mem* output,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 #ifdef __cplusplus
 }

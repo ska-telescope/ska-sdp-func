@@ -55,7 +55,8 @@ void sdp_dft_point_v00(
         const sdp_Mem* source_fluxes,
         const sdp_Mem* uvw_lambda,
         sdp_Mem* vis,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Basic prediction of visibilities from point sources using a DFT.
@@ -92,7 +93,8 @@ void sdp_dft_point_v01(
         const double channel_start_hz,
         const double channel_step_hz,
         sdp_Mem* vis,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /** @} */ /* End group dft_func. */
 

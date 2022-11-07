@@ -46,7 +46,8 @@ sdp_Fft* sdp_fft_create(
         const sdp_Mem* output,
         int32_t num_dims_fft,
         int32_t is_forward,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Executes FFT using plan and supplied data.
@@ -56,8 +57,12 @@ sdp_Fft* sdp_fft_create(
  * @param output Output data.
  * @param status Error status.
  */
-void sdp_fft_exec(sdp_Fft* fft, sdp_Mem* input, sdp_Mem* output,
-        sdp_Error* status);
+void sdp_fft_exec(
+        sdp_Fft* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        sdp_Error* status
+);
 
 /**
  * @brief Destroys the FFT plan.

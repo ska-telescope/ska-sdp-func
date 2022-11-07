@@ -9,7 +9,11 @@
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
-#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
+    (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+
+using std::complex;
+
 
 template<typename FP>
 static void rotate_uvw(
@@ -31,6 +35,7 @@ static void rotate_uvw(
     }
 }
 
+
 template<typename COORD_TYPE, typename VIS_TYPE>
 static void rotate_vis(
         const int64_t num_times,
@@ -43,8 +48,8 @@ static void rotate_vis(
         const double delta_m,
         const double delta_n,
         const COORD_TYPE* uvw,
-        const std::complex<VIS_TYPE>* vis_in,
-        std::complex<VIS_TYPE>* vis_out
+        const complex<VIS_TYPE>* vis_in,
+        complex<VIS_TYPE>* vis_out
 )
 {
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
@@ -53,29 +58,31 @@ static void rotate_vis(
         {
             const int64_t i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             const COORD_TYPE uu = uvw[i_uvw + 0];
             const COORD_TYPE vv = uvw[i_uvw + 1];
             const COORD_TYPE ww = uvw[i_uvw + 2];
             for (int64_t i_channel = 0; i_channel < num_channels; ++i_channel)
             {
-                const double inv_wavelength = (
-                        channel_start_hz + i_channel * channel_step_hz) / C_0;
-                const double phase = 2.0 * M_PI * inv_wavelength * (
-                        uu * delta_l + vv * delta_m + ww * delta_n);
-                const double cos_phase = cos(phase), sin_phase = sin(phase);
-                const std::complex<VIS_TYPE> phasor(cos_phase, sin_phase);
+                const double inv_wavelength =
+                        (channel_start_hz + i_channel * channel_step_hz) / C_0;
+                const double phase = 2.0 * M_PI * inv_wavelength *
+                        (uu * delta_l + vv * delta_m + ww * delta_n);
+                const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
                 for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
                 {
                     const int64_t i_vis = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     vis_out[i_vis] = vis_in[i_vis] * phasor;
                 }
             }
         }
     }
 }
+
 
 void sdp_phase_rotate_uvw(
         const sdp_SkyCoord* phase_centre_orig,
@@ -145,14 +152,16 @@ void sdp_phase_rotate_uvw(
         {
             rotate_uvw<double>(num_total, mat,
                     (const double*)sdp_mem_data_const(uvw_in),
-                    (double*)sdp_mem_data(uvw_out));
+                    (double*)sdp_mem_data(uvw_out)
+            );
         }
         else if (sdp_mem_type(uvw_in) == SDP_MEM_FLOAT &&
                 sdp_mem_type(uvw_out) == SDP_MEM_FLOAT)
         {
             rotate_uvw<float>(num_total, mat,
                     (const float*)sdp_mem_data_const(uvw_in),
-                    (float*)sdp_mem_data(uvw_out));
+                    (float*)sdp_mem_data(uvw_out)
+            );
         }
         else
         {
@@ -183,23 +192,25 @@ void sdp_phase_rotate_uvw(
             SDP_LOG_ERROR("Unsupported data type(s)");
         }
         const void* args[] = {
-                (const void*)&num_total,
-                (const void*)&mat[0],
-                (const void*)&mat[1],
-                (const void*)&mat[2],
-                (const void*)&mat[3],
-                (const void*)&mat[4],
-                (const void*)&mat[5],
-                (const void*)&mat[6],
-                (const void*)&mat[7],
-                (const void*)&mat[8],
-                sdp_mem_gpu_buffer_const(uvw_in, status),
-                sdp_mem_gpu_buffer(uvw_out, status)
+            (const void*)&num_total,
+            (const void*)&mat[0],
+            (const void*)&mat[1],
+            (const void*)&mat[2],
+            (const void*)&mat[3],
+            (const void*)&mat[4],
+            (const void*)&mat[5],
+            (const void*)&mat[6],
+            (const void*)&mat[7],
+            (const void*)&mat[8],
+            sdp_mem_gpu_buffer_const(uvw_in, status),
+            sdp_mem_gpu_buffer(uvw_out, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }
+
 
 void sdp_phase_rotate_vis(
         const sdp_SkyCoord* phase_centre_orig,
@@ -270,7 +281,7 @@ void sdp_phase_rotate_vis(
     const double cos_dec0 = cos(orig_dec_rad);
     const double sin_dec  = sin(new_dec_rad);
     const double cos_dec  = cos(new_dec_rad);
-    const double l1 = cos_dec  * -sin_d_a;
+    const double l1 = cos_dec * -sin_d_a;
     const double m1 = cos_dec0 * sin_dec - sin_dec0 * cos_dec * cos_d_a;
     const double n1 = sin_dec0 * sin_dec + cos_dec0 * cos_dec * cos_d_a;
     const double delta_l = 0.0 - l1;
@@ -295,8 +306,8 @@ void sdp_phase_rotate_vis(
                     delta_m,
                     delta_n,
                     (const double*)sdp_mem_data_const(uvw),
-                    (const std::complex<double>*)sdp_mem_data_const(vis_in),
-                    (std::complex<double>*)sdp_mem_data(vis_out)
+                    (const complex<double>*)sdp_mem_data_const(vis_in),
+                    (complex<double>*)sdp_mem_data(vis_out)
             );
         }
         else if (sdp_mem_type(uvw) == SDP_MEM_FLOAT &&
@@ -314,8 +325,8 @@ void sdp_phase_rotate_vis(
                     delta_m,
                     delta_n,
                     (const float*)sdp_mem_data_const(uvw),
-                    (const std::complex<float>*)sdp_mem_data_const(vis_in),
-                    (std::complex<float>*)sdp_mem_data(vis_out)
+                    (const complex<float>*)sdp_mem_data_const(vis_in),
+                    (complex<float>*)sdp_mem_data(vis_out)
             );
         }
         else
@@ -351,20 +362,21 @@ void sdp_phase_rotate_vis(
             SDP_LOG_ERROR("Unsupported data type(s)");
         }
         const void* args[] = {
-                (const void*)&num_times,
-                (const void*)&num_baselines,
-                (const void*)&num_channels,
-                (const void*)&num_pols,
-                (const void*)&channel_start_hz,
-                (const void*)&channel_step_hz,
-                (const void*)&delta_l,
-                (const void*)&delta_m,
-                (const void*)&delta_n,
-                sdp_mem_gpu_buffer_const(uvw, status),
-                sdp_mem_gpu_buffer_const(vis_in, status),
-                sdp_mem_gpu_buffer(vis_out, status)
+            (const void*)&num_times,
+            (const void*)&num_baselines,
+            (const void*)&num_channels,
+            (const void*)&num_pols,
+            (const void*)&channel_start_hz,
+            (const void*)&channel_step_hz,
+            (const void*)&delta_l,
+            (const void*)&delta_m,
+            (const void*)&delta_n,
+            sdp_mem_gpu_buffer_const(uvw, status),
+            sdp_mem_gpu_buffer_const(vis_in, status),
+            sdp_mem_gpu_buffer(vis_out, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }

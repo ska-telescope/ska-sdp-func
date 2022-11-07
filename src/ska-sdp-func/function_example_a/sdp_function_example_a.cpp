@@ -12,6 +12,7 @@ struct sdp_FunctionExampleA
     float* workarea;
 };
 
+
 sdp_FunctionExampleA* sdp_function_example_a_create_plan(
         int a,
         int b,
@@ -24,11 +25,13 @@ sdp_FunctionExampleA* sdp_function_example_a_create_plan(
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         SDP_LOG_ERROR("Error creating sdp_FunctionExampleA "
-                "(parameter 'a' cannot be 10)");
+                "(parameter 'a' cannot be 10)"
+        );
         return NULL;
     }
     sdp_FunctionExampleA* plan = (sdp_FunctionExampleA*) calloc(
-            1, sizeof(sdp_FunctionExampleA));
+            1, sizeof(sdp_FunctionExampleA)
+    );
     plan->a = a;
     plan->b = b;
     plan->c = c;
@@ -39,9 +42,9 @@ sdp_FunctionExampleA* sdp_function_example_a_create_plan(
 
 
 void sdp_function_example_a_exec(
-    sdp_FunctionExampleA* plan,
-    sdp_Mem *output,
-    sdp_Error* status
+        sdp_FunctionExampleA* plan,
+        sdp_Mem* output,
+        sdp_Error* status
 )
 {
     if (*status || !plan) return;
@@ -72,7 +75,8 @@ void sdp_function_example_a_exec(
     }
 
     SDP_LOG_INFO("Running processing function A: %d, %d, %.3f",
-            plan->a, plan->b, plan->c);
+            plan->a, plan->b, plan->c
+    );
 
     float* output_pointer = (float*) sdp_mem_data(output);
     for (int f = 0; f < num_elements; f++)
@@ -86,6 +90,7 @@ void sdp_function_example_a_exec(
         output_pointer[f] = ftemp;
     }
 }
+
 
 void sdp_function_example_a_free_plan(sdp_FunctionExampleA* plan)
 {

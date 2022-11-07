@@ -14,6 +14,9 @@ __pycache__/
 /docs/doxygen/
 /docs/build/
 
+# Backup files
+*~
+
 # Test data
 *.bin
 tests/test_data/

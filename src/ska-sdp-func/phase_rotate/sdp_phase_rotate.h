@@ -43,7 +43,8 @@ void sdp_phase_rotate_uvw(
         const sdp_SkyCoord* phase_centre_new,
         const sdp_Mem* uvw_in,
         sdp_Mem* uvw_out,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Rotate visibilities to a new phase centre.
@@ -79,7 +80,8 @@ void sdp_phase_rotate_vis(
         const sdp_Mem* uvw,
         const sdp_Mem* vis_in,
         sdp_Mem* vis_out,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /** @} */ /* End group pha_rot_func. */
 

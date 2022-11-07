@@ -13,9 +13,16 @@
 #define MAX_NEWTON_RAPHSON_ITERATIONS 100
 #define QUADRATURE_SUPPORT_BOUND 32
 
+
 template<typename T>
-void get_w_range(const int num_rows, const T* uvw, const int num_chan, const T* freq_hz,
-        double& min_abs_w, double& max_abs_w)
+void get_w_range(
+        const int num_rows,
+        const T* uvw,
+        const int num_chan,
+        const T* freq_hz,
+        double& min_abs_w,
+        double& max_abs_w
+)
 {
     for (int i = 0; i < num_rows; ++i)
     {
@@ -24,27 +31,40 @@ void get_w_range(const int num_rows, const T* uvw, const int num_chan, const T* 
         if (abs_w > max_abs_w) max_abs_w = abs_w;
     }
 
-    double fscaleMin = freq_hz[0         ]/299792458.0;
-    double fscaleMax = freq_hz[num_chan-1]/299792458.0;
-    
+    double fscaleMin = freq_hz[0           ] / 299792458.0;
+    double fscaleMax = freq_hz[num_chan - 1] / 299792458.0;
+
     min_abs_w *= fscaleMin;
-    max_abs_w *= fscaleMax; 
+    max_abs_w *= fscaleMax;
 }
 
 void sdp_generate_gauss_legendre_conv_kernel(
-    int image_size,
-    int grid_size,
-    int support,
-    double beta,
-    double* quadrature_kernel,
-    double* quadrature_nodes,
-    double* quadrature_weights,
-    double* conv_corr_kernel
+        int image_size,
+        int grid_size,
+        int support,
+        double beta,
+        double* quadrature_kernel,
+        double* quadrature_nodes,
+        double* quadrature_weights,
+        double* conv_corr_kernel
 );
 
-void sdp_calculate_params_from_epsilon(double epsilon, int image_size, int vis_precision, 
-                                       int &grid_size, int &support, double &beta, sdp_Error* status);
-                                
-void sdp_calculate_support_and_beta(double upsampling, double epsilon, int &support, double &beta, int &status);
+void sdp_calculate_params_from_epsilon(
+        double epsilon,
+        int image_size,
+        int vis_precision,
+        int &grid_size,
+        int &support,
+        double &beta,
+        sdp_Error* status
+);
+
+void sdp_calculate_support_and_beta(
+        double upsampling,
+        double epsilon,
+        int &support,
+        double &beta,
+        int &status
+);
 
 #endif /* include guard */

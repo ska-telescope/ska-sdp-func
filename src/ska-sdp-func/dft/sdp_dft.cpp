@@ -9,7 +9,11 @@
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
-#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
+    (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+
+using std::complex;
+
 
 template<
         typename DIR_TYPE,
@@ -23,10 +27,10 @@ static void dft_point_v00(
         const int num_channels,
         const int num_baselines,
         const int num_times,
-        const DIR_TYPE *const __restrict__ source_directions,
-        const std::complex<FLUX_TYPE> *const __restrict__ source_fluxes,
-        const UVW_TYPE *const __restrict__ uvw_lambda,
-        std::complex<VIS_TYPE> *__restrict__ vis
+        const DIR_TYPE* const __restrict__ source_directions,
+        const complex<FLUX_TYPE>* const __restrict__ source_fluxes,
+        const UVW_TYPE* const __restrict__ uvw_lambda,
+        complex<VIS_TYPE>* __restrict__ vis
 )
 {
     for (int i_time = 0; i_time < num_times; ++i_time)
@@ -37,13 +41,14 @@ static void dft_point_v00(
             for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
             {
                 // Local visibility. Allow up to 4 polarisations.
-                std::complex<VIS_TYPE> vis_local[4];
+                complex<VIS_TYPE> vis_local[4];
                 vis_local[0] = vis_local[1] = vis_local[2] = vis_local[3] = 0;
 
                 // Load uvw-coordinates.
                 const unsigned int i_uvw = INDEX_4D(
                         num_times, num_baselines, num_channels, 3,
-                        i_time, i_baseline, i_channel, 0);
+                        i_time, i_baseline, i_channel, 0
+                );
                 const UVW_TYPE uu = uvw_lambda[i_uvw];
                 const UVW_TYPE vv = uvw_lambda[i_uvw + 1];
                 const UVW_TYPE ww = uvw_lambda[i_uvw + 2];
@@ -56,20 +61,21 @@ static void dft_point_v00(
                     const DIR_TYPE l = source_directions[i_dir];
                     const DIR_TYPE m = source_directions[i_dir + 1];
                     const DIR_TYPE n = source_directions[i_dir + 2];
-                    const double phase = -2.0 * M_PI * (
-                            l * uu + m * vv + n * ww);
+                    const double phase = -2.0 * M_PI *
+                            (l * uu + m * vv + n * ww);
                     const double cos_phase = cos(phase), sin_phase = sin(phase);
-                    const std::complex<VIS_TYPE> phasor(cos_phase, sin_phase);
+                    const complex<VIS_TYPE> phasor(cos_phase, sin_phase);
 
                     // Multiply by flux in each polarisation and accumulate.
                     const unsigned int i_pol_start = INDEX_3D(
                             num_components, num_channels, num_pols,
-                            i_component, i_channel, 0);
+                            i_component, i_channel, 0
+                    );
                     for (int i_pol = 0; i_pol < num_pols; ++i_pol)
                     {
-                        const std::complex<FLUX_TYPE> flux =
+                        const complex<FLUX_TYPE> flux =
                                 source_fluxes[i_pol_start + i_pol];
-                        const std::complex<VIS_TYPE> flux_cast(
+                        const complex<VIS_TYPE> flux_cast(
                                 real(flux), imag(flux));
                         vis_local[i_pol] += phasor * flux_cast;
                     }
@@ -80,7 +86,8 @@ static void dft_point_v00(
                 {
                     const unsigned int i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     vis[i_out] = vis_local[i_pol];
                 }
             }
@@ -149,7 +156,8 @@ static void check_params_v00(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The source_directions array must have shape "
-                "[num_components, 3] (expected [%d, 3])", num_components);
+                "[num_components, 3] (expected [%d, 3])", num_components
+        );
         return;
     }
     if (sdp_mem_shape_dim(source_fluxes, 0) != num_components ||
@@ -160,7 +168,8 @@ static void check_params_v00(
         SDP_LOG_ERROR("The source_fluxes array must have shape "
                 "[num_components, num_channels, num_pols] "
                 "(expected [%d, %d, %d])",
-                num_components, num_channels, num_pols);
+                num_components, num_channels, num_pols
+        );
         return;
     }
     if (sdp_mem_shape_dim(uvw_lambda, 0) != num_times ||
@@ -172,7 +181,8 @@ static void check_params_v00(
         SDP_LOG_ERROR("The uvw_lamda array must have shape "
                 "[num_times, num_baselines, num_channels, 3] "
                 "(expected [%d, %d, %d, 3])",
-                num_times, num_baselines, num_channels);
+                num_times, num_baselines, num_channels
+        );
         return;
     }
 }
@@ -201,15 +211,15 @@ void sdp_dft_point_v00(
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
         {
             dft_point_v00(
-                num_components,
-                num_pols,
-                num_channels,
-                num_baselines,
-                num_times,
-                (const double*)sdp_mem_data_const(source_directions),
-                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
-                (const double*)sdp_mem_data_const(uvw_lambda),
-                (std::complex<double>*)sdp_mem_data(vis)
+                    num_components,
+                    num_pols,
+                    num_channels,
+                    num_baselines,
+                    num_times,
+                    (const double*)sdp_mem_data_const(source_directions),
+                    (const complex<double>*)sdp_mem_data_const(source_fluxes),
+                    (const double*)sdp_mem_data_const(uvw_lambda),
+                    (complex<double>*)sdp_mem_data(vis)
             );
         }
         else if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
@@ -218,15 +228,15 @@ void sdp_dft_point_v00(
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
         {
             dft_point_v00(
-                num_components,
-                num_pols,
-                num_channels,
-                num_baselines,
-                num_times,
-                (const double*)sdp_mem_data_const(source_directions),
-                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
-                (const double*)sdp_mem_data_const(uvw_lambda),
-                (std::complex<float>*)sdp_mem_data(vis)
+                    num_components,
+                    num_pols,
+                    num_channels,
+                    num_baselines,
+                    num_times,
+                    (const double*)sdp_mem_data_const(source_directions),
+                    (const complex<double>*)sdp_mem_data_const(source_fluxes),
+                    (const double*)sdp_mem_data_const(uvw_lambda),
+                    (complex<float>*)sdp_mem_data(vis)
             );
         }
         else
@@ -264,18 +274,19 @@ void sdp_dft_point_v00(
             SDP_LOG_ERROR("Unsupported data type(s)");
         }
         const void* args[] = {
-                &num_components,
-                &num_pols,
-                &num_channels,
-                &num_baselines,
-                &num_times,
-                sdp_mem_gpu_buffer_const(source_directions, status),
-                sdp_mem_gpu_buffer_const(source_fluxes, status),
-                sdp_mem_gpu_buffer_const(uvw_lambda, status),
-                sdp_mem_gpu_buffer(vis, status)
+            &num_components,
+            &num_pols,
+            &num_channels,
+            &num_baselines,
+            &num_times,
+            sdp_mem_gpu_buffer_const(source_directions, status),
+            sdp_mem_gpu_buffer_const(source_fluxes, status),
+            sdp_mem_gpu_buffer_const(uvw_lambda, status),
+            sdp_mem_gpu_buffer(vis, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }
 
@@ -292,12 +303,12 @@ static void dft_point_v01(
         const int num_channels,
         const int num_baselines,
         const int num_times,
-        const DIR_TYPE *const __restrict__ source_directions,
-        const std::complex<FLUX_TYPE> *const __restrict__ source_fluxes,
-        const UVW_TYPE *const __restrict__ uvw_metres,
+        const DIR_TYPE* const __restrict__ source_directions,
+        const complex<FLUX_TYPE>* const __restrict__ source_fluxes,
+        const UVW_TYPE* const __restrict__ uvw_metres,
         const double channel_start_hz,
         const double channel_step_hz,
-        std::complex<VIS_TYPE> *__restrict__ vis
+        complex<VIS_TYPE>* __restrict__ vis
 )
 {
     for (int i_time = 0; i_time < num_times; ++i_time)
@@ -308,7 +319,8 @@ static void dft_point_v01(
             // Load uvw-coordinates.
             const unsigned int i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
-                    i_time, i_baseline, 0);
+                    i_time, i_baseline, 0
+            );
             const UVW_TYPE uu = uvw_metres[i_uvw];
             const UVW_TYPE vv = uvw_metres[i_uvw + 1];
             const UVW_TYPE ww = uvw_metres[i_uvw + 2];
@@ -316,12 +328,12 @@ static void dft_point_v01(
             for (int i_channel = 0; i_channel < num_channels; ++i_channel)
             {
                 // Local visibility. Allow up to 4 polarisations.
-                std::complex<VIS_TYPE> vis_local[4];
+                complex<VIS_TYPE> vis_local[4];
                 vis_local[0] = vis_local[1] = vis_local[2] = vis_local[3] = 0;
 
                 // Get the inverse wavelength.
-                const double inv_wavelength = (
-                        channel_start_hz + i_channel * channel_step_hz) / C_0;
+                const double inv_wavelength =
+                        (channel_start_hz + i_channel * channel_step_hz) / C_0;
 
                 // Loop over components and calculate phase for each.
                 for (int i_component = 0;
@@ -331,20 +343,20 @@ static void dft_point_v01(
                     const DIR_TYPE l = source_directions[i_dir];
                     const DIR_TYPE m = source_directions[i_dir + 1];
                     const DIR_TYPE n = source_directions[i_dir + 2];
-                    const double phase = -2.0 * M_PI * inv_wavelength * (
-                            l * uu + m * vv + n * ww);
-                    const double cos_phase = cos(phase), sin_phase = sin(phase);
-                    const std::complex<VIS_TYPE> phasor(cos_phase, sin_phase);
+                    const double phase = -2.0 * M_PI * inv_wavelength *
+                            (l * uu + m * vv + n * ww);
+                    const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
 
                     // Multiply by flux in each polarisation and accumulate.
                     const unsigned int i_pol_start = INDEX_3D(
                             num_components, num_channels, num_pols,
-                            i_component, i_channel, 0);
+                            i_component, i_channel, 0
+                    );
                     for (int i_pol = 0; i_pol < num_pols; ++i_pol)
                     {
-                        const std::complex<FLUX_TYPE> flux =
+                        const complex<FLUX_TYPE> flux =
                                 source_fluxes[i_pol_start + i_pol];
-                        const std::complex<VIS_TYPE> flux_cast(
+                        const complex<VIS_TYPE> flux_cast(
                                 real(flux), imag(flux));
                         vis_local[i_pol] += phasor * flux_cast;
                     }
@@ -355,7 +367,8 @@ static void dft_point_v01(
                 {
                     const unsigned int i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
-                            i_time, i_baseline, i_channel, i_pol);
+                            i_time, i_baseline, i_channel, i_pol
+                    );
                     vis[i_out] = vis_local[i_pol];
                 }
             }
@@ -424,7 +437,8 @@ static void check_params_v01(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The source_directions array must have shape "
-                "[num_components, 3] (expected [%d, 3])", num_components);
+                "[num_components, 3] (expected [%d, 3])", num_components
+        );
         return;
     }
     if (sdp_mem_shape_dim(source_fluxes, 0) != num_components ||
@@ -435,7 +449,8 @@ static void check_params_v01(
         SDP_LOG_ERROR("The source_fluxes array must have shape "
                 "[num_components, num_channels, num_pols] "
                 "(expected [%d, %d, %d])",
-                num_components, num_channels, num_pols);
+                num_components, num_channels, num_pols
+        );
         return;
     }
     if (sdp_mem_shape_dim(uvw, 0) != num_times ||
@@ -446,7 +461,8 @@ static void check_params_v01(
         SDP_LOG_ERROR("The uvw array must have shape "
                 "[num_times, num_baselines, 3] "
                 "(expected [%d, %d, 3])",
-                num_times, num_baselines);
+                num_times, num_baselines
+        );
         return;
     }
 }
@@ -477,17 +493,17 @@ void sdp_dft_point_v01(
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
         {
             dft_point_v01(
-                num_components,
-                num_pols,
-                num_channels,
-                num_baselines,
-                num_times,
-                (const double*)sdp_mem_data_const(source_directions),
-                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
-                (const double*)sdp_mem_data_const(uvw),
-                channel_start_hz,
-                channel_step_hz,
-                (std::complex<double>*)sdp_mem_data(vis)
+                    num_components,
+                    num_pols,
+                    num_channels,
+                    num_baselines,
+                    num_times,
+                    (const double*)sdp_mem_data_const(source_directions),
+                    (const complex<double>*)sdp_mem_data_const(source_fluxes),
+                    (const double*)sdp_mem_data_const(uvw),
+                    channel_start_hz,
+                    channel_step_hz,
+                    (complex<double>*)sdp_mem_data(vis)
             );
         }
         else if (sdp_mem_type(source_directions) == SDP_MEM_DOUBLE &&
@@ -496,17 +512,17 @@ void sdp_dft_point_v01(
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
         {
             dft_point_v01(
-                num_components,
-                num_pols,
-                num_channels,
-                num_baselines,
-                num_times,
-                (const double*)sdp_mem_data_const(source_directions),
-                (const std::complex<double>*)sdp_mem_data_const(source_fluxes),
-                (const double*)sdp_mem_data_const(uvw),
-                channel_start_hz,
-                channel_step_hz,
-                (std::complex<float>*)sdp_mem_data(vis)
+                    num_components,
+                    num_pols,
+                    num_channels,
+                    num_baselines,
+                    num_times,
+                    (const double*)sdp_mem_data_const(source_directions),
+                    (const complex<double>*)sdp_mem_data_const(source_fluxes),
+                    (const double*)sdp_mem_data_const(uvw),
+                    channel_start_hz,
+                    channel_step_hz,
+                    (complex<float>*)sdp_mem_data(vis)
             );
         }
         else
@@ -544,19 +560,20 @@ void sdp_dft_point_v01(
             SDP_LOG_ERROR("Unsupported data type(s)");
         }
         const void* args[] = {
-                (const void*)&num_components,
-                (const void*)&num_pols,
-                (const void*)&num_channels,
-                (const void*)&num_baselines,
-                (const void*)&num_times,
-                sdp_mem_gpu_buffer_const(source_directions, status),
-                sdp_mem_gpu_buffer_const(source_fluxes, status),
-                sdp_mem_gpu_buffer_const(uvw, status),
-                (const void*)&channel_start_hz,
-                (const void*)&channel_step_hz,
-                sdp_mem_gpu_buffer(vis, status)
+            (const void*)&num_components,
+            (const void*)&num_pols,
+            (const void*)&num_channels,
+            (const void*)&num_baselines,
+            (const void*)&num_times,
+            sdp_mem_gpu_buffer_const(source_directions, status),
+            sdp_mem_gpu_buffer_const(source_fluxes, status),
+            sdp_mem_gpu_buffer_const(uvw, status),
+            (const void*)&channel_start_hz,
+            (const void*)&channel_step_hz,
+            sdp_mem_gpu_buffer(vis, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }

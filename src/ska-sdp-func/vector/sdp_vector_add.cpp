@@ -4,9 +4,13 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
+
 template<typename T>
 static void sdp_vector_add(
-        int64_t num_elements, const T* input_a, const T* input_b, T* output
+        int64_t num_elements,
+        const T* input_a,
+        const T* input_b,
+        T* output
 )
 {
     for (int64_t i = 0; i < num_elements; ++i)
@@ -15,11 +19,13 @@ static void sdp_vector_add(
     }
 }
 
+
 void sdp_vector_add(
         const sdp_Mem* input_a,
         const sdp_Mem* input_b,
         sdp_Mem* output,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     const sdp_MemType type = sdp_mem_type(output);
@@ -59,7 +65,8 @@ void sdp_vector_add(
                     num_elements,
                     (const double*)sdp_mem_data_const(input_a),
                     (const double*)sdp_mem_data_const(input_b),
-                    (double*)sdp_mem_data((output)));
+                    (double*)sdp_mem_data((output))
+            );
         }
         else if (type == SDP_MEM_FLOAT)
         {
@@ -67,7 +74,8 @@ void sdp_vector_add(
                     num_elements,
                     (const float*)sdp_mem_data_const(input_a),
                     (const float*)sdp_mem_data_const(input_b),
-                    (float*)sdp_mem_data((output)));
+                    (float*)sdp_mem_data((output))
+            );
         }
         else
         {
@@ -79,7 +87,7 @@ void sdp_vector_add(
     {
         const uint64_t num_threads[] = {256, 1, 1};
         const uint64_t num_blocks[] = {
-                (num_elements + num_threads[0] - 1) / num_threads[0], 1, 1
+            (num_elements + num_threads[0] - 1) / num_threads[0], 1, 1
         };
         const char* kernel_name = 0;
         if (type == SDP_MEM_DOUBLE)
@@ -96,12 +104,13 @@ void sdp_vector_add(
             SDP_LOG_ERROR("Unsupported data type");
         }
         const void* args[] = {
-                &num_elements,
-                sdp_mem_gpu_buffer_const(input_a, status),
-                sdp_mem_gpu_buffer_const(input_b, status),
-                sdp_mem_gpu_buffer(output, status)
+            &num_elements,
+            sdp_mem_gpu_buffer_const(input_a, status),
+            sdp_mem_gpu_buffer_const(input_b, status),
+            sdp_mem_gpu_buffer(output, status)
         };
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status);
+                num_blocks, num_threads, 0, 0, args, status
+        );
     }
 }

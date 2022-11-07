@@ -14,13 +14,15 @@
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
+
 template<typename T>
 static void check_results(
         const char* test_name,
         const sdp_Mem* a,
         const sdp_Mem* b,
         const sdp_Mem* out,
-        const sdp_Error* status)
+        const sdp_Error* status
+)
 {
     if (*status)
     {
@@ -39,6 +41,7 @@ static void check_results(
     SDP_LOG_INFO("%s: Test passed", test_name);
 }
 
+
 static void run_and_check(
         const char* test_name,
         bool expect_pass,
@@ -54,11 +57,14 @@ static void run_and_check(
 {
     // Generate some test data.
     sdp_Mem* a = sdp_mem_create(
-            input_type, SDP_MEM_CPU, 1, &input_num_elements, status);
+            input_type, SDP_MEM_CPU, 1, &input_num_elements, status
+    );
     sdp_Mem* b = sdp_mem_create(
-            input_type, SDP_MEM_CPU, 1, &input_num_elements, status);
+            input_type, SDP_MEM_CPU, 1, &input_num_elements, status
+    );
     sdp_Mem* out = sdp_mem_create(
-            output_type, output_location, 1, &output_num_elements, status);
+            output_type, output_location, 1, &output_num_elements, status
+    );
     sdp_mem_random_fill(a, status);
     sdp_mem_random_fill(b, status);
     sdp_mem_clear_contents(out, status);
@@ -95,6 +101,7 @@ static void run_and_check(
     sdp_mem_ref_dec(out2);
 }
 
+
 int main()
 {
     // Happy paths.
@@ -102,14 +109,16 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, double precision", true, false,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, single precision", true, false,
                 SDP_MEM_FLOAT, SDP_MEM_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #ifdef SDP_HAVE_CUDA
@@ -117,14 +126,16 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU, double precision", true, false,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, 10, 10, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, 10, 10, &status
+        );
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU, single precision", true, false,
                 SDP_MEM_FLOAT, SDP_MEM_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, 10, 10, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, 10, 10, &status
+        );
         assert(status == SDP_SUCCESS);
     }
 #endif
@@ -134,28 +145,32 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Read-only output", false, true,
                 SDP_MEM_FLOAT, SDP_MEM_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Type mismatch", false, false,
                 SDP_MEM_FLOAT, SDP_MEM_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Dimension mismatch", false, false,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, 100, 10, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, 100, 10, &status
+        );
         assert(status != SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Unsupported data type", false, false,
                 SDP_MEM_CHAR, SDP_MEM_CHAR,
-                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status);
+                SDP_MEM_CPU, SDP_MEM_CPU, 10, 10, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #ifdef SDP_HAVE_CUDA
@@ -163,14 +178,16 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Memory location mismatch", false, false,
                 SDP_MEM_FLOAT, SDP_MEM_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_GPU, 10, 10, &status);
+                SDP_MEM_CPU, SDP_MEM_GPU, 10, 10, &status
+        );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Unsupported data type", false, false,
                 SDP_MEM_CHAR, SDP_MEM_CHAR,
-                SDP_MEM_GPU, SDP_MEM_GPU, 10, 10, &status);
+                SDP_MEM_GPU, SDP_MEM_GPU, 10, 10, &status
+        );
         assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif

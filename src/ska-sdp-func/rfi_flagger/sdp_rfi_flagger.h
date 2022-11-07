@@ -45,7 +45,8 @@ void sdp_sum_threshold_rfi_flagger(
         const sdp_Mem* thresholds,
         sdp_Mem* flags,
         const int64_t max_sequence_length,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /** @} */ /* End group rfi_flag_func. */
 
@@ -54,5 +55,3 @@ void sdp_sum_threshold_rfi_flagger(
 #endif
 
 #endif
-
-

@@ -5,7 +5,9 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
 #define C_0 299792458.0
-#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
+    (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+
 
 template<typename COORD_TYPE3>
 __global__ void rotate_uvw(
@@ -36,6 +38,7 @@ __global__ void rotate_uvw(
 SDP_CUDA_KERNEL(rotate_uvw<double3>)
 SDP_CUDA_KERNEL(rotate_uvw<float3>)
 
+
 template<typename COORD_TYPE3, typename VIS_TYPE2>
 __global__ void rotate_vis(
         const int64_t num_times,
@@ -56,24 +59,25 @@ __global__ void rotate_vis(
     const int64_t i_channel  = blockDim.y * blockIdx.y + threadIdx.y;
     const int64_t i_time     = blockDim.z * blockIdx.z + threadIdx.z;
     if (num_pols > 4 ||
-        i_baseline >= num_baselines ||
-        i_channel >= num_channels ||
-        i_time >= num_times)
+            i_baseline >= num_baselines ||
+            i_channel >= num_channels ||
+            i_time >= num_times)
     {
         return;
     }
     const COORD_TYPE3 uvw = uvw_metres[num_baselines * i_time + i_baseline];
-    const double inv_wavelength = (
-            channel_start_hz + i_channel * channel_step_hz) / C_0;
-    const double phase = 2.0 * M_PI * inv_wavelength * (
-            uvw.x * delta_l + uvw.y * delta_m + uvw.z * delta_n);
+    const double inv_wavelength =
+            (channel_start_hz + i_channel * channel_step_hz) / C_0;
+    const double phase = 2.0 * M_PI * inv_wavelength *
+            (uvw.x * delta_l + uvw.y * delta_m + uvw.z * delta_n);
     double2 phasor;
     sincos(phase, &phasor.y, &phasor.x);
     for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
     {
         const int64_t i_vis = INDEX_4D(
                 num_times, num_baselines, num_channels, num_pols,
-                i_time, i_baseline, i_channel, i_pol);
+                i_time, i_baseline, i_channel, i_pol
+        );
         const VIS_TYPE2 vis = vis_in[i_vis];
         vis_out[i_vis].x = phasor.x * vis.x - phasor.y * vis.y;
         vis_out[i_vis].y = phasor.x * vis.y + phasor.y * vis.x;

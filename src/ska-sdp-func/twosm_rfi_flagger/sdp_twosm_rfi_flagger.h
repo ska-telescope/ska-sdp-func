@@ -42,7 +42,8 @@ void sdp_twosm_algo_flagger(
         const sdp_Mem* thresholds,
         const sdp_Mem* antennas,
         sdp_Mem* flags,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /** @} */ /* End group twosm_rfi_flag_func. */
 

@@ -38,7 +38,6 @@ typedef struct sdp_GridderUvwEsFft sdp_GridderUvwEsFft;
  * @param do_w_stacking [in] Set true for 3D (de)gridding, false for 2D (de)gridding (treats all w-coords as zero, a faster, less-accurate option).
  * @param status [in] Error status.
  * @return sdp_GridderUvwEsFft*  Handle to Gridder's plan.
-
  */
 sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         const sdp_Mem* uvw,
@@ -46,23 +45,26 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         const sdp_Mem* vis,
         const sdp_Mem* weight,
         const sdp_Mem* dirty_image,
-        const double pixel_size_x_rad, 
-        const double pixel_size_y_rad, 
+        const double pixel_size_x_rad,
+        const double pixel_size_y_rad,
         const double epsilon,
-        const double min_abs_w, 
-        const double max_abs_w, 
+        const double min_abs_w,
+        const double max_abs_w,
         const bool do_w_stacking,
         sdp_Error* status
-    );
+);
 
 /**
- * @brief Generate a dirty image from visibility data.  See \b sdp_gridder_uvw_es_fft_create_plan() for more details on the parameters.
+ * @brief Generate a dirty image from visibility data.
+ *
+ * See \b sdp_gridder_uvw_es_fft_create_plan() for more details
+ * on the parameters.
  *
  * @param plan  Handle to Gridder's plan.
  * @param uvw [in]
  * @param freq_hz [in]
  * @param vis [in]
- * @param weight [in] 
+ * @param weight [in]
  * @param dirty_image [out]
  * @param status Error status.
  */
@@ -72,18 +74,21 @@ void sdp_grid_uvw_es_fft(
         const sdp_Mem* freq_hz,
         const sdp_Mem* vis,
         const sdp_Mem* weight,
-              sdp_Mem *dirty_image,
+        sdp_Mem* dirty_image,
         sdp_Error* status
-    );
+);
 
 /**
- * @brief Generate visibility data from a dirty image.  See \b sdp_gridder_uvw_es_fft_create_plan() for more details on the parameters.
+ * @brief Generate visibility data from a dirty image.
+ *
+ * See \b sdp_gridder_uvw_es_fft_create_plan() for more details
+ * on the parameters.
  *
  * @param plan  Handle to Gridder's plan.
  * @param uvw [in]
  * @param freq_hz [in]
  * @param vis [out]
- * @param weight [in] 
+ * @param weight [in]
  * @param dirty_image [in, out]  \b NB: Even though this is an input, it is modified in place so can't be const.
  * @param status Error status.
  */
@@ -91,11 +96,11 @@ void sdp_ifft_degrid_uvw_es(
         sdp_GridderUvwEsFft* plan,
         const sdp_Mem* uvw,
         const sdp_Mem* freq_hz,
-              sdp_Mem* vis,
+        sdp_Mem* vis,
         const sdp_Mem* weight,
-              sdp_Mem *dirty_image,   // even though this is an input, it is modified in place so can't be constant
+        sdp_Mem* dirty_image,         // even though this is an input, it is modified in place so can't be constant
         sdp_Error* status
-    );
+);
 
 /**
  * @brief Frees memory allocated to Gridder's plan.
