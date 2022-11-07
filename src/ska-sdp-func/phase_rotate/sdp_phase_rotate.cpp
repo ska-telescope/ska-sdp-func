@@ -140,9 +140,9 @@ void sdp_phase_rotate_uvw(
     const double sin_d_d = sin(d_d);
     const double cos_d_d = cos(d_d);
     double mat[9];
-    mat[0] = cos_d_a;           mat[1] = 0.0;     mat[2] = sin_d_a;
-    mat[3] = sin_d_a * sin_d_d; mat[4] = cos_d_d; mat[5] = -cos_d_a * sin_d_d;
-    mat[6] = -sin_d_a * cos_d_d; mat[7] = sin_d_d; mat[8] = cos_d_a * cos_d_d;
+    mat[0] =  cos_d_a;           mat[1] = 0.0;     mat[2] =  sin_d_a;
+    mat[3] =  sin_d_a * sin_d_d; mat[4] = cos_d_d; mat[5] = -cos_d_a * sin_d_d;
+    mat[6] = -sin_d_a * cos_d_d; mat[7] = sin_d_d; mat[8] =  cos_d_a * cos_d_d;
 
     // Switch on location and data types.
     if (sdp_mem_location(uvw_in) == SDP_MEM_CPU)

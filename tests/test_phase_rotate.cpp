@@ -53,9 +53,9 @@ static void check_results_rotate_uvw(
     const double cos_d_d = cos(d_d);
     const double tol = 1e-5;
     double mat[9];
-    mat[0] = cos_d_a;           mat[1] = 0.0;     mat[2] = sin_d_a;
-    mat[3] = sin_d_a * sin_d_d; mat[4] = cos_d_d; mat[5] = -cos_d_a * sin_d_d;
-    mat[6] = -sin_d_a * cos_d_d; mat[7] = sin_d_d; mat[8] = cos_d_a * cos_d_d;
+    mat[0] =  cos_d_a;           mat[1] = 0.0;     mat[2] =  sin_d_a;
+    mat[3] =  sin_d_a * sin_d_d; mat[4] = cos_d_d; mat[5] = -cos_d_a * sin_d_d;
+    mat[6] = -sin_d_a * cos_d_d; mat[7] = sin_d_d; mat[8] =  cos_d_a * cos_d_d;
 
     for (int64_t i_uvw = 0; i_uvw < num; ++i_uvw)
     {
