@@ -215,13 +215,13 @@ void sdp_mem_copy_contents(
     if (*status || !dst || !src || !dst->data || !src->data) return;
     if (src->num_elements == 0 || num_elements == 0) return;
     const int64_t element_size = sdp_mem_type_size(src->type);
-    const int64_t start_dst = element_size * offset_dst;
-    const int64_t start_src = element_size * offset_src;
-    const size_t bytes = element_size * num_elements;
-    const int location_src = src->location;
-    const int location_dst = dst->location;
+    const int64_t start_dst   = element_size * offset_dst;
+    const int64_t start_src   = element_size * offset_src;
+    const size_t bytes        = element_size * num_elements;
+    const int location_src    = src->location;
+    const int location_dst    = dst->location;
     const void* p_src = (const void*)((const char*)(src->data) + start_src);
-    void* p_dst = (void*)((char*)(dst->data) + start_dst);
+    void* p_dst       = (void*)((char*)(dst->data) + start_dst);
 
     if (location_src == SDP_MEM_CPU && location_dst == SDP_MEM_CPU)
     {

@@ -255,9 +255,9 @@ void sdp_twosm_algo_flagger(
     if (*status) return;
 
     const uint64_t num_timesamples = (uint64_t) sdp_mem_shape_dim(vis, 0);
-    const uint64_t num_channels = (uint64_t) sdp_mem_shape_dim(vis, 2);
-    const uint64_t num_pols = (uint64_t) sdp_mem_shape_dim(vis, 3);
-    const uint64_t num_antennas = (uint64_t) sdp_mem_shape_dim(antennas, 0);
+    const uint64_t num_channels    = (uint64_t) sdp_mem_shape_dim(vis, 2);
+    const uint64_t num_pols        = (uint64_t) sdp_mem_shape_dim(vis, 3);
+    const uint64_t num_antennas    = (uint64_t) sdp_mem_shape_dim(antennas, 0);
 
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {

@@ -56,8 +56,8 @@ __global__ void rotate_vis(
 )
 {
     const int64_t i_baseline = blockDim.x * blockIdx.x + threadIdx.x;
-    const int64_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
-    const int64_t i_time = blockDim.z * blockIdx.z + threadIdx.z;
+    const int64_t i_channel  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int64_t i_time     = blockDim.z * blockIdx.z + threadIdx.z;
     if (num_pols > 4 ||
             i_baseline >= num_baselines ||
             i_channel >= num_channels ||

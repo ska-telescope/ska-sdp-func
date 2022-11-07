@@ -30,8 +30,10 @@ double sdp_get_legendre(double x, int n, double* derivative)
     }
     // else n>=2
 
-    // recursively calculate P_n(x) = ((2n-1)/n)xP_{n-1}(x) - ((n-1)/n)P_{n-2}(x)
-    // note this is same as P_n(x) = xP_{n-1}(x) + ((n-1)/n)(xP_{n-1}(x)-P_{n-2}(x))
+    // recursively calculate
+    //     P_n(x) = ((2n-1)/n)xP_{n-1}(x) - ((n-1)/n)P_{n-2}(x)
+    // note this is same as
+    //     P_n(x) = xP_{n-1}(x) + ((n-1)/n)(xP_{n-1}(x)-P_{n-2}(x))
     double p_im2 = 1.0; // P_{i-2}(x)
     double p_im1 = x; // P_{i-1}(x)
     double p_i = 0;
@@ -48,7 +50,8 @@ double sdp_get_legendre(double x, int n, double* derivative)
     // note this is given by P_n'(x) = n/(1-x*x)(P_{n-1}(x)-x*P_n(x))
     if (derivative != NULL && x > -1.0 && x < 1.0)
     {
-        *derivative = (double)n / (1.0 - (x * x)) * (p_im2 - x * p_i); // note p_im2 currently holds P_{n-1}(x)
+        *derivative = (double)n / (1.0 - (x * x)) * (p_im2 - x * p_i);
+        // note p_im2 currently holds P_{n-1}(x)
     }
     return p_i;
 }
@@ -94,10 +97,11 @@ double sdp_calculate_legendre_root(
         next_estimate = estimate - p_n / derivative;
         iterations++;
     }
-    while (fdim(next_estimate,estimate) > accuracy && iterations <
-            MAX_NEWTON_RAPHSON_ITERATIONS);
+    while (fdim(next_estimate,estimate) > accuracy &&
+            iterations < MAX_NEWTON_RAPHSON_ITERATIONS);
 
-    // Gauss-Legendre quadrature weight for x is given by w = 2/((1-x*x)P_n'(x)*P_n'(x))
+    // Gauss-Legendre quadrature weight for x
+    // is given by w = 2/((1-x*x)P_n'(x)*P_n'(x))
     // double p_n = sdp_get_legendre(next_estimate, n, &derivative);
     sdp_get_legendre(next_estimate, n, &derivative);  // AG: avoid lint warning
     *weight = 2.0 / ((1.0 - next_estimate * next_estimate) * derivative *
@@ -126,7 +130,8 @@ void sdp_generate_gauss_legendre_conv_kernel(
         double* conv_corr_kernel
 )
 {
-    // p based on formula in first paragraph under equation 3.10, page 8 of paper:
+    // p based on formula in first paragraph under equation 3.10,
+    // page 8 of paper:
     // A parallel non-uniform fast Fourier transform library
     // based on an "exponential of semicircle" kernel
     // uint32_t p = (uint32_t)ceil(1.5 * support + 2.0);
@@ -156,7 +161,7 @@ void sdp_generate_gauss_legendre_conv_kernel(
     // one more than half the image size
     for (uint32_t l_m = 0; l_m <= (uint32_t)image_size / 2; l_m++)
     {
-        double l_m_norm = ((double)l_m) * (1.0 / grid_size);  // between 0.0 .. 0.5
+        double l_m_norm = ((double)l_m) * (1.0 / grid_size); // between 0 .. 0.5
         double correction = 0.0;
 
         for (uint32_t i = 0; i < p; i++)

@@ -141,10 +141,10 @@ static void check_params_v00(
         SDP_LOG_ERROR("Visibility values must be complex");
         return;
     }
-    const int64_t num_times = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_baselines = sdp_mem_shape_dim(vis, 1);
-    const int64_t num_channels = sdp_mem_shape_dim(vis, 2);
-    const int64_t num_pols = sdp_mem_shape_dim(vis, 3);
+    const int64_t num_times      = sdp_mem_shape_dim(vis, 0);
+    const int64_t num_baselines  = sdp_mem_shape_dim(vis, 1);
+    const int64_t num_channels   = sdp_mem_shape_dim(vis, 2);
+    const int64_t num_pols       = sdp_mem_shape_dim(vis, 3);
     const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
     if (num_pols != 4 && num_pols != 1)
     {
@@ -198,10 +198,10 @@ void sdp_dft_point_v00(
 {
     check_params_v00(source_directions, source_fluxes, uvw_lambda, vis, status);
     if (*status) return;
-    const int num_times = (int)sdp_mem_shape_dim(vis, 0);
-    const int num_baselines = (int)sdp_mem_shape_dim(vis, 1);
-    const int num_channels = (int)sdp_mem_shape_dim(vis, 2);
-    const int num_pols = (int)sdp_mem_shape_dim(vis, 3);
+    const int num_times      = (int)sdp_mem_shape_dim(vis, 0);
+    const int num_baselines  = (int)sdp_mem_shape_dim(vis, 1);
+    const int num_channels   = (int)sdp_mem_shape_dim(vis, 2);
+    const int num_pols       = (int)sdp_mem_shape_dim(vis, 3);
     const int num_components = (int)sdp_mem_shape_dim(source_directions, 0);
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
@@ -422,10 +422,10 @@ static void check_params_v01(
         SDP_LOG_ERROR("Visibility values must be complex");
         return;
     }
-    const int64_t num_times = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_baselines = sdp_mem_shape_dim(vis, 1);
-    const int64_t num_channels = sdp_mem_shape_dim(vis, 2);
-    const int64_t num_pols = sdp_mem_shape_dim(vis, 3);
+    const int64_t num_times      = sdp_mem_shape_dim(vis, 0);
+    const int64_t num_baselines  = sdp_mem_shape_dim(vis, 1);
+    const int64_t num_channels   = sdp_mem_shape_dim(vis, 2);
+    const int64_t num_pols       = sdp_mem_shape_dim(vis, 3);
     const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
     if (num_pols != 4 && num_pols != 1)
     {
@@ -480,10 +480,10 @@ void sdp_dft_point_v01(
 {
     check_params_v01(source_directions, source_fluxes, uvw, vis, status);
     if (*status) return;
-    const int num_times = (int)sdp_mem_shape_dim(vis, 0);
-    const int num_baselines = (int)sdp_mem_shape_dim(vis, 1);
-    const int num_channels = (int)sdp_mem_shape_dim(vis, 2);
-    const int num_pols = (int)sdp_mem_shape_dim(vis, 3);
+    const int num_times      = (int)sdp_mem_shape_dim(vis, 0);
+    const int num_baselines  = (int)sdp_mem_shape_dim(vis, 1);
+    const int num_channels   = (int)sdp_mem_shape_dim(vis, 2);
+    const int num_pols       = (int)sdp_mem_shape_dim(vis, 3);
     const int num_components = (int)sdp_mem_shape_dim(source_directions, 0);
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {

@@ -148,7 +148,7 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
 )
 {
     const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
-    const int i_row = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
     const int i_vis = i_chan + num_vis_chan * i_row;
 
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
@@ -299,7 +299,7 @@ __global__ void sdp_cuda_nifty_gridder_gridding_2d
 )
 {
     const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
-    const int i_row = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
     const int i_vis = i_chan + num_vis_chan * i_row;
 
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
@@ -716,11 +716,8 @@ __global__ void conv_corr_and_scaling(
         FP l_conv = conv_corr_kernel[i];
         FP m_conv = conv_corr_kernel[j];
 
-        FP n_conv = conv_corr((FP)support,
-                n * inv_w_scale,
-                quadrature_kernel,
-                quadrature_nodes,
-                quadrature_weights
+        FP n_conv = conv_corr((FP)support, n * inv_w_scale,
+                quadrature_kernel, quadrature_nodes, quadrature_weights
         );
         n_conv *= (conv_corr_norm_factor * conv_corr_norm_factor);
 

@@ -36,8 +36,8 @@ __global__ void dft_point_v00(
 
     // Get indices of the output array this thread is working on.
     const int i_baseline = blockDim.x * blockIdx.x + threadIdx.x;
-    const int i_channel = blockDim.y * blockIdx.y + threadIdx.y;
-    const int i_time = blockDim.z * blockIdx.z + threadIdx.z;
+    const int i_channel  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_time     = blockDim.z * blockIdx.z + threadIdx.z;
 
     // Bounds check.
     if (num_pols > 4 ||
@@ -129,8 +129,8 @@ __global__ void dft_point_v01(
 
     // Get indices of the output array this thread is working on.
     const int i_baseline = blockDim.x * blockIdx.x + threadIdx.x;
-    const int i_channel = blockDim.y * blockIdx.y + threadIdx.y;
-    const int i_time = blockDim.z * blockIdx.z + threadIdx.z;
+    const int i_channel  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_time     = blockDim.z * blockIdx.z + threadIdx.z;
 
     // Bounds check.
     if (num_pols > 4 ||

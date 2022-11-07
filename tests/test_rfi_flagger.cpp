@@ -110,10 +110,10 @@ static void run_and_check(
 )
 {
     // Generate some test data.
-    const uint64_t num_timesamples = 1000;
-    const uint64_t num_baselines = 21;
-    const uint64_t num_channels = 200;
-    const uint64_t num_pols = 4;
+    const uint64_t num_timesamples     = 1000;
+    const uint64_t num_baselines       = 21;
+    const uint64_t num_channels        = 200;
+    const uint64_t num_pols            = 4;
     const uint64_t max_sequence_length = 1;
     const int num_sequence_el = (int) (log(max_sequence_length) / log(2)) + 1;
     int num_rfi_spikes = 20;

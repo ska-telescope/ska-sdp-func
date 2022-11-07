@@ -129,11 +129,11 @@ static void run_and_check(
 )
 {
     // Generate some test data.
-    const uint64_t num_timesamples = 1000;
-    const uint64_t num_antennas = 6;
-    const uint64_t num_baselines = 21;
-    const uint64_t num_channels = 200;
-    const uint64_t num_pols = 4;
+    const uint64_t num_timesamples     = 1000;
+    const uint64_t num_antennas        = 6;
+    const uint64_t num_baselines       = 21;
+    const uint64_t num_channels        = 200;
+    const uint64_t num_pols            = 4;
     int num_rfi_spikes = 14;
 
     int64_t visibilities_shape[] = {
@@ -209,9 +209,8 @@ static void run_and_check(
     sdp_Mem* thresholds_in = sdp_mem_create_copy(
             thresholds, thresholds_location, status
     );
-    sdp_Mem* antennas_in = sdp_mem_create_copy(antennas,
-            antennas_location,
-            status
+    sdp_Mem* antennas_in = sdp_mem_create_copy(
+            antennas, antennas_location, status
     );
     sdp_Mem* flags_in = sdp_mem_create_copy(flags, flags_location, status);
     sdp_mem_set_read_only(flags_in, read_only_output);

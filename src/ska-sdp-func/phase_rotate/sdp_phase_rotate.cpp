@@ -117,8 +117,8 @@ void sdp_phase_rotate_uvw(
         SDP_LOG_ERROR("Output array is read-only.");
         return;
     }
-    const int64_t num_times = sdp_mem_shape_dim(uvw_in, 0);
-    const int64_t num_baselines = sdp_mem_shape_dim(uvw_in, 1);
+    const int64_t num_times      = sdp_mem_shape_dim(uvw_in, 0);
+    const int64_t num_baselines  = sdp_mem_shape_dim(uvw_in, 1);
     const int64_t num_total = num_times * num_baselines;
     if (sdp_mem_shape_dim(uvw_out, 0) != num_times ||
             sdp_mem_shape_dim(uvw_out, 1) != num_baselines)
@@ -255,10 +255,10 @@ void sdp_phase_rotate_vis(
         SDP_LOG_ERROR("Output array is read-only.");
         return;
     }
-    const int64_t num_times = sdp_mem_shape_dim(vis_in, 0);
-    const int64_t num_baselines = sdp_mem_shape_dim(vis_in, 1);
-    const int64_t num_channels = sdp_mem_shape_dim(vis_in, 2);
-    const int64_t num_pols = sdp_mem_shape_dim(vis_in, 3);
+    const int64_t num_times      = sdp_mem_shape_dim(vis_in, 0);
+    const int64_t num_baselines  = sdp_mem_shape_dim(vis_in, 1);
+    const int64_t num_channels   = sdp_mem_shape_dim(vis_in, 2);
+    const int64_t num_pols       = sdp_mem_shape_dim(vis_in, 3);
     if (sdp_mem_shape_dim(vis_out, 0) != num_times ||
             sdp_mem_shape_dim(vis_out, 1) != num_baselines ||
             sdp_mem_shape_dim(vis_out, 2) != num_channels ||
@@ -279,8 +279,8 @@ void sdp_phase_rotate_vis(
     const double cos_d_a = cos(d_a);
     const double sin_dec0 = sin(orig_dec_rad);
     const double cos_dec0 = cos(orig_dec_rad);
-    const double sin_dec = sin(new_dec_rad);
-    const double cos_dec = cos(new_dec_rad);
+    const double sin_dec  = sin(new_dec_rad);
+    const double cos_dec  = cos(new_dec_rad);
     const double l1 = cos_dec * -sin_d_a;
     const double m1 = cos_dec0 * sin_dec - sin_dec0 * cos_dec * cos_d_a;
     const double n1 = sin_dec0 * sin_dec + cos_dec0 * cos_dec * cos_d_a;

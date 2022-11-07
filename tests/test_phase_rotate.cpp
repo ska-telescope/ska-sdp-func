@@ -122,8 +122,8 @@ static void check_results_rotate_vis(
     const double cos_d_a = cos(d_a);
     const double sin_dec0 = sin(orig_dec_rad);
     const double cos_dec0 = cos(orig_dec_rad);
-    const double sin_dec = sin(new_dec_rad);
-    const double cos_dec = cos(new_dec_rad);
+    const double sin_dec  = sin(new_dec_rad);
+    const double cos_dec  = cos(new_dec_rad);
     const double l1 = cos_dec * -sin_d_a;
     const double m1 = cos_dec0 * sin_dec - sin_dec0 * cos_dec * cos_d_a;
     const double n1 = sin_dec0 * sin_dec + cos_dec0 * cos_dec * cos_d_a;

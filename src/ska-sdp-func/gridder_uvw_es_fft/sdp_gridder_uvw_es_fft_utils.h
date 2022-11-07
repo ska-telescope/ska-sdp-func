@@ -31,7 +31,7 @@ void get_w_range(
         if (abs_w > max_abs_w) max_abs_w = abs_w;
     }
 
-    double fscaleMin = freq_hz[0] / 299792458.0;
+    double fscaleMin = freq_hz[0           ] / 299792458.0;
     double fscaleMax = freq_hz[num_chan - 1] / 299792458.0;
 
     min_abs_w *= fscaleMin;

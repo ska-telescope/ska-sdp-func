@@ -125,7 +125,7 @@ void sdp_gridder_check_buffers(
     }
 
     // check shapes of parameters
-    const int64_t num_vis = sdp_mem_shape_dim(vis, 0);
+    const int64_t num_vis      = sdp_mem_shape_dim(vis, 0);
     const int64_t num_channels = sdp_mem_shape_dim(vis, 1);
 
     if (sdp_mem_shape_dim(uvw, 0) != num_vis)
@@ -385,7 +385,7 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
 
     plan->inv_w_scale = 1.0 / plan->w_scale;
     plan->inv_w_scale_f = (float) plan->inv_w_scale;
-    plan->w_scale_f = (float) plan->w_scale;
+    plan->w_scale_f     = (float) plan->w_scale;
     plan->min_plane_w_f = (float) plan->min_plane_w;
     plan->max_plane_w_f = (float) plan->max_plane_w;
     plan->inv_w_range_f = (float) plan->inv_w_range;
