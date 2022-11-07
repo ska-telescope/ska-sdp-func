@@ -39,7 +39,11 @@ def auto_wrap_method(c_fn_name, add_handle=True, add_error_status=True):
         sig = inspect.signature(orig_fn)
 
         # Add remaining parameters
-        anns = inspect.get_annotations(orig_fn)
+        try:
+            anns = inspect.get_annotations(orig_fn)
+        except AttributeError:
+            # Fallback for Python older than 3.10
+            anns = orig_fn.__annotations__
         argtypes = []
         for par in list(sig.parameters)[1:]:
             if par not in anns:
