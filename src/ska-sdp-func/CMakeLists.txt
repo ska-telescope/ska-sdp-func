@@ -1,15 +1,11 @@
 # Define list of folders containing source files.
 set(${CMAKE_PROJECT_NAME}_FOLDERS
-    dft
-    fft
-    function_example_a
-    gridder_uvw_es_fft
-    phase_rotate
-    rfi_flagger
-    twosm_rfi_flagger
+    examples
+    fourier_transforms
+    grid_data
+    rfi
     utility
-    vector
-    weighting
+    visibility
 )
 
 # Auto-generate the source lists and pass up to the parent.

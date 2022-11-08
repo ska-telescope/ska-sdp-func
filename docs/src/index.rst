@@ -25,11 +25,11 @@ SDP Processing Function Library
   :caption: Processing functions
   :maxdepth: 1
 
-  function_grid/index
-  function_numerics/index
-  function_rfi/index
-  function_vis/index
-  function_examples/index
+  module_fourier_transforms/index
+  module_grid_data/index
+  module_rfi/index
+  module_visibility/index
+  module_examples/index
 
 
 Indices and tables

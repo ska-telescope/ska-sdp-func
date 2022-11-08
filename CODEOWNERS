@@ -1,7 +1,6 @@
 * @KarelAdamek @vlad7235 @fdulwich
 
 # gridder_uvw_es_fft
-src/ska-sdp-func/gridder_uvw_es_fft/ @DoctaGnz
-src/ska_sdp_func/gridder_uvw_es_fft.py @DoctaGnz
-tests/test_gridder_uvw_es_fft.cpp @DoctaGnz
-tests/test_gridder_uvw_es_fft.py @DoctaGnz
+src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft* @DoctaGnz
+src/ska_sdp_func/grid_data/gridder_uvw_es_fft.py @DoctaGnz
+tests/grid_data/test_gridder_uvw_es_fft.* @DoctaGnz
