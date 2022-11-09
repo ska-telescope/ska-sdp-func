@@ -8,6 +8,8 @@ import os
 import threading
 from typing import Any, Callable
 
+from .error_checking import error_checking, ERROR_CODE_ARGTYPE
+
 # We don't want a module-level variable for the library handle,
 # as that would mean the documentation doesn't build properly if the library
 # can't be found when it gets imported - and unfortunately nested packages
@@ -99,7 +101,7 @@ class Lib(metaclass=LibMeta):
         return lib_path
 
     @staticmethod
-    def wrap_func(func_name: str, *, restype: Any, argtypes: list) -> None:
+    def wrap_func(func_name: str, *, restype: Any, argtypes: list, check_errcode=False) -> None:
         """Convenience function to wrap a C function from the library and make
         it callable from Python.
 
@@ -109,13 +111,18 @@ class Lib(metaclass=LibMeta):
                 Must be a single ctypes type (e.g. ctypes.c_double),
                 or None if the C function returns void.
             argtypes: list of the the argument types taken by the C function.
-                See the ctypes docs or the developer guide for what is
-                acceptable as an argument type (this includes, but is not limited
-                to ctypes types such as ctypes.c_double).
+                See the ctypes docs or the developer guide for what is acceptable as an argument
+                type (this includes, but is not limited to ctypes types such as ctypes.c_double).
+                NOTE: for functions that expect an error code pointer as their last argument,
+                    do NOT specify its type in argtypes. Use check_errcode=True instead.
+            check_errcode: if True, it will be assumed that the C function has an additional
+                argument in last place used to pass a c_int pointer that represents an error code.
+                The C function will be wrapped in an extra layer that does error code checking
+                automatically, and raise a Python exception if it is non-zero.
         """
         # Store params to perform the actual wrapping later, when the user
         # requests the function for the first time.
-        Lib._wrap_function_args[func_name] = (restype, argtypes)
+        Lib._wrap_function_args[func_name] = (restype, argtypes, check_errcode)
 
     @staticmethod
     def _wrap_func(func_name: str) -> None:
@@ -129,13 +136,16 @@ class Lib(metaclass=LibMeta):
             raise AttributeError(msg) from err
 
         try:
-            restype, argtypes = Lib._wrap_function_args[func_name]
+            restype, argtypes, check_errcode = Lib._wrap_function_args[func_name]
         except KeyError as err:
             msg = f"The wrapping details for {func_name!r} have not been defined"
             raise KeyError(msg) from err
 
         func.restype = restype
         func.argtypes = argtypes
+        if check_errcode:
+            func.argtypes.append(ERROR_CODE_ARGTYPE)
+            func = error_checking(func)
         setattr(Lib, func_name, func)
 
     @staticmethod
