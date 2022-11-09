@@ -1,5 +1,6 @@
 # List of tests to build.
 set(${CMAKE_PROJECT_NAME}_TESTS
+    test_deconvolution_msmfs
     test_dft
     test_fft
     test_function_example_a

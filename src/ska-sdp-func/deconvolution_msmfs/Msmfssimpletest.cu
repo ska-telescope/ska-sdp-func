@@ -76,7 +76,7 @@ template void add_source_to_image<double>(double*, unsigned int, double, double,
  * Note should be paired with a later call to free_simple_dirty_image
  *****************************************************************************/
 template<typename PRECISION>
-PRECISION* allocate_simple_dirty_image
+PRECISION* allocate_dirty_image
     (const unsigned int dirty_moment_size, unsigned int num_taylor)
 {
     PRECISION *dirty_moment_images_device;
@@ -85,8 +85,8 @@ PRECISION* allocate_simple_dirty_image
     return dirty_moment_images_device;
 }
 
-template float* allocate_simple_dirty_image<float>(const unsigned int dirty_moment_size, unsigned int num_taylor);
-template double* allocate_simple_dirty_image<double>(const unsigned int dirty_moment_size, unsigned int num_taylor);
+template float* allocate_dirty_image<float>(const unsigned int dirty_moment_size, unsigned int num_taylor);
+template double* allocate_dirty_image<double>(const unsigned int dirty_moment_size, unsigned int num_taylor);
 
 
 /*****************************************************************************
@@ -95,7 +95,7 @@ template double* allocate_simple_dirty_image<double>(const unsigned int dirty_mo
 template<typename PRECISION>
 void calculate_simple_dirty_image
     (
-    PRECISION *dirty_moment_images_device, unsigned int num_taylor, unsigned int dirty_moment_size
+    PRECISION *dirty_moment_images_device, unsigned int dirty_moment_size, unsigned int num_taylor
     )
 {
     PRECISION *dirty_moment_images_host; // flat array containing input Taylor coefficient dirty images to be convolved
@@ -123,13 +123,13 @@ template void calculate_simple_dirty_image<double>(double*, unsigned int, unsign
  * Note should be paired with an earlier call to allocate_simple_dirty_image
  *****************************************************************************/
 template<typename PRECISION>
-void free_simple_dirty_image(PRECISION* dirty_moment_images_device)
+void free_dirty_image(PRECISION *dirty_moment_images_device)
 {
     CUDA_CHECK_RETURN(cudaFree(dirty_moment_images_device));
 }
 
-template void free_simple_dirty_image<float>(float*);
-template void free_simple_dirty_image<double>(double*);
+template void free_dirty_image<float>(float*);
+template void free_dirty_image<double>(double*);
 
 
 /*****************************************************************************
@@ -138,7 +138,7 @@ template void free_simple_dirty_image<double>(double*);
  * Note should be paired with a later call to free_simple_psf_image
  *****************************************************************************/
 template<typename PRECISION>
-PRECISION* allocate_simple_psf_image
+PRECISION* allocate_psf_image
     (const unsigned int psf_moment_size, unsigned int num_psf)
 {
     PRECISION *psf_moment_images_device;
@@ -147,8 +147,8 @@ PRECISION* allocate_simple_psf_image
     return psf_moment_images_device;
 }
 
-template float* allocate_simple_psf_image<float>(const unsigned int, unsigned int);
-template double* allocate_simple_psf_image<double>(const unsigned int, unsigned int);
+template float* allocate_psf_image<float>(const unsigned int, unsigned int);
+template double* allocate_psf_image<double>(const unsigned int, unsigned int);
 
 
 /*****************************************************************************
@@ -158,7 +158,7 @@ template double* allocate_simple_psf_image<double>(const unsigned int, unsigned 
 template<typename PRECISION>
 void calculate_simple_psf_image
     (
-    PRECISION *psf_moment_images_device, unsigned int num_psf, unsigned int psf_moment_size
+    PRECISION *psf_moment_images_device, unsigned int psf_moment_size, unsigned int num_psf
     )
 {
     const PRECISION psf_max_radius = (PRECISION)1.5; // radius of psf
@@ -196,11 +196,11 @@ template void calculate_simple_psf_image<double>(double*, unsigned int, unsigned
  * Note should be paired with an earlier call to allocate_simple_psf_image
  *****************************************************************************/
 template<typename PRECISION>
-void free_simple_psf_image(PRECISION *psf_moment_images_device)
+void free_psf_image(PRECISION *psf_moment_images_device)
 {
     CUDA_CHECK_RETURN(cudaFree(psf_moment_images_device));
 }
 
-template void free_simple_psf_image<float>(float*);
-template void free_simple_psf_image<double>(double*);
+template void free_psf_image<float>(float*);
+template void free_psf_image<double>(double*);
 

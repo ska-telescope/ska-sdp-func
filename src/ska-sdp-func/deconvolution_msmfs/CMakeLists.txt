@@ -13,5 +13,5 @@ SKA_SDP_FUNC_SRC(
     Msmfsprocessingfunctioninterface.h
     Msmfsprocessingfunctioninterface.cpp
     Msmfsprocessingfunctiontest.h
-    Msmfsprocessingfunctiontest.cpp
+    Msmfsprocessingfunctiontest.c
 )

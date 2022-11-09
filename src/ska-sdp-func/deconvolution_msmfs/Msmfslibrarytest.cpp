@@ -54,12 +54,12 @@ int library_test()
         num_psf, psf_moment_size, psf_moment_size);
 
     // create a simple test input image
-    PRECISION *dirty_moment_images_device = allocate_simple_dirty_image<PRECISION>(dirty_moment_size, num_taylor);
-    calculate_simple_dirty_image<PRECISION>(dirty_moment_images_device, num_taylor, dirty_moment_size);
+    PRECISION *dirty_moment_images_device = allocate_dirty_image<PRECISION>(dirty_moment_size, num_taylor);
+    calculate_simple_dirty_image<PRECISION>(dirty_moment_images_device, dirty_moment_size, num_taylor);
 
     // create a simple test input psf
-    PRECISION *psf_moment_images_device = allocate_simple_psf_image<PRECISION>(psf_moment_size, num_psf);
-    calculate_simple_psf_image<PRECISION>(psf_moment_images_device, num_psf, psf_moment_size);
+    PRECISION *psf_moment_images_device = allocate_psf_image<PRECISION>(psf_moment_size, num_psf);
+    calculate_simple_psf_image<PRECISION>(psf_moment_images_device, psf_moment_size, num_psf);
 
     // calculate suitable cuda block size in1D and 2D and number of available cuda threads
     int cuda_block_size;
@@ -161,8 +161,8 @@ int library_test()
     free_shape_configurations<PRECISION>(shape_configs);
 
     // clean up simple test input image and simple test input psf
-    free_simple_psf_image<PRECISION>(psf_moment_images_device);
-    free_simple_dirty_image<PRECISION>(dirty_moment_images_device); // note this free could be once scale_moment_residuals_device created
+    free_psf_image<PRECISION>(psf_moment_images_device);
+    free_dirty_image<PRECISION>(dirty_moment_images_device); // note this free could be once scale_moment_residuals_device created
 
     checkCudaStatus();
 

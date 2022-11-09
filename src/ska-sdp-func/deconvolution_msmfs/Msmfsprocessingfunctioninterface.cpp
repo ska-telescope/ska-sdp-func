@@ -10,11 +10,11 @@
 #include "Msmfsfunctionshost.h"
 #include "Msmfssimpletest.h"
 
-/**
+/*****************************************************************************
  * Templated (non-C interface) version of the function which performs the entire msmfs deconvolution
- */
+ *****************************************************************************/
 template<typename PRECISION>
-void perform_msmfs_templated
+void perform_msmfs
     (
     PRECISION *dirty_moment_images_device,
     PRECISION *psf_moment_images_device,
@@ -130,10 +130,164 @@ void perform_msmfs_templated
     free_shape_configurations<PRECISION>(shape_configs);
 }
 
-/**
+
+/*****************************************************************************
+ * C (untemplated) version of the function which allocates and clears the data structure that will
+ * hold all the dirty moment images on the device.
+ *****************************************************************************/
+sdp_Mem *sdp_msmfs_allocate_dirty_image
+    (const unsigned int dirty_moment_size, unsigned int num_taylor, sdp_MemType mem_type)
+{
+    sdp_Mem *dirty_moment_images = NULL;
+    if (mem_type == SDP_MEM_FLOAT)
+    {
+        // wrap the test input images as sdp_Mem
+        sdp_Error *status = NULL;
+        float *dirty_moment_images_device = allocate_dirty_image<float>(dirty_moment_size, num_taylor);
+        const int64_t dirty_moment_shape[] = {num_taylor, dirty_moment_size, dirty_moment_size};
+        dirty_moment_images = sdp_mem_create_wrapper(dirty_moment_images_device, SDP_MEM_FLOAT, SDP_MEM_GPU, 3, dirty_moment_shape, 0, status);
+    }
+    else if (mem_type == SDP_MEM_DOUBLE)
+    {
+        // wrap the test input images as sdp_Mem
+        sdp_Error *status = NULL;
+        double *dirty_moment_images_device = allocate_dirty_image<double>(dirty_moment_size, num_taylor);
+        const int64_t dirty_moment_shape[] = {num_taylor, dirty_moment_size, dirty_moment_size};
+        dirty_moment_images = sdp_mem_create_wrapper(dirty_moment_images_device, SDP_MEM_DOUBLE, SDP_MEM_GPU, 3, dirty_moment_shape, 0, status);
+    }
+    else
+    {
+        logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+    }
+    return dirty_moment_images;
+}
+
+
+/*****************************************************************************
+ * C (untemplated) version of the function which adds some sources to dirty_moment_images_device for testing
+ *****************************************************************************/
+void sdp_msmfs_calculate_simple_dirty_image
+    (
+    sdp_Mem *dirty_moment_images, unsigned int dirty_moment_size, unsigned int num_taylor
+    )
+{
+    if (sdp_mem_type(dirty_moment_images) == SDP_MEM_FLOAT)
+    {
+        calculate_simple_dirty_image<float>((float *)sdp_mem_data(dirty_moment_images), dirty_moment_size, num_taylor);
+    }
+    else if (sdp_mem_type(dirty_moment_images) == SDP_MEM_DOUBLE)
+    {
+        calculate_simple_dirty_image<double>((double *)sdp_mem_data(dirty_moment_images), dirty_moment_size, num_taylor);
+    }
+    else
+    {
+        logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+    }
+}
+
+
+/*****************************************************************************
+ * C (untemplated) version of the function which deallocates device data structure that was used to
+ * hold all the dirty moment images on the device
+ *****************************************************************************/
+void sdp_msmfs_free_dirty_image(sdp_Mem *dirty_moment_images)
+{
+    if (sdp_mem_type(dirty_moment_images) == SDP_MEM_FLOAT)
+    {
+        free_dirty_image<float>((float *)sdp_mem_data(dirty_moment_images));
+    }
+    else if (sdp_mem_type(dirty_moment_images) == SDP_MEM_DOUBLE)
+    {
+        free_dirty_image<double>((double *)sdp_mem_data(dirty_moment_images));
+    }
+    else
+    {
+        logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+    }
+}
+
+
+/*****************************************************************************
+ * C (untemplated) version of the function which allocates and clears the data structure that will
+ * hold all the psf moment images on the device
+ *****************************************************************************/
+sdp_Mem *sdp_msmfs_allocate_psf_image
+    (const unsigned int psf_moment_size, unsigned int num_psf, sdp_MemType mem_type)
+{
+    sdp_Mem *psf_moment_images = NULL;
+    if (mem_type == SDP_MEM_FLOAT)
+    {
+        // wrap the test input images as sdp_Mem
+        sdp_Error *status = NULL;
+        float *psf_moment_images_device = allocate_psf_image<float>(psf_moment_size, num_psf);
+        const int64_t psf_moment_shape[] = {num_psf, psf_moment_size, psf_moment_size};
+        psf_moment_images = sdp_mem_create_wrapper(psf_moment_images_device, SDP_MEM_FLOAT, SDP_MEM_GPU, 3, psf_moment_shape, 0, status);
+    }
+    else if (mem_type == SDP_MEM_DOUBLE)
+    {
+        // wrap the test input images as sdp_Mem
+        sdp_Error *status = NULL;
+        double *psf_moment_images_device = allocate_psf_image<double>(psf_moment_size, num_psf);
+        const int64_t psf_moment_shape[] = {num_psf, psf_moment_size, psf_moment_size};
+        psf_moment_images = sdp_mem_create_wrapper(psf_moment_images_device, SDP_MEM_DOUBLE, SDP_MEM_GPU, 3, psf_moment_shape, 0, status);
+    }
+    else
+    {
+        logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+    }
+    return psf_moment_images;
+}
+
+
+/*****************************************************************************
+ * C (untemplated) version of the function which create a simple test input paraboloid psf
+ * with specified radius and dropoff amplitude between successive taylor terms.
+ *****************************************************************************/
+void sdp_msmfs_calculate_simple_psf_image
+    (
+    sdp_Mem *psf_moment_images, unsigned int psf_moment_size, unsigned int num_psf
+    )
+{
+    if (sdp_mem_type(psf_moment_images) == SDP_MEM_FLOAT)
+    {
+        calculate_simple_psf_image<float>((float *)sdp_mem_data(psf_moment_images), psf_moment_size, num_psf);
+    }
+    else if (sdp_mem_type(psf_moment_images) == SDP_MEM_DOUBLE)
+    {
+        calculate_simple_psf_image<double>((double *)sdp_mem_data(psf_moment_images), psf_moment_size, num_psf);
+    }
+    else
+    {
+        logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+    }
+}
+
+
+/*****************************************************************************
+ * C (untemplated) version of the function which deallocates device data structure that was used to
+ * hold all the psf moment images on the device
+ *****************************************************************************/
+void sdp_msmfs_free_psf_image(sdp_Mem *psf_moment_images)
+{
+    if (sdp_mem_type(psf_moment_images) == SDP_MEM_FLOAT)
+    {
+        free_psf_image<float>((float *)sdp_mem_data(psf_moment_images));
+    }
+    else if (sdp_mem_type(psf_moment_images) == SDP_MEM_DOUBLE)
+    {
+        free_psf_image<double>((double *)sdp_mem_data(psf_moment_images));
+    }
+    else
+    {
+        logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+    }
+}
+
+
+/*****************************************************************************
  * C (untemplated) version of the function which performs the entire msmfs deconvolution using sdp_Mem handles
- */
-void perform_msmfs
+ *****************************************************************************/
+void sdp_msmfs_perform
     (
     sdp_Mem *dirty_moment_images,
     sdp_Mem *psf_moment_images,
@@ -154,7 +308,7 @@ void perform_msmfs
         // create an initially empty list of sources to hold those gaussian source found in the minor cycle loops (for single major cycle)
         Gaussian_source_list<float> gaussian_source_list = allocate_gaussian_source_list<float>(max_gaussian_sources_host);
         
-        perform_msmfs_templated<float>(
+        perform_msmfs<float>(
             (float *)sdp_mem_data(dirty_moment_images), (float *)sdp_mem_data(psf_moment_images),
             dirty_moment_size, num_scales, num_taylor, psf_moment_size, image_border,
             (float)convolution_accuracy, (float)clean_loop_gain, max_gaussian_sources_host,
@@ -174,7 +328,7 @@ void perform_msmfs
         // create an initially empty list of sources to hold those gaussian source found in the minor cycle loops (for single major cycle)
         Gaussian_source_list<double> gaussian_source_list = allocate_gaussian_source_list<double>(max_gaussian_sources_host);
         
-        perform_msmfs_templated<double>(
+        perform_msmfs<double>(
             (double *)sdp_mem_data(dirty_moment_images), (double *)sdp_mem_data(psf_moment_images),
             dirty_moment_size, num_scales, num_taylor, psf_moment_size, image_border,
             convolution_accuracy, clean_loop_gain, max_gaussian_sources_host,

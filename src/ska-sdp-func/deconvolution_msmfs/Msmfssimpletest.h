@@ -46,20 +46,20 @@
  * @param num_taylor Number of Taylor moments.
  */
 template<typename PRECISION>
-PRECISION* allocate_simple_dirty_image
+PRECISION* allocate_dirty_image
     (const unsigned int dirty_moment_size, unsigned int num_taylor);
 
 /**
  * @brief Temporary utility function that adds some sources to dirty_moment_images_device for testing.
  *
  * @param dirty_moment_images_device Dirty moment images held on device.
- * @param num_taylor Number of Taylor moments.
  * @param dirty_moment_size One dimensional size of image, assumed square.
+ * @param num_taylor Number of Taylor moments.
  */
 template<typename PRECISION>
 void calculate_simple_dirty_image
     (
-    PRECISION *dirty_moment_images_device, unsigned int num_taylor, unsigned int dirty_moment_size
+    PRECISION *dirty_moment_images_device, unsigned int dirty_moment_size, unsigned int num_taylor
     );
 
 /**
@@ -70,7 +70,7 @@ void calculate_simple_dirty_image
  * @param dirty_moment_images_device Dirty moment images held on device.
  */
 template<typename PRECISION>
-void free_simple_dirty_image(PRECISION* dirty_moment_images_device);
+void free_dirty_image(PRECISION* dirty_moment_images_device);
 
 /**
  * @brief Msmfs function that allocates and clears the data structure that will
@@ -81,7 +81,7 @@ void free_simple_dirty_image(PRECISION* dirty_moment_images_device);
  * @param num_psf Number of psf (determined by the number of Taylor terms)
  */
 template<typename PRECISION>
-PRECISION* allocate_simple_psf_image
+PRECISION* allocate_psf_image
     (const unsigned int psf_moment_size, unsigned int num_psf);
 
 /**
@@ -89,13 +89,13 @@ PRECISION* allocate_simple_psf_image
  * with specified radius and dropoff amplitude between successive taylor terms.
  * 
  * @param psf_moment_images_device Psf moment images held on device.
- * @param num_psf Number of psf (determined by the number of Taylor terms)
  * @param psf_moment_size One dimensional size of psf, assumed square.
+ * @param num_psf Number of psf (determined by the number of Taylor terms).
  */
 template<typename PRECISION>
 void calculate_simple_psf_image
     (
-    PRECISION *psf_moment_images_device, unsigned int num_psf, unsigned int psf_moment_size
+    PRECISION *psf_moment_images_device, unsigned int psf_moment_size, unsigned int num_psf
     );
 
 /**
@@ -106,6 +106,6 @@ void calculate_simple_psf_image
  * @param psf_moment_images_device Psf moment images held on device.
  */
 template<typename PRECISION>
-void free_simple_psf_image(PRECISION *psf_moment_images_device);
+void free_psf_image(PRECISION *psf_moment_images_device);
 
 #endif /* include guard */

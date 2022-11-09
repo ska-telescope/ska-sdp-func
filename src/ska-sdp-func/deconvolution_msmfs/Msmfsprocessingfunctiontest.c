@@ -1,21 +1,17 @@
 /*
- * Msmfsprocessingfunctiontest.cpp
+ * Msmfsprocessingfunctiontest.c
  * Andrew Ensor
- * C++ program for testing the SDP processing function interface steps for the MSMFS cleaning algorithm
- * Note apart from convenience calls of allocate_simple_dirty_image, allocate_simple_psf_image,
- * calculate_simple_dirty_image, calculate_simple_psf_image, free_simple_psf_image, free_simple_dirty_image
- * this code would also be compilable as C
-*/
+ * C program for testing the SDP processing function interface steps for the MSMFS cleaning algorithm
+ */
 
 #include "Msmfsprocessingfunctiontest.h"
-#include "Msmfssimpletest.h" // C++ interface used for convenience during testing
 
 #define MSMFS_PRECISION_SINGLE 1
 #define MAX_TAYLOR_MOMENTS 6 /* compile-time upper limit on the number of possible taylor moments */
 
 
 /**********************************************************************
- * Main method to execute
+ * Main function to execute the interface test
  **********************************************************************/
 int interface_test()
 {
@@ -49,31 +45,22 @@ int interface_test()
     const double clean_threshold = 0.001; // fractional threshold at which to stop cleaning (or non-positive to disable threshold check)
 
     // create a simple test input image
-    PRECISION *dirty_moment_images_device = allocate_simple_dirty_image<PRECISION>(dirty_moment_size, num_taylor);
-    calculate_simple_dirty_image<PRECISION>(dirty_moment_images_device, num_taylor, dirty_moment_size);
+    sdp_Mem *dirty_moment_images = sdp_msmfs_allocate_dirty_image(dirty_moment_size, num_taylor, SDP_MEM_PRECISION);
+    sdp_msmfs_calculate_simple_dirty_image(dirty_moment_images, dirty_moment_size, num_taylor);
 
     // create a simple test input psf
-    PRECISION *psf_moment_images_device = allocate_simple_psf_image<PRECISION>(psf_moment_size, 2*num_taylor-1);
-    calculate_simple_psf_image<PRECISION>(psf_moment_images_device, 2*num_taylor-1, psf_moment_size);
+    sdp_Mem *psf_moment_images = sdp_msmfs_allocate_psf_image(psf_moment_size, 2*num_taylor-1, SDP_MEM_PRECISION);
+    sdp_msmfs_calculate_simple_psf_image(psf_moment_images , psf_moment_size, 2*num_taylor-1);
 
-    // wrap the simple test input images and psfs as sdp_Mem
-    sdp_Error *status = NULL;
-    const int64_t dirty_moment_shape[] = {num_taylor, dirty_moment_size, dirty_moment_size};
-    const int64_t psf_moment_shape[] = {2*num_taylor-1, psf_moment_size, psf_moment_size};
-    sdp_Mem *dirty_moment_images = sdp_mem_create_wrapper(dirty_moment_images_device, SDP_MEM_PRECISION, SDP_MEM_GPU, 3, dirty_moment_shape, 0, status);
-    sdp_Mem *psf_moment_images = sdp_mem_create_wrapper(psf_moment_images_device, SDP_MEM_PRECISION, SDP_MEM_GPU, 3, psf_moment_shape, 0, status);
-
-    perform_msmfs(
+    sdp_msmfs_perform(
         dirty_moment_images, psf_moment_images,
         dirty_moment_size, num_scales, num_taylor, psf_moment_size, image_border,
-        (PRECISION)convolution_accuracy, (PRECISION)clean_loop_gain, max_gaussian_sources_host,
-        (PRECISION)scale_bias_factor, (PRECISION)clean_threshold);
+        convolution_accuracy, clean_loop_gain, max_gaussian_sources_host,
+        scale_bias_factor, clean_threshold);
 
     // clean up simple test input image and simple test input psf
-    free_simple_psf_image<PRECISION>(psf_moment_images_device);
-    free_simple_dirty_image<PRECISION>(dirty_moment_images_device); // note this free could be once scale_moment_residuals_device created
-
-    checkCudaStatus();
+    sdp_msmfs_free_psf_image(psf_moment_images);
+    sdp_msmfs_free_dirty_image(dirty_moment_images);
 
     printf("Msmfs processing function interface test ending\n");
     return 0;
