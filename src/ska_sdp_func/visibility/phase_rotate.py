@@ -4,7 +4,7 @@
 
 import ctypes
 
-from ..utility import Error, Lib, Mem, SkyCoord
+from ..utility import Lib, Mem, SkyCoord
 
 
 Lib.wrap_func(
@@ -15,8 +15,8 @@ Lib.wrap_func(
         SkyCoord.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Error.handle_type(),
     ],
+    check_errcode=True
 )
 
 
@@ -31,8 +31,8 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Error.handle_type(),
     ],
+    check_errcode=True
 )
 
 
@@ -76,15 +76,12 @@ def phase_rotate_uvw(
     phase_centre_new = SkyCoord(phase_centre_new)
     mem_uvw_in = Mem(uvw_in)
     mem_uvw_out = Mem(uvw_out)
-    error_status = Error()
     Lib.sdp_phase_rotate_uvw(
         phase_centre_orig.handle(),
         phase_centre_new.handle(),
         mem_uvw_in.handle(),
         mem_uvw_out.handle(),
-        error_status.handle(),
     )
-    error_status.check()
 
 
 def phase_rotate_vis(
@@ -143,7 +140,6 @@ def phase_rotate_vis(
     mem_uvw = Mem(uvw)
     mem_vis_in = Mem(vis_in)
     mem_vis_out = Mem(vis_out)
-    error_status = Error()
     Lib.sdp_phase_rotate_vis(
         phase_centre_orig.handle(),
         phase_centre_new.handle(),
@@ -152,6 +148,4 @@ def phase_rotate_vis(
         mem_uvw.handle(),
         mem_vis_in.handle(),
         mem_vis_out.handle(),
-        error_status.handle(),
     )
-    error_status.check()
