@@ -77,8 +77,8 @@ def phase_rotate_uvw(
     mem_uvw_in = Mem(uvw_in)
     mem_uvw_out = Mem(uvw_out)
     Lib.sdp_phase_rotate_uvw(
-        phase_centre_orig.handle(),
-        phase_centre_new.handle(),
+        phase_centre_orig,
+        phase_centre_new,
         mem_uvw_in.handle(),
         mem_uvw_out.handle(),
     )
@@ -141,8 +141,8 @@ def phase_rotate_vis(
     mem_vis_in = Mem(vis_in)
     mem_vis_out = Mem(vis_out)
     Lib.sdp_phase_rotate_vis(
-        phase_centre_orig.handle(),
-        phase_centre_new.handle(),
+        phase_centre_orig,
+        phase_centre_new,
         ctypes.c_double(channel_start_hz),
         ctypes.c_double(channel_step_hz),
         mem_uvw.handle(),
