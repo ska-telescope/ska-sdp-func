@@ -65,54 +65,32 @@ class SkyCoord(StructWrapper):
             raise RuntimeError("Unknown construction method for SkyCoord")
         super().__init__(Lib.sdp_sky_coord_create, create_args, Lib.sdp_sky_coord_free)
 
-    def epoch(self):
-        """Returns the value of the coordinate epoch.
+    def epoch(self) -> float:
+        """Returns the value of the coordinate epoch"""
+        return Lib.sdp_sky_coord_epoch(self)
 
-        :return: Value of the coordinate epoch.
-        :rtype: float
-        """
-        sky_coord_epoch = Lib.handle().sdp_sky_coord_epoch
-        sky_coord_epoch.argtypes = [SkyCoord.handle_type()]
-        sky_coord_epoch.restype = ctypes.c_double
-        return float(sky_coord_epoch(self._handle))
-
-    def value(self, dim):
+    def value(self, dim: int) -> float:
         """Returns the value of the selected coordinate.
 
-        :param dim: Coordinate dimension index (starting 0; max 2).
-        :type dim: int
+        Args:
+            dim: Coordinate dimension index (starting 0; max 2).
 
-        :return: Value of specified coordinate.
-        :rtype: float
+        Returns:
+            Value of specified coordinate, or 0 if 'dim' is out of bounds.
         """
-        sky_coord_value = Lib.handle().sdp_sky_coord_value
-        sky_coord_value.argtypes = [SkyCoord.handle_type(), ctypes.c_int32]
-        sky_coord_value.restype = ctypes.c_double
-        return float(sky_coord_value(self._handle, ctypes.c_int32(dim)))
+        return Lib.sdp_sky_coord_value(self, dim)
 
-    def set_epoch(self, epoch):
+    def set_epoch(self, epoch: float) -> None:
         """Sets the coordinate epoch value.
 
-        :param epoch: Value of coordinate epoch.
-        :type epoch: float
+        Args:
+            epoch: Value of coordinate epoch.
         """
-        sky_coord_set_epoch = Lib.handle().sdp_sky_coord_set_epoch
-        sky_coord_set_epoch.argtypes = [
-            SkyCoord.handle_type(),
-            ctypes.c_double,
-        ]
-        sky_coord_set_epoch(self._handle, ctypes.c_double(epoch))
+        Lib.sdp_sky_coord_set_epoch(self, epoch)
 
-    def type(self):
-        """Returns the coordinate type string.
-
-        :return: String describing coordinate type.
-        :rtype: str
-        """
-        sky_coord_type = Lib.handle().sdp_sky_coord_type
-        sky_coord_type.argtypes = [SkyCoord.handle_type()]
-        sky_coord_type.restype = ctypes.c_char_p
-        return sky_coord_type(self._handle).decode()
+    def type(self) -> str:
+        """Returns the coordinate type string"""
+        return Lib.sdp_sky_coord_type(self).decode()  # convert bytes to str
 
 
 Lib.wrap_func(
@@ -129,5 +107,32 @@ Lib.wrap_func(
 Lib.wrap_func(
     "sdp_sky_coord_free",
     restype=None,
+    argtypes=[SkyCoord.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_sky_coord_epoch",
+    restype=ctypes.c_double,
+    argtypes=[SkyCoord.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_sky_coord_value",
+    restype=ctypes.c_double,
+    argtypes=[SkyCoord.handle_type(), ctypes.c_int32],
+)
+
+Lib.wrap_func(
+    "sdp_sky_coord_set_epoch",
+    restype=None,
+    argtypes=[
+        SkyCoord.handle_type(),
+        ctypes.c_double,
+    ],
+)
+
+Lib.wrap_func(
+    "sdp_sky_coord_type",
+    restype=ctypes.c_char_p,
     argtypes=[SkyCoord.handle_type()],
 )
