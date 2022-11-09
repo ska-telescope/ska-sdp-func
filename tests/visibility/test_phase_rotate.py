@@ -3,13 +3,14 @@
 """Test phase centre rotation functions."""
 
 import numpy
+import pytest
 
 try:
     import cupy
 except ImportError:
     cupy = None
 
-from ska_sdp_func.utility import SkyCoord
+from ska_sdp_func.utility import SkyCoord, CError
 from ska_sdp_func.visibility import phase_rotate_uvw, phase_rotate_vis
 
 
@@ -81,3 +82,23 @@ def test_phase_rotate():
         numpy.testing.assert_array_almost_equal(output_gpu_uvw_check, uvw_out)
         numpy.testing.assert_array_almost_equal(output_gpu_vis_check, vis_out)
         print("Phase rotation on GPU: Test passed")
+
+        # Check that a CError is raised when mixing CPU and GPU arrays as inputs and outputs
+        with pytest.raises(CError):
+            phase_rotate_uvw(
+                original_phase_centre,
+                new_phase_centre,
+                uvw_in_gpu.get(),  # .get() converts cupy -> numpy array
+                uvw_out_gpu,
+            )
+
+        with pytest.raises(CError):
+            phase_rotate_vis(
+                original_phase_centre,
+                new_phase_centre,
+                channel_start_hz,
+                channel_step_hz,
+                uvw_in_gpu,
+                vis_in_gpu.get(),
+                vis_out_gpu,
+            )
