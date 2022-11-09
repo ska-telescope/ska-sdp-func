@@ -1,4 +1,3 @@
-
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #ifndef SKA_SDP_PROC_FUNC_SKY_COORD_H_
@@ -51,10 +50,10 @@ typedef struct sdp_SkyCoord sdp_SkyCoord;
  * @return ::sdp_SkyCoord* Handle to sky coordinate structure.
  */
 sdp_SkyCoord* sdp_sky_coord_create(
-    const char* type,
-    double coord0,
-    double coord1,
-    double coord2
+        const char* type,
+        double coord0,
+        double coord1,
+        double coord2
 );
 
 /**
@@ -62,7 +61,7 @@ sdp_SkyCoord* sdp_sky_coord_create(
  *
  * @param sky_coord Handle to sky coordinate.
  */
-void sdp_sky_coord_free(sdp_SkyCoord *sky_coord);
+void sdp_sky_coord_free(sdp_SkyCoord* sky_coord);
 
 /**
  * @brief Returns the value of the coordinate epoch.
@@ -70,7 +69,7 @@ void sdp_sky_coord_free(sdp_SkyCoord *sky_coord);
  * @param sky_coord Handle to sky coordinate.
  * @return Value of the coordinate epoch.
  */
-double sdp_sky_coord_epoch(const sdp_SkyCoord *sky_coord);
+double sdp_sky_coord_epoch(const sdp_SkyCoord* sky_coord);
 
 /**
  * @brief Sets the coordinate epoch value.
@@ -78,7 +77,7 @@ double sdp_sky_coord_epoch(const sdp_SkyCoord *sky_coord);
  * @param sky_coord Handle to sky coordinate.
  * @param epoch Value of coordinate epoch.
  */
-void sdp_sky_coord_set_epoch(sdp_SkyCoord *sky_coord, double epoch);
+void sdp_sky_coord_set_epoch(sdp_SkyCoord* sky_coord, double epoch);
 
 /**
  * @brief Returns the coordinate type string.
@@ -86,7 +85,7 @@ void sdp_sky_coord_set_epoch(sdp_SkyCoord *sky_coord, double epoch);
  * @param sky_coord Handle to sky coordinate.
  * @return Pointer to string describing coordinate type.
  */
-const char* sdp_sky_coord_type(const sdp_SkyCoord *sky_coord);
+const char* sdp_sky_coord_type(const sdp_SkyCoord* sky_coord);
 
 /**
  * @brief Returns the value of the specified coordinate.
@@ -95,7 +94,7 @@ const char* sdp_sky_coord_type(const sdp_SkyCoord *sky_coord);
  * @param dim Coordinate dimension index (starting 0; max 2).
  * @return Value of specified coordinate.
  */
-double sdp_sky_coord_value(const sdp_SkyCoord *sky_coord, int32_t dim);
+double sdp_sky_coord_value(const sdp_SkyCoord* sky_coord, int32_t dim);
 
 /** @} */ /* End group SkyCoord_func. */
 

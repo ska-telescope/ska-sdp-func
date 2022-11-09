@@ -3,13 +3,15 @@
 #include "ska-sdp-func/utility/sdp_data_model_checks.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
+
 void sdp_data_model_check_uvw(
         const sdp_Mem* uvw,
         sdp_MemType* type,
         sdp_MemLocation* location,
         int64_t* num_times,
         int64_t* num_baselines,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_num_dims(uvw) != 3)
@@ -22,7 +24,8 @@ void sdp_data_model_check_uvw(
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR(
-            "The last dimension of the uvw array must be of length 3");
+                "The last dimension of the uvw array must be of length 3"
+        );
         return;
     }
     if (sdp_mem_type(uvw) != SDP_MEM_DOUBLE &&
@@ -38,6 +41,7 @@ void sdp_data_model_check_uvw(
     if (num_baselines) *num_baselines = sdp_mem_shape_dim(uvw, 1);
 }
 
+
 void sdp_data_model_check_vis(
         const sdp_Mem* vis,
         sdp_MemType* type,
@@ -46,7 +50,8 @@ void sdp_data_model_check_vis(
         int64_t* num_baselines,
         int64_t* num_channels,
         int64_t* num_pols,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_num_dims(vis) != 4)
@@ -69,6 +74,7 @@ void sdp_data_model_check_vis(
     if (num_pols) *num_pols = sdp_mem_shape_dim(vis, 3);
 }
 
+
 void sdp_data_model_check_weights(
         const sdp_Mem* weights,
         sdp_MemType* type,
@@ -77,7 +83,8 @@ void sdp_data_model_check_weights(
         int64_t* num_baselines,
         int64_t* num_channels,
         int64_t* num_pols,
-        sdp_Error* status)
+        sdp_Error* status
+)
 {
     if (*status) return;
     if (sdp_mem_num_dims(weights) != 4)

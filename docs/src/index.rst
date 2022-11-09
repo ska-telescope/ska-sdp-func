@@ -1,4 +1,3 @@
-
 *******************************
 SDP Processing Function Library
 *******************************
@@ -26,15 +25,11 @@ SDP Processing Function Library
   :caption: Processing functions
   :maxdepth: 1
 
-  proc_func_dft
-  proc_func_fft
-  proc_func_phase_rotation
-  proc_func_rfi_flagger
-  proc_func_function_example_a
-  proc_func_vector
-  proc_func_degridding
-  proc_func_gridder_uvw_es_fft
-  proc_func_weighting
+  module_fourier_transforms/index
+  module_grid_data/index
+  module_rfi/index
+  module_visibility/index
+  module_examples/index
 
 
 Indices and tables

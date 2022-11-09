@@ -1,6 +1,5 @@
-
 ***************
-Memory Handling
+Memory handling
 ***************
 
 In general, processing functions should not allocate their own memory.

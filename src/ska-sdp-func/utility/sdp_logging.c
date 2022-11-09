@@ -10,6 +10,7 @@
 
 static sdp_LogLevel log_filter = SDP_LOG_LEVEL_UNDEF;
 
+
 // Minimal SKA-compatible logging function.
 void sdp_log_message(
         sdp_LogLevel level,
@@ -17,7 +18,9 @@ void sdp_log_message(
         const char* func,
         const char* file,
         int line,
-        const char* message, ...)
+        const char* message,
+        ...
+)
 {
     // Check environment variable for log filter, if not defined.
     if (log_filter == SDP_LOG_LEVEL_UNDEF)
@@ -62,43 +65,45 @@ void sdp_log_message(
     struct tm* timeinfo = gmtime(&unix_time);
     gettimeofday(&tv, 0);
     snprintf(time_str, sizeof(time_str),
-        "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-        timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
-        timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec,
-        (int)(tv.tv_usec) / 1000);
+            "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
+            timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
+            timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec,
+            (int)(tv.tv_usec) / 1000
+    );
 
     // Convert level to string.
     const char* level_str = 0;
     switch (level)
     {
-        case SDP_LOG_LEVEL_UNDEF:
-            level_str = "UNDEF";
-            break;
-        case SDP_LOG_LEVEL_DEBUG:
-            level_str = "DEBUG";
-            break;
-        case SDP_LOG_LEVEL_INFO:
-            level_str = "INFO";
-            break;
-        case SDP_LOG_LEVEL_WARNING:
-            level_str = "WARNING";
-            break;
-        case SDP_LOG_LEVEL_ERROR:
-            level_str = "ERROR";
-            break;
-        case SDP_LOG_LEVEL_CRITICAL:
-            level_str = "CRITICAL";
-            break;
-        default:
-            level_str = "UNKNOWN";
-            break;
+    case SDP_LOG_LEVEL_UNDEF:
+        level_str = "UNDEF";
+        break;
+    case SDP_LOG_LEVEL_DEBUG:
+        level_str = "DEBUG";
+        break;
+    case SDP_LOG_LEVEL_INFO:
+        level_str = "INFO";
+        break;
+    case SDP_LOG_LEVEL_WARNING:
+        level_str = "WARNING";
+        break;
+    case SDP_LOG_LEVEL_ERROR:
+        level_str = "ERROR";
+        break;
+    case SDP_LOG_LEVEL_CRITICAL:
+        level_str = "CRITICAL";
+        break;
+    default:
+        level_str = "UNKNOWN";
+        break;
     }
 
     // Print message to stream using SKA log formatting.
     va_list args;
     va_start(args, message);
     fprintf(stream, "1|%s|%s||%s|%s#%i|| ",
-            time_str, level_str, func, file, line);
+            time_str, level_str, func, file, line
+    );
     vfprintf(stream, message, args);
     fprintf(stream, "\n");
     va_end(args);

@@ -1,19 +1,19 @@
-# List of tests to build.
-set(${CMAKE_PROJECT_NAME}_TESTS
-    test_dft
-    test_fft
-    test_function_example_a
-    test_gridder_uvw_es_fft
-    test_degrid_uvw_custom
-    test_phase_rotate
-    test_rfi_flagger
-    test_twosm_rfi_flagger
-    test_vector_add
+# Define list of folders containing test files.
+set(${CMAKE_PROJECT_NAME}_TEST_FOLDERS
+    examples
+    fourier_transforms
+    grid_data
+    rfi
+    utility
+    visibility
 )
 
 # Build tests.
-foreach(test ${${CMAKE_PROJECT_NAME}_TESTS})
-    add_executable(${test} ${test}.cpp)
-    target_link_libraries(${test} ${CMAKE_PROJECT_NAME})
-    add_test(${test} ${test})
+foreach (module ${${CMAKE_PROJECT_NAME}_TEST_FOLDERS})
+    add_subdirectory(${module})
+    foreach (test ${${module}_TST})
+        add_executable(${test} "${module}/${test}.cpp")
+        target_link_libraries(${test} ${CMAKE_PROJECT_NAME})
+        add_test(${test} ${test})
+    endforeach()
 endforeach()

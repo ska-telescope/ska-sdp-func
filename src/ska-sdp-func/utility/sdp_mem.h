@@ -139,7 +139,8 @@ sdp_Mem* sdp_mem_create(
         sdp_MemLocation location,
         int32_t num_dims,
         const int64_t* shape,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Wraps a pointer to a multi-dimensional array which is owned elsewhere.
@@ -168,7 +169,8 @@ sdp_Mem* sdp_mem_create_wrapper(
         int32_t num_dims,
         const int64_t* shape,
         const int64_t* stride,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Create a shallow copy, or an alias, of a block's metadata.
@@ -189,7 +191,8 @@ sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src);
 sdp_Mem* sdp_mem_create_copy(
         const sdp_Mem* src,
         sdp_MemLocation location,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Clears contents of a memory block by setting all its elements to zero.
@@ -215,7 +218,8 @@ void sdp_mem_copy_contents(
         int64_t offset_dst,
         int64_t offset_src,
         int64_t num_elements,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @brief Returns a raw pointer to the memory wrapped by the handle.
@@ -300,8 +304,11 @@ int32_t sdp_mem_is_complex(const sdp_Mem* mem);
  * @param check_location If true, check the data locations also match.
  * @return True if memory blocks have matching meta-data.
  */
-int32_t sdp_mem_is_matching(const sdp_Mem* mem1, const sdp_Mem* mem2,
-        int32_t check_location);
+int32_t sdp_mem_is_matching(
+        const sdp_Mem* mem1,
+        const sdp_Mem* mem2,
+        int32_t check_location
+);
 
 /**
  * @brief Returns true if the read-only flag is set.

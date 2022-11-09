@@ -5,7 +5,7 @@
 
 
 ********************
-Adding New Functions
+Adding new functions
 ********************
 
 To add a new function to the processing function library, the
@@ -60,9 +60,8 @@ In C or C++
      implement the algorithm, which could (for example) use C++ templates
      to work with different floating-point data types.
 
-   - In the ``CMakeLists.txt`` file, add the relative path of the new source
-     file to the list of C and C++ sources used to build the library.
-     This list can be found near the top of the ``CMakeLists.txt`` file.
+   - In the local ``CMakeLists.txt`` file, add the name of the new source
+     file to the list of sources used to build the library.
      |br|
 
 2. Write a header file to expose the public function prototype.
@@ -136,15 +135,14 @@ In C or C++
      For arrays in GPU memory, use :cpp:func:`sdp_mem_gpu_buffer` to get
      a pointer to the start of the array for the kernel argument list.
 
-   - In the ``CMakeLists.txt`` file, add the relative path of the new ``.cu``
+   - In the local ``CMakeLists.txt`` file, add the name of the new ``.cu``
      file to the list of CUDA kernel sources used to build the library.
-     This list can be found near the top of the ``CMakeLists.txt`` file.
      |br|
 
 4. Write a unit test to exercise the new function.
 
    - The source file for the test should be called ``test_<function_name>.cpp``
-     and placed in the ``tests`` directory.
+     and placed in an appropriate subdirectory of the ``tests`` directory.
      This will be used to build a self-contained test executable for that
      function.
 
@@ -154,9 +152,8 @@ In C or C++
      Try to test the unhappy paths as well, to check that they fail as
      expected.
 
-   - In the ``CMakeLists.txt`` file, add the root name of the test file
+   - In the local ``CMakeLists.txt`` file, add the root name of the test file
      (without the directory name or ``.cpp`` extension) to the list of tests.
-     This list can be found near the top of the ``CMakeLists.txt`` file.
      |br|
 
 5. Re-build, re-test, and re-install the library. From the build directory:
@@ -187,7 +184,7 @@ processing functions without needlessly copying data.
      .. code-block:: Python
 
         import ctypes
-        from .utility import Error, Lib, Mem
+        from ..utility import Error, Lib, Mem
 
    - Declare a Python function, giving it a suitable name and specifying
      parameters in the usual way.
@@ -266,24 +263,25 @@ processing functions without needlessly copying data.
         error_status.check()
 
 2. If you want to expose the function directly under the Python module
-   ``ska_sdp_func``, use a local import in the file
-   ``src/ska_sdp_func/__init__.py`` - the function can then be used by
-   importing it as follows:
+   ``ska_sdp_func.<module_name>``, use a local import in the file
+   ``src/ska_sdp_func/<module_name>/__init__.py`` - the function can
+   then be used by importing it as follows:
 
    .. code-block:: Python
 
-      from ska_sdp_func import <function_name>
+      from ska_sdp_func.<module_name> import <function_name>
 
    Otherwise, the name of the file will need to be specified as well:
 
    .. code-block:: Python
 
-      from ska_sdp_func.<file_name> import <function_name>
+      from ska_sdp_func.<module_name>.<file_name> import <function_name>
 
 3. Write a Python unit test to check the operation of the Python function.
 
    - For it to be found by ``pytest``, the test file should be named
-     ``test_<function_name>.py``, and placed in the ``tests`` directory.
+     ``test_<function_name>.py``, and placed somewhere in the ``tests``
+     directory.
      Inside the file, create a Python function with a name starting
      with ``test_``, which will be found automatically by ``pytest``.
      |br|
@@ -296,7 +294,7 @@ processing functions without needlessly copying data.
       pytest
 
 
-Updating Documentation
+Updating documentation
 ======================
 
 Descriptions from the Doxygen comments and Python docstrings should be
@@ -304,8 +302,8 @@ included in the Sphinx documentation, so they can be found easily.
 
 1. Find (or create) an appropriate reStructuredText file inside
    the ``docs/src/`` directory.
-   Processing functions are currently documented in
-   ``proc_func_<function_name>.rst`` files.
+   Processing functions are currently documented under top-level
+   groups in directory names starting with ``module_``.
 
 2. In the file, use the Sphinx directives from Breathe
    (e.g. ``doxygenfunction``) to document the C function using the
@@ -319,7 +317,7 @@ included in the Sphinx documentation, so they can be found easily.
       .. _vector_functions:
 
       ****************
-      Vector Functions
+      Vector functions
       ****************
 
       C/C++
@@ -331,29 +329,29 @@ included in the Sphinx documentation, so they can be found easily.
       Python
       ======
 
-      .. autofunction:: ska_sdp_func.vector_add
+      .. autofunction:: ska_sdp_func.examples.vector_add
 
-   - Remember to update the ``index.rst`` file to add the page to the table
+   - Remember to update the ``index.rst`` files to add the page to the table
      of contents, if necessary.
 
 
-Worked Example
+Worked example
 ==============
 
 For a very simple example of how to implement a function both in C++ and call
 it from Python, see the code for the ``sdp_vector_add`` function and its
 wrapper:
 
-1. The C++ implementation is at ``src/ska-sdp-func/vector/sdp_vector_add.cpp``
-2. The C header is at ``src/ska-sdp-func/vector/sdp_vector_add.h``
-3. The CUDA kernel is at ``src/ska-sdp-func/vector/sdp_vector_add.cu``
-4. The C++ unit test is at ``tests/test_vector_add.cpp``
+1. The C++ implementation is at ``src/ska-sdp-func/examples/sdp_vector_add.cpp``
+2. The C header is at ``src/ska-sdp-func/examples/sdp_vector_add.h``
+3. The CUDA kernel is at ``src/ska-sdp-func/examples/sdp_vector_add.cu``
+4. The C++ unit test is at ``tests/examples/test_vector_add.cpp``
 
 For the Python wrapper:
 
-1. The wrapper function is in ``src/ska_sdp_func/vector.py``
-2. The Python test is in ``tests/test_vector_add.py``
+1. The wrapper function is in ``src/ska_sdp_func/examples/vector.py``
+2. The Python test is in ``tests/examples/test_vector_add.py``
 
 For the documentation:
 
-1. The reStructuredText markup is in ``docs/src/proc_func_vector.rst``
+1. The reStructuredText markup is in ``docs/src/module_examples/vector.rst``

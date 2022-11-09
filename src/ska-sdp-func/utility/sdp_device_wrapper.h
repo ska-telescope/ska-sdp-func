@@ -45,7 +45,8 @@ void sdp_launch_cuda_kernel(
         uint64_t shared_mem_bytes,
         void* stream,
         const void** args,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /** @} */ /* End group device_func. */
 
@@ -73,6 +74,8 @@ struct sdp_CudaKernelRegistrar
     }
 };
 
+// *INDENT-OFF*
+
 #define M_CAT(A, B) M_CAT_(A, B)
 #define M_CAT_(A, B) A##B
 
@@ -90,6 +93,8 @@ struct sdp_CudaKernelRegistrar
  */
 #define SDP_CUDA_KERNEL(...) \
     static sdp_CudaKernelRegistrar M_CAT(r_, __LINE__)(#__VA_ARGS__, (const void*) & __VA_ARGS__); // NOLINT
+
+// *INDENT-OFF*
 
 #endif /* __cplusplus */
 

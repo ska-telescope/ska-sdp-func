@@ -1,6 +1,5 @@
-
 ***************
-Sky Coordinates
+Sky coordinates
 ***************
 
 Sky coordinates are represented by a string, an epoch, and up to three

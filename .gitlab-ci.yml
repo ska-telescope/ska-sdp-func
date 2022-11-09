@@ -57,7 +57,7 @@ include:
       auditwheel repair "$whl" -w wheelhouse;
     done
 
-linting:
+cpp-lint:
   stage: lint
   image: ubuntu:20.04
   before_script:
@@ -76,6 +76,15 @@ linting:
   artifacts:
     paths:
       - build/
+
+cpp-format:
+  stage: lint
+  image: alpine:3.16  # Use Uncrustify-0.75.1_f
+  before_script:
+    - apk update
+    - apk add uncrustify
+  script:
+    - find src tests -iname '*.h' -o -iname '*.cpp' -o -iname '*.c' -o -iname '*.cu' | xargs uncrustify -c uncrustify.cfg -l CPP --check
 
 # Need to override the template as it doesn't appear to work with this repo.
 python-gemnasium-scan:
