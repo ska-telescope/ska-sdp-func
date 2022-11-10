@@ -129,7 +129,7 @@ void sdp_weighting_uniform(
     int64_t grid_size = 0;
 
     // Check parameters.
-    sdp_data_model_check_uvw(uvw, &uvw_type, &uvw_location, 0, 0, status);
+    sdp_data_model_get_uvw_metadata(uvw, &uvw_type, &uvw_location, 0, 0, status);
     sdp_data_model_check_weights(weights, &weights_type, &weights_location,
             &num_times, &num_baselines, &num_channels, &num_pols, status
     );

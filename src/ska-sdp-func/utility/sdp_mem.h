@@ -3,6 +3,8 @@
 #ifndef SKA_SDP_PROC_FUNC_MEM_H_
 #define SKA_SDP_PROC_FUNC_MEM_H_
 
+#define CODE_POS __func__, __FILE__, __LINE__
+
 /**
  * @file sdp_mem.h
  */
@@ -286,6 +288,14 @@ void sdp_mem_free(sdp_Mem* mem);
 int32_t sdp_mem_is_c_contiguous(const sdp_Mem* mem);
 
 /**
+ * @brief Returns true if data element are in floating point format.
+ *
+ * @param mem Handle to memory block.
+ * @return True if data elements are in floating point.
+ */
+int32_t sdp_mem_is_floating_point(const sdp_Mem* mem);
+
+/**
  * @brief Returns true if data elements are of complex type.
  *
  * @param mem Handle to memory block.
@@ -434,6 +444,284 @@ sdp_MemType sdp_mem_type(const sdp_Mem* mem);
  * @return int64_t Size of data type in bytes.
  */
 int64_t sdp_mem_type_size(sdp_MemType type);
+
+/**
+ * @brief Returns a string representation of memory location
+ *
+ * @param loc Memory location
+ * @return String representation
+ */
+const char *sdp_mem_location_name(sdp_MemLocation loc);
+
+/**
+ * @brief Returns a string representation of data type
+ *
+ * @param typ Memory data type
+ * @return String representation
+ */
+const char *sdp_mem_type_name(sdp_MemType typ);
+
+/**
+ * @brief Checks that given memory is writeable
+ *
+ * ``status`` will be set if the check fails. Use
+ * #sdp_mem_check_writeable(mem,status) macro to automatically fill ``func``,
+ * ``expr``, ``file`` and ``line`` by call location.
+ *
+ * @param mem Handle to memory block to check
+ * @param status Output error status.
+ * @param func Function to report in error message
+ * @param expr Expression string to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_writeable(
+        const sdp_Mem *mem,
+        sdp_Error *status,
+        const char *expr, 
+        const char *func, 
+        const char *file, 
+        int line
+);
+
+/**
+ * @brief Checks that given memory is writeable
+ *
+ * ``status`` will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check
+ * @param status Output error status.
+ */
+/*
+#define sdp_mem_check_writeable(mem, status)                            \
+    sdp_mem_check_writeable_at(mem, status, __func__, #mem, __FILE__, __LINE__)
+*/
+
+/**
+ * @brief Checks that given memory is C contiguous
+ *
+ * ``status`` will be set if the check fails. Use
+ * #sdp_mem_check_c_contiguity(mem,status) macro to automatically fill 
+ * ``func``, ``expr``, ``file`` and ``line`` by call location.
+ *
+ * @param mem Handle to memory block to check
+ * @param status Output error status.
+ * @param func Function to report in error message
+ * @param expr Expression string to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_c_contiguity(
+        const sdp_Mem *mem,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,
+        const char *file,
+        int line
+);
+
+/**
+ * @brief Checks that given memory is C contiguous
+ *
+ * ``status`` will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check
+ * @param status Output error status.
+ */
+/*
+#define sdp_mem_check_c_contiguity(mem, status)   \
+    sdp_mem_check_writeable_at(mem, status, __func__, #mem, __FILE__, __LINE__)
+*/
+
+/**
+ * @brief Checks that given memory resides in the expected memory space
+ *
+ * ``status`` will be set if the check fails. Use
+ * #sdp_mem_check_location macro to automatically fill ``func``,
+ * ``expr``, ``file`` and ``line`` by call location.
+ *
+ * @param mem Handle to memory block to check
+ * @param loc Expected memory location
+ * @param status Output error status
+ * @param func Function to report in error message
+ * @param expr Expression string to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_location(
+        const sdp_Mem *mem, 
+        sdp_MemLocation expected_location,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,  
+        const char *file, 
+        int line
+);
+
+/**
+ * @brief Checks that given memory resides in the expected memory space
+ *
+ * ``status`` will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check
+ * @param loc Expected memory location
+ * @param status Output error status
+ */
+/*
+#define sdp_mem_check_location(mem, loc, status)                        \
+    sdp_mem_check_location_at(mem, loc, status, __func__, #mem, __FILE__, __LINE__)
+*/
+
+
+/**
+ * @brief Checks that given memory has expected number of dimensions.
+ *
+ * ``status`` will be set if the check fails. Use
+ * #sdp_mem_check_num_dims macro to automatically fill ``func``,
+ * ``expr``, ``file`` and ``line`` by call location.
+ *
+ * @param mem Handle to memory block to check
+ * @param ndims Expected number of dimensions
+ * @param status Output error status
+ * @param func Function to report in error message
+ * @param expr Expression string to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_num_dims(
+        const sdp_Mem *mem,
+        int64_t expected_ndims,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,
+        const char *file,
+        int line
+);
+
+/**
+ * @brief Checks that given memory has expected number of dimensions.
+ *
+ * ``status`` will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check
+ * @param ndims Expected number of dimensions
+ * @param status Output error status
+ */
+/*
+#define sdp_mem_check_num_dims(mem, ndims, status)                      \
+    sdp_mem_check_num_dims_at(mem, ndims, status, __func__, #mem, __FILE__, __LINE__)
+*/
+
+/**
+ * @brief Checks that a dimension of given memory has expected size
+ *
+ * ``status`` will be set if the check fails. Note that this function
+ * will *not* fail if the dimension in question does not exist, use
+ * #sdp_mem_check_num_dims additionally. Use
+ * #sdp_mem_check_shape macro to automatically fill
+ * ``func``, ``expr``, ``file`` and ``line`` by call location.
+ *
+ * @param mem Handle to memory block to check
+ * @param dim Dimension to check
+ * @param size Expected size
+ * @param status Output error status
+ * @param func Function to report in error message
+ * @param expr Expression string to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_shape(
+        const sdp_Mem *mem,
+        int32_t dim,
+        int64_t size,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,
+        const char *file,
+        int line
+);
+
+/**
+ * @brief Checks that a dimension of given memory has expected size
+ *
+ * ``status`` will be set if the check fails. Note that this function
+ * will *not* fail if the dimension in question does not exist, use
+ * #sdp_mem_check_num_dims additionally.
+ *
+ * @param mem Handle to memory block to check
+ * @param dim Dimension to check
+ * @param size Expected size
+ * @param status Output error status
+ */
+/*
+#define sdp_mem_check_shape(mem, dim, size, status)                     \
+    sdp_mem_check_shape_at(mem, dim, size, status, __func__, #mem, __FILE__, __LINE__)
+*/
+
+/**
+ * @brief Checks that a sdp_Mem has expected number of dimensions
+ * and expected shape.
+ *
+ * ``status`` will be set if the check fails. 
+ *
+ * @param mem Handle to memory block to check
+ * @param expected_ndims Dimension to check
+ * @param expected_shape Expected size
+ * @param status Output error status
+ * @param expr Expression string to report in error message
+ * @param func Function to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_dims_and_shape(
+        const sdp_Mem *mem,
+        int32_t expected_ndims,
+        int64_t* expected_shape,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,
+        const char *file,
+        int line
+);
+
+/**
+ * @brief Checks that given memory has the expected data type
+ *
+ * ``status`` will be set if the check fails. Use
+ * #sdp_mem_check_type macro to automatically fill ``func``,
+ * ``expr``, ``file`` and ``line`` by call location.
+ *
+ * @param mem Handle to memory block to check
+ * @param expected_type Expected data type
+ * @param status Output error status
+ * @param func Function to report in error message
+ * @param expr Expression string to report in error message
+ * @param file File name to report in error message
+ * @param line Line to report in error message
+ */
+void sdp_mem_check_type(
+        const sdp_Mem *mem,
+        sdp_MemType expected_type,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,
+        const char *file,
+        int line
+);
+
+/**
+ * @brief Checks that given memory has the expected data type
+ *
+ * ``status`` will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check
+ * @param expected_type Expected data type
+ * @param status Output error status
+ */
+/*
+#define sdp_mem_check_type(mem, expected_type, status)                            \
+    sdp_mem_check_type_at(mem, expected_type, status, __func__, #mem, __FILE__, __LINE__)
+*/
 
 /** @} */ /* End group Mem_func. */
 
