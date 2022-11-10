@@ -6,7 +6,21 @@ import ctypes
 
 import numpy
 
-from ..utility import Error, Lib, Mem
+from ..utility import Lib, Mem
+
+
+Lib.wrap_func(
+    "sdp_weighting_uniform",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_double,
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True
+)
 
 
 def get_uv_range(uvw, freq_hz):
@@ -57,26 +71,6 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_uv, weights):
                     [num_times, num_baselines, num_channels, num_pols]
     :type weights: numpy.ndarray
     """
-    mem_uvw = Mem(uvw)
-    mem_freq_hz = Mem(freq_hz)
-    mem_grid_uv = Mem(grid_uv)
-    mem_weights = Mem(weights)
-    error_status = Error()
-    lib_weighting_uniform = Lib.handle().sdp_weighting_uniform
-    lib_weighting_uniform.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
-        ctypes.c_double,
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_weighting_uniform(
-        mem_uvw,
-        mem_freq_hz,
-        ctypes.c_double(max_abs_uv),
-        mem_grid_uv,
-        mem_weights,
-        error_status.handle(),
+    Lib.sdp_weighting_uniform(
+        Mem(uvw), Mem(freq_hz), max_abs_uv, Mem(grid_uv), Mem(weights)
     )
-    error_status.check()

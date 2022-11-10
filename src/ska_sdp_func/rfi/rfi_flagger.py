@@ -4,7 +4,20 @@
 
 import ctypes
 
-from ..utility import Error, Lib, Mem
+from ..utility import Lib, Mem
+
+
+Lib.wrap_func(
+    "sdp_sum_threshold_rfi_flagger",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_int64,
+    ],
+    check_errcode=True
+)
 
 
 def sum_threshold_rfi_flagger(vis, thresholds, flags, max_sequence_length):
@@ -38,23 +51,6 @@ def sum_threshold_rfi_flagger(vis, thresholds, flags, max_sequence_length):
     :param max_sequence_length: Maximum length of the partial sum.
     :type max_sequence_length: integer
     """
-    mem_vis = Mem(vis)
-    mem_thresholds = Mem(thresholds)
-    mem_flags = Mem(flags)
-    error_status = Error()
-    lib_rfi_flagger = Lib.handle().sdp_sum_threshold_rfi_flagger
-    lib_rfi_flagger.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        ctypes.c_int64,
-        Error.handle_type(),
-    ]
-    lib_rfi_flagger(
-        mem_vis,
-        mem_thresholds,
-        mem_flags,
-        ctypes.c_int64(max_sequence_length),
-        error_status.handle(),
+    Lib.sdp_sum_threshold_rfi_flagger(
+        Mem(vis), Mem(thresholds), Mem(flags), max_sequence_length
     )
-    error_status.check()

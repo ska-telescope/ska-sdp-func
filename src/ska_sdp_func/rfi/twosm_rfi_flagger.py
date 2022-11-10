@@ -2,7 +2,20 @@
 
 """Module for RFI flagging functions."""
 
-from ..utility import Error, Lib, Mem
+from ..utility import Lib, Mem
+
+
+Lib.wrap_func(
+    "sdp_twosm_algo_flagger",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True
+)
 
 
 def twosm_rfi_flagger(vis, thresholds, antennas, flags):
@@ -34,25 +47,4 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
     :param flags: Output flags. Dimensions as above.
     :type flags: numpy.ndarray
     """
-
-    mem_vis = Mem(vis)
-    mem_thresholds = Mem(thresholds)
-    mem_antennas = Mem(antennas)
-    mem_flags = Mem(flags)
-    error_status = Error()
-    lib_rfi_flagger = Lib.handle().sdp_twosm_algo_flagger
-    lib_rfi_flagger.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_rfi_flagger(
-        mem_vis,
-        mem_thresholds,
-        mem_antennas,
-        mem_flags,
-        error_status.handle(),
-    )
-    error_status.check()
+    Lib.sdp_twosm_algo_flagger(Mem(vis), Mem(thresholds), Mem(antennas), Mem(flags))
