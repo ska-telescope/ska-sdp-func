@@ -72,11 +72,11 @@ def uniform_weights(uvw, freq_hz, max_abs_uv, grid_uv, weights):
         Error.handle_type(),
     ]
     lib_weighting_uniform(
-        mem_uvw.handle(),
-        mem_freq_hz.handle(),
+        mem_uvw,
+        mem_freq_hz,
         ctypes.c_double(max_abs_uv),
-        mem_grid_uv.handle(),
-        mem_weights.handle(),
+        mem_grid_uv,
+        mem_weights,
         error_status.handle(),
     )
     error_status.check()

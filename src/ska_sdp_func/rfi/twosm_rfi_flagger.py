@@ -49,10 +49,10 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
         Error.handle_type(),
     ]
     lib_rfi_flagger(
-        mem_vis.handle(),
-        mem_thresholds.handle(),
-        mem_antennas.handle(),
-        mem_flags.handle(),
+        mem_vis,
+        mem_thresholds,
+        mem_antennas,
+        mem_flags,
         error_status.handle(),
     )
     error_status.check()

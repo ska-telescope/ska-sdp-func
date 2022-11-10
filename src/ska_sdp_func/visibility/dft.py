@@ -66,10 +66,10 @@ def dft_point_v00(source_directions, source_fluxes, uvw_lambda, vis):
         Error.handle_type(),
     ]
     lib_dft(
-        mem_source_directions.handle(),
-        mem_source_fluxes.handle(),
-        mem_uvw_lambda.handle(),
-        mem_vis.handle(),
+        mem_source_directions,
+        mem_source_fluxes,
+        mem_uvw_lambda,
+        mem_vis,
         error_status.handle(),
     )
     error_status.check()
@@ -143,12 +143,12 @@ def dft_point_v01(
         Error.handle_type(),
     ]
     lib_dft(
-        mem_source_directions.handle(),
-        mem_source_fluxes.handle(),
-        mem_uvw.handle(),
+        mem_source_directions,
+        mem_source_fluxes,
+        mem_uvw,
         ctypes.c_double(channel_start_hz),
         ctypes.c_double(channel_step_hz),
-        mem_vis.handle(),
+        mem_vis,
         error_status.handle(),
     )
     error_status.check()

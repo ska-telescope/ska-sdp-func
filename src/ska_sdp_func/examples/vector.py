@@ -34,9 +34,9 @@ def vector_add(input_a, input_b, output):
         Error.handle_type(),
     ]
     lib_vector_add(
-        mem_input_a.handle(),
-        mem_input_b.handle(),
-        mem_output.handle(),
+        mem_input_a,
+        mem_input_b,
+        mem_output,
         error_status.handle(),
     )
     error_status.check()

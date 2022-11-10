@@ -88,5 +88,5 @@ class FunctionExampleA:
             Mem.handle_type(),
             Error.handle_type(),
         ]
-        function_exec(self._handle, mem_output.handle(), error_status.handle())
+        function_exec(self._handle, mem_output, error_status.handle())
         error_status.check()

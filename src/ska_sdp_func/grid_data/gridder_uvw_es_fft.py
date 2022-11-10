@@ -99,11 +99,11 @@ class GridderUvwEsFft:
             Error.handle_type(),
         ]
         self._handle = function_create(
-            mem_uvw.handle(),
-            mem_freq_hz.handle(),
-            mem_vis.handle(),
-            mem_weight.handle(),
-            mem_dirty_image.handle(),  # 5
+            mem_uvw,
+            mem_freq_hz,
+            mem_vis,
+            mem_weight,
+            mem_dirty_image,  # 5
             ctypes.c_double(pixel_size_x_rad),
             ctypes.c_double(pixel_size_y_rad),
             ctypes.c_double(epsilon),
@@ -192,11 +192,11 @@ class GridderUvwEsFft:
         ]
         function_exec(
             self._handle,
-            mem_uvw.handle(),
-            mem_freq_hz.handle(),
-            mem_vis.handle(),
-            mem_weight.handle(),
-            mem_dirty_image.handle(),
+            mem_uvw,
+            mem_freq_hz,
+            mem_vis,
+            mem_weight,
+            mem_dirty_image,
             error_status.handle(),
         )
         error_status.check()
@@ -233,11 +233,11 @@ class GridderUvwEsFft:
         ]
         function_exec(
             self._handle,
-            mem_uvw.handle(),
-            mem_freq_hz.handle(),
-            mem_vis.handle(),
-            mem_weight.handle(),
-            mem_dirty_image.handle(),
+            mem_uvw,
+            mem_freq_hz,
+            mem_vis,
+            mem_weight,
+            mem_dirty_image,
             error_status.handle(),
         )
         error_status.check()

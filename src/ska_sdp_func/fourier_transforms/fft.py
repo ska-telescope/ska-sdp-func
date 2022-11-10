@@ -48,8 +48,8 @@ class Fft:
             Error.handle_type(),
         ]
         self._handle = function_create(
-            mem_input.handle(),
-            mem_output.handle(),
+            mem_input,
+            mem_output,
             ctypes.c_int32(num_dims_fft),
             ctypes.c_int32(is_forward),
             error_status.handle(),
@@ -108,8 +108,8 @@ class Fft:
         ]
         function_exec(
             self._handle,
-            mem_input.handle(),
-            mem_output.handle(),
+            mem_input,
+            mem_output,
             error_status.handle(),
         )
         error_status.check()
