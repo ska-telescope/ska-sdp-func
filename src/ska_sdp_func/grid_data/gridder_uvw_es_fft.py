@@ -10,14 +10,11 @@ except ImportError:
 
 import numpy as np
 
-from ..utility import Error, Lib, Mem
+from ..utility import Lib, Mem, StructWrapper
 
 
-class GridderUvwEsFft:
+class GridderUvwEsFft(StructWrapper):
     """Processing function GridderUvwEsFft."""
-
-    class Handle(ctypes.Structure):
-        """Class handle for use by ctypes."""
 
     def __init__(
         self,
@@ -65,71 +62,30 @@ class GridderUvwEsFft:
             If True, the full improved w-stacking algorithm is carried out,
             otherwise the w values are assumed to be zero.
         """
-
-        self._handle = None
-        mem_uvw = Mem(uvw)
-        mem_freq_hz = Mem(freq_hz)
-        mem_vis = Mem(vis)
-        mem_weight = Mem(weight)
-        mem_dirty_image = Mem(dirty_image)
-        error_status = Error()
-
-        # check types consistent here???
-
         if do_w_stacking:
             min_abs_w, max_abs_w = GridderUvwEsFft.get_w_range(uvw, freq_hz)
         else:
             min_abs_w = 0
             max_abs_w = 0
 
-        function_create = Lib.handle().sdp_gridder_uvw_es_fft_create_plan
-        function_create.restype = GridderUvwEsFft.handle_type()
-        function_create.argtypes = [
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),  # 5
-            ctypes.c_double,
-            ctypes.c_double,
-            ctypes.c_double,
-            ctypes.c_double,
-            ctypes.c_double,  # 10
-            ctypes.c_bool,
-            Error.handle_type(),
-        ]
-        self._handle = function_create(
-            mem_uvw,
-            mem_freq_hz,
-            mem_vis,
-            mem_weight,
-            mem_dirty_image,  # 5
-            ctypes.c_double(pixel_size_x_rad),
-            ctypes.c_double(pixel_size_y_rad),
-            ctypes.c_double(epsilon),
-            ctypes.c_double(min_abs_w),
-            ctypes.c_double(max_abs_w),  # 10
-            ctypes.c_bool(do_w_stacking),
-            error_status.handle(),
+        create_args = (
+            Mem(uvw),
+            Mem(freq_hz),
+            Mem(vis),
+            Mem(weight),
+            Mem(dirty_image),
+            pixel_size_x_rad,
+            pixel_size_y_rad,
+            epsilon,
+            min_abs_w,
+            max_abs_w,  # 10
+            do_w_stacking,
         )
-        error_status.check()
-
-    def __del__(self):
-        """Releases handle to the processing function."""
-        if self._handle:
-            function_free = Lib.handle().sdp_gridder_uvw_es_fft_free_plan
-            function_free.argtypes = [GridderUvwEsFft.handle_type()]
-            function_free(self._handle)
-
-    def handle(self):
-        """Returns a handle to the wrapped processing function.
-
-        Use this handle when calling the function in the compiled library.
-
-        :return: Handle to wrapped function.
-        :rtype: ctypes.POINTER(GridderUvwEsFft.Handle)
-        """
-        return self._handle
+        super().__init__(
+            Lib.sdp_gridder_uvw_es_fft_create_plan,
+            create_args,
+            Lib.sdp_gridder_uvw_es_fft_free_plan,
+        )
 
     @staticmethod
     def get_w_range(uvw, freq_hz):
@@ -149,17 +105,6 @@ class GridderUvwEsFft:
 
         return min_abs_w, max_abs_w
 
-    @staticmethod
-    def handle_type():
-        """Static convenience method to return the ctypes handle type.
-
-        Use this when defining the list of argument types.
-
-        :return: Type of the function handle.
-        :rtype: ctypes.POINTER(GridderUvwEsFft.Handle)
-        """
-        return ctypes.POINTER(GridderUvwEsFft.Handle)
-
     def grid_uvw_es_fft(self, uvw, freq_hz, vis, weight, dirty_image):
         """Generate a dirty image from visibility data.
 
@@ -171,35 +116,9 @@ class GridderUvwEsFft:
         weight: as above.
         dirty_image: as above.
         """
-        if self._handle is None:
-            raise RuntimeError("Function plan not ready")
-
-        mem_uvw = Mem(uvw)
-        mem_freq_hz = Mem(freq_hz)
-        mem_vis = Mem(vis)
-        mem_weight = Mem(weight)
-        mem_dirty_image = Mem(dirty_image)
-        error_status = Error()
-        function_exec = Lib.handle().sdp_grid_uvw_es_fft
-        function_exec.argtypes = [
-            GridderUvwEsFft.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Error.handle_type(),
-        ]
-        function_exec(
-            self._handle,
-            mem_uvw,
-            mem_freq_hz,
-            mem_vis,
-            mem_weight,
-            mem_dirty_image,
-            error_status.handle(),
+        Lib.sdp_grid_uvw_es_fft(
+            self, Mem(uvw), Mem(freq_hz), Mem(vis), Mem(weight), Mem(dirty_image)
         )
-        error_status.check()
 
     def ifft_grid_uvw_es(self, uvw, freq_hz, vis, weight, dirty_image):
         """Generate visibility data from a dirty image.
@@ -212,32 +131,60 @@ class GridderUvwEsFft:
         weight: as above.
         dirty_image: as above.
         """
-        if self._handle is None:
-            raise RuntimeError("Function plan not ready")
-
-        mem_uvw = Mem(uvw)
-        mem_freq_hz = Mem(freq_hz)
-        mem_vis = Mem(vis)
-        mem_weight = Mem(weight)
-        mem_dirty_image = Mem(dirty_image)
-        error_status = Error()
-        function_exec = Lib.handle().sdp_ifft_degrid_uvw_es
-        function_exec.argtypes = [
-            GridderUvwEsFft.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Mem.handle_type(),
-            Error.handle_type(),
-        ]
-        function_exec(
-            self._handle,
-            mem_uvw,
-            mem_freq_hz,
-            mem_vis,
-            mem_weight,
-            mem_dirty_image,
-            error_status.handle(),
+        Lib.sdp_ifft_degrid_uvw_es(
+            self, Mem(uvw), Mem(freq_hz), Mem(vis), Mem(weight), Mem(dirty_image)
         )
-        error_status.check()
+
+
+Lib.wrap_func(
+    "sdp_gridder_uvw_es_fft_create_plan",
+    restype=GridderUvwEsFft.handle_type(),
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),  # 5
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,  # 10
+        ctypes.c_bool,
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_uvw_es_fft_free_plan",
+    restype=None,
+    argtypes=[GridderUvwEsFft.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_grid_uvw_es_fft",
+    restype=None,
+    argtypes=[
+        GridderUvwEsFft.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_ifft_degrid_uvw_es",
+    restype=None,
+    argtypes=[
+        GridderUvwEsFft.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
