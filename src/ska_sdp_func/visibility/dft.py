@@ -6,7 +6,6 @@ import ctypes
 
 from ..utility import Lib, Mem
 
-
 Lib.wrap_func(
     "sdp_dft_point_v00",
     restype=None,

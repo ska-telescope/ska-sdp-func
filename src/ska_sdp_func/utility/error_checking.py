@@ -1,6 +1,10 @@
+# See the LICENSE file at the top-level directory of this distribution.
+
+"""Utilities to automatically check whether wrapped C functions set a
+non-zero error code, and raise a custom exception if they do."""
+
 import ctypes
 from typing import Callable
-
 
 ERROR_CODE_ARGTYPE: type = ctypes.POINTER(ctypes.c_int)
 

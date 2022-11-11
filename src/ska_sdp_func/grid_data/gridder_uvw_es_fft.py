@@ -117,7 +117,12 @@ class GridderUvwEsFft(StructWrapper):
         dirty_image: as above.
         """
         Lib.sdp_grid_uvw_es_fft(
-            self, Mem(uvw), Mem(freq_hz), Mem(vis), Mem(weight), Mem(dirty_image)
+            self,
+            Mem(uvw),
+            Mem(freq_hz),
+            Mem(vis),
+            Mem(weight),
+            Mem(dirty_image),
         )
 
     def ifft_grid_uvw_es(self, uvw, freq_hz, vis, weight, dirty_image):
@@ -132,7 +137,12 @@ class GridderUvwEsFft(StructWrapper):
         dirty_image: as above.
         """
         Lib.sdp_ifft_degrid_uvw_es(
-            self, Mem(uvw), Mem(freq_hz), Mem(vis), Mem(weight), Mem(dirty_image)
+            self,
+            Mem(uvw),
+            Mem(freq_hz),
+            Mem(vis),
+            Mem(weight),
+            Mem(dirty_image),
         )
 
 

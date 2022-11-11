@@ -10,7 +10,7 @@ try:
 except ImportError:
     cupy = None
 
-from ska_sdp_func.utility import SkyCoord, CError
+from ska_sdp_func.utility import CError, SkyCoord
 from ska_sdp_func.visibility import phase_rotate_uvw, phase_rotate_vis
 
 
@@ -83,7 +83,8 @@ def test_phase_rotate():
         numpy.testing.assert_array_almost_equal(output_gpu_vis_check, vis_out)
         print("Phase rotation on GPU: Test passed")
 
-        # Check that a CError is raised when mixing CPU and GPU arrays as inputs and outputs
+        # Check that a CError is raised when mixing CPU and GPU arrays
+        # as inputs and outputs
         with pytest.raises(CError):
             phase_rotate_uvw(
                 original_phase_centre,

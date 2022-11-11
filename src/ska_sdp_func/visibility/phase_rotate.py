@@ -6,7 +6,6 @@ import ctypes
 
 from ..utility import Lib, Mem, SkyCoord
 
-
 Lib.wrap_func(
     "sdp_phase_rotate_uvw",
     restype=None,
@@ -16,7 +15,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
     ],
-    check_errcode=True
+    check_errcode=True,
 )
 
 
@@ -32,7 +31,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
     ],
-    check_errcode=True
+    check_errcode=True,
 )
 
 

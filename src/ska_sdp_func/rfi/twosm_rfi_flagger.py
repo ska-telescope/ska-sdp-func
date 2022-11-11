@@ -4,7 +4,6 @@
 
 from ..utility import Lib, Mem
 
-
 Lib.wrap_func(
     "sdp_twosm_algo_flagger",
     restype=None,
@@ -14,7 +13,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
     ],
-    check_errcode=True
+    check_errcode=True,
 )
 
 
@@ -47,4 +46,6 @@ def twosm_rfi_flagger(vis, thresholds, antennas, flags):
     :param flags: Output flags. Dimensions as above.
     :type flags: numpy.ndarray
     """
-    Lib.sdp_twosm_algo_flagger(Mem(vis), Mem(thresholds), Mem(antennas), Mem(flags))
+    Lib.sdp_twosm_algo_flagger(
+        Mem(vis), Mem(thresholds), Mem(antennas), Mem(flags)
+    )

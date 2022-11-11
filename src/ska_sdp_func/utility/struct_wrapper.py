@@ -1,5 +1,9 @@
+# See the LICENSE file at the top-level directory of this distribution.
+
+"""Base class for any object that wraps a C struct."""
+
 import ctypes
-from typing import Callable, Any, Final, Optional
+from typing import Any, Callable, Final, Optional
 
 
 class StructWrapper:
@@ -29,7 +33,9 @@ class StructWrapper:
     """
 
     def __init_subclass__(cls) -> None:
-        cls._HANDLE_CLASS = type(f"{cls.__name__}Handle", (ctypes.Structure,), {})
+        cls._HANDLE_CLASS = type(
+            f"{cls.__name__}Handle", (ctypes.Structure,), {}
+        )
 
     def __init__(
         self,

@@ -60,5 +60,5 @@ Lib.wrap_func(
         FunctionExampleA.handle_type(),
         Mem.handle_type(),
     ],
-    check_errcode=True
+    check_errcode=True,
 )

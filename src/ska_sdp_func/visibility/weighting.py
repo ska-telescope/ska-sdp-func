@@ -8,7 +8,6 @@ import numpy
 
 from ..utility import Lib, Mem
 
-
 Lib.wrap_func(
     "sdp_weighting_uniform",
     restype=None,
@@ -19,7 +18,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
     ],
-    check_errcode=True
+    check_errcode=True,
 )
 
 

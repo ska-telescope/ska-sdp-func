@@ -6,7 +6,6 @@ import ctypes
 
 from ..utility import Lib, Mem
 
-
 Lib.wrap_func(
     "sdp_sum_threshold_rfi_flagger",
     restype=None,
@@ -16,7 +15,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_int64,
     ],
-    check_errcode=True
+    check_errcode=True,
 )
 
 

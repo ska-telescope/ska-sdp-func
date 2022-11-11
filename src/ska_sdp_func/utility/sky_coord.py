@@ -53,7 +53,9 @@ class SkyCoord(StructWrapper):
                     else:
                         raise RuntimeError("Unknown astropy coordinate frame")
             else:
-                raise RuntimeError("Unknown object passed to SkyCoord constructor")
+                raise RuntimeError(
+                    "Unknown object passed to SkyCoord constructor"
+                )
         elif len(args) >= 3:
             create_args = (
                 args[0].encode("ascii"),
@@ -63,7 +65,9 @@ class SkyCoord(StructWrapper):
             )
         else:
             raise RuntimeError("Unknown construction method for SkyCoord")
-        super().__init__(Lib.sdp_sky_coord_create, create_args, Lib.sdp_sky_coord_free)
+        super().__init__(
+            Lib.sdp_sky_coord_create, create_args, Lib.sdp_sky_coord_free
+        )
 
     def epoch(self) -> float:
         """Returns the value of the coordinate epoch"""

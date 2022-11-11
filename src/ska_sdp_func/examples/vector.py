@@ -4,7 +4,6 @@
 
 from ..utility import Lib, Mem
 
-
 Lib.wrap_func(
     "sdp_vector_add",
     restype=None,

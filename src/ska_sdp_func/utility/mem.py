@@ -66,7 +66,9 @@ class Mem(StructWrapper):
                 shape,
                 strides,
             )
-            super().__init__(Lib.sdp_mem_create_wrapper, create_args, Lib.sdp_mem_free)
+            super().__init__(
+                Lib.sdp_mem_create_wrapper, create_args, Lib.sdp_mem_free
+            )
             Lib.sdp_mem_set_read_only(self, not obj.flags.writeable)
 
         elif cupy and isinstance(obj, cupy.ndarray):
@@ -94,7 +96,9 @@ class Mem(StructWrapper):
                 shape,
                 strides,
             )
-            super().__init__(Lib.sdp_mem_create_wrapper, create_args, Lib.sdp_mem_free)
+            super().__init__(
+                Lib.sdp_mem_create_wrapper, create_args, Lib.sdp_mem_free
+            )
             # cupy doesn't appear to have a "writeable" flag.
             Lib.sdp_mem_set_read_only(self, 0)
         else:
@@ -117,7 +121,9 @@ Lib.wrap_func(
 
 
 Lib.wrap_func(
-    "sdp_mem_set_read_only", restype=None, argtypes=[Mem.handle_type(), ctypes.c_int32]
+    "sdp_mem_set_read_only",
+    restype=None,
+    argtypes=[Mem.handle_type(), ctypes.c_int32],
 )
 
 

@@ -31,7 +31,12 @@ class Fft(StructWrapper):
                            false for "inverse".
         :type is_forward: bool
         """
-        create_args = (Mem(input_data), Mem(output_data), num_dims_fft, is_forward)
+        create_args = (
+            Mem(input_data),
+            Mem(output_data),
+            num_dims_fft,
+            is_forward,
+        )
         super().__init__(Lib.sdp_fft_create, create_args, Lib.sdp_fft_free)
 
     def exec(self, input_data, output_data):
