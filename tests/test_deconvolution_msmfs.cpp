@@ -92,11 +92,33 @@ static void run_and_check(
         sdp_Mem *psf_moment_images = sdp_msmfs_allocate_psf_image(psf_moment_size, 2*num_taylor-1, input_type);
         sdp_msmfs_calculate_simple_psf_image(psf_moment_images , psf_moment_size, 2*num_taylor-1);
 
+        // create the sdp_Mem data structures that will hold the output cleaned sources
+        unsigned int *num_gaussian_sources_host = NULL;
+        num_gaussian_sources_host = (unsigned int *)malloc(sizeof(unsigned int));
+        memset(num_gaussian_sources_host, 0, sizeof(unsigned int));
+        sdp_Error *status = NULL;
+        const int64_t gaussian_source_position_shape[] = {max_gaussian_sources_host, 2};
+        sdp_Mem *gaussian_source_position = sdp_mem_create(SDP_MEM_INT, SDP_MEM_CPU, 2, gaussian_source_position_shape, status);
+        sdp_mem_clear_contents(gaussian_source_position, status);
+        const int64_t gaussian_source_variance_shape[] = {max_gaussian_sources_host};
+        sdp_Mem *gaussian_source_variance = sdp_mem_create(input_type, SDP_MEM_CPU, 1, gaussian_source_variance_shape, status);
+        sdp_mem_clear_contents(gaussian_source_variance, status);
+        const int64_t gaussian_source_taylor_intensities_shape[] = {max_gaussian_sources_host, num_taylor};
+        sdp_Mem *gaussian_source_taylor_intensities = sdp_mem_create(input_type, SDP_MEM_CPU, 2, gaussian_source_taylor_intensities_shape, status);
+        sdp_mem_clear_contents(gaussian_source_taylor_intensities, status);
+
         sdp_msmfs_perform(
             dirty_moment_images, psf_moment_images,
             dirty_moment_size, num_scales, num_taylor, psf_moment_size, image_border,
             convolution_accuracy, clean_loop_gain, max_gaussian_sources_host,
-            scale_bias_factor, clean_threshold);
+            scale_bias_factor, clean_threshold,
+            num_gaussian_sources_host, gaussian_source_position, gaussian_source_variance, gaussian_source_taylor_intensities);
+
+        // clean up the allocated sdp_Mem data structures
+        sdp_mem_ref_dec(gaussian_source_taylor_intensities);
+        sdp_mem_ref_dec(gaussian_source_variance);
+        sdp_mem_ref_dec(gaussian_source_position);
+        free(num_gaussian_sources_host);
 
         // clean up simple test input image and simple test input psf
         sdp_msmfs_free_psf_image(psf_moment_images);

@@ -300,7 +300,11 @@ void sdp_msmfs_perform
     const double clean_loop_gain,
     const unsigned int max_gaussian_sources_host,
     const double scale_bias_factor,
-    const double clean_threshold
+    const double clean_threshold,
+    unsigned int *num_gaussian_sources_host,
+    sdp_Mem *gausian_source_position,
+    sdp_Mem *gaussian_source_variance,
+    sdp_Mem *gaussian_source_taylor_intensities
     )
 {
     if (sdp_mem_type(dirty_moment_images)==SDP_MEM_FLOAT && sdp_mem_type(psf_moment_images)==SDP_MEM_FLOAT)
@@ -315,9 +319,38 @@ void sdp_msmfs_perform
             (float)scale_bias_factor, (float)clean_threshold,
             gaussian_source_list);
 
+        // copy the resulting gaussian_source_list back to the host
+        Gaussian_source<float> *gaussian_sources_host; // sources that have distinct scales/positions (duplicates get merged)
+        gaussian_sources_host = (Gaussian_source<float>*)malloc(max_gaussian_sources_host*sizeof(Gaussian_source<float>));
+        copy_gaussian_source_list_to_host<float>
+            (gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
+            max_gaussian_sources_host, num_gaussian_sources_host, gaussian_sources_host);
+
+// NOTE printf INCLUDED TEMPORARILY UNTIL THIS CODE IS UNIT TESTED
+//        printf("In total %u distinct sources were discovered during cleaning\n", *num_gaussian_sources_host);
+        // copy each distinct source that has been found to the sdp_Mem data structures
+        for (unsigned int source_index=0; source_index<*num_gaussian_sources_host; source_index++)
+        {
+            Gaussian_source<float> source = (Gaussian_source<float>)gaussian_sources_host[source_index];
+            unsigned int x_pos = (source.index % (dirty_moment_size-2*image_border)) + image_border;
+            unsigned int y_pos = (source.index / (dirty_moment_size-2*image_border)) + image_border; 
+            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].x = x_pos;
+            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].y = y_pos;
+            ((float *)sdp_mem_data(gaussian_source_variance))[source_index] = source.variance;
+//            printf("Source %3u has scale variance %8.2lf and position (%5u,%5u) with taylor term intensities: ",
+//                source_index, source.variance, x_pos, y_pos);
+            for (unsigned int taylor_index=0; taylor_index<num_taylor; taylor_index++)
+            {
+                ((float *)sdp_mem_data(gaussian_source_taylor_intensities))[source_index*num_taylor + taylor_index] = source.intensities[taylor_index];
+//                printf("%+12lf ", source.intensities[taylor_index]);
+            }
+//            printf("\n");
+        }
+        free(gaussian_sources_host);
+
         // ***** temporary code to display the gaussian sources found in the minor cycle loops *****
-        display_gaussian_source_list<float>(gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
-            max_gaussian_sources_host, dirty_moment_size, image_border, num_taylor);
+//        display_gaussian_source_list<float>(gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
+//            max_gaussian_sources_host, dirty_moment_size, image_border, num_taylor);
         // ***** end of temporary code *****
 
         // clean up the source model
@@ -335,9 +368,38 @@ void sdp_msmfs_perform
             scale_bias_factor, clean_threshold,
             gaussian_source_list);
 
+        // copy the resulting gaussian_source_list back to the host
+        Gaussian_source<double> *gaussian_sources_host; // sources that have distinct scales/positions (duplicates get merged)
+        gaussian_sources_host = (Gaussian_source<double>*)malloc(max_gaussian_sources_host*sizeof(Gaussian_source<double>));
+        copy_gaussian_source_list_to_host<double>
+            (gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
+            max_gaussian_sources_host, num_gaussian_sources_host, gaussian_sources_host);
+
+// NOTE printf INCLUDED TEMPORARILY UNTIL THIS CODE IS UNIT TESTED
+//        printf("In total %u distinct sources were discovered during cleaning\n", *num_gaussian_sources_host);
+        // copy each distinct source that has been found to the sdp_Mem data structures
+        for (unsigned int source_index=0; source_index<*num_gaussian_sources_host; source_index++)
+        {
+            Gaussian_source<double> source = (Gaussian_source<double>)gaussian_sources_host[source_index];
+            unsigned int x_pos = (source.index % (dirty_moment_size-2*image_border)) + image_border;
+            unsigned int y_pos = (source.index / (dirty_moment_size-2*image_border)) + image_border; 
+            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].x = x_pos;
+            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].y = y_pos;
+            ((double *)sdp_mem_data(gaussian_source_variance))[source_index] = source.variance;
+//            printf("Source %3u has scale variance %8.2lf and position (%5u,%5u) with taylor term intensities: ",
+//                source_index, source.variance, x_pos, y_pos);
+            for (unsigned int taylor_index=0; taylor_index<num_taylor; taylor_index++)
+            {
+                ((double *)sdp_mem_data(gaussian_source_taylor_intensities))[source_index*num_taylor + taylor_index] = source.intensities[taylor_index];
+//                printf("%+12lf ", source.intensities[taylor_index]);
+            }
+//            printf("\n");
+        }
+        free(gaussian_sources_host);
+
         // ***** temporary code to display the gaussian sources found in the minor cycle loops *****
-        display_gaussian_source_list<double>(gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
-            max_gaussian_sources_host, dirty_moment_size, image_border, num_taylor);
+//        display_gaussian_source_list<double>(gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
+//            max_gaussian_sources_host, dirty_moment_size, image_border, num_taylor);
         // ***** end of temporary code *****
 
         // clean up the source model
@@ -345,6 +407,6 @@ void sdp_msmfs_perform
     }
     else
     {
-        logger(LOG_CRIT, "Dirty moment images and PSF moment images must both be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+        logger(LOG_CRIT, "Dirty moment images and PSF moment images must both be either SDP_MEM_FLOAT or else both SDP_MEM_DOUBLE");
     }
 }

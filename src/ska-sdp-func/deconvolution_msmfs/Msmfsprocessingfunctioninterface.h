@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 #include "ska-sdp-func/utility/sdp_mem.h"
@@ -101,6 +102,10 @@ void sdp_msmfs_free_psf_image(sdp_Mem *psf_moment_images);
  * @param max_gaussian_sources_host Upper bound on the number of gaussian sources the list data structure will hold.
  * @param scale_bias_factor Bias multiplicative factor to favour cleaning with smaller scales.
  * @param clean_threshold Set clean_threshold to 0 to disable checking whether source to clean below cutoff threshold.
+ * @param num_gaussian_sources_host Output pointer to unsigned int holding number of distinct sources cleaned.
+ * @param gausian_source_position Output sdp_Mem array containing (x,y) int2 position of each gaussian source.
+ * @param gaussian_source_variance Output sdp_Mem array containing variance of each gaussian source.
+ * @param gaussian_source_taylor_intensities Output sdp_Mem array containing intensity for each taylor term of each gaussian source.
  */
 void sdp_msmfs_perform
     (
@@ -115,7 +120,11 @@ void sdp_msmfs_perform
     const double clean_loop_gain,
     const unsigned int max_gaussian_sources_host,
     const double scale_bias_factor,
-    const double clean_threshold
+    const double clean_threshold,
+    unsigned int *num_gaussian_sources_host,
+    sdp_Mem *gausian_source_position,
+    sdp_Mem *gaussian_source_variance,
+    sdp_Mem *gaussian_source_taylor_intensities
     );
 
 #ifdef __cplusplus

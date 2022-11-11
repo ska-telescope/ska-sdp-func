@@ -705,6 +705,29 @@ template Gaussian_source_list<double> allocate_gaussian_source_list<double>(cons
 
 
 /*****************************************************************************
+ * Temporary utility function that copies the gaussian sources found during cleaning from device to the host
+ *****************************************************************************/
+template<typename PRECISION>
+void copy_gaussian_source_list_to_host
+    (
+    Gaussian_source<PRECISION> *gaussian_sources_device,
+    unsigned int *num_gaussian_sources_device,
+    unsigned int max_gaussian_sources_host,
+    unsigned int *num_gaussian_sources_host,
+    Gaussian_source<PRECISION> *gaussian_sources_host
+    )
+{
+    memset(gaussian_sources_host, 0, max_gaussian_sources_host*sizeof(Gaussian_source<PRECISION>)); // clear the list of sources
+    CUDA_CHECK_RETURN(cudaMemcpy(gaussian_sources_host, gaussian_sources_device, max_gaussian_sources_host*sizeof(Gaussian_source<PRECISION>), cudaMemcpyDeviceToHost));
+    memset(num_gaussian_sources_host, 0, sizeof(unsigned int));
+    CUDA_CHECK_RETURN(cudaMemcpy(num_gaussian_sources_host, num_gaussian_sources_device, sizeof(unsigned int), cudaMemcpyDeviceToHost));
+}
+
+template void copy_gaussian_source_list_to_host<float>(Gaussian_source<float>*, unsigned int*, unsigned int, unsigned int*, Gaussian_source<float>*);
+template void copy_gaussian_source_list_to_host<double>(Gaussian_source<double>*, unsigned int*, unsigned int, unsigned int*, Gaussian_source<double>*);
+
+
+/*****************************************************************************
  * Temporary utility function that displays the gaussian sources found during cleaning
  *****************************************************************************/
 template<typename PRECISION>
@@ -718,14 +741,12 @@ void display_gaussian_source_list
     unsigned int num_taylor
     )
 {
-    Gaussian_source<PRECISION> *gaussian_sources_host; // sources that have distinct scales/positions (duplicates get merged)
-    CUDA_CHECK_RETURN(cudaHostAlloc(&gaussian_sources_host, max_gaussian_sources_host*sizeof(Gaussian_source<PRECISION>), 0));
-    memset(gaussian_sources_host, 0, max_gaussian_sources_host*sizeof(Gaussian_source<PRECISION>)); // clear the list of sources
-    CUDA_CHECK_RETURN(cudaMemcpy(gaussian_sources_host, gaussian_sources_device, max_gaussian_sources_host*sizeof(Gaussian_source<PRECISION>), cudaMemcpyDeviceToHost));
     unsigned int *num_gaussian_sources_host;
     CUDA_CHECK_RETURN(cudaHostAlloc(&num_gaussian_sources_host, sizeof(unsigned int), 0));
-    memset(num_gaussian_sources_host, 0, sizeof(unsigned int));
-    CUDA_CHECK_RETURN(cudaMemcpy(num_gaussian_sources_host, num_gaussian_sources_device, sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    Gaussian_source<PRECISION> *gaussian_sources_host; // sources that have distinct scales/positions (duplicates get merged)
+    CUDA_CHECK_RETURN(cudaHostAlloc(&gaussian_sources_host, max_gaussian_sources_host*sizeof(Gaussian_source<PRECISION>), 0));
+    copy_gaussian_source_list_to_host<PRECISION>
+        (gaussian_sources_device, num_gaussian_sources_device, max_gaussian_sources_host, num_gaussian_sources_host, gaussian_sources_host);
     printf("In total %u distinct sources were discovered during cleaning\n", *num_gaussian_sources_host);
     // display each distinct source that has been found
     for (unsigned int source_index=0; source_index<*num_gaussian_sources_host; source_index++)
@@ -741,8 +762,8 @@ void display_gaussian_source_list
         }
         printf("\n");
     }
-    CUDA_CHECK_RETURN(cudaFreeHost(num_gaussian_sources_host));
     CUDA_CHECK_RETURN(cudaFreeHost(gaussian_sources_host));
+    CUDA_CHECK_RETURN(cudaFreeHost(num_gaussian_sources_host));
 }
 
 template void display_gaussian_source_list<float>(Gaussian_source<float>*, unsigned int*, unsigned int, unsigned int, unsigned int, unsigned int);

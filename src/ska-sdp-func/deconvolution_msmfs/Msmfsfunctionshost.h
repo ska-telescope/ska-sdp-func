@@ -255,6 +255,24 @@ template<typename PRECISION>
 Gaussian_source_list<PRECISION> allocate_gaussian_source_list(const unsigned int max_gaussian_sources_host);
 
 /**
+ * @brief Temporary utility function that copies the gaussian sources found during cleaning from device to host.
+ * @param gaussian_sources_device Input Gaussian sources to display.
+ * @param num_gaussian_sources_device Input number of gaussian sources to display.
+ * @param max_gaussian_sources_host Input upper bound on the number of gaussian sources.
+ * @param num_gaussian_sources_host Output that will hold the number of Gaussian sources on host.
+ * @param gaussian_sources_host Output that will hold the Gaussian sources list on host.
+ */
+template<typename PRECISION>
+void copy_gaussian_source_list_to_host
+    (
+    Gaussian_source<PRECISION> *gaussian_sources_device,
+    unsigned int *num_gaussian_sources_device,
+    unsigned int max_gaussian_sources_host,
+    unsigned int *num_gaussian_sources_host,
+    Gaussian_source<PRECISION> *gaussian_sources_host
+    );
+
+/**
  * @brief Temporary utility function that displays the gaussian sources found during cleaning.
  * @param gaussian_sources_device Gaussian sources to display.
  * @param num_gaussian_sources_device Number of gaussian sources to display.
