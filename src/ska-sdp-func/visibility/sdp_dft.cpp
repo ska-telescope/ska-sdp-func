@@ -3,14 +3,16 @@
 #include <cmath>
 #include <complex>
 
+#include "ska-sdp-func/dft/sdp_dft.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
-#include "ska-sdp-func/visibility/sdp_dft.h"
+#include "ska-sdp-func/utility/sdp_data_model_checks.h"
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+
 
 using std::complex;
 
@@ -386,85 +388,72 @@ static void check_params_v01(
 )
 {
     if (*status) return;
-    const sdp_MemLocation location = sdp_mem_location(vis);
-    if (sdp_mem_location(source_fluxes) != location ||
-            sdp_mem_location(source_directions) != location ||
-            sdp_mem_location(uvw) != location)
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Memory location mismatch");
-        return;
-    }
-    if (sdp_mem_is_read_only(vis))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Visibility data must be writable.");
-        return;
-    }
-    if (!sdp_mem_is_c_contiguous(source_fluxes) ||
-            !sdp_mem_is_c_contiguous(source_directions) ||
-            !sdp_mem_is_c_contiguous(uvw) ||
-            !sdp_mem_is_c_contiguous(vis))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("All arrays must be C contiguous");
-        return;
-    }
+
+    sdp_MemType vis_type = SDP_MEM_VOID;
+    sdp_MemLocation vis_location = SDP_MEM_CPU;
+    int64_t num_times = 0;
+    int64_t num_baselines = 0;
+    int64_t num_channels = 0;
+    int64_t num_pols = 0;
+    sdp_data_model_get_vis_metadata(
+        vis,
+        &vis_type,
+        &vis_location,
+        &num_times,
+        &num_baselines,
+        &num_channels,
+        &num_pols,
+        status
+    );
+    sdp_mem_check_writeable(vis, status, "vis", CODE_POS);
+    if (*status) return;
+    sdp_mem_check_c_contiguity(vis, status, "vis", CODE_POS);
+    if (*status) return;
+    
+    sdp_data_model_check_uvw(
+        uvw,
+        SDP_MEM_VOID,
+        vis_location,
+        num_times,
+        num_baselines,
+        status,
+        CODE_POS
+    );
+    
+    sdp_mem_check_location(source_directions, vis_location, status, "source_directions", CODE_POS);
+    if (*status) return;
+    sdp_mem_check_c_contiguity(source_directions, status, "source_directions", CODE_POS);
+    if (*status) return;
+    const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
+    sdp_mem_check_shape(source_directions, 1, 3, status, "source_directions", CODE_POS);
+    if (*status) return;
+    
+	
     if (!sdp_mem_is_complex(source_fluxes))
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR("Source flux values must be complex");
         return;
     }
-    if (!sdp_mem_is_complex(vis))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Visibility values must be complex");
-        return;
-    }
-    const int64_t num_times      = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_baselines  = sdp_mem_shape_dim(vis, 1);
-    const int64_t num_channels   = sdp_mem_shape_dim(vis, 2);
-    const int64_t num_pols       = sdp_mem_shape_dim(vis, 3);
-    const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
-    if (num_pols != 4 && num_pols != 1)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The number of polarisations should be 4 or 1");
-        return;
-    }
-    if (sdp_mem_shape_dim(source_directions, 1) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The source_directions array must have shape "
-                "[num_components, 3] (expected [%d, 3])", num_components
-        );
-        return;
-    }
-    if (sdp_mem_shape_dim(source_fluxes, 0) != num_components ||
-            sdp_mem_shape_dim(source_fluxes, 1) != num_channels ||
-            sdp_mem_shape_dim(source_fluxes, 2) != num_pols)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The source_fluxes array must have shape "
-                "[num_components, num_channels, num_pols] "
-                "(expected [%d, %d, %d])",
-                num_components, num_channels, num_pols
-        );
-        return;
-    }
-    if (sdp_mem_shape_dim(uvw, 0) != num_times ||
-            sdp_mem_shape_dim(uvw, 1) != num_baselines ||
-            sdp_mem_shape_dim(uvw, 2) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The uvw array must have shape "
-                "[num_times, num_baselines, 3] "
-                "(expected [%d, %d, 3])",
-                num_times, num_baselines
-        );
-        return;
-    }
+    sdp_mem_check_location(source_fluxes, vis_location, status, "source_fluxes", CODE_POS);
+    if (*status) return;
+    sdp_mem_check_c_contiguity(source_fluxes, status, "source_fluxes", CODE_POS);
+    if (*status) return;
+    int64_t sf_shape[3] = {
+		num_components,
+		num_channels,
+		num_pols
+	};
+	sdp_mem_check_dims_and_shape(source_fluxes, 3, sf_shape, status, "source_fluxes", CODE_POS);
+	if (*status) return;
+	/*
+    sdp_mem_check_shape(source_fluxes, 0, num_components, status, "source_fluxes", CODE_POS);
+    if (*status) return;
+    sdp_mem_check_shape(source_fluxes, 1, num_channels, status, "source_fluxes", CODE_POS);
+    if (*status) return;
+    sdp_mem_check_shape(source_fluxes, 2, num_pols, status, "source_fluxes", CODE_POS);
+    if (*status) return;
+	*/
 }
 
 
