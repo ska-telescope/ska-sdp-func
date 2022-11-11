@@ -6,7 +6,7 @@ import ctypes
 import glob
 import os
 import threading
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 from .error_checking import ERROR_CODE_ARGTYPE, error_checking
 
@@ -66,7 +66,7 @@ class Lib(metaclass=LibMeta):
 
     # Used to delay the wrapping of a C function until the first
     # time it is called.
-    _wrap_function_args: dict[str, tuple] = {}
+    _wrap_function_args: Dict[str, tuple] = {}
 
     @staticmethod
     def handle():

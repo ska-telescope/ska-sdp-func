@@ -4,11 +4,11 @@
 non-zero error code, and raise a custom exception if they do."""
 
 import ctypes
-from typing import Callable
+from typing import Callable, Dict
 
 ERROR_CODE_ARGTYPE: type = ctypes.POINTER(ctypes.c_int)
 
-ERROR_CODE_MEANING: dict[int, str] = {
+ERROR_CODE_MEANING: Dict[int, str] = {
     0: "No error",
     1: "Generic runtime error",
     2: "Invalid function argument",
