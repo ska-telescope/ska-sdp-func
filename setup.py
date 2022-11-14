@@ -121,7 +121,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name="ska_sdp_func",
-    version="0.0.4",
+    version="0.0.5",
     description="SKA SDP Processing Function Library (Python bindings)",
     ext_modules=[CMakeExtension("ska_sdp_func")],
     cmdclass={"build_ext": CMakeBuild},
