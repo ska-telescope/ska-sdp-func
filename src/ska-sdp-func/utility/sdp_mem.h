@@ -475,7 +475,7 @@ const char *sdp_mem_type_name(sdp_MemType typ);
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-void sdp_mem_check_writeable(
+void sdp_mem_check_writeable_at(
         const sdp_Mem *mem,
         sdp_Error *status,
         const char *expr, 
@@ -492,17 +492,15 @@ void sdp_mem_check_writeable(
  * @param mem Handle to memory block to check
  * @param status Output error status.
  */
-/*
 #define sdp_mem_check_writeable(mem, status)                            \
-    sdp_mem_check_writeable_at(mem, status, __func__, #mem, __FILE__, __LINE__)
-*/
+    sdp_mem_check_writeable_at(mem, status, #mem, __func__, __FILE__, __LINE__)
 
 /**
  * @brief Checks that given memory is C contiguous
  *
  * ``status`` will be set if the check fails. Use
  * #sdp_mem_check_c_contiguity(mem,status) macro to automatically fill 
- * ``func``, ``expr``, ``file`` and ``line`` by call location.
+ * ``expr``, ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check
  * @param status Output error status.
@@ -511,7 +509,7 @@ void sdp_mem_check_writeable(
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-void sdp_mem_check_c_contiguity(
+void sdp_mem_check_c_contiguity_at(
         const sdp_Mem *mem,
         sdp_Error *status,
         const char *expr,
@@ -528,10 +526,8 @@ void sdp_mem_check_c_contiguity(
  * @param mem Handle to memory block to check
  * @param status Output error status.
  */
-/*
 #define sdp_mem_check_c_contiguity(mem, status)   \
-    sdp_mem_check_writeable_at(mem, status, __func__, #mem, __FILE__, __LINE__)
-*/
+    sdp_mem_check_writeable_at(mem, status, #mem, __func__, __FILE__, __LINE__)
 
 /**
  * @brief Checks that given memory resides in the expected memory space
@@ -548,7 +544,7 @@ void sdp_mem_check_c_contiguity(
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-void sdp_mem_check_location(
+void sdp_mem_check_location_at(
         const sdp_Mem *mem, 
         sdp_MemLocation expected_location,
         sdp_Error *status,
@@ -567,10 +563,9 @@ void sdp_mem_check_location(
  * @param loc Expected memory location
  * @param status Output error status
  */
-/*
 #define sdp_mem_check_location(mem, loc, status)                        \
-    sdp_mem_check_location_at(mem, loc, status, __func__, #mem, __FILE__, __LINE__)
-*/
+    sdp_mem_check_location_at(mem, loc, status, #mem, __func__, __FILE__, __LINE__)
+
 
 
 /**
@@ -588,7 +583,7 @@ void sdp_mem_check_location(
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-void sdp_mem_check_num_dims(
+void sdp_mem_check_num_dims_at(
         const sdp_Mem *mem,
         int64_t expected_ndims,
         sdp_Error *status,
@@ -607,10 +602,9 @@ void sdp_mem_check_num_dims(
  * @param ndims Expected number of dimensions
  * @param status Output error status
  */
-/*
 #define sdp_mem_check_num_dims(mem, ndims, status)                      \
-    sdp_mem_check_num_dims_at(mem, ndims, status, __func__, #mem, __FILE__, __LINE__)
-*/
+    sdp_mem_check_num_dims_at(mem, ndims, status, #mem, __func__, __FILE__, __LINE__)
+
 
 /**
  * @brief Checks that a dimension of given memory has expected size
@@ -619,7 +613,7 @@ void sdp_mem_check_num_dims(
  * will *not* fail if the dimension in question does not exist, use
  * #sdp_mem_check_num_dims additionally. Use
  * #sdp_mem_check_shape macro to automatically fill
- * ``func``, ``expr``, ``file`` and ``line`` by call location.
+ * ``expr``, ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check
  * @param dim Dimension to check
@@ -630,7 +624,7 @@ void sdp_mem_check_num_dims(
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-void sdp_mem_check_shape(
+void sdp_mem_check_shape_at(
         const sdp_Mem *mem,
         int32_t dim,
         int64_t size,
@@ -653,16 +647,16 @@ void sdp_mem_check_shape(
  * @param size Expected size
  * @param status Output error status
  */
-/*
 #define sdp_mem_check_shape(mem, dim, size, status)                     \
-    sdp_mem_check_shape_at(mem, dim, size, status, __func__, #mem, __FILE__, __LINE__)
-*/
+    sdp_mem_check_shape_at(mem, dim, size, status, #mem, __func__, __FILE__, __LINE__)
 
 /**
  * @brief Checks that a sdp_Mem has expected number of dimensions
  * and expected shape.
  *
- * ``status`` will be set if the check fails. 
+ * ``status`` will be set if the check fails.
+ * #sdp_mem_check_dims_and_shape to automatically fill
+ * ``expr``, ``func``, ``file`` and ``line`` by call location. 
  *
  * @param mem Handle to memory block to check
  * @param expected_ndims Dimension to check
@@ -673,7 +667,7 @@ void sdp_mem_check_shape(
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-void sdp_mem_check_dims_and_shape(
+void sdp_mem_check_dims_and_shape_at(
         const sdp_Mem *mem,
         int32_t expected_ndims,
         int64_t* expected_shape,
@@ -683,6 +677,23 @@ void sdp_mem_check_dims_and_shape(
         const char *file,
         int line
 );
+
+
+/**
+ * @brief Checks that a sdp_Mem has expected number of dimensions
+ * and expected shape.
+ *
+ * ``status`` will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check
+ * @param expected_ndims Dimension to check
+ * @param expected_shape Expected size
+ * @param status Output error status
+ */
+#define sdp_mem_check_dims_and_shape(mem, expected_ndims, expected_shape, status)                     \
+    sdp_mem_check_dims_and_shape_at(mem, expected_ndims, expected_shape, status, #mem, __func__, __FILE__, __LINE__)
+
+
 
 /**
  * @brief Checks that given memory has the expected data type
@@ -699,7 +710,7 @@ void sdp_mem_check_dims_and_shape(
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-void sdp_mem_check_type(
+void sdp_mem_check_type_at(
         const sdp_Mem *mem,
         sdp_MemType expected_type,
         sdp_Error *status,
@@ -718,10 +729,8 @@ void sdp_mem_check_type(
  * @param expected_type Expected data type
  * @param status Output error status
  */
-/*
 #define sdp_mem_check_type(mem, expected_type, status)                            \
-    sdp_mem_check_type_at(mem, expected_type, status, __func__, #mem, __FILE__, __LINE__)
-*/
+    sdp_mem_check_type_at(mem, expected_type, status, #mem, __func__, __FILE__, __LINE__)
 
 /** @} */ /* End group Mem_func. */
 

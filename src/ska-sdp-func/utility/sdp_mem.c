@@ -328,11 +328,11 @@ int32_t sdp_mem_is_floating_point(const sdp_Mem* mem)
 {
     if (!mem || !mem->data) return 0;
     else if(
-		mem->type == SDP_MEM_FLOAT 
-		|| mem->type == SDP_MEM_DOUBLE
-	) 
-		return 1;
-	else return 0;
+        mem->type == SDP_MEM_FLOAT 
+        || mem->type == SDP_MEM_DOUBLE
+    ) 
+        return 1;
+    else return 0;
 }
 
 int32_t sdp_mem_is_complex(const sdp_Mem* mem)
@@ -507,113 +507,117 @@ const char *sdp_mem_type_name(sdp_MemType typ)
     }
 }
 
-void sdp_mem_check_writeable(
-		const sdp_Mem *mem,
-		sdp_Error *status,
-		const char *expr, 
-		const char *func, 
-		const char *file, 
-		int line
+void sdp_mem_check_writeable_at(
+        const sdp_Mem *mem,
+        sdp_Error *status,
+        const char *expr, 
+        const char *func, 
+        const char *file, 
+        int line
 )
 {
+    if (*status) return;
     if (sdp_mem_is_read_only(mem)) {
         // Log & set status
         sdp_log_message(
-				SDP_LOG_LEVEL_ERROR, 
-				stderr, 
-				func, 
-				file, 
-				line,
+                SDP_LOG_LEVEL_ERROR, 
+                stderr, 
+                func, 
+                file, 
+                line,
                 "%s: Expected '%s' not to be read-only!",
                 func, 
-				expr
-		);
+                expr
+        );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
 }
 
-void sdp_mem_check_c_contiguity(
-		const sdp_Mem *mem,
-		sdp_Error *status,
-		const char *expr,
-		const char *func,
-		const char *file,
-		int line
+void sdp_mem_check_c_contiguity_at(
+        const sdp_Mem *mem,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,
+        const char *file,
+        int line
 )
 {
+    if (*status) return;
     if (!sdp_mem_is_c_contiguous(mem)) {
         // Log & set status
         sdp_log_message(
-				SDP_LOG_LEVEL_ERROR, 
-				stderr, 
-				func, 
-				file, 
-				line,
+                SDP_LOG_LEVEL_ERROR, 
+                stderr, 
+                func, 
+                file, 
+                line,
                 "%s: Expected '%s' to be C contiguous!",
                 func, 
-				expr
-		);
+                expr
+        );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
 }
 
-void sdp_mem_check_location(
-		const sdp_Mem *mem, 
-		sdp_MemLocation expected_location,
-		sdp_Error *status,
-		const char *expr,
-		const char *func,  
-		const char *file, 
-		int line
+void sdp_mem_check_location_at(
+        const sdp_Mem *mem, 
+        sdp_MemLocation expected_location,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,  
+        const char *file, 
+        int line
 )
 {
+    if (*status) return;
     if (sdp_mem_location(mem) != expected_location) {
         // Log & set status
         sdp_log_message(
-				SDP_LOG_LEVEL_ERROR, 
-				stderr, 
-				func, 
-				file, 
-				line,
+                SDP_LOG_LEVEL_ERROR, 
+                stderr, 
+                func, 
+                file, 
+                line,
                 "%s: Expected '%s' to be in %s memory (found %s)!",
                 func, expr,
                 sdp_mem_location_name(expected_location),
                 sdp_mem_location_name(sdp_mem_location(mem))
-		);
+        );
         *status = SDP_ERR_MEM_LOCATION;
     }
 }
 
-void sdp_mem_check_num_dims(
-		const sdp_Mem *mem,
-		int64_t expected_ndims,
-		sdp_Error *status,
-		const char *expr,
-		const char *func,
-		const char *file,
-		int line
+void sdp_mem_check_num_dims_at(
+        const sdp_Mem *mem,
+        int64_t expected_ndims,
+        sdp_Error *status,
+        const char *expr,
+        const char *func,
+        const char *file,
+        int line
 )
 {
+    if (*status) return;
     if (sdp_mem_num_dims(mem) != expected_ndims) {
         // Log & set status
         sdp_log_message(
-				SDP_LOG_LEVEL_ERROR, 
-				stderr, 
-				func, 
-				file, 
-				line,
-				"%s: Expected '%s' shape to have %d dimension%s (found %d)!",
-				func, 
-				expr, 
-				expected_ndims, 
-				(expected_ndims == 1 ? "" : "s"), 
-				sdp_mem_num_dims(mem)
-		);
+                SDP_LOG_LEVEL_ERROR, 
+                stderr, 
+                func, 
+                file, 
+                line,
+                "%s: Expected '%s' shape to have %d dimension%s (found %d)!",
+                func, 
+                expr, 
+                expected_ndims, 
+                (expected_ndims == 1 ? "" : "s"), 
+                sdp_mem_num_dims(mem)
+        );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
 }
 
-void sdp_mem_check_shape(
+void sdp_mem_check_shape_at(
     const sdp_Mem *mem,
     int32_t dim,
     int64_t size,
@@ -624,27 +628,28 @@ void sdp_mem_check_shape(
     int line
 )
 {
+    if (*status) return;
     if (sdp_mem_shape_dim(mem, dim) != size)
-	{
+    {
         // Log & set status
         sdp_log_message(
-				SDP_LOG_LEVEL_ERROR, 
-				stderr, 
-				func, 
-				file, 
-				line,
-				"%s: Expected '%s' dimension %d to have size %d (found %d)!",
-				func, 
-				expr, 
-				dim, 
-				size, 
-				sdp_mem_shape_dim(mem, dim)
-		);
+                SDP_LOG_LEVEL_ERROR, 
+                stderr, 
+                func, 
+                file, 
+                line,
+                "%s: Expected '%s' dimension %d to have size %d (found %d)!",
+                func, 
+                expr, 
+                dim, 
+                size, 
+                sdp_mem_shape_dim(mem, dim)
+        );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
 }
 
-void sdp_mem_check_dims_and_shape(
+void sdp_mem_check_dims_and_shape_at(
         const sdp_Mem *mem,
         int32_t expected_ndims,
         int64_t* expected_shape,
@@ -655,47 +660,48 @@ void sdp_mem_check_dims_and_shape(
         int line
 )
 {
-	if(sdp_mem_num_dims(mem) != expected_ndims){
+    if (*status) return;
+    if(sdp_mem_num_dims(mem) != expected_ndims){
         sdp_log_message(
-				SDP_LOG_LEVEL_ERROR, 
-				stderr, 
-				func, 
-				file, 
-				line,
-				"%s: Expected '%s' to have %d dimension%s (found %d)!",
-				func, 
-				expr, 
-				expected_ndims, 
-				(expected_ndims == 1 ? "" : "s"), 
-				sdp_mem_num_dims(mem)
-		);
-		*status = SDP_ERR_INVALID_ARGUMENT;
-		return;
-	}
-	for(int32_t dim = 0; dim < expected_ndims; dim++){
-		if(sdp_mem_shape_dim(mem, dim) != expected_shape[dim])
-		{
-			// Log & set status
-			sdp_log_message(
-					SDP_LOG_LEVEL_ERROR, 
-					stderr, 
-					func, 
-					file, 
-					line,
-					"%s: Expected '%s' dimension %d to have size %d (found %d)!",
-					func, 
-					expr, 
-					dim, 
-					expected_shape[dim], 
-					sdp_mem_shape_dim(mem, dim)
-			);
-			*status = SDP_ERR_INVALID_ARGUMENT;
-			break;
-		}
-	}
+                SDP_LOG_LEVEL_ERROR, 
+                stderr, 
+                func, 
+                file, 
+                line,
+                "%s: Expected '%s' to have %d dimension%s (found %d)!",
+                func, 
+                expr, 
+                expected_ndims, 
+                (expected_ndims == 1 ? "" : "s"), 
+                sdp_mem_num_dims(mem)
+        );
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    for(int32_t dim = 0; dim < expected_ndims; dim++){
+        if(sdp_mem_shape_dim(mem, dim) != expected_shape[dim])
+        {
+            // Log & set status
+            sdp_log_message(
+                    SDP_LOG_LEVEL_ERROR, 
+                    stderr, 
+                    func, 
+                    file, 
+                    line,
+                    "%s: Expected '%s' dimension %d to have size %d (found %d)!",
+                    func, 
+                    expr, 
+                    dim, 
+                    expected_shape[dim], 
+                    sdp_mem_shape_dim(mem, dim)
+            );
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            break;
+        }
+    }
 }
 
-void sdp_mem_check_type(
+void sdp_mem_check_type_at(
         const sdp_Mem *mem,
         sdp_MemType expected_type,
         sdp_Error *status,
@@ -705,20 +711,22 @@ void sdp_mem_check_type(
         int line
 )
 {
+    if (*status) return;
     if (sdp_mem_type(mem) != expected_type) {
         // Log & set status
         sdp_log_message(
-				SDP_LOG_LEVEL_ERROR, 
-				stderr, 
-				func, 
-				file, 
-				line,
-				"%s: Expected '%s' to have type %s (found %s)!",
-				func, 
-				expr, 
-				sdp_mem_type_name(expected_type),
-				sdp_mem_type_name(sdp_mem_type(mem))
-		);
+                SDP_LOG_LEVEL_ERROR, 
+                stderr, 
+                func, 
+                file, 
+                line,
+                "%s: Expected '%s' to have type %s (found %s)!",
+                func, 
+                expr, 
+                sdp_mem_type_name(expected_type),
+                sdp_mem_type_name(sdp_mem_type(mem))
+        );
         *status = SDP_ERR_DATA_TYPE;
     }
 }
+

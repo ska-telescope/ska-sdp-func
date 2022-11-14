@@ -405,10 +405,8 @@ static void check_params_v01(
         &num_pols,
         status
     );
-    sdp_mem_check_writeable(vis, status, "vis", CODE_POS);
-    if (*status) return;
-    sdp_mem_check_c_contiguity(vis, status, "vis", CODE_POS);
-    if (*status) return;
+    sdp_mem_check_writeable(vis, status);
+    sdp_mem_check_c_contiguity(vis, status);
     
     sdp_data_model_check_uvw(
         uvw,
@@ -416,44 +414,29 @@ static void check_params_v01(
         vis_location,
         num_times,
         num_baselines,
-        status,
-        CODE_POS
+        status
     );
     
-    sdp_mem_check_location(source_directions, vis_location, status, "source_directions", CODE_POS);
-    if (*status) return;
-    sdp_mem_check_c_contiguity(source_directions, status, "source_directions", CODE_POS);
-    if (*status) return;
+    sdp_mem_check_location(source_directions, vis_location, status);
+    sdp_mem_check_c_contiguity(source_directions, status);
     const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
-    sdp_mem_check_shape(source_directions, 1, 3, status, "source_directions", CODE_POS);
-    if (*status) return;
+    sdp_mem_check_shape(source_directions, 1, 3, status);
     
-	
+    
     if (!sdp_mem_is_complex(source_fluxes))
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR("Source flux values must be complex");
         return;
     }
-    sdp_mem_check_location(source_fluxes, vis_location, status, "source_fluxes", CODE_POS);
-    if (*status) return;
-    sdp_mem_check_c_contiguity(source_fluxes, status, "source_fluxes", CODE_POS);
-    if (*status) return;
+    sdp_mem_check_location(source_fluxes, vis_location, status);
+    sdp_mem_check_c_contiguity(source_fluxes, status);
     int64_t sf_shape[3] = {
-		num_components,
-		num_channels,
-		num_pols
-	};
-	sdp_mem_check_dims_and_shape(source_fluxes, 3, sf_shape, status, "source_fluxes", CODE_POS);
-	if (*status) return;
-	/*
-    sdp_mem_check_shape(source_fluxes, 0, num_components, status, "source_fluxes", CODE_POS);
-    if (*status) return;
-    sdp_mem_check_shape(source_fluxes, 1, num_channels, status, "source_fluxes", CODE_POS);
-    if (*status) return;
-    sdp_mem_check_shape(source_fluxes, 2, num_pols, status, "source_fluxes", CODE_POS);
-    if (*status) return;
-	*/
+        num_components,
+        num_channels,
+        num_pols
+    };
+    sdp_mem_check_dims_and_shape(source_fluxes, 3, sf_shape, status);
 }
 
 
