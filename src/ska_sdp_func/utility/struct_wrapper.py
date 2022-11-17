@@ -3,6 +3,7 @@
 """Base class for any object that wraps a C struct."""
 
 import ctypes
+import weakref
 from typing import Any, Callable, Optional
 
 
@@ -49,9 +50,9 @@ class StructWrapper:
         Args:
             create_func: Function to call to create the underlying C struct
             create_args: Arguments to pass to create_func
-            free_func: Function to be call when freeing the memory allocated
-                to the underlying C struct when this object gets deleted.
-                Must take the created handle as its single argument.
+            free_func: Function to call when freeing the memory allocated
+                to the underlying C struct when this object gets garbage
+                collected. Must take the created handle as its single argument.
 
         Raises:
             RuntimeError: if the allocation of the C struct failed returns a
@@ -61,8 +62,6 @@ class StructWrapper:
             raise ValueError("free_func must be callable")
 
         self._handle = None
-        self._free_func = free_func
-
         handle = create_func(*create_args)
 
         # If the creation failed silently, this could result in a null pointer,
@@ -74,10 +73,10 @@ class StructWrapper:
             )
         self._handle = handle
 
-    def __del__(self):
-        if self._handle:
-            self._free_func(self._handle)
-        self._handle = None
+        # This is a slightly better replacement for __del__
+        # Guarantees that free_func(self._handle) gets called when the present
+        # wrapper gets garbage collected
+        weakref.finalize(self, free_func, self._handle)
 
     @property
     def _as_parameter_(self):
