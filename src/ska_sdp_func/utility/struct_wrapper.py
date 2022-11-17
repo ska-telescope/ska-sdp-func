@@ -3,7 +3,7 @@
 """Base class for any object that wraps a C struct."""
 
 import ctypes
-from typing import Any, Callable, Final, Optional
+from typing import Any, Callable, Optional
 
 
 class StructWrapper:
@@ -25,7 +25,7 @@ class StructWrapper:
             argtypes of a function that takes this class as an argument.
     """
 
-    _HANDLE_CLASS: Final[Optional[type]] = None
+    _HANDLE_CLASS: Optional[type] = None
     """
     Trivial ctypes.Structure subclass that will be used to represent
     any derived class when calling wrapped C functions. Each derived
