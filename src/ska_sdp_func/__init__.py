@@ -4,6 +4,7 @@
 
 from .dft import dft_point_v00, dft_point_v01
 from .fft import Fft
+from .deconvolution_msmfs import msmfs_perform
 from .function_example_a import FunctionExampleA
 from .gridder_uvw_es_fft import GridderUvwEsFft
 from .phase_rotate import phase_rotate_uvw, phase_rotate_vis
