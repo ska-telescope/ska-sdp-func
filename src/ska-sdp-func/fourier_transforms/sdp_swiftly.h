@@ -38,11 +38,12 @@ typedef struct sdp_SwiFTly sdp_SwiFTly;
  * @return sdp_SwiFTly* Handle to SwiFTly plan.
  */
 sdp_SwiFTly* sdp_swiftly_create(
-    int64_t image_size,
-    int64_t yN_size,
-    int64_t xM_size,
-    double W,
-    sdp_Error* status);
+        int64_t image_size,
+        int64_t yN_size,
+        int64_t xM_size,
+        double W,
+        sdp_Error* status
+);
 
 /**
  * @brief Queries image size associated with SwiFTly plan
@@ -86,11 +87,12 @@ void sdp_swiftly_free(sdp_SwiFTly* swiftly);
  * @param status         Error status
  */
 void sdp_swiftly_prepare_facet(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *facet,
-    sdp_Mem *prep_facet_out,
-    int64_t facet_offset,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* facet,
+        sdp_Mem* prep_facet_out,
+        int64_t facet_offset,
+        sdp_Error* status
+);
 
 /**
  * @brief Extract facet contribution to a subgrid
@@ -109,11 +111,12 @@ void sdp_swiftly_prepare_facet(
  * @param status         Error status
  */
 void sdp_swiftly_extract_from_facet(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *prep_facet,
-    sdp_Mem *contribution_out,
-    int64_t subgrid_offset,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* prep_facet,
+        sdp_Mem* contribution_out,
+        int64_t subgrid_offset,
+        sdp_Error* status
+);
 
 /**
  * @brief Add facet contribution to a subgrid image
@@ -131,12 +134,12 @@ void sdp_swiftly_extract_from_facet(
  * @param status         Error status
  */
 void sdp_swiftly_add_to_subgrid(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *contribution,
-    sdp_Mem *subgrid_image_inout,
-    int64_t facet_offset,
-    sdp_Error* status);
-
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* contribution,
+        sdp_Mem* subgrid_image_inout,
+        int64_t facet_offset,
+        sdp_Error* status
+);
 
 /**
  * @brief Add facet contribution to a subgrid image (both axes)
@@ -160,12 +163,13 @@ void sdp_swiftly_add_to_subgrid(
  * @param status         Error status
  */
 void sdp_swiftly_add_to_subgrid_2d(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *contribution,
-    sdp_Mem *subgrid_image_inout,
-    int64_t facet_offset0,
-    int64_t facet_offset1,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* contribution,
+        sdp_Mem* subgrid_image_inout,
+        int64_t facet_offset0,
+        int64_t facet_offset1,
+        sdp_Error* status
+);
 
 /**
  * @brief Finish subgrid after contribution accumulation
@@ -179,10 +183,11 @@ void sdp_swiftly_add_to_subgrid_2d(
  * @param status         Error status
  */
 void sdp_swiftly_finish_subgrid_inplace(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *subgrid_inout,
-    int64_t subgrid_offset,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_inout,
+        int64_t subgrid_offset,
+        sdp_Error* status
+);
 
 /**
  * @brief Finish subgrid after contribution accumulation (both axes)
@@ -202,53 +207,60 @@ void sdp_swiftly_finish_subgrid_inplace(
  * @param status         Error status
  */
 void sdp_swiftly_finish_subgrid_inplace_2d(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *subgrid_inout,
-    int64_t subgrid_offset0,
-    int64_t subgrid_offset1,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_inout,
+        int64_t subgrid_offset0,
+        int64_t subgrid_offset1,
+        sdp_Error* status
+);
 
 void sdp_swiftly_prepare_subgrid_inplace(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *subgrid_inout,
-    int64_t subgrid_offset,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_inout,
+        int64_t subgrid_offset,
+        sdp_Error* status
+);
 
 void sdp_swiftly_prepare_subgrid_inplace_2d(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *subgrid_inout,
-    int64_t subgrid_offset0,
-    int64_t subgrid_offset1,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_inout,
+        int64_t subgrid_offset0,
+        int64_t subgrid_offset1,
+        sdp_Error* status
+);
 
 void sdp_swiftly_extract_from_subgrid(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *subgrid_image,
-    sdp_Mem *contribution_out,
-    int64_t facet_offset,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_image,
+        sdp_Mem* contribution_out,
+        int64_t facet_offset,
+        sdp_Error* status
+);
 
 void sdp_swiftly_extract_from_subgrid_2d(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *subgrid_image,
-    sdp_Mem *contribution_out,
-    int64_t facet_offset0,
-    int64_t facet_offset1,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_image,
+        sdp_Mem* contribution_out,
+        int64_t facet_offset0,
+        int64_t facet_offset1,
+        sdp_Error* status
+);
 
 void sdp_swiftly_add_to_facet(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *contribution,
-    sdp_Mem *prep_facet_inout,
-    int64_t subgrid_offset,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* contribution,
+        sdp_Mem* prep_facet_inout,
+        int64_t subgrid_offset,
+        sdp_Error* status
+);
 
 void sdp_swiftly_finish_facet(
-    sdp_SwiFTly* swiftly,
-    sdp_Mem *prep_facet_inout,
-    sdp_Mem *facet_out,
-    int64_t facet_offset,
-    sdp_Error* status);
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* prep_facet_inout,
+        sdp_Mem* facet_out,
+        int64_t facet_offset,
+        sdp_Error* status
+);
 
 /** @} */ /* End group swiftly_func. */
 

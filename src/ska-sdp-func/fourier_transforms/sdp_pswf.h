@@ -24,14 +24,18 @@ extern "C" {
  * Only CPU mode is supported.
  *
  * @param m Mode parameter. 0 is generally best-behaved.
- * @param c Size parameter. 
+ * @param c Size parameter.
  * @param pswf_out Memory space to fill with function values
  * @param status Error status.
  *
  * @return sdp_Fft* Handle to FFT plan.
  */
-void sdp_generate_pswf(int m, double c, struct sdp_Mem *pswf_out,
-                       sdp_Error* status);
+void sdp_generate_pswf(
+        int m,
+        double c,
+        struct sdp_Mem* pswf_out,
+        sdp_Error* status
+);
 
 #ifdef __cplusplus
 }
