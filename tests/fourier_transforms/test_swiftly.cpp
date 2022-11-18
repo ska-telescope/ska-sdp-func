@@ -195,6 +195,11 @@ void test_facet_to_subgrid_dft()
                     // Compare with actual
                     double diff = std::abs(out(0, iM) - expected);
                     ssum += diff * diff; count++;
+                    if (diff >= 4e-6) {
+                        printf("%g%+g != %g%+g\n",
+                               out(0, iM).real(), out(0, iM).imag(),
+                               expected.real(), expected.imag());
+                    }
                     assert(diff < 4e-6);
                 }
             }
@@ -225,7 +230,7 @@ static sdp_Mem* sdp_mem_transpose(
 
     const int32_t ndims = sdp_mem_num_dims(mem);
     if (dim0 >= ndims || dim1 >= ndims) {
-        SDP_LOG_ERROR("sdp_mem_transpose: Cannot transpose dimensions"
+        SDP_LOG_ERROR("sdp_mem_transpose: Cannot transpose dimensions "
                       "%d and %d, object only has %d dimensions!",
                       dim0, dim1, ndims);
         *status = SDP_ERR_INVALID_ARGUMENT;
@@ -259,31 +264,25 @@ static sdp_Mem* sdp_mem_transpose(
 }
 
 
-void test_facet_to_subgrid_dft_2d()
+void check_facet_to_subgrid_dft_2d(
+    sdp_SwiFTly *swiftly,
+    sdp_Mem *facet,
+    const std::vector<std::pair<int64_t, int64_t> > &sources,
+    int64_t facet_off0, int64_t facet_off1,
+    int64_t sg_off0, int64_t sg_off1,
+    double *ssum, int64_t *count
+)
 {
-    // General 2D test: Check that sources at arbitrary locations
-    // produce result that matches direct Fourier transform evaluation
-    // to a certain precision.
 
-    // Instantiate SwiFTly
     sdp_Error status = SDP_SUCCESS;
-    const int64_t image_size = 1024;
-    const int64_t xM_size = 256;
-    const int64_t yN_size = 512;
+    const int64_t image_size = sdp_swiftly_get_image_size(swiftly);
+    const int64_t xM_size = sdp_swiftly_get_subgrid_size(swiftly);
+    const int64_t yN_size = sdp_swiftly_get_facet_size(swiftly);
     const int64_t yB_size = 416;
     const int64_t xA_size = 228;
     const int64_t xM_yN_size = (xM_size * yN_size) / image_size;
-    const int64_t facet_off_step = image_size / xM_size;
-    const int64_t sg_off_step = image_size / yN_size;
-    sdp_SwiFTly *swiftly = sdp_swiftly_create(
-        image_size, yN_size, xM_size, 14.75, &status);
-    assert(!status);
 
-    // Make facet data + output regions for going through the
-    // algorithm first on axis 0, then on axis 1. We create transposed
-    // references to the buffers to pass to the routines later.
-    int64_t facet_size[] = { yB_size, yB_size };
-    sdp_Mem *facet = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, facet_size, &status);
+    // Allocate work buffers
     sdp_Mem *facet_t = sdp_mem_transpose(facet, 0, 1, &status);
     int64_t prepared0_size[] = { yN_size, yB_size };
     sdp_Mem *prepared0 = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, prepared0_size, &status);
@@ -302,6 +301,110 @@ void test_facet_to_subgrid_dft_2d()
     int64_t subgrid_size[] = { xM_size, xM_size };
     sdp_Mem *subgrid_image = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, subgrid_size, &status);
     sdp_Mem *subgrid_image_t = sdp_mem_transpose(subgrid_image, 0, 1, &status);
+    sdp_Mem* subgrid_image_copy = sdp_mem_create_copy(subgrid_image, sdp_mem_location(subgrid_image), &status);
+
+    // Extract a single subgrid
+    sdp_swiftly_prepare_facet(swiftly, facet_t, prepared0_t, facet_off0, &status);
+    sdp_swiftly_extract_from_facet(swiftly, prepared0_t, contrib0_t, sg_off0, &status);
+    sdp_swiftly_prepare_facet(swiftly, contrib0, prepared1, facet_off1, &status);
+    sdp_swiftly_extract_from_facet(swiftly, prepared1, contrib1, sg_off1, &status);
+
+    // Add to subgrid (using both 1D and 2D methods)
+    memset(sdp_mem_data(subgrid0_image), 0, xM_size * xM_yN_size * sizeof(std::complex<double>));
+    sdp_swiftly_add_to_subgrid(swiftly, contrib1_t, subgrid0_image_t, facet_off0, &status);
+    memset(sdp_mem_data(subgrid_image), 0, xM_size * xM_size * sizeof(std::complex<double>));
+    sdp_swiftly_add_to_subgrid(swiftly, subgrid0_image, subgrid_image, facet_off1, &status);
+    memset(sdp_mem_data(subgrid_image_copy), 0, xM_size * xM_size * sizeof(std::complex<double>));
+    sdp_swiftly_add_to_subgrid_2d(swiftly, contrib1, subgrid_image_copy, facet_off0, facet_off1, &status);
+
+    // Check that both arrived at the same result
+    int64_t i0, i1;
+    sdp_MemViewCpu<std::complex<double>, 2> out, out_cp;
+    sdp_mem_check_and_view(subgrid_image, &out, &status);
+    sdp_mem_check_and_view(subgrid_image_copy, &out_cp, &status);
+    for (i0 = 0; i0 < xM_size; i0++) {
+        for (i1 = 0; i1 < xM_size; i1++) {
+            double scale = abs(out(i0,i1));
+            if (scale <= 1e-10) scale = 1e-10;
+            assert (abs(out(i0,i1) -  out_cp(i0,i1)) / scale < 1e-13);
+        }
+    }
+
+    // Finish subgrid (using both 1D and 2D methods)
+    sdp_mem_copy_contents(subgrid_image_copy, subgrid_image, 0, 0,
+                          sdp_mem_num_elements(subgrid_image), &status);
+    sdp_swiftly_finish_subgrid_inplace(swiftly, subgrid_image_t, sg_off0, &status);
+    sdp_swiftly_finish_subgrid_inplace(swiftly, subgrid_image, sg_off1, &status);
+    sdp_swiftly_finish_subgrid_inplace_2d(swiftly, subgrid_image_copy, sg_off0, sg_off1, &status);
+    assert(!status);
+
+    // Again, check that both arrived at the same result
+    for (i0 = 0; i0 < xM_size; i0++) {
+        for (i1 = 0; i1 < xM_size; i1++) {
+            assert(abs(out(i0,i1) -  out_cp(i0,i1)) / abs(out(i0,i1)) < 1e-7);
+        }
+    }
+
+    // Result should match DFT to good precision
+    for (i0 = 0; i0 < xA_size; i0++) {
+        for (i1 = 0; i1 < xA_size; i1++) {
+            int64_t pos0 = i0 + sg_off0 - xA_size / 2;
+            int64_t pos1 = i1 + sg_off1 - xA_size / 2;
+            int64_t iM0 = i0 - xA_size / 2 + xM_size / 2;
+            int64_t iM1 = i1 - xA_size / 2 + xM_size / 2;
+
+            // Sum up DFT over sources
+            std::complex<double> expected = { 0, 0 };
+            std::vector<int64_t>::size_type isrc;
+            for (isrc = 0; isrc < sources.size(); isrc++) {
+                auto source = sources[isrc];
+                double phase = (2 * M_PI / image_size) *
+                    (source.first * pos0 + source.second * pos1);
+                expected += std::complex<double>(cos(phase), sin(phase));
+            }
+            expected /= sources.size(); // normalisation, see above
+
+            // Compare with actual
+            double diff = std::abs(out(iM0, iM1) - expected);
+            *ssum += diff * diff; (*count)++;
+            assert(diff < 4e-6);
+        }
+    }
+
+    // Free buffers
+    sdp_mem_free(facet_t);
+    sdp_mem_free(prepared0); sdp_mem_free(prepared0_t);
+    sdp_mem_free(contrib0); sdp_mem_free(contrib0_t);
+    sdp_mem_free(prepared1);
+    sdp_mem_free(contrib1); sdp_mem_free(contrib1_t);
+    sdp_mem_free(subgrid0_image); sdp_mem_free(subgrid0_image_t);
+    sdp_mem_free(subgrid_image); sdp_mem_free(subgrid_image_t);
+    sdp_mem_free(subgrid_image_copy);
+}
+
+void test_facet_to_subgrid_dft_2d()
+{
+    // General 2D test: Check that sources at arbitrary locations
+    // produce result that matches direct Fourier transform evaluation
+    // to a certain precision.
+
+    // Instantiate SwiFTly
+    sdp_Error status = SDP_SUCCESS;
+    const int64_t image_size = 1024;
+    const int64_t xM_size = 256;
+    const int64_t yN_size = 512;
+    const int64_t yB_size = 416;
+    const int64_t facet_off_step = image_size / xM_size;
+    const int64_t sg_off_step = image_size / yN_size;
+    sdp_SwiFTly *swiftly = sdp_swiftly_create(
+        image_size, yN_size, xM_size, 14.75, &status);
+    assert(!status);
+
+    // Make facet data + output regions for going through the
+    // algorithm first on axis 0, then on axis 1. We create transposed
+    // references to the buffers to pass to the routines later.
+    int64_t facet_size[] = { yB_size, yB_size };
+    sdp_Mem *facet = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, facet_size, &status);
     sdp_MemViewCpu<std::complex<double>, 2> fct;
     sdp_mem_check_and_view(facet, &fct, &status);
     assert(!status);
@@ -369,48 +472,13 @@ void test_facet_to_subgrid_dft_2d()
                  sg_off1 += sg_off_step) {
                 int64_t sg_off0 = -sg_off1*3 + sg_off_step;
 
-                // Extract a single subgrid
-                sdp_swiftly_prepare_facet(swiftly, facet_t, prepared0_t, facet_off0, &status);
-                sdp_swiftly_extract_from_facet(swiftly, prepared0_t, contrib0_t, sg_off0, &status);
-                sdp_swiftly_prepare_facet(swiftly, contrib0, prepared1, facet_off1, &status);
-                sdp_swiftly_extract_from_facet(swiftly, prepared1, contrib1, sg_off1, &status);
+                // Check that things work out for those parameters,
+                // capturing accuracy statistics.
+                check_facet_to_subgrid_dft_2d(
+                    swiftly, facet, new_sources,
+                    facet_off0, facet_off1, sg_off0, sg_off1,
+                    &ssum, &count);
 
-                // Add to & finish subgrid
-                memset(sdp_mem_data(subgrid0_image), 0, xM_size * xM_yN_size * sizeof(std::complex<double>));
-                memset(sdp_mem_data(subgrid_image), 0, xM_size * xM_size * sizeof(std::complex<double>));
-                sdp_swiftly_add_to_subgrid(swiftly, contrib1_t, subgrid0_image_t, facet_off0, &status);
-                sdp_swiftly_add_to_subgrid(swiftly, subgrid0_image, subgrid_image, facet_off1, &status);
-                sdp_swiftly_finish_subgrid_inplace(swiftly, subgrid_image_t, sg_off0, &status);
-                sdp_swiftly_finish_subgrid_inplace(swiftly, subgrid_image, sg_off1, &status);
-                sdp_MemViewCpu<std::complex<double>, 2> out;
-                sdp_mem_check_and_view(subgrid_image, &out, &status);
-                assert(!status);
-
-                // Result should match DFT to good precision
-                int64_t i0, i1;
-                for (i0 = 0; i0 < xA_size; i0++) {
-                  for (i1 = 0; i1 < xA_size; i1++) {
-                    int64_t pos0 = i0 + sg_off0 - xA_size / 2;
-                    int64_t pos1 = i1 + sg_off1 - xA_size / 2;
-                    int64_t iM0 = i0 - xA_size / 2 + xM_size / 2;
-                    int64_t iM1 = i1 - xA_size / 2 + xM_size / 2;
-
-                    // Sum up DFT over sources
-                    std::complex<double> expected = { 0, 0 };
-                    for (isrc = 0; isrc < sources.size(); isrc++) {
-                        auto source = new_sources[isrc];
-                        double phase = (2 * M_PI / image_size) *
-                            (source.first * pos0 + source.second * pos1);
-                        expected += std::complex<double>(cos(phase), sin(phase));
-                    }
-                    expected /= sources.size(); // normalisation, see above
-
-                    // Compare with actual
-                    double diff = std::abs(out(iM0, iM1) - expected);
-                    ssum += diff * diff; count++;
-                    assert(diff < 4e-6);
-                  }
-                }
             }
         }
 
@@ -421,15 +489,9 @@ void test_facet_to_subgrid_dft_2d()
     }
 
     sdp_mem_free(facet);
-    sdp_mem_free(prepared0);
-    sdp_mem_free(contrib0);
-    sdp_mem_free(prepared1);
-    sdp_mem_free(contrib1);
-    sdp_mem_free(subgrid0_image);
-    sdp_mem_free(subgrid_image);
     sdp_swiftly_free(swiftly);
 
-    SDP_LOG_INFO("test_facet_to_subgrid_dft: Test passed");
+    SDP_LOG_INFO("test_facet_to_subgrid_dft_2d: Test passed");
 }
 
 int main()

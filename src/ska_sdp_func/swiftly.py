@@ -206,8 +206,9 @@ class Swiftly:
         """
         Performs SwiFTly facet preparation
 
-        This multiplies in ``Fb`` and does Fourier transformation. Common work
-        to be done for each facet before calling :py:meth:`extract_from_facet`.
+        This multiplies by ``Fb`` and does Fourier transformation. Common work
+        to be done for each facet (and axis) before calling
+        :py:meth:`Swiftly.extract_from_facet`.
 
         :param facet: ``[*, <facet_size]`` Facet data
         :param prep_facet_out: ``[*, facet_size]`` Prepared facet output
@@ -224,10 +225,12 @@ class Swiftly:
         """
         Extract facet contribution to a subgrid
 
-        Copies out all data from prepared facet data that relates to a
+        Copies out all data from prepared facet that relates to a
         subgrid at a particular offset. The returned representation is
         optimised for representing this data in a compact way, and should
-        be used for distribution.
+        be used for distribution. Use :py:meth:`Swiftly.add_to_subgrid` or
+        :py:meth:`Swiftly.add_to_subgrid_2d` in order to accumulate such
+        contributions from multiple facets.
 
         :param prep_facet: ``[*, facet_size]`` Prepared facet output
         :param contribution_out: ``[*, contribution_size]``
@@ -247,13 +250,43 @@ class Swiftly:
 
         Accumulates a facet contribution in subgrid image passed. Subgrid
         image should be filled with zeros when passed to function
-        initially. Use sdp_finish_subgrid to obtain subgrid data.
+        initially. Use :py:meth:`Swiftly.finish_subgrid_inplace`
+        or :py:meth:`Swiftly.finish_subgrid_inplace_2d` to obtain
+        subgrid data.
 
         :param contribution: ``[*, contribution_size]``
            Facet contribution to subgrid.
         :param subgrid_image_inout: ``[*, subgrid_size]``
            Subgrid image for accumulation.
         :param facet_offset: Facet mid-point offset relative to image mid-point
+        """
+
+
+    @auto_wrap_method("sdp_swiftly_add_to_subgrid_2d")
+    def add_to_subgrid_2d(
+        self,
+        contribution: numpy.ndarray,
+        subgrid_image_inout: numpy.ndarray,
+        facet_offset0: int,
+        facet_offset1: int,
+    ):
+        """
+        Add facet contribution to a subgrid image
+
+        Accumulates a facet contribution in subgrid image passed. Subgrid
+        image should be filled with zeros when passed to function
+        initially. Use :py:meth:`Swiftly.finish_subgrid_inplace`
+        or :py:meth:`Swiftly.finish_subgrid_inplace_2d` respectively
+        to obtain subgrid data.
+
+        :param contribution: ``[contribution_size, contribution_size]``
+           Facet contribution to subgrid.
+        :param subgrid_image_inout: ``[subgrid_size, subgrid_size]``
+           Subgrid image for accumulation.
+        :param facet_offset0: Facet mid-point offset relative to image
+                        mid-point along first axis
+        :param facet_offset1:  Facet mid-point offset relative to image
+                        mid-point along second axis
         """
 
     @auto_wrap_method("sdp_swiftly_finish_subgrid_inplace")
@@ -270,3 +303,70 @@ class Swiftly:
            Subgrid / subgrid image for transform.
         :subgrid_offset: Subgrid mid-point offset relative to grid mid-point
         """
+
+    @auto_wrap_method("sdp_swiftly_finish_subgrid_inplace_2d")
+    def finish_subgrid_inplace_2d(
+        self, subgrid_inout: numpy.ndarray, subgrid_offset0: int, subgrid_offset1: int
+    ):
+        """
+        Finish subgrid after contribution accumulation
+
+        Performs the final Fourier Transformation to obtain the subgrid
+        from the subgrid image sum. This performs the transformation on
+        both axes - equivalent to applying
+        :py:meth:`Swiftly.finish_subgrid_inplace` to a subarray image, then its
+        transposition.
+
+        :subgrid_inout: ``[subgrid_size, subgrid_size]``
+           Subgrid / subgrid image for transform.
+        :param subgrid_offset0: Subgrid mid-point offset relative to grid
+                         mid-point along first axis
+        :param subgrid_offset1: Subgrid mid-point offset relative to grid
+                         mid-point along second axis
+        """
+
+
+    @auto_wrap_method("sdp_swiftly_prepare_subgrid_inplace")
+    def prepare_subgrid_inplace(
+        self, subgrid_inout: numpy.ndarray, subgrid_offset: int
+    ):
+        pass
+
+    @auto_wrap_method("sdp_swiftly_prepare_subgrid_inplace_2d")
+    def prepare_subgrid_inplace_2d(
+        self, subgrid_inout: numpy.ndarray, subgrid_offset0: int, subgrid_offset1: int
+    ):
+        pass
+
+    @auto_wrap_method("sdp_swiftly_extract_from_subgrid")
+    def extract_from_subgrid(
+        self, subgrid_image: numpy.ndarray, contribution_out: numpy.ndarray, facet_offset: int
+    ):
+        pass
+
+    @auto_wrap_method("sdp_swiftly_extract_from_subgrid_2d")
+    def extract_from_subgrid_2d(
+        self, subgrid_image: numpy.ndarray,
+        contribution_out: numpy.ndarray,
+        facet_offset0: int, facet_offset1: int
+    ):
+        pass
+
+    @auto_wrap_method("sdp_swiftly_add_to_facet")
+    def add_to_facet(
+        self,
+        contribution: numpy.ndarray,
+        prep_facet_inout: numpy.ndarray,
+        subgrid_offset: int
+    ):
+        pass
+
+
+    @auto_wrap_method("sdp_swiftly_finish_facet")
+    def finish_facet(
+        self,
+        prep_facet_inout: numpy.ndarray,
+        facet_out: numpy.ndarray,
+        facet_offset: int
+    ):
+        pass
