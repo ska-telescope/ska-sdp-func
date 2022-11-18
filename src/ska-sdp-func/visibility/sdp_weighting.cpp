@@ -118,45 +118,45 @@ void sdp_weighting_uniform(
 )
 {
     if (*status) return;
-    sdp_MemType uvw_type = SDP_MEM_VOID;
+    sdp_MemType uvw_type = sdp_mem_type(uvw);
     sdp_MemType weights_type = SDP_MEM_VOID;
-    sdp_MemLocation uvw_location = SDP_MEM_CPU;
     sdp_MemLocation weights_location = SDP_MEM_CPU;
     int64_t num_times = 0;
     int64_t num_baselines = 0;
     int64_t num_channels = 0;
     int64_t num_pols = 0;
-    int64_t grid_size = 0;
 
     // Check parameters.
-    sdp_data_model_get_uvw_metadata(uvw, &uvw_type, &uvw_location, 0, 0,
+    sdp_data_model_get_weights_metadata(weights,
+            &weights_type,
+            &weights_location,
+            &num_times,
+            &num_baselines,
+            &num_channels,
+            &num_pols,
             status
     );
-    sdp_data_model_check_weights(weights, &weights_type, &weights_location,
-            &num_times, &num_baselines, &num_channels, &num_pols, status
+
+    sdp_data_model_check_uvw(uvw,
+            SDP_MEM_VOID,
+            weights_location,
+            num_times,
+            num_baselines,
+            status
     );
+
+    sdp_mem_check_location(freq_hz, weights_location, status);
+    sdp_mem_check_location(grid_uv, weights_location, status);
+
+    sdp_mem_check_writeable(weights, status);
+    sdp_mem_check_writeable(grid_uv, status);
+
+    const int32_t num_grid_dims = 2;
+    sdp_mem_check_num_dims(grid_uv, num_grid_dims, status);
+    int64_t grid_size = sdp_mem_shape_dim(grid_uv, 0);
+    // Checking that grid is square
+    sdp_mem_check_dim_size(grid_uv, 1, grid_size, status);
     if (*status) return;
-    if (uvw_location != weights_location ||
-            sdp_mem_location(freq_hz) != weights_location ||
-            sdp_mem_location(grid_uv) != weights_location)
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Memory location mismatch");
-        return;
-    }
-    if (sdp_mem_is_read_only(weights) || sdp_mem_is_read_only(grid_uv))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Weights and grid data must be writable");
-        return;
-    }
-    grid_size = sdp_mem_shape_dim(grid_uv, 0);
-    if (sdp_mem_shape_dim(grid_uv, 1) != grid_size)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Grid must be square");
-        return;
-    }
 
     // Call the appropriate version of the kernel.
     if (weights_location == SDP_MEM_CPU)

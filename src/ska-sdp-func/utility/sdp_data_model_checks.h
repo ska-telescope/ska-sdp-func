@@ -300,6 +300,129 @@ void sdp_data_model_get_vis_metadata(
         sdp_Error* status
 );
 
+
+/**
+ * @brief Returns the number of timesamples in weights data array.
+ *
+ * Parameter @p weights is weights data array that match data model convention.
+ *
+ * @param weights weights data.
+ */
+#define sdp_weights_timesamples(weights) sdp_mem_shape_dim(weights, 0)
+
+/**
+ * @brief Returns the number of baselines in weights data array.
+ *
+ * Parameter @p weights is weights data array that match data model convention.
+ *
+ * @param weights weights data.
+ */
+#define sdp_weights_baselines(weights) sdp_mem_shape_dim(weights, 1)
+
+/**
+ * @brief Returns the number of channels in weights data array.
+ *
+ * Parameter @p weights is weights data array that match data model convention.
+ *
+ * @param weights weights data.
+ */
+#define sdp_weights_channels(weights) sdp_mem_shape_dim(weights, 2)
+
+/**
+ * @brief Returns the number of polarisations in weights data array.
+ *
+ * Parameter @p weights is weights data array that match data model convention.
+ *
+ * @param weights weights data.
+ */
+#define sdp_weights_pols(weights) sdp_mem_shape_dim(weights,3)
+
+/**
+ * @brief Check weights array matches data model convention.
+ *
+ * Array dimensions are as follows, from slowest to fastest varying:
+ *
+ * - @p weights is 4D and real-valued, with shape:
+ *   - [ num_times, num_baselines, num_channels, num_pols ]
+ *
+ * Use sdp_data_model_check_weight(...) macro to automatically fill
+ * ``func``, ``file`` and ``line`` by call location.
+ *
+ * To bypass datatype check pass expected_type = SDP_MEM_VOID
+ *
+ * @param weights Visibility weights. Dimensions as above.
+ * @param expected_type Enumerated type of data.
+ * @param expected_location Enumerated location of data.
+ * @param expected_num_timesamples Number of time samples in data.
+ * @param expected_num_baselines Number of baselines in data.
+ * @param expected_num_channels Number of channels in data.
+ * @param expected_num_pols Number of polarisations in data.
+ * @param expr Expression string to report in error message
+ * @param func Function to report in error message.
+ * @param file File name to report in error message.
+ * @param line Line to report in error message.
+ * @param status Error status.
+ */
+void sdp_data_model_check_weights_at(
+        const sdp_Mem* weights,
+        sdp_MemType expected_type,
+        sdp_MemLocation expected_location,
+        int64_t expected_num_timesamples,
+        int64_t expected_num_baselines,
+        int64_t expected_num_channels,
+        int64_t expected_num_pols,
+        sdp_Error* status,
+        const char* expr,
+        const char* func,
+        const char* file,
+        int line
+);
+
+/**
+ * @brief Check weights array matches data model convention.
+ *
+ * Array dimensions are as follows, from slowest to fastest varying:
+ *
+ * - @p weights is 4D and real-valued, with shape:
+ *   - [ num_times, num_baselines, num_channels, num_pols ]
+ *
+ * To bypass datatype check pass expected_type = SDP_MEM_VOID
+ *
+ * @param weights Visibility weights. Dimensions as above.
+ * @param expected_type Enumerated type of data.
+ * @param expected_location Enumerated location of data.
+ * @param expected_num_timesamples Number of time samples in data.
+ * @param expected_num_baselines Number of baselines in data.
+ * @param expected_num_channels Number of channels in data.
+ * @param expected_num_pols Number of polarisations in data.
+ * @param expr Expression string to report in error message
+ * @param func Function to report in error message.
+ * @param file File name to report in error message.
+ * @param line Line to report in error message.
+ * @param status Error status.
+ */
+ #define sdp_data_model_check_weights(weights, \
+            expected_type, \
+            expected_location, \
+            expected_num_timesamples, \
+            expected_num_baselines, \
+            expected_num_channels, \
+            expected_num_pols, \
+            status)                     \
+    sdp_data_model_check_weights_at(weights, \
+        expected_type, \
+        expected_location, \
+        expected_num_timesamples, \
+        expected_num_baselines, \
+        expected_num_channels, \
+        expected_num_pols, \
+        status, \
+        #weights, \
+        __func__, \
+        __FILE__, \
+        __LINE__ \
+    )
+
 /**
  * @brief Check weights array matches data model convention.
  *
@@ -317,7 +440,7 @@ void sdp_data_model_get_vis_metadata(
  * @param num_pols Number of polarisations in data.
  * @param status Error status.
  */
-void sdp_data_model_check_weights(
+void sdp_data_model_get_weights_metadata(
         const sdp_Mem* weights,
         sdp_MemType* type,
         sdp_MemLocation* location,

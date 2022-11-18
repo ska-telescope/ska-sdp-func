@@ -142,8 +142,8 @@ void sdp_data_model_check_visibility_at(
             line
     );
 
-    if (!(*status) // if status is set do nothing
-            && !sdp_mem_is_complex(vis))
+    if (*status) return;
+    if (!sdp_mem_is_complex(vis))
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR("The visibility array must be complex");
@@ -211,7 +211,71 @@ void sdp_data_model_get_vis_metadata(
 }
 
 
-void sdp_data_model_check_weights(
+void sdp_data_model_check_weights_at(
+        const sdp_Mem* weights,
+        sdp_MemType expected_type,
+        sdp_MemLocation expected_location,
+        int64_t expected_num_timesamples,
+        int64_t expected_num_baselines,
+        int64_t expected_num_channels,
+        int64_t expected_num_pols,
+        sdp_Error* status,
+        const char* expr,
+        const char* func,
+        const char* file,
+        int line
+)
+{
+    if (*status) return;
+
+    sdp_mem_check_c_contiguity_at(weights, status, expr, func, file, line);
+
+    const int32_t num_dims = 4;
+    int64_t vis_shape[4] = {
+        expected_num_timesamples,
+        expected_num_baselines,
+        expected_num_channels,
+        expected_num_pols
+    };
+    sdp_mem_check_shape_at(
+            weights,
+            num_dims,
+            vis_shape,
+            status,
+            expr,
+            func,
+            file,
+            line
+    );
+
+    if (*status) return;
+    if (sdp_mem_is_complex(weights))
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("The weights array cannot be complex");
+        return;
+    }
+
+    sdp_mem_check_location_at(
+            weights,
+            expected_location,
+            status,
+            expr,
+            func,
+            file,
+            line
+    );
+
+    if (expected_type != SDP_MEM_VOID)
+    {
+        sdp_mem_check_type_at(
+                weights, expected_type, status, expr, func, file, line
+        );
+    }
+}
+
+
+void sdp_data_model_get_weights_metadata(
         const sdp_Mem* weights,
         sdp_MemType* type,
         sdp_MemLocation* location,
