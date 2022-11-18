@@ -4,4 +4,5 @@ SKA_SDP_FUNC_SRC(
     sdp_logging.c
     sdp_mem.c
     sdp_sky_coord.c
+    sdp_table.cpp
 )

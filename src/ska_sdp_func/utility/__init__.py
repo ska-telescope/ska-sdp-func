@@ -7,3 +7,4 @@ from .lib import Lib
 from .mem import Mem
 from .sky_coord import SkyCoord
 from .struct_wrapper import StructWrapper
+from .table import Table

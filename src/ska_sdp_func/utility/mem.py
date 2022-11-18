@@ -11,6 +11,11 @@ try:
 except ImportError:
     cupy = None
 
+try:
+    import xarray
+except ImportError:
+    xarray = None
+
 from .lib import Lib
 from .struct_wrapper import StructWrapper
 
@@ -37,35 +42,12 @@ class Mem(StructWrapper):
     def __init__(self, *args):
         """Create a new wrapper for an array.
 
-        The array to wrap (either a numpy or cupy array) should be
-        passed as the first argument.
+        The array to wrap (either a numpy array, a cupy array,
+        or an xarray.DataArray) should be passed as the first argument.
         """
         obj = args[0] if len(args) == 1 else None
         if isinstance(obj, numpy.ndarray):
-            if obj.dtype in (numpy.int8, numpy.byte):
-                mem_type = self.MemType.SDP_MEM_CHAR
-            elif obj.dtype == numpy.int32:
-                mem_type = self.MemType.SDP_MEM_INT
-            elif obj.dtype == numpy.float32:
-                mem_type = self.MemType.SDP_MEM_FLOAT
-            elif obj.dtype == numpy.float64:
-                mem_type = self.MemType.SDP_MEM_DOUBLE
-            elif obj.dtype == numpy.complex64:
-                mem_type = self.MemType.SDP_MEM_COMPLEX_FLOAT
-            elif obj.dtype == numpy.complex128:
-                mem_type = self.MemType.SDP_MEM_COMPLEX_DOUBLE
-            else:
-                raise TypeError("Unsupported type of numpy array")
-            shape = (ctypes.c_int64 * obj.ndim)(*obj.shape)
-            strides = (ctypes.c_int64 * obj.ndim)(*obj.strides)
-            create_args = (
-                obj.ctypes.data_as(ctypes.POINTER(ctypes.c_void_p)),
-                mem_type,
-                self.MemLocation.SDP_MEM_CPU,
-                obj.ndim,
-                shape,
-                strides,
-            )
+            create_args = self.create_args_from_numpy(obj)
             super().__init__(
                 Lib.sdp_mem_create_wrapper, create_args, Lib.sdp_mem_free
             )
@@ -101,8 +83,43 @@ class Mem(StructWrapper):
             )
             # cupy doesn't appear to have a "writeable" flag.
             Lib.sdp_mem_set_read_only(self, 0)
+
+        elif xarray and isinstance(obj, xarray.DataArray):
+            create_args = self.create_args_from_numpy(obj.data)
+            super().__init__(
+                Lib.sdp_mem_create_wrapper, create_args, Lib.sdp_mem_free
+            )
+            Lib.sdp_mem_set_read_only(self, not obj.data.flags.writeable)
+
         else:
             raise TypeError("Unsupported argument type")
+
+    def create_args_from_numpy(self, array: numpy.ndarray):
+        """Return arguments needed to create the wrapper from a numpy array."""
+        if array.dtype in (numpy.int8, numpy.byte):
+            mem_type = self.MemType.SDP_MEM_CHAR
+        elif array.dtype == numpy.int32:
+            mem_type = self.MemType.SDP_MEM_INT
+        elif array.dtype == numpy.float32:
+            mem_type = self.MemType.SDP_MEM_FLOAT
+        elif array.dtype == numpy.float64:
+            mem_type = self.MemType.SDP_MEM_DOUBLE
+        elif array.dtype == numpy.complex64:
+            mem_type = self.MemType.SDP_MEM_COMPLEX_FLOAT
+        elif array.dtype == numpy.complex128:
+            mem_type = self.MemType.SDP_MEM_COMPLEX_DOUBLE
+        else:
+            raise TypeError("Unsupported type of numpy array")
+        shape = (ctypes.c_int64 * array.ndim)(*array.shape)
+        strides = (ctypes.c_int64 * array.ndim)(*array.strides)
+        return (
+            array.ctypes.data_as(ctypes.POINTER(ctypes.c_void_p)),
+            mem_type,
+            self.MemLocation.SDP_MEM_CPU,
+            array.ndim,
+            shape,
+            strides,
+        )
 
 
 Lib.wrap_func(
