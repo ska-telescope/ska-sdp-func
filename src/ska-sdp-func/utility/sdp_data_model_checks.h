@@ -109,12 +109,12 @@ void sdp_data_model_check_uvw_at(
  * @param status Error status.
  */
 #define sdp_data_model_check_uvw(uvw, \
-                expected_type, \
-                expected_location, \
-                expected_num_timesamples, \
-                expected_num_baselines, \
-                status)                     \
-        sdp_data_model_check_uvw_at(uvw, \
+            expected_type, \
+            expected_location, \
+            expected_num_timesamples, \
+            expected_num_baselines, \
+            status)                     \
+    sdp_data_model_check_uvw_at(uvw, \
         expected_type, \
         expected_location, \
         expected_num_timesamples, \
@@ -124,7 +124,7 @@ void sdp_data_model_check_uvw_at(
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks if uvw coordinate array matches data model convention
@@ -250,14 +250,14 @@ void sdp_data_model_check_visibility_at(
  * @param status Error status.
  */
  #define sdp_data_model_check_visibility(vis, \
-                 expected_type, \
-                 expected_location, \
-                 expected_num_timesamples, \
-                 expected_num_baselines, \
-                 expected_num_channels, \
-                 expected_num_pols, \
-                 status)                     \
-         sdp_data_model_check_visibility_at(vis, \
+            expected_type, \
+            expected_location, \
+            expected_num_timesamples, \
+            expected_num_baselines, \
+            expected_num_channels, \
+            expected_num_pols, \
+            status)                     \
+    sdp_data_model_check_visibility_at(vis, \
         expected_type, \
         expected_location, \
         expected_num_timesamples, \
@@ -269,7 +269,7 @@ void sdp_data_model_check_visibility_at(
         __func__, \
         __FILE__, \
         __LINE__ \
-         )
+    )
 
 /**
  * @brief Checks if visibility array matches data model convention

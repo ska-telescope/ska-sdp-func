@@ -493,13 +493,13 @@ void sdp_mem_check_writeable_at(
  * @param status Output error status.
  */
 #define sdp_mem_check_writeable(mem, status)                            \
-        sdp_mem_check_writeable_at(mem, \
+    sdp_mem_check_writeable_at(mem, \
         status, \
         #mem, \
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks that given memory is C contiguous
@@ -533,13 +533,13 @@ void sdp_mem_check_c_contiguity_at(
  * @param status Output error status.
  */
 #define sdp_mem_check_c_contiguity(mem, status)   \
-        sdp_mem_check_writeable_at(mem, \
+    sdp_mem_check_writeable_at(mem, \
         status, \
         #mem, \
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks that given memory resides in the expected memory space
@@ -576,14 +576,14 @@ void sdp_mem_check_location_at(
  * @param status Output error status
  */
 #define sdp_mem_check_location(mem, loc, status)                        \
-        sdp_mem_check_location_at(mem, \
+    sdp_mem_check_location_at(mem, \
         loc, \
         status, \
         #mem, \
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks that given memory has expected number of dimensions.
@@ -620,14 +620,14 @@ void sdp_mem_check_num_dims_at(
  * @param status Output error status
  */
 #define sdp_mem_check_num_dims(mem, ndims, status)                      \
-        sdp_mem_check_num_dims_at(mem, \
+    sdp_mem_check_num_dims_at(mem, \
         ndims, \
         status, \
         #mem, \
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks that a dimension of given memory has expected size
@@ -671,7 +671,7 @@ void sdp_mem_check_dim_size_at(
  * @param status Output error status
  */
 #define sdp_mem_check_dim_size(mem, dim, size, status)                     \
-        sdp_mem_check_dim_size_at(mem, \
+    sdp_mem_check_dim_size_at(mem, \
         dim, \
         size, \
         status, \
@@ -679,7 +679,7 @@ void sdp_mem_check_dim_size_at(
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks that a sdp_Mem has expected number of dimensions
@@ -721,7 +721,7 @@ void sdp_mem_check_shape_at(
  * @param status Output error status
  */
 #define sdp_mem_check_shape(mem, expected_ndims, expected_shape, status)                     \
-        sdp_mem_check_shape_at(mem, \
+    sdp_mem_check_shape_at(mem, \
         expected_ndims, \
         expected_shape, \
         status, \
@@ -729,7 +729,7 @@ void sdp_mem_check_shape_at(
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks that given memory has the expected data type
@@ -766,14 +766,14 @@ void sdp_mem_check_type_at(
  * @param status Output error status
  */
 #define sdp_mem_check_type(mem, expected_type, status)                            \
-        sdp_mem_check_type_at(mem, \
+    sdp_mem_check_type_at(mem, \
         expected_type, \
         status, \
         #mem, \
         __func__, \
         __FILE__, \
         __LINE__ \
-        )
+    )
 
 /** @} */ /* End group Mem_func. */
 
