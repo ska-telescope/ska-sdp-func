@@ -26,10 +26,9 @@ def msmfs_perform(
     max_gaussian_sources,  # 10
     scale_bias_factor,
     clean_threshold,
-    num_gaussian_sources,
     gaussian_source_positions,
-    gaussian_source_variances,  # 15
-    gaussian_source_taylor_intensities,
+    gaussian_source_variances,
+    gaussian_source_taylor_intensities,  # 15
 ):
     """Performs the entire MSMFS deconvolution.
 
@@ -58,6 +57,9 @@ def msmfs_perform(
         with smaller scales.
     :param clean_threshold:  Set clean_threshold to 0 to disable checking
         whether source to clean below cutoff threshold.
+    :param gaussian_source_positions:
+    :param gaussian_source_variances:
+    :param gaussian_source_taylor_intensities:
     """
     mem_dirty_moment_images = Mem(dirty_moment_images)
     mem_psf_moment_images = Mem(psf_moment_images)
@@ -65,7 +67,7 @@ def msmfs_perform(
     mem_gaussian_source_variances = Mem(gaussian_source_variances)
     mem_gaussian_source_taylor_intensities = Mem(gaussian_source_taylor_intensities)
 
-    num_gaussian_sources_uint = ctypes.c_uint(num_gaussian_sources)
+    num_gaussian_sources_uint = ctypes.c_uint()
 
     error_status = Error()
     lib_msmfs_perform = Lib.handle().sdp_msmfs_perform
@@ -101,10 +103,12 @@ def msmfs_perform(
         ctypes.c_uint(max_gaussian_sources),  # 10
         ctypes.c_double(scale_bias_factor),
         ctypes.c_double(clean_threshold),
-        ctypes.pointer(num_gaussian_sources_uint),
+        ctypes.byref(num_gaussian_sources_uint),
         mem_gaussian_source_positions.handle(),
         mem_gaussian_source_variances.handle(),  # 15
         mem_gaussian_source_taylor_intensities.handle(),
         error_status.handle(),
     )
     error_status.check()
+
+    return num_gaussian_sources_uint.value
