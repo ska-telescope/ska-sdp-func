@@ -3,13 +3,16 @@
 """Module to wrap xarray Datasets for passing to processing functions."""
 
 import ctypes
+import itertools
 
 try:
     import xarray
 except ImportError:
     xarray = None
 
-from ..utility import Lib, Mem, StructWrapper
+from .lib import Lib
+from .mem import Mem
+from .struct_wrapper import StructWrapper
 
 
 class Table(StructWrapper):
@@ -20,11 +23,8 @@ class Table(StructWrapper):
         super().__init__(Lib.sdp_table_create, (), Lib.sdp_table_free)
         obj = args[0] if len(args) == 1 else None
         if xarray and isinstance(obj, xarray.Dataset):
-            for name, array in obj.data_vars.items():
-                Lib.sdp_table_set_column(
-                    self, name.encode("ascii"), Mem(array)
-                )
-            for name, array in obj.coords.items():
+            arrays = itertools.chain(obj.data_vars.items(), obj.coords.items())
+            for name, array in arrays:
                 Lib.sdp_table_set_column(
                     self, name.encode("ascii"), Mem(array)
                 )
