@@ -62,7 +62,7 @@ extern "C" {
  * Use sdp_data_model_check_uvw(...) macro to automatically fill
  * ``func``, ``file`` and ``line`` by call location.
  *
- * To bypass datatype check pass expected_type = SDP_MEM_VOID 
+ * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
  * @param uvw Baseline (u,v,w) coordinates. Dimensions as above.
  * @param type Enumerated type of data.
@@ -82,9 +82,9 @@ void sdp_data_model_check_uvw_at(
         int64_t expected_num_timesamples,
         int64_t expected_num_baselines,
         sdp_Error* status,
-        const char *expr,
-        const char *func,  
-        const char *file, 
+        const char* expr,
+        const char* func,
+        const char* file,
         int line
 );
 
@@ -99,7 +99,7 @@ void sdp_data_model_check_uvw_at(
  * - @p uvw is 3D and real-valued, with shape:
  *   - [ num_times, num_baselines, 3 ]
  *
- * To bypass datatype check pass expected_type = SDP_MEM_VOID 
+ * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
  * @param uvw Baseline (u,v,w) coordinates. Dimensions as above.
  * @param type Enumerated type of data.
@@ -108,9 +108,23 @@ void sdp_data_model_check_uvw_at(
  * @param num_baselines Number of baselines in data.
  * @param status Error status.
  */
-#define sdp_data_model_check_uvw(uvw, expected_type, expected_location, expected_num_timesamples, expected_num_baselines, status)                     \
-    sdp_data_model_check_uvw_at(uvw, expected_type, expected_location, expected_num_timesamples, expected_num_baselines, status, #uvw, __func__, __FILE__, __LINE__)
-
+#define sdp_data_model_check_uvw(uvw, \
+                expected_type, \
+                expected_location, \
+                expected_num_timesamples, \
+                expected_num_baselines, \
+                status)                     \
+        sdp_data_model_check_uvw_at(uvw, \
+        expected_type, \
+        expected_location, \
+        expected_num_timesamples, \
+        expected_num_baselines, \
+        status, \
+        #uvw, \
+        __func__, \
+        __FILE__, \
+        __LINE__ \
+        )
 
 /**
  * @brief Checks if uvw coordinate array matches data model convention
@@ -186,7 +200,7 @@ void sdp_data_model_get_uvw_metadata(
  * Use sdp_data_model_check_visibility(...) macro to automatically fill
  * ``func``, ``file`` and ``line`` by call location.
  *
- * To bypass datatype check pass expected_type = SDP_MEM_VOID 
+ * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
  * @param vis Complex visibility data. Dimensions as above.
  * @param expected_type Expected enumerated type of data.
@@ -210,9 +224,9 @@ void sdp_data_model_check_visibility_at(
         int64_t expected_num_channels,
         int64_t expected_num_pols,
         sdp_Error* status,
-        const char *expr,
-        const char *func,  
-        const char *file, 
+        const char* expr,
+        const char* func,
+        const char* file,
         int line
 );
 
@@ -224,7 +238,7 @@ void sdp_data_model_check_visibility_at(
  * - @p vis is 4D and complex-valued, with shape:
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
- * To bypass datatype check pass expected_type = SDP_MEM_VOID 
+ * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
  * @param vis Complex visibility data. Dimensions as above.
  * @param expected_type Expected enumerated type of data.
@@ -235,12 +249,30 @@ void sdp_data_model_check_visibility_at(
  * @param expected_num_pols Expected number of polarisations in data.
  * @param status Error status.
  */
- #define sdp_data_model_check_visibility(vis, expected_type, expected_location, expected_num_timesamples, expected_num_baselines, expected_num_channels, expected_num_pols, status)                     \
-    sdp_data_model_check_visibility_at(vis, expected_type, expected_location, expected_num_timesamples, expected_num_baselines, expected_num_channels, expected_num_pols, status, #vis, __func__, __FILE__, __LINE__)
-
+ #define sdp_data_model_check_visibility(vis, \
+                 expected_type, \
+                 expected_location, \
+                 expected_num_timesamples, \
+                 expected_num_baselines, \
+                 expected_num_channels, \
+                 expected_num_pols, \
+                 status)                     \
+         sdp_data_model_check_visibility_at(vis, \
+        expected_type, \
+        expected_location, \
+        expected_num_timesamples, \
+        expected_num_baselines, \
+        expected_num_channels, \
+        expected_num_pols, \
+        status, \
+        #vis, \
+        __func__, \
+        __FILE__, \
+        __LINE__ \
+         )
 
 /**
- * @brief Checks if visibility array matches data model convention 
+ * @brief Checks if visibility array matches data model convention
  * and return its metadata.
  *
  * Array dimensions are as follows, from slowest to fastest varying:

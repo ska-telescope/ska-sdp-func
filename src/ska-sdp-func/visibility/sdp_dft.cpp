@@ -3,7 +3,7 @@
 #include <cmath>
 #include <complex>
 
-#include "ska-sdp-func/dft/sdp_dft.h"
+#include "ska-sdp-func/visibility/sdp_dft.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_data_model_checks.h"
@@ -11,7 +11,7 @@
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
-    (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+        (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 
 using std::complex;
@@ -396,33 +396,33 @@ static void check_params_v01(
     int64_t num_channels = 0;
     int64_t num_pols = 0;
     sdp_data_model_get_vis_metadata(
-        vis,
-        &vis_type,
-        &vis_location,
-        &num_times,
-        &num_baselines,
-        &num_channels,
-        &num_pols,
-        status
+            vis,
+            &vis_type,
+            &vis_location,
+            &num_times,
+            &num_baselines,
+            &num_channels,
+            &num_pols,
+            status
     );
     sdp_mem_check_writeable(vis, status);
     sdp_mem_check_c_contiguity(vis, status);
-    
+
     sdp_data_model_check_uvw(
-        uvw,
-        SDP_MEM_VOID,
-        vis_location,
-        num_times,
-        num_baselines,
-        status
+            uvw,
+            SDP_MEM_VOID,
+            vis_location,
+            num_times,
+            num_baselines,
+            status
     );
-    
+
     sdp_mem_check_location(source_directions, vis_location, status);
     sdp_mem_check_c_contiguity(source_directions, status);
     const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
-    sdp_mem_check_shape(source_directions, 1, 3, status);
-    
-    
+    sdp_mem_check_dim_size(source_directions, 1, 3, status);
+
+    if (*status) return;
     if (!sdp_mem_is_complex(source_fluxes))
     {
         *status = SDP_ERR_DATA_TYPE;
@@ -436,7 +436,7 @@ static void check_params_v01(
         num_channels,
         num_pols
     };
-    sdp_mem_check_dims_and_shape(source_fluxes, 3, sf_shape, status);
+    sdp_mem_check_shape(source_fluxes, 3, sf_shape, status);
 }
 
 

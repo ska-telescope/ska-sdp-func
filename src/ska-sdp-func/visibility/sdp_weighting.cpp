@@ -11,7 +11,7 @@
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
-    (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+        (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 
 template<typename UVW_TYPE, typename FREQ_TYPE, typename WEIGHT_TYPE>
@@ -129,7 +129,9 @@ void sdp_weighting_uniform(
     int64_t grid_size = 0;
 
     // Check parameters.
-    sdp_data_model_get_uvw_metadata(uvw, &uvw_type, &uvw_location, 0, 0, status);
+    sdp_data_model_get_uvw_metadata(uvw, &uvw_type, &uvw_location, 0, 0,
+            status
+    );
     sdp_data_model_check_weights(weights, &weights_type, &weights_location,
             &num_times, &num_baselines, &num_channels, &num_pols, status
     );
