@@ -16,8 +16,7 @@ class Table(StructWrapper):
     """Class to wrap an xarray Dataset for passing to processing functions."""
 
     def __init__(self, *args):
-        """Create a new wrapper for a structure of arrays.
-        """
+        """Create a new wrapper for a structure of arrays."""
         super().__init__(Lib.sdp_table_create, (), Lib.sdp_table_free)
         obj = args[0] if len(args) == 1 else None
         if xarray and isinstance(obj, xarray.Dataset):

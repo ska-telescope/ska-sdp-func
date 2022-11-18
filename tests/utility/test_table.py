@@ -31,7 +31,7 @@ def test_dataset():
     if xarray:
         data_vars = {
             "vis": (["time", "baseline", "frequency", "polarisation"], vis),
-            "uvw": (["time", "baseline", "spatial"], uvw)
+            "uvw": (["time", "baseline", "spatial"], uvw),
         }
         dataset = xarray.Dataset(data_vars=data_vars)
 
@@ -43,7 +43,6 @@ def test_dataset():
 
         print("After function call:")
         print(dataset.uvw)
-
 
 
 Lib.wrap_func(
