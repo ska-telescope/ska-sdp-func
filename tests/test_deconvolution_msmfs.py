@@ -92,12 +92,6 @@ def test_msmfs_perform():
 
     calculate_simple_psf_image(psf_moment_images)
 
-    num_gaussian_sources = 0
-
-    gaussian_source_positions =  np.zeros((max_gaussian_sources, 2), dtype=int32)
-    gaussian_source_variances =  np.zeros(max_gaussian_sources)
-    gaussian_source_taylor_intensities =  np.zeros((max_gaussian_sources, num_taylor))
-
     # create single versions
     # uvw_s = uvw.astype(np.float32)
     # freqs_s = freqs.astype(np.float32)
@@ -108,11 +102,8 @@ def test_msmfs_perform():
     if cupy:
         dirty_moment_images_gpu = cupy.asarray(dirty_moment_images)
         psf_moment_images_gpu = cupy.asarray(psf_moment_images)
-        gaussian_source_positions_gpu = cupy.asarray(gaussian_source_positions)
-        gaussian_source_variances_gpu = cupy.asarray(gaussian_source_variances)
-        gaussian_source_taylor_intensities_gpu = cupy.asarray(gaussian_source_taylor_intensities)
 
-        num_sources = msmfs_perform(
+        num_sources, sources = msmfs_perform(
                 dirty_moment_images_gpu,
                 psf_moment_images_gpu,
                 dirty_moment_size,
@@ -125,12 +116,14 @@ def test_msmfs_perform():
                 max_gaussian_sources,  # 10
                 scale_bias_factor,
                 clean_threshold,
-                gaussian_source_positions,
-                gaussian_source_variances,
-                gaussian_source_taylor_intensities,  # 15
         )
 
         print(f"Finished, {num_sources} distinct sources were found.")
-        print(gaussian_source_positions[0:num_sources, :])
-        print(gaussian_source_variances[0:num_sources])
-        print(gaussian_source_taylor_intensities[0:num_sources, :])
+        # print(sources['positions'])
+        # print(sources['variances'])
+        # print(sources['taylor_intensities'])
+
+        for i in range(num_sources):
+            print(f"Source {i:3d} has scale variance {sources['variances'][i]:8.1f} "
+                  f"at {sources['positions'][i,:]} "
+                  f"with Taylor term intensities {sources['taylor_intensities'][i,:]}")

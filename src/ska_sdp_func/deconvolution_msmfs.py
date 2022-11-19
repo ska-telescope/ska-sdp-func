@@ -4,13 +4,13 @@
 import ctypes
 
 from .utility import Error, Lib, Mem
+import numpy as np
 
 # try:
 #     import cupy
 # except ImportError:
 #     cupy = None
 #
-# import numpy as np
 
 
 def msmfs_perform(
@@ -26,10 +26,7 @@ def msmfs_perform(
     max_gaussian_sources,  # 10
     scale_bias_factor,
     clean_threshold,
-    gaussian_source_positions,
-    gaussian_source_variances,
-    gaussian_source_taylor_intensities,  # 15
-):
+) -> (int, dict):
     """Performs the entire MSMFS deconvolution.
 
         dirty_moment_images and psf_moment_images assumed to be centred
@@ -52,17 +49,24 @@ def msmfs_perform(
     :param clean_loop_gain:  Loop gain fraction of peak point to clean from
         the peak each minor cycle.
     :param max_gaussian_sources:  Upper bound on the number of gaussian
-        sources the list data structure will hold.
+        sources to find.
     :param scale_bias_factor:  Bias multiplicative factor to favour cleaning
         with smaller scales.
     :param clean_threshold:  Set clean_threshold to 0 to disable checking
         whether source to clean below cutoff threshold.
+    :returns
+    :param num_gaussian_sources: The number of Gaussian sources found.
     :param gaussian_source_positions:
     :param gaussian_source_variances:
     :param gaussian_source_taylor_intensities:
     """
     mem_dirty_moment_images = Mem(dirty_moment_images)
     mem_psf_moment_images = Mem(psf_moment_images)
+
+    gaussian_source_positions = np.zeros((max_gaussian_sources, 2), dtype=np.int32)
+    gaussian_source_variances = np.zeros( max_gaussian_sources)
+    gaussian_source_taylor_intensities = np.zeros((max_gaussian_sources, num_taylor))
+
     mem_gaussian_source_positions = Mem(gaussian_source_positions)
     mem_gaussian_source_variances = Mem(gaussian_source_variances)
     mem_gaussian_source_taylor_intensities = Mem(gaussian_source_taylor_intensities)
@@ -111,4 +115,10 @@ def msmfs_perform(
     )
     error_status.check()
 
-    return num_gaussian_sources_uint.value
+    num_sources = num_gaussian_sources_uint.value
+
+    sources = {'positions': gaussian_source_positions[0:num_sources,:],
+               'variances': gaussian_source_variances[0:num_sources],
+               'taylor_intensities': gaussian_source_taylor_intensities[0:num_sources,:]}
+
+    return num_sources, sources
