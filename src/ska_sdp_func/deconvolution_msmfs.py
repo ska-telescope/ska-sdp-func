@@ -16,22 +16,19 @@ import numpy as np
 def msmfs_perform(
     dirty_moment_images,
     psf_moment_images,
-    dirty_moment_size,
-    num_scales,
-    num_taylor,  # 5
-    psf_moment_size,
-    image_border,
-    convolution_accuracy,
+    num_scales: int,
+    image_border: int,
+    convolution_accuracy,  # 5
     clean_loop_gain,
-    max_gaussian_sources,  # 10
+    max_gaussian_sources: int,
     scale_bias_factor,
     clean_threshold,
 ) -> (int, dict):
     """Performs the entire MSMFS deconvolution.
 
-        dirty_moment_images and psf_moment_images assumed to be centred
-        around origin with dirty_moment_images and have sufficient border
-        for convolutions.
+        dirty_moment_images and psf_moment_images assumed to be square and
+        centred around origin with dirty_moment_images and have sufficient
+        border for convolutions.
 
     :param dirty_moment_images: cupy.ndarray((num_taylor, dirty_moment_size,
         dirty_moment_size), dtype=numpy.float32 or numpy.float64)
@@ -39,10 +36,7 @@ def msmfs_perform(
     :param psf_moment_images: cupy.ndarray((num_taylor, psf_moment_size,
         psf_moment_size), dtype=numpy.float32 or numpy.float64)
         Taylor coefficient PSF images to be convolved.
-    :param dirty_moment_size:  One dimensional size of image, assumed square.
     :param num_scales:  Number of scales to use in MSMFS cleaning.
-    :param num_taylor:  Number of Taylor moments.
-    :param psf_moment_size:  One dimensional size of PSF, assumed square.
     :param image_border:  Border around dirty moment images and PSFs to clip
         when using convolved images or convolved PSFs.
     :param convolution_accuracy:
@@ -54,14 +48,16 @@ def msmfs_perform(
         with smaller scales.
     :param clean_threshold:  Set clean_threshold to 0 to disable checking
         whether source to clean below cutoff threshold.
-    :returns
-    :param num_gaussian_sources: The number of Gaussian sources found.
-    :param gaussian_source_positions:
-    :param gaussian_source_variances:
-    :param gaussian_source_taylor_intensities:
+    :returns:
+        num_gaussian_sources: The number of Gaussian sources found.
+        sources: Dictionary with the keys 'positions', 'variances', 'taylor_intensities'
     """
     mem_dirty_moment_images = Mem(dirty_moment_images)
     mem_psf_moment_images = Mem(psf_moment_images)
+
+    num_taylor = dirty_moment_images.shape[0]
+    dirty_moment_size = dirty_moment_images.shape[1]
+    psf_moment_size = psf_moment_images.shape[1]
 
     gaussian_source_positions = np.zeros((max_gaussian_sources, 2), dtype=np.int32)
     gaussian_source_variances = np.zeros( max_gaussian_sources)

@@ -106,24 +106,28 @@ def test_msmfs_perform():
         num_sources, sources = msmfs_perform(
                 dirty_moment_images_gpu,
                 psf_moment_images_gpu,
-                dirty_moment_size,
                 num_scales,
-                num_taylor,  # 5
-                psf_moment_size,
                 image_border,
-                convolution_accuracy,
+                convolution_accuracy,  # 5
                 clean_loop_gain,
-                max_gaussian_sources,  # 10
+                max_gaussian_sources,
                 scale_bias_factor,
                 clean_threshold,
         )
 
         print(f"Finished, {num_sources} distinct sources were found.")
-        # print(sources['positions'])
-        # print(sources['variances'])
-        # print(sources['taylor_intensities'])
 
         for i in range(num_sources):
             print(f"Source {i:3d} has scale variance {sources['variances'][i]:8.1f} "
                   f"at {sources['positions'][i,:]} "
                   f"with Taylor term intensities {sources['taylor_intensities'][i,:]}")
+
+        # test the output, only true for max_gaussian_sources = 100
+        assert num_sources == 28
+        assert abs(np.amax(sources['taylor_intensities']) -  104.0194) < 0.001
+        assert abs(np.amin(sources['taylor_intensities']) - -195.7728) < 0.001
+        assert np.amax(sources['variances']) == 64
+        assert np.amin(sources['variances']) == 0
+        assert all(sources['positions'][ 0, :] == [512, 512])
+        assert all(sources['positions'][ 5, :] == [512, 532])
+        assert all(sources['positions'][27, :] == [509, 509])
