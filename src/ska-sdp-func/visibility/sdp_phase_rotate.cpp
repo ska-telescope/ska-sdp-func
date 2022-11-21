@@ -226,13 +226,6 @@ void sdp_phase_rotate_vis(
 {
     if (*status) return;
 
-
-    //const int64_t num_times      = sdp_mem_shape_dim(vis_in, 0);
-    //const int64_t num_baselines  = sdp_mem_shape_dim(vis_in, 1);
-    //const int64_t num_channels   = sdp_mem_shape_dim(vis_in, 2);
-    //const int64_t num_pols       = sdp_mem_shape_dim(vis_in, 3);
-
-
     sdp_MemType vis_out_type = SDP_MEM_VOID;
     sdp_MemLocation vis_out_location = SDP_MEM_CPU;
     sdp_MemLocation uvw_location = sdp_mem_location(uvw);
@@ -240,11 +233,11 @@ void sdp_phase_rotate_vis(
     int64_t num_baselines = 0;
     int64_t num_channels = 0;
     int64_t num_pols = 0;
-    
+
     sdp_data_model_get_vis_metadata(
-            vis_out, 
-            &vis_out_type, 
-            &vis_out_location, 
+            vis_out,
+            &vis_out_type,
+            &vis_out_location,
             &num_times,
             &num_baselines,
             &num_channels,
@@ -253,18 +246,24 @@ void sdp_phase_rotate_vis(
     );
     sdp_mem_check_writeable(vis_out, status);
     sdp_mem_check_location(vis_out, uvw_location, status);
-    
+    printf("t=%ld; b=%ld; c=%ld; p=%ld;\n",
+            num_times,
+            num_baselines,
+            num_channels,
+            num_pols
+    );
+
     sdp_data_model_check_visibility(
             vis_in,
-            vis_out_type, 
-            uvw_location, 
+            vis_out_type,
+            uvw_location,
             num_times,
             num_baselines,
             num_channels,
             num_pols,
             status
     );
-    
+
     sdp_data_model_check_uvw(
             uvw,
             SDP_MEM_VOID,
@@ -273,9 +272,8 @@ void sdp_phase_rotate_vis(
             num_baselines,
             status
     );
-    
-    if(*status) return;
 
+    if (*status) return;
 
     // Convert from spherical to tangent-plane to get delta (l, m, n).
     const double orig_ra_rad = sdp_sky_coord_value(phase_centre_orig, 0);
