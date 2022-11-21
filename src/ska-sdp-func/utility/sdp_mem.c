@@ -546,7 +546,6 @@ void sdp_mem_check_writeable_at(
     if (*status) return;
     if (sdp_mem_is_read_only(mem))
     {
-        // Log & set status
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
                 stderr,
@@ -574,7 +573,6 @@ void sdp_mem_check_c_contiguity_at(
     if (*status) return;
     if (!sdp_mem_is_c_contiguous(mem))
     {
-        // Log & set status
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
                 stderr,
@@ -603,7 +601,6 @@ void sdp_mem_check_location_at(
     if (*status) return;
     if (sdp_mem_location(mem) != expected_location)
     {
-        // Log & set status
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
                 stderr,
@@ -633,14 +630,13 @@ void sdp_mem_check_num_dims_at(
     if (*status) return;
     if (sdp_mem_num_dims(mem) != expected_ndims)
     {
-        // Log & set status
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
                 stderr,
                 func,
                 file,
                 line,
-                "%s: Expected '%s' shape to have %d dimension%s (found %d)!",
+                "%s: Expected '%s' to have %d dimension%s (found %d)!",
                 func,
                 expr,
                 expected_ndims,
@@ -666,7 +662,6 @@ void sdp_mem_check_dim_size_at(
     if (*status) return;
     if (sdp_mem_shape_dim(mem, dim) != size)
     {
-        // Log & set status
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
                 stderr,

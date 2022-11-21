@@ -465,13 +465,13 @@ const char* sdp_mem_type_name(sdp_MemType typ);
  * @brief Checks that given memory is writeable
  *
  * ``status`` will be set if the check fails. Use
- * #sdp_mem_check_writeable(mem,status) macro to automatically fill ``func``,
- * ``expr``, ``file`` and ``line`` by call location.
+ * #sdp_mem_check_writeable(mem,status) macro to automatically fill ``expr``, 
+ * ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check
  * @param status Output error status.
- * @param func Function to report in error message
  * @param expr Expression string to report in error message
+ * @param func Function to report in error message
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
@@ -510,8 +510,8 @@ void sdp_mem_check_writeable_at(
  *
  * @param mem Handle to memory block to check
  * @param status Output error status.
- * @param func Function to report in error message
  * @param expr Expression string to report in error message
+ * @param func Function to report in error message
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
@@ -545,14 +545,14 @@ void sdp_mem_check_c_contiguity_at(
  * @brief Checks that given memory resides in the expected memory space
  *
  * ``status`` will be set if the check fails. Use
- * #sdp_mem_check_location macro to automatically fill ``func``,
- * ``expr``, ``file`` and ``line`` by call location.
+ * #sdp_mem_check_location macro to automatically fill ``expr``,
+ * ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check
  * @param loc Expected memory location
  * @param status Output error status
- * @param func Function to report in error message
  * @param expr Expression string to report in error message
+ * @param func Function to report in error message
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
@@ -589,14 +589,14 @@ void sdp_mem_check_location_at(
  * @brief Checks that given memory has expected number of dimensions.
  *
  * ``status`` will be set if the check fails. Use
- * #sdp_mem_check_num_dims macro to automatically fill ``func``,
- * ``expr``, ``file`` and ``line`` by call location.
+ * #sdp_mem_check_num_dims macro to automatically fill ``expr``,
+ * ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check
  * @param ndims Expected number of dimensions
  * @param status Output error status
- * @param func Function to report in error message
  * @param expr Expression string to report in error message
+ * @param func Function to report in error message
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
@@ -630,20 +630,18 @@ void sdp_mem_check_num_dims_at(
     )
 
 /**
- * @brief Checks that a dimension of given memory has expected size
+ * @brief Checks that a give dimension of an array has expected size
  *
  * ``status`` will be set if the check fails. Note that this function
- * will *not* fail if the dimension in question does not exist, use
- * #sdp_mem_check_num_dims additionally. Use
- * #sdp_mem_check_dim_size macro to automatically fill
+ * Use #sdp_mem_check_dim_size macro to automatically fill
  * ``expr``, ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check
  * @param dim Dimension to check
  * @param size Expected size
  * @param status Output error status
- * @param func Function to report in error message
  * @param expr Expression string to report in error message
+ * @param func Function to report in error message
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
@@ -659,11 +657,9 @@ void sdp_mem_check_dim_size_at(
 );
 
 /**
- * @brief Checks that a dimension of given memory has expected size
+ * @brief Checks that a give dimension of an array has expected size
  *
  * ``status`` will be set if the check fails. Note that this function
- * will *not* fail if the dimension in question does not exist, use
- * #sdp_mem_check_num_dims additionally.
  *
  * @param mem Handle to memory block to check
  * @param dim Dimension to check
@@ -683,7 +679,7 @@ void sdp_mem_check_dim_size_at(
 
 /**
  * @brief Checks that a sdp_Mem has expected number of dimensions
- * and expected shape.
+ * and expected size of those dimensions.
  *
  * ``status`` will be set if the check fails.
  * #sdp_mem_check_shape to automatically fill
@@ -711,7 +707,7 @@ void sdp_mem_check_shape_at(
 
 /**
  * @brief Checks that a sdp_Mem has expected number of dimensions
- * and expected shape.
+ * and expected size of those dimensions.
  *
  * ``status`` will be set if the check fails.
  *
@@ -735,14 +731,14 @@ void sdp_mem_check_shape_at(
  * @brief Checks that given memory has the expected data type
  *
  * ``status`` will be set if the check fails. Use
- * #sdp_mem_check_type macro to automatically fill ``func``,
- * ``expr``, ``file`` and ``line`` by call location.
+ * #sdp_mem_check_type macro to automatically fill ``expr``,
+ * ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check
  * @param expected_type Expected data type
  * @param status Output error status
- * @param func Function to report in error message
  * @param expr Expression string to report in error message
+ * @param func Function to report in error message
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
