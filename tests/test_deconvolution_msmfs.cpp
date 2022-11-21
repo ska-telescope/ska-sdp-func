@@ -62,7 +62,7 @@ static void run_and_check(
 )
 {
     // specify msmsf key configuration parameters
-    const unsigned int dirty_moment_size = 8192; // one dimensional size of image, assumed square
+    const unsigned int dirty_moment_size = 4096; // one dimensional size of image, assumed square
     const unsigned int num_scales = 6; // number of scales to use in msmfs cleaning
     unsigned int num_taylor = 3; // number of taylor moments to use in msmfs cleaning
     if (num_taylor > MAX_TAYLOR_MOMENTS)
@@ -82,7 +82,8 @@ static void run_and_check(
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
 
-    if (input_type==SDP_MEM_FLOAT || input_type==SDP_MEM_DOUBLE)
+    if ((input_type==SDP_MEM_FLOAT || input_type==SDP_MEM_DOUBLE) && output_type==input_type
+        && input_location==SDP_MEM_GPU && output_location==SDP_MEM_GPU)
     {
         // create a simple test input image
         sdp_Mem *dirty_moment_images = sdp_msmfs_allocate_dirty_image(dirty_moment_size, num_taylor, input_type);
@@ -96,7 +97,6 @@ static void run_and_check(
         unsigned int *num_gaussian_sources_host = NULL;
         num_gaussian_sources_host = (unsigned int *)malloc(sizeof(unsigned int));
         memset(num_gaussian_sources_host, 0, sizeof(unsigned int));
-        sdp_Error *status = NULL;
         const int64_t gaussian_source_position_shape[] = {max_gaussian_sources_host, 2};
         sdp_Mem *gaussian_source_position = sdp_mem_create(SDP_MEM_INT, SDP_MEM_CPU, 2, gaussian_source_position_shape, status);
         sdp_mem_clear_contents(gaussian_source_position, status);
@@ -114,6 +114,34 @@ static void run_and_check(
             scale_bias_factor, clean_threshold,
             num_gaussian_sources_host, gaussian_source_position, gaussian_source_variance, gaussian_source_taylor_intensities);
 
+        if (expect_pass && !*status)
+        {
+            unsigned int image_size = dirty_moment_size-2*image_border;
+            // just check the source positions are near one of the actual sources which in the Msmfssimpletest.cu
+            // are located at (image_size/2,image_size/2) or (image_size/2-4,image_size/2-4) or (image_size/2+20,image_size/2)
+            double tolerance_distance = 10;
+            for (unsigned int source_index=0; source_index<*num_gaussian_sources_host; source_index++)
+            {
+                unsigned int x_pos = ((uint2 *)sdp_mem_data(gaussian_source_position))[source_index].x;
+                unsigned int y_pos = ((uint2 *)sdp_mem_data(gaussian_source_position))[source_index].y;
+                float variance = ((float *)sdp_mem_data(gaussian_source_variance))[source_index];
+//                printf("Source %3u has scale variance %8.2lf and position (%5u,%5u) with taylor term intensities: ",
+//                    source_index, variance, x_pos, y_pos);
+                for (unsigned int taylor_index=0; taylor_index<num_taylor; taylor_index++)
+                {
+                    float intensity = ((float *)sdp_mem_data(gaussian_source_taylor_intensities))[source_index*num_taylor + taylor_index];
+//                    printf("%+12lf ", intensity);
+                }
+//                printf("\n");
+                double distance1 = sqrt((x_pos-image_size/2)*(x_pos-image_size/2)+(y_pos-image_size/2)*(y_pos-image_size/2));
+                double distance2 = sqrt((x_pos-(image_size/2-4))*(x_pos-(image_size/2-4))+(y_pos-(image_size/2-4))*(y_pos-(image_size/2-4)));
+                double distance3 = sqrt((x_pos-(image_size/2+20))*(x_pos-(image_size/2+20))+(y_pos-image_size/2)*(y_pos-image_size/2));
+                double min_distance = std::min(std::min(distance1, distance2), distance3);
+//                printf("Source %3u is distance %f from closest actual source\n", source_index, min_distance);
+                assert(min_distance<tolerance_distance);
+            }
+        }
+
         // clean up the allocated sdp_Mem data structures
         sdp_mem_ref_dec(gaussian_source_taylor_intensities);
         sdp_mem_ref_dec(gaussian_source_variance);
@@ -124,10 +152,13 @@ static void run_and_check(
         sdp_msmfs_free_psf_image(psf_moment_images);
         sdp_msmfs_free_dirty_image(dirty_moment_images);
     }
-
-    if (expect_pass)
+    else if ((input_type!=SDP_MEM_FLOAT && input_type!=SDP_MEM_DOUBLE) || output_type!=input_type)
     {
-        // TODO: check output once returned as sdp_Mem
+        *status = SDP_ERR_DATA_TYPE;
+    }
+    else if (input_location!=SDP_MEM_GPU || output_location!=SDP_MEM_GPU)
+    {
+        *status = SDP_ERR_MEM_LOCATION;
     }
 }
 
@@ -137,15 +168,15 @@ int main()
     // Happy paths.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("GPU, double precision", true, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+        run_and_check("GPU, single precision", true, false,
+                SDP_MEM_FLOAT, SDP_MEM_FLOAT,
                 SDP_MEM_GPU, SDP_MEM_GPU, &status);
         assert(status == SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("GPU, single precision", true, false,
-                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
+        run_and_check("GPU, double precision", true, false,
+                SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
                 SDP_MEM_GPU, SDP_MEM_GPU, &status);
         assert(status == SDP_SUCCESS);
     }
@@ -153,37 +184,30 @@ int main()
     // Unhappy paths.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("Read-only output", false, true,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+        run_and_check("Inconsistent data types", false, false,
+                SDP_MEM_FLOAT, SDP_MEM_DOUBLE,
                 SDP_MEM_GPU, SDP_MEM_GPU, &status);
-        assert(status != SDP_SUCCESS);
+        assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("Inconsistent data types", false, false,
-                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_DOUBLE,
+        run_and_check("Invalid data types", false, false,
+                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_GPU, SDP_MEM_GPU, &status);
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Inconsistent locations", false, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_FLOAT, SDP_MEM_FLOAT,
                 SDP_MEM_CPU, SDP_MEM_GPU, &status);
         assert(status == SDP_ERR_MEM_LOCATION);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Wrong data type", false, false,
-                SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status);
-        assert(status == SDP_ERR_DATA_TYPE);
     }
 #endif
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, double precision", false, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE,
+        run_and_check("CPU, double precision invalid locations", false, false,
+                SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status);
         assert(status == SDP_ERR_MEM_LOCATION);
     }

@@ -83,7 +83,7 @@ void perform_msmfs
     checkCudaStatus();    
 
     // ***** temporary code to display entries calculated for inverse hessian matrices *****
-    display_inverse_hessian_matrices<PRECISION>(inverse_hessian_matrices_device, num_scales, num_taylor);
+//    display_inverse_hessian_matrices<PRECISION>(inverse_hessian_matrices_device, num_scales, num_taylor);
     // ***** end of temporary code *****
 
     // determine maximum number of clean minor cycles
@@ -302,7 +302,7 @@ void sdp_msmfs_perform
     const double scale_bias_factor,
     const double clean_threshold,
     unsigned int *num_gaussian_sources_host,
-    sdp_Mem *gausian_source_position,
+    sdp_Mem *gaussian_source_position,
     sdp_Mem *gaussian_source_variance,
     sdp_Mem *gaussian_source_taylor_intensities
     )
@@ -334,8 +334,8 @@ void sdp_msmfs_perform
             Gaussian_source<float> source = (Gaussian_source<float>)gaussian_sources_host[source_index];
             unsigned int x_pos = (source.index % (dirty_moment_size-2*image_border)) + image_border;
             unsigned int y_pos = (source.index / (dirty_moment_size-2*image_border)) + image_border; 
-            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].x = x_pos;
-            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].y = y_pos;
+            ((uint2 *)sdp_mem_data(gaussian_source_position))[source_index].x = x_pos;
+            ((uint2 *)sdp_mem_data(gaussian_source_position))[source_index].y = y_pos;
             ((float *)sdp_mem_data(gaussian_source_variance))[source_index] = source.variance;
 //            printf("Source %3u has scale variance %8.2lf and position (%5u,%5u) with taylor term intensities: ",
 //                source_index, source.variance, x_pos, y_pos);
@@ -376,15 +376,15 @@ void sdp_msmfs_perform
             max_gaussian_sources_host, num_gaussian_sources_host, gaussian_sources_host);
 
 // NOTE printf INCLUDED TEMPORARILY UNTIL THIS CODE IS UNIT TESTED
-//        printf("In total %u distinct sources were discovered during cleaning\n", *num_gaussian_sources_host);
+        printf("In total %u distinct sources were discovered during cleaning\n", *num_gaussian_sources_host);
         // copy each distinct source that has been found to the sdp_Mem data structures
         for (unsigned int source_index=0; source_index<*num_gaussian_sources_host; source_index++)
         {
             Gaussian_source<double> source = (Gaussian_source<double>)gaussian_sources_host[source_index];
             unsigned int x_pos = (source.index % (dirty_moment_size-2*image_border)) + image_border;
             unsigned int y_pos = (source.index / (dirty_moment_size-2*image_border)) + image_border; 
-            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].x = x_pos;
-            ((uint2 *)sdp_mem_data(gausian_source_position))[source_index].y = y_pos;
+            ((uint2 *)sdp_mem_data(gaussian_source_position))[source_index].x = x_pos;
+            ((uint2 *)sdp_mem_data(gaussian_source_position))[source_index].y = y_pos;
             ((double *)sdp_mem_data(gaussian_source_variance))[source_index] = source.variance;
 //            printf("Source %3u has scale variance %8.2lf and position (%5u,%5u) with taylor term intensities: ",
 //                source_index, source.variance, x_pos, y_pos);
@@ -398,8 +398,8 @@ void sdp_msmfs_perform
         free(gaussian_sources_host);
 
         // ***** temporary code to display the gaussian sources found in the minor cycle loops *****
-//        display_gaussian_source_list<double>(gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
-//            max_gaussian_sources_host, dirty_moment_size, image_border, num_taylor);
+        display_gaussian_source_list<double>(gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
+            max_gaussian_sources_host, dirty_moment_size, image_border, num_taylor);
         // ***** end of temporary code *****
 
         // clean up the source model
