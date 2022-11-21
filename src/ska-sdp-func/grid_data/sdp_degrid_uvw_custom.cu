@@ -3,6 +3,7 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
 #define C_0 299792458.0
+#define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1)  (N1 *(N2 * (N3 * (N4 * I5 + I4) + I3) + I2) +I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
@@ -67,6 +68,7 @@ __global__ void degrid_uvw_custom(
         const int64_t w_kernel_size,
         const int64_t x_size,
         const int64_t y_size,
+        const int64_t z_size,
         const int64_t num_times,
         const int64_t num_baselines,
         const int64_t num_channels,
@@ -85,6 +87,8 @@ __global__ void degrid_uvw_custom(
         VIS_TYPE2* __restrict__ vis
 )
 {
+    int64_t half_uv_kernel_size = uv_kernel_size / 2;
+
     // Get indices of the output array this thread is working on.
     const int i_baseline = blockDim.x * blockIdx.x + threadIdx.x;
     const int i_channel  = blockDim.y * blockIdx.y + threadIdx.y;
@@ -131,10 +135,10 @@ __global__ void degrid_uvw_custom(
     );
 
     // Check point is fully within the grid.
-    if (!(grid_coord_x > uv_kernel_size / 2 &&
-            grid_coord_x < x_size - uv_kernel_size / 2 &&
-            grid_coord_y > uv_kernel_size / 2 &&
-            grid_coord_y < y_size - uv_kernel_size / 2))
+    if (!(grid_coord_x >half_uv_kernel_size &&
+            grid_coord_x < x_size - half_uv_kernel_size &&
+            grid_coord_y > half_uv_kernel_size &&
+            grid_coord_y < y_size - half_uv_kernel_size))
     {
         return;
     }
@@ -148,12 +152,20 @@ __global__ void degrid_uvw_custom(
             VIS_TYPE2 visz = {0, 0};
             for (int y = 0; y < uv_kernel_size; y++)
             {
+                int64_t i_grid_y = grid_coord_y + y - half_uv_kernel_size;
+
                 VIS_TYPE2 visy = {0, 0};
                 for (int x = 0; x < uv_kernel_size; x++)
                 {
-                    // FIXME Use polarisation index here.
-                    const VIS_TYPE2 grid_value = grid[
-                        z * x_size * y_size + grid_offset + y * y_size + x];
+                    int64_t i_grid_x = grid_coord_x + x - half_uv_kernel_size;
+
+                    const unsigned int i_grid = INDEX_5D(
+                            num_channels, z_size, y_size, x_size, num_pols,
+                            i_channel, z, i_grid_y, i_grid_x, i_pol
+                    );
+
+                    const VIS_TYPE2 grid_value = grid[i_grid];
+                    
                     visy.x += uv_kernel[sub_offset_x + x] * grid_value.x;
                     visy.y += uv_kernel[sub_offset_x + x] * grid_value.y;
                 }

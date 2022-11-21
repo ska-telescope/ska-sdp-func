@@ -16,6 +16,7 @@
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1)  (N1 *(N2 * (N3 * (N4 * I5 + I4) + I3) + I2) +I1)
 
 using std::complex;
 
@@ -78,6 +79,7 @@ static void check_results(
         int64_t w_kernel_size,
         int64_t x_size,
         int64_t y_size,
+        int64_t z_size,
         int64_t num_times,
         int64_t num_baselines,
         int64_t num_channels,
@@ -97,6 +99,8 @@ static void check_results(
         const sdp_Error* status
 )
 {
+    int64_t half_uv_kernel_size = uv_kernel_size / 2;
+
     if (*status)
     {
         SDP_LOG_ERROR("%s: Test failed (error signalled)", test_name);
@@ -146,10 +150,10 @@ static void check_results(
                 );
 
                 // Check point is fully within the grid.
-                if (!(grid_coord_x > uv_kernel_size / 2 &&
-                        grid_coord_x < x_size - uv_kernel_size / 2 &&
-                        grid_coord_y > uv_kernel_size / 2 &&
-                        grid_coord_y < y_size - uv_kernel_size / 2))
+                if (!(grid_coord_x > half_uv_kernel_size &&
+                        grid_coord_x < x_size - half_uv_kernel_size &&
+                        grid_coord_y > half_uv_kernel_size &&
+                        grid_coord_y < y_size - half_uv_kernel_size))
                 {
                     continue;
                 }
@@ -163,13 +167,20 @@ static void check_results(
                         complex<VIS_TYPE> visz(0, 0);
                         for (int y = 0; y < uv_kernel_size; y++)
                         {
+                            int64_t i_grid_y = grid_coord_y + y - half_uv_kernel_size;
+
                             complex<VIS_TYPE> visy(0, 0);
                             for (int x = 0; x < uv_kernel_size; x++)
                             {
-                                // FIXME Use polarisation index here.
-                                const complex<VIS_TYPE> value = grid[
-                                    z * x_size * y_size + grid_offset +
-                                    y * y_size + x];
+                                int64_t i_grid_x = grid_coord_x + x - half_uv_kernel_size;
+
+                                const unsigned int i_grid = INDEX_5D(
+                                        num_channels, z_size, y_size, x_size, num_pols,
+                                        i_channel, z, i_grid_y, i_grid_x, i_pol
+                                );
+
+                                const complex<VIS_TYPE> value = grid[i_grid];
+
                                 visy += uv_kernel[sub_offset_x + x] * value;
                             }
                             visz += uv_kernel[sub_offset_y + y] * visy;
@@ -299,8 +310,9 @@ static void run_and_check(
     // Check output
     if (expect_pass)
     {
-        int64_t x_size = sdp_mem_shape_dim(grid, 2);
-        int64_t y_size = sdp_mem_shape_dim(grid, 3);
+        int64_t z_size = sdp_mem_shape_dim(grid, 1);
+        int64_t y_size = sdp_mem_shape_dim(grid, 2);
+        int64_t x_size = sdp_mem_shape_dim(grid, 3);
 
         check_results(
                 test_name,
@@ -308,6 +320,7 @@ static void run_and_check(
                 w_kernel_size,
                 x_size,
                 y_size,
+                z_size,
                 num_times,
                 num_baselines,
                 num_channels,

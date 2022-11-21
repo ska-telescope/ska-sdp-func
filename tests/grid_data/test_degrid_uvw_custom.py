@@ -46,18 +46,21 @@ def calculate_coordinates(
     ioz = round(o_z) + oversample_w - 1
     frac_z = oversample_w - 1 - (ioz % oversample_w)
 
-    grid_offset = (home_y - kernel_size // 2) * y_stride + (
-        home_x - kernel_size // 2
-    ) * x_stride
-    sub_offset_x = kernel_stride * frac_x
-    sub_offset_y = kernel_stride * frac_y
-    sub_offset_z = wkernel_stride * frac_z
+    # grid_offset = (home_y - kernel_size // 2) * y_stride + (
+    #     home_x - kernel_size // 2
+    # ) * x_stride
+    # sub_offset_x = kernel_stride * frac_x
+    # sub_offset_y = kernel_stride * frac_y
+    # sub_offset_z = wkernel_stride * frac_z
+    grid_coord_x = home_x
+    grid_coord_y = home_y
 
     return (
-        int(grid_offset),
-        int(sub_offset_x),
-        int(sub_offset_y),
-        int(sub_offset_z),
+        int(grid_coord_x),
+        int(grid_coord_y),
+        int(frac_x),
+        int(frac_y),
+        int(frac_z)
     )
 
 
@@ -83,15 +86,14 @@ def reference_degrid_uvw_custom(
     channel_step_hz,
     conjugate,
 ):
+
+    half_uv_kernel_size = uv_kernel_size / 2
+
     """Generate reference data for degridding comparison."""
     vis = numpy.zeros(
         [num_times, num_baselines, num_channels, num_pols],
         dtype=numpy.complex128,
     )
-
-    grid = grid.flatten()
-    uv_kernel = uv_kernel.flatten()
-    w_kernel = w_kernel.flatten()
 
     for i_time in range(num_times):
         for i_baseline in range(num_baselines):
@@ -101,10 +103,11 @@ def reference_degrid_uvw_custom(
                 ) / 299792458.0
 
                 (
-                    grid_offset,
-                    sub_offset_x,
-                    sub_offset_y,
-                    sub_offset_z,
+                    grid_coord_x,
+                    grid_coord_y,
+                    frac_x,
+                    frac_y,
+                    frac_z
                 ) = calculate_coordinates(
                     x_size,
                     1,
@@ -121,25 +124,35 @@ def reference_degrid_uvw_custom(
                     inv_wavelength * uvw[i_time][i_baseline][2],
                 )
 
+                # Check point is fully within the grid.
+                if (not(grid_coord_x > half_uv_kernel_size and
+                        grid_coord_x < x_size - half_uv_kernel_size and
+                        grid_coord_y > half_uv_kernel_size and
+                        grid_coord_y < y_size - half_uv_kernel_size)):
+
+                    continue
+
                 for i_pol in range(num_pols):
                     vis_local = complex(0, 0)
                     for z in range(w_kernel_size):
                         visz = complex(0, 0)
                         for y in range(uv_kernel_size):
+                            i_grid_y = int(grid_coord_y
+                                           + y
+                                           - half_uv_kernel_size)
                             visy = complex(0, 0)
                             for x in range(uv_kernel_size):
-                                # FIXME Use polarisation index here.
-                                grid_value = grid[
-                                    z * x_size * y_size
-                                    + grid_offset
-                                    + y * y_size
-                                    + x
-                                ]
+                                i_grid_x = int(grid_coord_x
+                                               + x
+                                               - half_uv_kernel_size)
+
+                                grid_value = grid[i_channel][z][i_grid_y][i_grid_x][i_pol]
+
                                 visy += (
-                                    uv_kernel[sub_offset_x + x] * grid_value
+                                    uv_kernel[frac_x][x] * grid_value
                                 )
-                            visz += uv_kernel[sub_offset_y + y] * visy
-                        vis_local += w_kernel[sub_offset_z + z] * visz
+                            visz += uv_kernel[frac_y][y] * visy
+                        vis_local += w_kernel[frac_z][z] * visz
 
                     if conjugate:
                         vis_local = vis_local.conjugate()

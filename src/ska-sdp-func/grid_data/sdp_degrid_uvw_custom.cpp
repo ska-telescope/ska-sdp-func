@@ -12,6 +12,7 @@
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
+#define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1)  (N1 *(N2 * (N3 * (N4 * I5 + I4) + I3) + I2) +I1)
 
 using std::complex;
 
@@ -72,6 +73,7 @@ static void degrid_uvw_custom(
         const int64_t w_kernel_size,
         const int64_t x_size,
         const int64_t y_size,
+        const int64_t z_size,
         const int64_t num_times,
         const int64_t num_baselines,
         const int64_t num_channels,
@@ -90,6 +92,9 @@ static void degrid_uvw_custom(
         complex<VIS_TYPE>* vis
 )
 {
+
+    int64_t half_uv_kernel_size = uv_kernel_size / 2;
+
     for (int i_time = 0; i_time < num_times; ++i_time)
     {
         for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
@@ -133,10 +138,10 @@ static void degrid_uvw_custom(
                 );
 
                 // Check point is fully within the grid.
-                if (!(grid_coord_x > uv_kernel_size / 2 &&
-                        grid_coord_x < x_size - uv_kernel_size / 2 &&
-                        grid_coord_y > uv_kernel_size / 2 &&
-                        grid_coord_y < y_size - uv_kernel_size / 2))
+                if (!(grid_coord_x > half_uv_kernel_size &&
+                        grid_coord_x < x_size - half_uv_kernel_size &&
+                        grid_coord_y > half_uv_kernel_size &&
+                        grid_coord_y < y_size - half_uv_kernel_size))
                 {
                     continue;
                 }
@@ -150,13 +155,20 @@ static void degrid_uvw_custom(
                         complex<VIS_TYPE> visz(0, 0);
                         for (int y = 0; y < uv_kernel_size; y++)
                         {
+                            int64_t i_grid_y = grid_coord_y + y - half_uv_kernel_size;
+                            
                             complex<VIS_TYPE> visy(0, 0);
                             for (int x = 0; x < uv_kernel_size; x++)
                             {
-                                // FIXME Use polarisation index here.
-                                const complex<VIS_TYPE> value = grid[
-                                    z * x_size * y_size + grid_offset +
-                                    y * y_size + x];
+                                int64_t i_grid_x = grid_coord_x + x - half_uv_kernel_size;
+                                
+                                const unsigned int i_grid = INDEX_5D(
+                                        num_channels, z_size, y_size, x_size, num_pols,
+                                        i_channel, z, i_grid_y, i_grid_x, i_pol
+                                );
+
+                                const complex<VIS_TYPE> value = grid[i_grid];
+
                                 visy += uv_kernel[sub_offset_x + x] * value;
                             }
                             visz += uv_kernel[sub_offset_y + y] * visy;
@@ -247,8 +259,9 @@ void sdp_degrid_uvw_custom(
     const int64_t num_channels = sdp_mem_shape_dim(vis, 2);
     const int64_t num_pols = sdp_mem_shape_dim(vis, 3);
 
-    const int64_t x_size = sdp_mem_shape_dim(grid, 2);
-    const int64_t y_size = sdp_mem_shape_dim(grid, 3);
+    const int64_t z_size = sdp_mem_shape_dim(grid, 1);
+    const int64_t y_size = sdp_mem_shape_dim(grid, 2);
+    const int64_t x_size = sdp_mem_shape_dim(grid, 3);
 
     if ((num_pols != 1 && num_pols != 2 && num_pols != 4) ||
             (sdp_mem_shape_dim(grid, 4) != num_pols))
@@ -295,6 +308,7 @@ void sdp_degrid_uvw_custom(
                 w_kernel_size,
                 x_size,
                 y_size,
+                z_size,
                 num_times,
                 num_baselines,
                 num_channels,
@@ -326,6 +340,7 @@ void sdp_degrid_uvw_custom(
             &w_kernel_size,
             &x_size,
             &y_size,
+            &z_size,
             &num_times,
             &num_baselines,
             &num_channels,
