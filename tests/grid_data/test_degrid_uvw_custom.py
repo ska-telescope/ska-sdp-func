@@ -49,7 +49,7 @@ def calculate_coordinates(
         int(grid_coord_y),
         int(frac_x),
         int(frac_y),
-        int(frac_z)
+        int(frac_z),
     )
 
 
@@ -96,7 +96,7 @@ def reference_degrid_uvw_custom(
                     grid_coord_y,
                     frac_x,
                     frac_y,
-                    frac_z
+                    frac_z,
                 ) = calculate_coordinates(
                     x_size,
                     uv_kernel_oversampling,
@@ -109,10 +109,12 @@ def reference_degrid_uvw_custom(
                 )
 
                 # Check point is fully within the grid.
-                if (not(grid_coord_x > half_uv_kernel_size and
-                        grid_coord_x < x_size - half_uv_kernel_size and
-                        grid_coord_y > half_uv_kernel_size and
-                        grid_coord_y < y_size - half_uv_kernel_size)):
+                if not (
+                    grid_coord_x > half_uv_kernel_size
+                    and grid_coord_x < x_size - half_uv_kernel_size
+                    and grid_coord_y > half_uv_kernel_size
+                    and grid_coord_y < y_size - half_uv_kernel_size
+                ):
 
                     continue
 
@@ -121,21 +123,20 @@ def reference_degrid_uvw_custom(
                     for z in range(w_kernel_size):
                         visz = complex(0, 0)
                         for y in range(uv_kernel_size):
-                            i_grid_y = int(grid_coord_y
-                                           + y
-                                           - half_uv_kernel_size)
+                            i_grid_y = int(
+                                grid_coord_y + y - half_uv_kernel_size
+                            )
                             visy = complex(0, 0)
                             for x in range(uv_kernel_size):
-                                i_grid_x = int(grid_coord_x
-                                               + x
-                                               - half_uv_kernel_size)
-
-                                grid_value = grid[i_channel, z, i_grid_y,
-                                                  i_grid_x, i_pol]
-
-                                visy += (
-                                    uv_kernel[frac_x, x] * grid_value
+                                i_grid_x = int(
+                                    grid_coord_x + x - half_uv_kernel_size
                                 )
+
+                                grid_value = grid[
+                                    i_channel, z, i_grid_y, i_grid_x, i_pol
+                                ]
+
+                                visy += uv_kernel[frac_x, x] * grid_value
                             visz += uv_kernel[frac_y, y] * visy
                         vis_local += w_kernel[frac_z, z] * visz
 
