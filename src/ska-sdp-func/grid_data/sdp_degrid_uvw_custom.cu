@@ -12,9 +12,6 @@
 
 __device__ __inline__ void calculate_coordinates(
         int64_t grid_size, // dimension of the image's subgrid grid_size x grid_size x 4?
-        int x_stride, // padding in x dimension
-        int y_stride, // padding in y dimension
-        int kernel_size, // gcf kernel support
         int kernel_stride, // padding of the gcf kernel
         int oversample, // oversampling of the uv kernel
         int wkernel_stride, // padding of the gcf w kernel
@@ -24,12 +21,11 @@ __device__ __inline__ void calculate_coordinates(
         double u, //
         double v, // coordinates of the visibility
         double w, //
-        int* grid_offset, // offset in the image subgrid
         int* sub_offset_x, //
         int* sub_offset_y, // fractional coordinates
         int* sub_offset_z, //
-        int* grid_coord_x,
-        int* grid_coord_y
+        int* grid_coord_x, // grid coordinates
+        int* grid_coord_y //
 )
 {
     // u or x coordinate
@@ -51,9 +47,6 @@ __device__ __inline__ void calculate_coordinates(
     const int ioz = __double2int_rn(oz) + oversample_w - 1;
     const int frac_z = oversample_w - 1 - (ioz % oversample_w);
 
-    // FIXME Why is this NOT multiplied by x_stride? (c.f. CPU version).
-    *grid_offset = (home_y - kernel_size / 2) * y_stride + (
-        home_x - kernel_size / 2);
     *sub_offset_x = kernel_stride * frac_x;
     *sub_offset_y = kernel_stride * frac_y;
     *sub_offset_z = wkernel_stride * frac_z;
@@ -109,14 +102,10 @@ __global__ void degrid_uvw_custom(
             num_times, num_baselines, i_time, i_baseline
     );
 
-    int grid_offset = 0;
     int sub_offset_x = 0, sub_offset_y = 0, sub_offset_z = 0;
     int grid_coord_x = 0, grid_coord_y = 0;
     calculate_coordinates(
             x_size,
-            1,
-            y_size,
-            uv_kernel_size,
             uv_kernel_size,
             uv_kernel_oversampling,
             w_kernel_size,
@@ -126,7 +115,6 @@ __global__ void degrid_uvw_custom(
             inv_wavelength * uvw[i_uvw].x,
             inv_wavelength * uvw[i_uvw].y,
             inv_wavelength * uvw[i_uvw].z,
-            &grid_offset,
             &sub_offset_x,
             &sub_offset_y,
             &sub_offset_z,

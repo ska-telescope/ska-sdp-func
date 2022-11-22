@@ -15,12 +15,7 @@ from ska_sdp_func.grid_data import degrid_uvw_custom
 # pylint: disable=too-many-locals
 def calculate_coordinates(
     grid_size,
-    x_stride,
-    y_stride,
-    kernel_size,
-    kernel_stride,
     oversample,
-    wkernel_stride,
     oversample_w,
     theta,
     wstep,
@@ -46,12 +41,6 @@ def calculate_coordinates(
     ioz = round(o_z) + oversample_w - 1
     frac_z = oversample_w - 1 - (ioz % oversample_w)
 
-    # grid_offset = (home_y - kernel_size // 2) * y_stride + (
-    #     home_x - kernel_size // 2
-    # ) * x_stride
-    # sub_offset_x = kernel_stride * frac_x
-    # sub_offset_y = kernel_stride * frac_y
-    # sub_offset_z = wkernel_stride * frac_z
     grid_coord_x = home_x
     grid_coord_y = home_y
 
@@ -87,13 +76,13 @@ def reference_degrid_uvw_custom(
     conjugate,
 ):
 
-    half_uv_kernel_size = uv_kernel_size / 2
-
     """Generate reference data for degridding comparison."""
     vis = numpy.zeros(
         [num_times, num_baselines, num_channels, num_pols],
         dtype=numpy.complex128,
     )
+
+    half_uv_kernel_size = uv_kernel_size / 2
 
     for i_time in range(num_times):
         for i_baseline in range(num_baselines):
@@ -110,18 +99,13 @@ def reference_degrid_uvw_custom(
                     frac_z
                 ) = calculate_coordinates(
                     x_size,
-                    1,
-                    y_size,
-                    uv_kernel_size,
-                    uv_kernel_size,
                     uv_kernel_oversampling,
-                    w_kernel_size,
                     w_kernel_oversampling,
                     theta,
                     wstep,
-                    inv_wavelength * uvw[i_time][i_baseline][0],
-                    inv_wavelength * uvw[i_time][i_baseline][1],
-                    inv_wavelength * uvw[i_time][i_baseline][2],
+                    inv_wavelength * uvw[i_time, i_baseline, 0],
+                    inv_wavelength * uvw[i_time, i_baseline, 1],
+                    inv_wavelength * uvw[i_time, i_baseline, 2],
                 )
 
                 # Check point is fully within the grid.
@@ -146,18 +130,19 @@ def reference_degrid_uvw_custom(
                                                + x
                                                - half_uv_kernel_size)
 
-                                grid_value = grid[i_channel][z][i_grid_y][i_grid_x][i_pol]
+                                grid_value = grid[i_channel, z, i_grid_y,
+                                                  i_grid_x, i_pol]
 
                                 visy += (
-                                    uv_kernel[frac_x][x] * grid_value
+                                    uv_kernel[frac_x, x] * grid_value
                                 )
-                            visz += uv_kernel[frac_y][y] * visy
-                        vis_local += w_kernel[frac_z][z] * visz
+                            visz += uv_kernel[frac_y, y] * visy
+                        vis_local += w_kernel[frac_z, z] * visz
 
                     if conjugate:
                         vis_local = vis_local.conjugate()
 
-                    vis[i_time][i_baseline][i_channel][i_pol] = vis_local
+                    vis[i_time, i_baseline, i_channel, i_pol] = vis_local
 
     return vis
 
