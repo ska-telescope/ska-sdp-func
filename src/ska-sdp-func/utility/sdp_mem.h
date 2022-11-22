@@ -465,7 +465,7 @@ const char* sdp_mem_type_name(sdp_MemType typ);
  * @brief Checks that given memory is writeable
  *
  * ``status`` will be set if the check fails. Use
- * #sdp_mem_check_writeable(mem,status) macro to automatically fill ``expr``, 
+ * #sdp_mem_check_writeable(mem,status) macro to automatically fill ``expr``,
  * ``func``, ``file`` and ``line`` by call location.
  *
  * @param mem Handle to memory block to check

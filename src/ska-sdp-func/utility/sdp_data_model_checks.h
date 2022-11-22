@@ -50,7 +50,7 @@ extern "C" {
 
 /**
  * @brief Checks if uvw coordinate array matches data model convention
- *        and other required parameters.
+ * and other required parameters.
  *
  * Parameter @p uvw should be an array of packed 3D coordinates.
  *
@@ -59,16 +59,16 @@ extern "C" {
  * - @p uvw is 3D and real-valued, with shape:
  *   - [ num_times, num_baselines, 3 ]
  *
- * Use sdp_data_model_check_uvw(...) macro to automatically fill
+ * Use sdp_data_model_check_uvw(...) macro to automatically fill ``expr``,
  * ``func``, ``file`` and ``line`` by call location.
  *
  * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
  * @param uvw Baseline (u,v,w) coordinates. Dimensions as above.
- * @param type Enumerated type of data.
- * @param location Enumerated location of data.
- * @param num_times Number of time samples in data.
- * @param num_baselines Number of baselines in data.
+ * @param expected_type Enumerated type of data.
+ * @param expected_location Enumerated location of data.
+ * @param expected_num_timesamples Number of time samples in data.
+ * @param expected_num_baselines Number of baselines in data.
  * @param status Error status.
  * @param expr Expression string to report in error message.
  * @param func Function to report in error message.
@@ -90,7 +90,7 @@ void sdp_data_model_check_uvw_at(
 
 /**
  * @brief Checks if uvw coordinate array matches data model convention
- *        and other required parameters.
+ * and other required parameters.
  *
  * Parameter @p uvw should be an array of packed 3D coordinates.
  *
@@ -102,10 +102,10 @@ void sdp_data_model_check_uvw_at(
  * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
  * @param uvw Baseline (u,v,w) coordinates. Dimensions as above.
- * @param type Enumerated type of data.
- * @param location Enumerated location of data.
- * @param num_times Number of time samples in data.
- * @param num_baselines Number of baselines in data.
+ * @param expected_type Enumerated type of data.
+ * @param expected_location Enumerated location of data.
+ * @param expected_num_timesamples Number of time samples in data.
+ * @param expected_num_baselines Number of baselines in data.
  * @param status Error status.
  */
 #define sdp_data_model_check_uvw(uvw, \
@@ -198,7 +198,7 @@ void sdp_data_model_get_uvw_metadata(
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
  * Use sdp_data_model_check_visibility(...) macro to automatically fill
- * ``func``, ``file`` and ``line`` by call location.
+ * ``expr``,``func``, ``file`` and ``line`` by call location.
  *
  * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
@@ -338,7 +338,7 @@ void sdp_data_model_get_vis_metadata(
 #define sdp_weights_pols(weights) sdp_mem_shape_dim(weights,3)
 
 /**
- * @brief Check weights array matches data model convention.
+ * @brief Check if weights array matches data model convention.
  *
  * Array dimensions are as follows, from slowest to fastest varying:
  *
@@ -346,7 +346,7 @@ void sdp_data_model_get_vis_metadata(
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
  * Use sdp_data_model_check_weight(...) macro to automatically fill
- * ``func``, ``file`` and ``line`` by call location.
+ * ``expr``, ``func``, ``file`` and ``line`` by call location.
  *
  * To bypass datatype check pass expected_type = SDP_MEM_VOID
  *
@@ -357,11 +357,11 @@ void sdp_data_model_get_vis_metadata(
  * @param expected_num_baselines Number of baselines in data.
  * @param expected_num_channels Number of channels in data.
  * @param expected_num_pols Number of polarisations in data.
+ * @param status Error status.
  * @param expr Expression string to report in error message
  * @param func Function to report in error message.
  * @param file File name to report in error message.
  * @param line Line to report in error message.
- * @param status Error status.
  */
 void sdp_data_model_check_weights_at(
         const sdp_Mem* weights,
@@ -379,7 +379,7 @@ void sdp_data_model_check_weights_at(
 );
 
 /**
- * @brief Check weights array matches data model convention.
+ * @brief Check if weights array matches data model convention.
  *
  * Array dimensions are as follows, from slowest to fastest varying:
  *
@@ -395,10 +395,6 @@ void sdp_data_model_check_weights_at(
  * @param expected_num_baselines Number of baselines in data.
  * @param expected_num_channels Number of channels in data.
  * @param expected_num_pols Number of polarisations in data.
- * @param expr Expression string to report in error message
- * @param func Function to report in error message.
- * @param file File name to report in error message.
- * @param line Line to report in error message.
  * @param status Error status.
  */
  #define sdp_data_model_check_weights(weights, \
@@ -424,7 +420,8 @@ void sdp_data_model_check_weights_at(
     )
 
 /**
- * @brief Check weights array matches data model convention.
+ * @brief Check if weights array matches data model convention
+ * and return its metadata.
  *
  * Array dimensions are as follows, from slowest to fastest varying:
  *
