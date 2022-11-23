@@ -113,7 +113,7 @@ void sdp_data_model_check_uvw_at(
             expected_location, \
             expected_num_timesamples, \
             expected_num_baselines, \
-            status)                     \
+            status) \
     sdp_data_model_check_uvw_at(uvw, \
         expected_type, \
         expected_location, \
@@ -187,7 +187,7 @@ void sdp_data_model_get_uvw_metadata(
  *
  * @param vis visibility data.
  */
-#define sdp_vis_pols(vis) sdp_mem_shape_dim(vis,3)
+#define sdp_vis_pols(vis) sdp_mem_shape_dim(vis, 3)
 
 /**
  * @brief Checks if visibility array matches data model convention.
@@ -256,7 +256,7 @@ void sdp_data_model_check_visibility_at(
             expected_num_baselines, \
             expected_num_channels, \
             expected_num_pols, \
-            status)                     \
+            status) \
     sdp_data_model_check_visibility_at(vis, \
         expected_type, \
         expected_location, \
@@ -335,7 +335,7 @@ void sdp_data_model_get_vis_metadata(
  *
  * @param weights weights data.
  */
-#define sdp_weights_pols(weights) sdp_mem_shape_dim(weights,3)
+#define sdp_weights_pols(weights) sdp_mem_shape_dim(weights, 3)
 
 /**
  * @brief Check if weights array matches data model convention.
@@ -404,7 +404,7 @@ void sdp_data_model_check_weights_at(
             expected_num_baselines, \
             expected_num_channels, \
             expected_num_pols, \
-            status)                     \
+            status) \
     sdp_data_model_check_weights_at(weights, \
         expected_type, \
         expected_location, \

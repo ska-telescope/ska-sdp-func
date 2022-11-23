@@ -492,7 +492,7 @@ void sdp_mem_check_writeable_at(
  * @param mem Handle to memory block to check
  * @param status Output error status.
  */
-#define sdp_mem_check_writeable(mem, status)                            \
+#define sdp_mem_check_writeable(mem, status) \
     sdp_mem_check_writeable_at(mem, \
         status, \
         #mem, \
@@ -532,7 +532,7 @@ void sdp_mem_check_c_contiguity_at(
  * @param mem Handle to memory block to check
  * @param status Output error status.
  */
-#define sdp_mem_check_c_contiguity(mem, status)   \
+#define sdp_mem_check_c_contiguity(mem, status) \
     sdp_mem_check_writeable_at(mem, \
         status, \
         #mem, \
@@ -575,7 +575,7 @@ void sdp_mem_check_location_at(
  * @param loc Expected memory location
  * @param status Output error status
  */
-#define sdp_mem_check_location(mem, loc, status)                        \
+#define sdp_mem_check_location(mem, loc, status) \
     sdp_mem_check_location_at(mem, \
         loc, \
         status, \
@@ -619,7 +619,7 @@ void sdp_mem_check_num_dims_at(
  * @param ndims Expected number of dimensions
  * @param status Output error status
  */
-#define sdp_mem_check_num_dims(mem, ndims, status)                      \
+#define sdp_mem_check_num_dims(mem, ndims, status) \
     sdp_mem_check_num_dims_at(mem, \
         ndims, \
         status, \
@@ -666,7 +666,7 @@ void sdp_mem_check_dim_size_at(
  * @param size Expected size
  * @param status Output error status
  */
-#define sdp_mem_check_dim_size(mem, dim, size, status)                     \
+#define sdp_mem_check_dim_size(mem, dim, size, status) \
     sdp_mem_check_dim_size_at(mem, \
         dim, \
         size, \
@@ -716,7 +716,7 @@ void sdp_mem_check_shape_at(
  * @param expected_shape Expected size
  * @param status Output error status
  */
-#define sdp_mem_check_shape(mem, expected_ndims, expected_shape, status)                     \
+#define sdp_mem_check_shape(mem, expected_ndims, expected_shape, status) \
     sdp_mem_check_shape_at(mem, \
         expected_ndims, \
         expected_shape, \
@@ -761,7 +761,7 @@ void sdp_mem_check_type_at(
  * @param expected_type Expected data type
  * @param status Output error status
  */
-#define sdp_mem_check_type(mem, expected_type, status)                            \
+#define sdp_mem_check_type(mem, expected_type, status) \
     sdp_mem_check_type_at(mem, \
         expected_type, \
         status, \
