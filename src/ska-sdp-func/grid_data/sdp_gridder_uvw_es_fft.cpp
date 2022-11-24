@@ -1,14 +1,12 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include "ska-sdp-func/utility/sdp_device_wrapper.h"
-#include "ska-sdp-func/utility/sdp_logging.h"
+#include <complex>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
-
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.h"
-
-#include <complex>
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 struct sdp_GridderUvwEsFft
 {

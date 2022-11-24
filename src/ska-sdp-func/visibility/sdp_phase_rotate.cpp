@@ -3,6 +3,7 @@
 #include <cmath>
 #include <complex>
 
+#include "ska-sdp-func/utility/sdp_data_model_checks.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/visibility/sdp_phase_rotate.h"
@@ -93,40 +94,28 @@ void sdp_phase_rotate_uvw(
 )
 {
     if (*status) return;
-    if (sdp_mem_num_dims(uvw_in) != 3 || sdp_mem_num_dims(uvw_out) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("(u,v,w) arrays must be 3-dimensional.");
-        return;
-    }
-    if (sdp_mem_shape_dim(uvw_in, 2) != 3 || sdp_mem_shape_dim(uvw_out, 2) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Last dimension of (u,v,w) arrays must be of length 3.");
-        return;
-    }
-    if (sdp_mem_location(uvw_in) != sdp_mem_location(uvw_out))
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Input and output data must be co-located.");
-        return;
-    }
-    if (sdp_mem_is_read_only(uvw_out))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Output array is read-only.");
-        return;
-    }
-    const int64_t num_times      = sdp_mem_shape_dim(uvw_in, 0);
-    const int64_t num_baselines  = sdp_mem_shape_dim(uvw_in, 1);
-    const int64_t num_total = num_times * num_baselines;
-    if (sdp_mem_shape_dim(uvw_out, 0) != num_times ||
-            sdp_mem_shape_dim(uvw_out, 1) != num_baselines)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Input and output coordinates must be the same shape.");
-        return;
-    }
+    int64_t num_times = 0;
+    int64_t num_baselines = 0;
+    sdp_MemType uvw_type = SDP_MEM_VOID;
+    sdp_MemLocation uvw_location = SDP_MEM_CPU;
+    sdp_mem_check_writeable(uvw_out, status);
+    sdp_data_model_get_uvw_metadata(
+            uvw_in,
+            &uvw_type,
+            &uvw_location,
+            &num_times,
+            &num_baselines,
+            status
+    );
+    sdp_data_model_check_uvw(
+            uvw_out,
+            uvw_type,
+            uvw_location,
+            num_times,
+            num_baselines,
+            status
+    );
+    if (*status) return;
 
     // Rotate by -delta_ra around v, then delta_dec around u.
     const double orig_ra_rad = sdp_sky_coord_value(phase_centre_orig, 0);
@@ -145,6 +134,7 @@ void sdp_phase_rotate_uvw(
     mat[6] = -sin_d_a * cos_d_d; mat[7] = sin_d_d; mat[8] =  cos_d_a * cos_d_d;
 
     // Switch on location and data types.
+    const int64_t num_total = num_times * num_baselines;
     if (sdp_mem_location(uvw_in) == SDP_MEM_CPU)
     {
         if (sdp_mem_type(uvw_in) == SDP_MEM_DOUBLE &&
@@ -224,50 +214,45 @@ void sdp_phase_rotate_vis(
 )
 {
     if (*status) return;
-    if (sdp_mem_num_dims(uvw) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("(u,v,w) array must be 3-dimensional.");
-        return;
-    }
-    if (sdp_mem_num_dims(vis_in) != 4 || sdp_mem_num_dims(vis_out) != 4)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Visibility data arrays must be 4-dimensional.");
-        return;
-    }
-    if (sdp_mem_shape_dim(uvw, 2) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Last dimension of (u,v,w) array must be of length 3.");
-        return;
-    }
-    if (sdp_mem_location(uvw) != sdp_mem_location(vis_in) ||
-            sdp_mem_location(uvw) != sdp_mem_location(vis_out))
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Input and output data must be co-located.");
-        return;
-    }
-    if (sdp_mem_is_read_only(vis_out))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Output array is read-only.");
-        return;
-    }
-    const int64_t num_times      = sdp_mem_shape_dim(vis_in, 0);
-    const int64_t num_baselines  = sdp_mem_shape_dim(vis_in, 1);
-    const int64_t num_channels   = sdp_mem_shape_dim(vis_in, 2);
-    const int64_t num_pols       = sdp_mem_shape_dim(vis_in, 3);
-    if (sdp_mem_shape_dim(vis_out, 0) != num_times ||
-            sdp_mem_shape_dim(vis_out, 1) != num_baselines ||
-            sdp_mem_shape_dim(vis_out, 2) != num_channels ||
-            sdp_mem_shape_dim(vis_out, 3) != num_pols)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Input and output visibilities must be the same shape.");
-        return;
-    }
+
+    sdp_MemType vis_out_type = SDP_MEM_VOID;
+    sdp_MemLocation vis_out_location = SDP_MEM_CPU;
+    sdp_MemLocation uvw_location = sdp_mem_location(uvw);
+    int64_t num_times = 0;
+    int64_t num_baselines = 0;
+    int64_t num_channels = 0;
+    int64_t num_pols = 0;
+    sdp_mem_check_writeable(vis_out, status);
+    sdp_mem_check_location(vis_out, uvw_location, status);
+    sdp_data_model_get_vis_metadata(
+            vis_out,
+            &vis_out_type,
+            &vis_out_location,
+            &num_times,
+            &num_baselines,
+            &num_channels,
+            &num_pols,
+            status
+    );
+    sdp_data_model_check_vis(
+            vis_in,
+            vis_out_type,
+            uvw_location,
+            num_times,
+            num_baselines,
+            num_channels,
+            num_pols,
+            status
+    );
+    sdp_data_model_check_uvw(
+            uvw,
+            SDP_MEM_VOID,
+            uvw_location,
+            num_times,
+            num_baselines,
+            status
+    );
+    if (*status) return;
 
     // Convert from spherical to tangent-plane to get delta (l, m, n).
     const double orig_ra_rad = sdp_sky_coord_value(phase_centre_orig, 0);

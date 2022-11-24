@@ -8,6 +8,7 @@
  */
 
 #include <stdint.h>
+
 #include "ska-sdp-func/utility/sdp_errors.h"
 
 #ifdef __cplusplus

@@ -97,7 +97,7 @@ double sdp_calculate_legendre_root(
         next_estimate = estimate - p_n / derivative;
         iterations++;
     }
-    while (fdim(next_estimate,estimate) > accuracy &&
+    while (fdim(next_estimate, estimate) > accuracy &&
             iterations < MAX_NEWTON_RAPHSON_ITERATIONS);
 
     // Gauss-Legendre quadrature weight for x

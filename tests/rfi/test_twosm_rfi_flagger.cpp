@@ -9,8 +9,8 @@
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
-#include <vector>
 #include <iostream>
+#include <vector>
 
 #include "ska-sdp-func/rfi/sdp_twosm_rfi_flagger.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
@@ -285,16 +285,16 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Wrong flags type", false, false,
-                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,SDP_MEM_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
-                &status
+                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,
+                SDP_MEM_FLOAT, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
+                SDP_MEM_CPU, &status
         );
         assert(status == SDP_ERR_DATA_TYPE);
     }
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Wrong visibility type", false, false,
-                SDP_MEM_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT,SDP_MEM_INT,
+                SDP_MEM_FLOAT, SDP_MEM_FLOAT, SDP_MEM_INT, SDP_MEM_INT,
                 SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU, SDP_MEM_CPU,
                 &status
         );
@@ -321,8 +321,8 @@ int main()
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Unsupported GPU location", false, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,SDP_MEM_INT,
-                SDP_MEM_GPU, SDP_MEM_GPU, SDP_MEM_GPU, SDP_MEM_CPU,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_DOUBLE, SDP_MEM_INT,
+                SDP_MEM_INT, SDP_MEM_GPU, SDP_MEM_GPU, SDP_MEM_GPU, SDP_MEM_CPU,
                 &status
         );
         assert(status == SDP_ERR_MEM_LOCATION);
