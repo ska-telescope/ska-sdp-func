@@ -4,7 +4,34 @@
 
 import ctypes
 
-from ..utility import Error, Lib, Mem
+from ..utility import Lib, Mem
+
+Lib.wrap_func(
+    "sdp_dft_point_v00",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
+
+
+Lib.wrap_func(
+    "sdp_dft_point_v01",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_double,
+        ctypes.c_double,
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
 
 
 def dft_point_v00(source_directions, source_fluxes, uvw_lambda, vis):
@@ -52,27 +79,9 @@ def dft_point_v00(source_directions, source_fluxes, uvw_lambda, vis):
     :param vis: Output complex visibilities.
     :type vis: numpy.ndarray or cupy.ndarray
     """
-    mem_source_directions = Mem(source_directions)
-    mem_source_fluxes = Mem(source_fluxes)
-    mem_uvw_lambda = Mem(uvw_lambda)
-    mem_vis = Mem(vis)
-    error_status = Error()
-    lib_dft = Lib.handle().sdp_dft_point_v00
-    lib_dft.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_dft(
-        mem_source_directions.handle(),
-        mem_source_fluxes.handle(),
-        mem_uvw_lambda.handle(),
-        mem_vis.handle(),
-        error_status.handle(),
+    Lib.sdp_dft_point_v00(
+        Mem(source_directions), Mem(source_fluxes), Mem(uvw_lambda), Mem(vis)
     )
-    error_status.check()
 
 
 def dft_point_v01(
@@ -127,28 +136,11 @@ def dft_point_v01(
     :param vis: Output complex visibilities.
     :type vis: numpy.ndarray or cupy.ndarray
     """
-    mem_source_directions = Mem(source_directions)
-    mem_source_fluxes = Mem(source_fluxes)
-    mem_uvw = Mem(uvw)
-    mem_vis = Mem(vis)
-    error_status = Error()
-    lib_dft = Lib.handle().sdp_dft_point_v01
-    lib_dft.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        ctypes.c_double,
-        ctypes.c_double,
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_dft(
-        mem_source_directions.handle(),
-        mem_source_fluxes.handle(),
-        mem_uvw.handle(),
-        ctypes.c_double(channel_start_hz),
-        ctypes.c_double(channel_step_hz),
-        mem_vis.handle(),
-        error_status.handle(),
+    Lib.sdp_dft_point_v01(
+        Mem(source_directions),
+        Mem(source_fluxes),
+        Mem(uvw),
+        channel_start_hz,
+        channel_step_hz,
+        Mem(vis),
     )
-    error_status.check()

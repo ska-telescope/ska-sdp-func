@@ -12,10 +12,8 @@
 #include <vector>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
-
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.h"
-
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 

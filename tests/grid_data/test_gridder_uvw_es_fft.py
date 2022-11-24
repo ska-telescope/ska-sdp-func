@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from ska_sdp_func.grid_data import GridderUvwEsFft
+from ska_sdp_func.utility import CError
 
 
 def rrmse(in_x, in_y):
@@ -69,7 +70,7 @@ def test_gridder_plan():
 
         # test for memory mismatch on inputs
         error_string = "Memory location mismatch"
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw,
                 freqs_gpu,
@@ -81,7 +82,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs,
@@ -93,7 +94,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -105,7 +106,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -117,7 +118,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -131,8 +132,8 @@ def test_gridder_plan():
             )
 
         # test for wrong type on inputs
-        error_string = "Unsupported data type\\(s\\)"
-        with pytest.raises(RuntimeError, match=error_string):
+        error_string = ".*Unsupported data type\\(s\\)"
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 vis_gpu,
                 freqs_gpu,
@@ -144,7 +145,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 vis_gpu,
@@ -156,7 +157,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -168,7 +169,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -180,7 +181,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -194,8 +195,8 @@ def test_gridder_plan():
             )
 
         # test for wrong sizes/values on inputs
-        error_string = "Invalid function argument"
-        with pytest.raises(RuntimeError, match=error_string):
+        error_string = ".*Invalid function argument"
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu[:, 0:2],
                 freqs_gpu,
@@ -207,7 +208,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu[0:2],
@@ -219,7 +220,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu[0:-2, :],
                 freqs_gpu,
@@ -231,7 +232,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -243,7 +244,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -255,7 +256,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -267,7 +268,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -281,8 +282,8 @@ def test_gridder_plan():
             )
 
         # test for inconsistent double precision
-        error_string = "Unsupported data type\\(s\\)"
-        with pytest.raises(RuntimeError, match=error_string):
+        error_string = ".*Unsupported data type\\(s\\)"
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_s_gpu,
                 freqs_gpu,
@@ -294,7 +295,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_s_gpu,
@@ -306,7 +307,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -318,7 +319,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -330,7 +331,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_gpu,
@@ -344,8 +345,8 @@ def test_gridder_plan():
             )
 
         # test for inconsistent single precision
-        error_string = "Unsupported data type\\(s\\)"
-        with pytest.raises(RuntimeError, match=error_string):
+        error_string = ".*Unsupported data type\\(s\\)"
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_gpu,
                 freqs_s_gpu,
@@ -357,7 +358,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_s_gpu,
                 freqs_gpu,
@@ -369,7 +370,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_s_gpu,
                 freqs_s_gpu,
@@ -381,7 +382,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_s_gpu,
                 freqs_s_gpu,
@@ -393,7 +394,7 @@ def test_gridder_plan():
                 epsilon,
                 do_w_stacking,
             )
-        with pytest.raises(RuntimeError, match=error_string):
+        with pytest.raises(CError, match=error_string):
             gridder = GridderUvwEsFft(
                 uvw_s_gpu,
                 freqs_s_gpu,
@@ -423,8 +424,8 @@ def test_gridder_plan():
 
         # the following checks that sdp_gridder_check_buffer() is being
         # called, but could do exhaustive checking like above...
-        error_string = "Memory location mismatch"
-        with pytest.raises(RuntimeError, match=error_string):
+        error_string = ".*Memory location mismatch"
+        with pytest.raises(CError, match=error_string):
             gridder.grid_uvw_es_fft(
                 uvw_gpu, freqs, vis_gpu, weight_gpu, dirty_image_gpu
             )

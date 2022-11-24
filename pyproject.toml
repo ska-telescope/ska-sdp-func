@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ska_sdp_func"
-version = "0.0.4"
+version = "0.0.6"
 description = "SKA SDP Processing Function Library"
 authors = ["The SKA SDP Processing Function Library Developers"]
 license = "BSD-3-Clause"

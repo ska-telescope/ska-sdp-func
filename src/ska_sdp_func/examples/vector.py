@@ -2,7 +2,18 @@
 
 """Module for example function."""
 
-from ..utility import Error, Lib, Mem
+from ..utility import Lib, Mem
+
+Lib.wrap_func(
+    "sdp_vector_add",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
 
 
 def vector_add(input_a, input_b, output):
@@ -22,21 +33,4 @@ def vector_add(input_a, input_b, output):
     :param output: Output vector.
     :type output: numpy.ndarray or cupy.ndarray
     """
-    mem_input_a = Mem(input_a)
-    mem_input_b = Mem(input_b)
-    mem_output = Mem(output)
-    error_status = Error()
-    lib_vector_add = Lib.handle().sdp_vector_add
-    lib_vector_add.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_vector_add(
-        mem_input_a.handle(),
-        mem_input_b.handle(),
-        mem_output.handle(),
-        error_status.handle(),
-    )
-    error_status.check()
+    Lib.sdp_vector_add(Mem(input_a), Mem(input_b), Mem(output))

@@ -46,6 +46,10 @@ In C or C++
    - If an :cpp:enum:`sdp_Error` error code is passed to the function,
      check it first, and only proceed if it is zero.
 
+     .. warning::
+      The :cpp:enum:`sdp_Error` argument, if any, must be passed *in last place*
+      by convention; the Python wrapping code depends on this.
+
    - If a problem is encountered while making the checks, set the error
      code passed to the function, report a suitable message, and return.
      Errors can be reported using :any:`SDP_LOG_ERROR`, which takes a
@@ -184,7 +188,7 @@ processing functions without needlessly copying data.
      .. code-block:: Python
 
         import ctypes
-        from ..utility import Error, Lib, Mem
+        from ..utility import Lib, Mem
 
    - Declare a Python function, giving it a suitable name and specifying
      parameters in the usual way.
@@ -206,61 +210,78 @@ processing functions without needlessly copying data.
         mem_input_a = Mem(input_a)
         mem_output = Mem(output)
 
-   - We then need a handle to the function we want to call.
-     The ``ctypes`` handle to the compiled library is available by
-     calling ``Lib.handle()``, and the handle to any function in the library
-     is available as an attribute of this.
-     To get access to a function in the library called ``sdp_func``,
-     this would look like:
+   - Functions in the library are exposed as members of ``Lib``, i.e. to call
+     a function named ``sdp_func``, one only has to write:
 
      .. code-block:: Python
 
-        lib_func = Lib.handle().sdp_func
+        Lib.sdp_func(...)
 
-   - If the function takes an :cpp:enum:`sdp_Error` parameter,
-     create one using:
+     However, **before** the function can be called, ``ctypes`` needs to know the type of each
+     function argument we're about to pass, and the type of the result it returns.
+     This must be specified using the ``Lib.wrap_func()`` convenience function, which
+     requires the following arguments:
+
+      - The name of the library function, i.e. ``"sdp_func"`` here.
+
+      - ``restype``: The type of the result, use ``None`` if the function returns ``void``
+
+      - ``argtypes``: A list containing the type of every argument of the function. 
+        However, if the function takes an ``sdp_Error`` argument (in last place, by convention),
+        **omit it**, use the option below instead.
+        
+      - ``check_errcode``: Boolean value (``False`` by default). If ``True``,
+        the wrapping code will automatically extend ``argtypes`` to pass an error code.
+        Furthermore, the function will be wrapped so that it automatically checks whether
+        a non-zero error code has been set. If this happens, a special ``CError`` exception
+        will be raised.
+
+     The Python ``Mem`` class (like other classes that wrap a C struct under the hood) has 
+     a convenience classmethod to return what type should be specified in ``argtypes``
+     for them: ``handle_type()``.
+    
+     Therefore, if our library function that we wish to call takes an integer,
+     two :cpp:struct:`sdp_Mem` handles and a ``sdp_Error`` argument, we would
+     specify this as follows:
 
      .. code-block:: Python
 
-        error_status = Error()
-
-   - Before calling the function, ``ctypes`` needs to know the type of each
-     function argument we're about to pass, and this is specified using
-     a list assigned to the ``argtypes`` attribute of the function handle.
-     The Python ``Mem`` and ``Error`` classes have a static convenience
-     method to return their types, called ``handle_type()``.
-     If our library function that we wish to call takes an integer,
-     two :cpp:struct:`sdp_Mem` handles and an :cpp:enum:`sdp_Error` parameter,
-     these would be specified using:
-
-     .. code-block:: Python
-
-        lib_func.argtypes = [
+        Lib.wrap_func(
+          "sdp_func",
+          restype=None,  # returns 'void'
+          argtypes=[
             ctypes.c_int,
             Mem.handle_type(),
-            Mem.handle_type(),
-            Error.handle_type()
-        ]
-
-   - The function can then be called directly.
-     Use the ``handle()`` method on the ``Mem`` and ``Error`` objects to pass
-     the pointers down to the compiled function:
-
-     .. code-block:: Python
-
-        lib_func(
-            ctypes.c_int(42),
-            mem_input_a.handle(),
-            mem_output.handle(),
-            error_status.handle()
+            Mem.handle_type(),  # we omit the 'sdp_Error' argument from the list ...
+          ],
+          check_error=True  # ... and instead turn on automatic error checking here
         )
 
-   - Finally, the error code can be checked by calling its ``check()`` method,
-     which will raise a Python exception if appropriate:
+     .. warning::
+
+      ``ctypes`` cannot infer the signature of a C function by itself,
+      and will blindly trust whatever was specified via ``Lib.wrap_func()``.
+      Exert caution here, as unexpected or undefined behaviour will ensue if the 
+      number of arguments is incorrect, or if you forget to set ``check_error=True``
+      on a function that expects an ``sdp_Error`` argument.
+
+      The ``wrap_func`` call only needs to be made once; place it
+      outside of Python functions directly at the module level.
+
+   - The function can then be called directly, and it is available as a data member
+     of the ``Lib`` class. You may directly pass ``Mem`` and ``Error`` objects to it.
+     Conversions from Python fundamental types (e.g. ``int`` and ``float``)
+     to C types are natively handled by ``ctypes``; no need to explicitly cast
+     ``42`` to ``ctypes.c_int(42)`` for example.
 
      .. code-block:: Python
 
-        error_status.check()
+        Lib.sdp_func(
+            42,
+            mem_input_a,
+            mem_output,
+        )
+
 
 2. If you want to expose the function directly under the Python module
    ``ska_sdp_func.<module_name>``, use a local import in the file

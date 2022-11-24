@@ -4,7 +4,35 @@
 
 import ctypes
 
-from ..utility import Error, Lib, Mem, SkyCoord
+from ..utility import Lib, Mem, SkyCoord
+
+Lib.wrap_func(
+    "sdp_phase_rotate_uvw",
+    restype=None,
+    argtypes=[
+        SkyCoord.handle_type(),
+        SkyCoord.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
+
+
+Lib.wrap_func(
+    "sdp_phase_rotate_vis",
+    restype=None,
+    argtypes=[
+        SkyCoord.handle_type(),
+        SkyCoord.handle_type(),
+        ctypes.c_double,
+        ctypes.c_double,
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
 
 
 def phase_rotate_uvw(
@@ -45,25 +73,12 @@ def phase_rotate_uvw(
     """
     phase_centre_orig = SkyCoord(phase_centre_orig)
     phase_centre_new = SkyCoord(phase_centre_new)
-    mem_uvw_in = Mem(uvw_in)
-    mem_uvw_out = Mem(uvw_out)
-    error_status = Error()
-    lib_rotate_uvw = Lib.handle().sdp_phase_rotate_uvw
-    lib_rotate_uvw.argtypes = [
-        SkyCoord.handle_type(),
-        SkyCoord.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_rotate_uvw(
-        phase_centre_orig.handle(),
-        phase_centre_new.handle(),
-        mem_uvw_in.handle(),
-        mem_uvw_out.handle(),
-        error_status.handle(),
+    Lib.sdp_phase_rotate_uvw(
+        phase_centre_orig,
+        phase_centre_new,
+        Mem(uvw_in),
+        Mem(uvw_out),
     )
-    error_status.check()
 
 
 def phase_rotate_vis(
@@ -119,29 +134,12 @@ def phase_rotate_vis(
     """
     phase_centre_orig = SkyCoord(phase_centre_orig)
     phase_centre_new = SkyCoord(phase_centre_new)
-    mem_uvw = Mem(uvw)
-    mem_vis_in = Mem(vis_in)
-    mem_vis_out = Mem(vis_out)
-    error_status = Error()
-    lib_rotate_vis = Lib.handle().sdp_phase_rotate_vis
-    lib_rotate_vis.argtypes = [
-        SkyCoord.handle_type(),
-        SkyCoord.handle_type(),
-        ctypes.c_double,
-        ctypes.c_double,
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_rotate_vis(
-        phase_centre_orig.handle(),
-        phase_centre_new.handle(),
-        ctypes.c_double(channel_start_hz),
-        ctypes.c_double(channel_step_hz),
-        mem_uvw.handle(),
-        mem_vis_in.handle(),
-        mem_vis_out.handle(),
-        error_status.handle(),
+    Lib.sdp_phase_rotate_vis(
+        phase_centre_orig,
+        phase_centre_new,
+        channel_start_hz,
+        channel_step_hz,
+        Mem(uvw),
+        Mem(vis_in),
+        Mem(vis_out),
     )
-    error_status.check()

@@ -11,9 +11,9 @@
 #include <cstdlib>
 #include <vector>
 
-#include "ska-sdp-func/visibility/sdp_dft.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
+#include "ska-sdp-func/visibility/sdp_dft.h"
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
