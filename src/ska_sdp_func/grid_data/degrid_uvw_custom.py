@@ -4,7 +4,7 @@
 
 import ctypes
 
-from ..utility import Error, Lib, Mem
+from ..utility import Lib, Mem
 
 
 def degrid_uvw_custom(
@@ -56,14 +56,24 @@ def degrid_uvw_custom(
     :param vis: Output visibilities with shape [time][baseline][chan][pol]
     :type vis: numpy.ndarray or cupy.ndarray
     """
-    mem_grid = Mem(grid)
-    mem_vis_coordinates = Mem(uvw)
-    mem_uv_kernel = Mem(uv_kernel)
-    mem_w_kernel = Mem(w_kernel)
-    mem_vis = Mem(vis)
-    error_status = Error()
-    lib_degridding = Lib.handle().sdp_degrid_uvw_custom
-    lib_degridding.argtypes = [
+    Lib.sdp_degrid_uvw_custom(
+        Mem(grid),
+        Mem(uvw),
+        Mem(uv_kernel),
+        Mem(w_kernel),
+        theta,
+        wstep,
+        channel_start_hz,
+        channel_step_hz,
+        conjugate,
+        Mem(vis)
+    )
+
+
+Lib.wrap_func(
+    "sdp_degrid_uvw_custom",
+    restype=None,
+    argtypes=[
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
@@ -74,19 +84,6 @@ def degrid_uvw_custom(
         ctypes.c_double,
         ctypes.c_int32,
         Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_degridding(
-        mem_grid.handle(),
-        mem_vis_coordinates.handle(),
-        mem_uv_kernel.handle(),
-        mem_w_kernel.handle(),
-        ctypes.c_double(theta),
-        ctypes.c_double(wstep),
-        ctypes.c_double(channel_start_hz),
-        ctypes.c_double(channel_step_hz),
-        ctypes.c_int32(conjugate),
-        mem_vis.handle(),
-        error_status.handle(),
-    )
-    error_status.check()
+    ],
+    check_errcode=True,
+)

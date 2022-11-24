@@ -1,10 +1,11 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #include "ska-sdp-func/grid_data/sdp_degrid_uvw_custom.h"
+#include "ska-sdp-func/utility/sdp_data_model_checks.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
-#include <math.h>
+#include <cmath>
 #include <complex>
 #include <vector>
 
@@ -12,7 +13,8 @@
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
-#define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1)  (N1 *(N2 * (N3 * (N4 * I5 + I4) + I3) + I2) +I1)
+#define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1) \
+    (N1 * (N2 * (N3 * (N4 * I5 + I4) + I3) + I2) + I1)
 
 using std::complex;
 
@@ -85,14 +87,13 @@ static void degrid_uvw_custom(
         complex<VIS_TYPE>* vis
 )
 {
-
-    int64_t half_uv_kernel_size = uv_kernel_size / 2;
+    const int64_t half_uv_kernel_size = uv_kernel_size / 2;
 
     for (int i_time = 0; i_time < num_times; ++i_time)
     {
         for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
         {
-            const unsigned int i_uvw = INDEX_3D(
+            const int64_t i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
                     i_time, i_baseline, 0
             );
@@ -143,16 +144,26 @@ static void degrid_uvw_custom(
                         complex<VIS_TYPE> visz(0, 0);
                         for (int y = 0; y < uv_kernel_size; y++)
                         {
-                            int64_t i_grid_y = grid_coord_y + y - half_uv_kernel_size;
-                            
+                            const int64_t i_grid_y = grid_coord_y + y -
+                                    half_uv_kernel_size;
+
                             complex<VIS_TYPE> visy(0, 0);
                             for (int x = 0; x < uv_kernel_size; x++)
                             {
-                                int64_t i_grid_x = grid_coord_x + x - half_uv_kernel_size;
-                                
-                                const unsigned int i_grid = INDEX_5D(
-                                        num_channels, z_size, y_size, x_size, num_pols,
-                                        i_channel, z, i_grid_y, i_grid_x, i_pol
+                                const int64_t i_grid_x = grid_coord_x + x -
+                                        half_uv_kernel_size;
+
+                                const int64_t i_grid = INDEX_5D(
+                                        num_channels,
+                                        z_size,
+                                        y_size,
+                                        x_size,
+                                        num_pols,
+                                        i_channel,
+                                        z,
+                                        i_grid_y,
+                                        i_grid_x,
+                                        i_pol
                                 );
 
                                 const complex<VIS_TYPE> value = grid[i_grid];
@@ -165,7 +176,7 @@ static void degrid_uvw_custom(
                     }
                     if (conjugate) vis_local = std::conj(vis_local);
 
-                    const unsigned int i_out = INDEX_4D(
+                    const int64_t i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
                             i_time, i_baseline, i_channel, i_pol
                     );
@@ -192,104 +203,55 @@ void sdp_degrid_uvw_custom(
 )
 {
     if (*status) return;
+    sdp_MemLocation vis_location = SDP_MEM_CPU;
+    sdp_MemType vis_type = SDP_MEM_VOID;
+    int64_t num_times = 0;
+    int64_t num_baselines = 0;
+    int64_t num_channels = 0;
+    int64_t num_pols = 0;
+    sdp_data_model_get_vis_metadata(vis, &vis_type, &vis_location,
+            &num_times, &num_baselines, &num_channels, &num_pols, status
+    );
+    sdp_mem_check_writeable(vis, status);
+    sdp_data_model_check_uvw(uvw, SDP_MEM_VOID, vis_location,
+            num_times, num_baselines, status
+    );
 
-    const sdp_MemLocation location = sdp_mem_location(vis);
-
-    if (sdp_mem_is_read_only(vis))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Output visibility must be writable.");
-        return;
-    }
-
-    if (sdp_mem_location(grid) != location ||
-            sdp_mem_location(uvw) != location ||
-            sdp_mem_location(uv_kernel) != location ||
-            sdp_mem_location(w_kernel) != location ||
-            sdp_mem_location(vis) != location)
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Memory location mismatch");
-        return;
-    }
-
-    if (sdp_mem_type(uvw) != SDP_MEM_DOUBLE ||
-            sdp_mem_type(uv_kernel) != SDP_MEM_DOUBLE ||
-            sdp_mem_type(w_kernel) != SDP_MEM_DOUBLE)
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Unsuported data type");
-        return;
-    }
-
-    if (sdp_mem_type(vis) != SDP_MEM_COMPLEX_DOUBLE)
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Visibility values must be complex doubles");
-        return;
-    }
-
-    if (sdp_mem_type(grid) != SDP_MEM_COMPLEX_DOUBLE)
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Grid values must be complex doubles");
-        return;
-    }
-
-    const int64_t uv_kernel_size = sdp_mem_shape_dim(uv_kernel, 1);
     const int64_t uv_kernel_oversampling = sdp_mem_shape_dim(uv_kernel, 0);
-
-    const int64_t w_kernel_size = sdp_mem_shape_dim(w_kernel, 1);
+    const int64_t uv_kernel_size = sdp_mem_shape_dim(uv_kernel, 1);
     const int64_t w_kernel_oversampling = sdp_mem_shape_dim(w_kernel, 0);
-
-    const int64_t num_times = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_baselines = sdp_mem_shape_dim(vis, 1);
-    const int64_t num_channels = sdp_mem_shape_dim(vis, 2);
-    const int64_t num_pols = sdp_mem_shape_dim(vis, 3);
+    const int64_t w_kernel_size = sdp_mem_shape_dim(w_kernel, 1);
 
     const int64_t z_size = sdp_mem_shape_dim(grid, 1);
     const int64_t y_size = sdp_mem_shape_dim(grid, 2);
     const int64_t x_size = sdp_mem_shape_dim(grid, 3);
 
-    if ((num_pols != 1 && num_pols != 2 && num_pols != 4) ||
-            (sdp_mem_shape_dim(grid, 4) != num_pols))
+    const int64_t expected_grid_shape[] = {
+        num_channels, z_size, y_size, x_size, num_pols
+    };
+    sdp_mem_check_shape(grid, 5, expected_grid_shape, status);
+    if (*status) return;
+
+    if (sdp_mem_location(grid) != vis_location ||
+            sdp_mem_location(uv_kernel) != vis_location ||
+            sdp_mem_location(w_kernel) != vis_location)
     {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Unsupported number of polarisations, must be 1, 2 or 4");
+        *status = SDP_ERR_MEM_LOCATION;
+        SDP_LOG_ERROR("Memory location mismatch");
+        return;
+    }
+    if (vis_type != SDP_MEM_COMPLEX_DOUBLE ||
+            sdp_mem_type(grid) != SDP_MEM_COMPLEX_DOUBLE ||
+            sdp_mem_type(uvw) != SDP_MEM_DOUBLE ||
+            sdp_mem_type(uv_kernel) != SDP_MEM_DOUBLE ||
+            sdp_mem_type(w_kernel) != SDP_MEM_DOUBLE)
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Currently, only double-precision data can be used");
         return;
     }
 
-    if (num_channels != 1 || sdp_mem_shape_dim(grid, 0) != 1)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Unsupported number of channels, must be 1");
-        return;
-    }
-
-    if (sdp_mem_shape_dim(grid, 0) != num_channels ||
-            sdp_mem_shape_dim(grid, 4) != num_pols)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The grid array must have shape "
-                "[num_channels, w, v, u, num_pols] "
-                "(expected [%d, w, v, u, %d])",
-                num_channels, num_pols
-        );
-        return;
-    }
-
-    if (sdp_mem_shape_dim(uvw, 0) != num_times ||
-            sdp_mem_shape_dim(uvw, 1) != num_baselines)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The uvw array must have shape "
-                "[num_times, num_baslines, 3] (expected [%d, %d, 3])",
-                num_times, num_baselines
-        );
-        return;
-    }
-
-    if (location == SDP_MEM_CPU)
+    if (vis_location == SDP_MEM_CPU)
     {
         degrid_uvw_custom(
                 uv_kernel_size,
@@ -315,7 +277,7 @@ void sdp_degrid_uvw_custom(
                 (complex<double>*)sdp_mem_data(vis)
         );
     }
-    else if (location == SDP_MEM_GPU)
+    else if (vis_location == SDP_MEM_GPU)
     {
         const uint64_t num_threads[] = {128, 2, 2};
         const uint64_t num_blocks[] = {

@@ -162,7 +162,7 @@ def test_degrid_uvw_custom():
     x_size = 512
     y_size = 512
     z_size = 4
-    num_channels = 1
+    num_channels = 5
     num_pols = 1
     num_baselines = 14
     num_times = 4

@@ -16,7 +16,8 @@
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
-#define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1)  (N1 *(N2 * (N3 * (N4 * I5 + I4) + I3) + I2) +I1)
+#define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1) \
+    (N1 * (N2 * (N3 * (N4 * I5 + I4) + I3) + I2) + I1)
 
 using std::complex;
 
@@ -99,7 +100,7 @@ static void check_results(
         const sdp_Error* status
 )
 {
-    int64_t half_uv_kernel_size = uv_kernel_size / 2;
+    const int64_t half_uv_kernel_size = uv_kernel_size / 2;
 
     if (*status)
     {
@@ -111,7 +112,7 @@ static void check_results(
     {
         for (int i_baseline = 0; i_baseline < num_baselines; ++i_baseline)
         {
-            const unsigned int i_uvw = INDEX_3D(
+            const int64_t i_uvw = INDEX_3D(
                     num_times, num_baselines, 3,
                     i_time, i_baseline, 0
             );
@@ -167,16 +168,26 @@ static void check_results(
                         complex<VIS_TYPE> visz(0, 0);
                         for (int y = 0; y < uv_kernel_size; y++)
                         {
-                            int64_t i_grid_y = grid_coord_y + y - half_uv_kernel_size;
+                            const int64_t i_grid_y = grid_coord_y + y -
+                                    half_uv_kernel_size;
 
                             complex<VIS_TYPE> visy(0, 0);
                             for (int x = 0; x < uv_kernel_size; x++)
                             {
-                                int64_t i_grid_x = grid_coord_x + x - half_uv_kernel_size;
+                                const int64_t i_grid_x = grid_coord_x + x -
+                                        half_uv_kernel_size;
 
-                                const unsigned int i_grid = INDEX_5D(
-                                        num_channels, z_size, y_size, x_size, num_pols,
-                                        i_channel, z, i_grid_y, i_grid_x, i_pol
+                                const int64_t i_grid = INDEX_5D(
+                                        num_channels,
+                                        z_size,
+                                        y_size,
+                                        x_size,
+                                        num_pols,
+                                        i_channel,
+                                        z,
+                                        i_grid_y,
+                                        i_grid_x,
+                                        i_pol
                                 );
 
                                 const complex<VIS_TYPE> value = grid[i_grid];
@@ -189,7 +200,7 @@ static void check_results(
                     }
                     if (conjugate) vis_local = std::conj(vis_local);
 
-                    const unsigned int i_out = INDEX_4D(
+                    const int64_t i_out = INDEX_4D(
                             num_times, num_baselines, num_channels, num_pols,
                             i_time, i_baseline, i_channel, i_pol
                     );
@@ -365,17 +376,6 @@ int main()
     }
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU run, 2 polarisations, 1 channel",
-                true, false, 1, 2,
-                SDP_MEM_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, false, &status
-        );
-        assert(status == SDP_SUCCESS);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU run, 4 polarisations, 1 channel",
                 true, false, 1, 4,
                 SDP_MEM_DOUBLE,
@@ -402,17 +402,6 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU run, 1 polarisation, 1 channel",
                 true, false, 1, 1,
-                SDP_MEM_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, false, &status
-        );
-        assert(status == SDP_SUCCESS);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("GPU run, 2 polarisations, 1 channel",
-                true, false, 1, 2,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_COMPLEX_DOUBLE,
@@ -465,7 +454,7 @@ int main()
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, false, &status
         );
-        assert(status == SDP_ERR_RUNTIME);
+        assert(status != SDP_SUCCESS);
     }
     {
         sdp_Error status = SDP_SUCCESS;
@@ -499,28 +488,6 @@ int main()
                 SDP_MEM_CPU, SDP_MEM_CPU, false, &status
         );
         assert(status == SDP_ERR_DATA_TYPE);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Unsupported number of channels",
-                false, false, 2, 1,
-                SDP_MEM_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, false, &status
-        );
-        assert(status == SDP_ERR_RUNTIME);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Unsupported number of polarisations",
-                false, false, 1, 3,
-                SDP_MEM_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, false, &status
-        );
-        assert(status == SDP_ERR_RUNTIME);
     }
 
 #ifdef SDP_HAVE_CUDA
