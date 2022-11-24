@@ -66,7 +66,7 @@ def degrid_uvw_custom(
         channel_start_hz,
         channel_step_hz,
         conjugate,
-        Mem(vis)
+        Mem(vis),
     )
 
 
