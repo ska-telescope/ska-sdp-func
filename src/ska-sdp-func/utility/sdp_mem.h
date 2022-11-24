@@ -3,8 +3,6 @@
 #ifndef SKA_SDP_PROC_FUNC_MEM_H_
 #define SKA_SDP_PROC_FUNC_MEM_H_
 
-#define CODE_POS __func__, __FILE__, __LINE__
-
 /**
  * @file sdp_mem.h
  */
@@ -12,6 +10,7 @@
 #include <stdint.h>
 
 #include "ska-sdp-func/utility/sdp_errors.h"
+#include "ska-sdp-func/utility/sdp_logging.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -498,7 +497,7 @@ void sdp_mem_check_writeable_at(
         status, \
         #mem, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -538,7 +537,7 @@ void sdp_mem_check_c_contiguity_at(
         status, \
         #mem, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -582,7 +581,7 @@ void sdp_mem_check_location_at(
         status, \
         #mem, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -626,7 +625,7 @@ void sdp_mem_check_num_dims_at(
         status, \
         #mem, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -674,7 +673,7 @@ void sdp_mem_check_dim_size_at(
         status, \
         #mem, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -722,7 +721,7 @@ void sdp_mem_check_shape_at(
         status, \
         #mem, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -766,7 +765,7 @@ void sdp_mem_check_type_at(
         status, \
         #mem, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
