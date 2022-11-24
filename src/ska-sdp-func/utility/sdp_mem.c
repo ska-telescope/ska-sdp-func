@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ska-sdp-func/utility/sdp_mem.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cuda_runtime_api.h>
@@ -496,9 +496,9 @@ int64_t sdp_mem_type_size(sdp_MemType type)
 }
 
 
-const char* sdp_mem_location_name(sdp_MemLocation loc)
+const char* sdp_mem_location_name(sdp_MemLocation location)
 {
-    switch (loc)
+    switch (location)
     {
     case SDP_MEM_CPU:
         return "CPU";
@@ -510,9 +510,9 @@ const char* sdp_mem_location_name(sdp_MemLocation loc)
 }
 
 
-const char* sdp_mem_type_name(sdp_MemType typ)
+const char* sdp_mem_type_name(sdp_MemType type)
 {
-    switch (typ)
+    switch (type)
     {
     case SDP_MEM_VOID:
         return "void";
@@ -619,7 +619,7 @@ void sdp_mem_check_location_at(
 
 void sdp_mem_check_num_dims_at(
         const sdp_Mem* mem,
-        int64_t expected_ndims,
+        int64_t expected_num_dims,
         sdp_Error* status,
         const char* expr,
         const char* func,
@@ -628,7 +628,7 @@ void sdp_mem_check_num_dims_at(
 )
 {
     if (*status) return;
-    if (sdp_mem_num_dims(mem) != expected_ndims)
+    if (sdp_mem_num_dims(mem) != expected_num_dims)
     {
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
@@ -639,8 +639,8 @@ void sdp_mem_check_num_dims_at(
                 "%s: Expected '%s' to have %d dimension%s (found %d)!",
                 func,
                 expr,
-                expected_ndims,
-                (expected_ndims == 1 ? "" : "s"),
+                expected_num_dims,
+                (expected_num_dims == 1 ? "" : "s"),
                 sdp_mem_num_dims(mem)
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
@@ -682,8 +682,8 @@ void sdp_mem_check_dim_size_at(
 
 void sdp_mem_check_shape_at(
         const sdp_Mem* mem,
-        int32_t expected_ndims,
-        int64_t* expected_shape,
+        int32_t expected_num_dims,
+        const int64_t* expected_shape,
         sdp_Error* status,
         const char* expr,
         const char* func,
@@ -692,7 +692,7 @@ void sdp_mem_check_shape_at(
 )
 {
     if (*status) return;
-    if (sdp_mem_num_dims(mem) != expected_ndims)
+    if (sdp_mem_num_dims(mem) != expected_num_dims)
     {
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
@@ -703,18 +703,17 @@ void sdp_mem_check_shape_at(
                 "%s: Expected '%s' to have %d dimension%s (found %d)!",
                 func,
                 expr,
-                expected_ndims,
-                (expected_ndims == 1 ? "" : "s"),
+                expected_num_dims,
+                (expected_num_dims == 1 ? "" : "s"),
                 sdp_mem_num_dims(mem)
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
         return;
     }
-    for (int32_t dim = 0; dim < expected_ndims; dim++)
+    for (int32_t dim = 0; dim < expected_num_dims; dim++)
     {
         if (sdp_mem_shape_dim(mem, dim) != expected_shape[dim])
         {
-            // Log & set status
             sdp_log_message(
                     SDP_LOG_LEVEL_ERROR,
                     stderr,
@@ -748,7 +747,6 @@ void sdp_mem_check_type_at(
     if (*status) return;
     if (sdp_mem_type(mem) != expected_type)
     {
-        // Log & set status
         sdp_log_message(
                 SDP_LOG_LEVEL_ERROR,
                 stderr,

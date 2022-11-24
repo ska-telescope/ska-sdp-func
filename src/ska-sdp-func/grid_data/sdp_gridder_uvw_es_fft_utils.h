@@ -4,7 +4,6 @@
 #define SDP_GRID_UVW_ES_FFT_UTILS_H_
 
 #include <cmath>
-#include <stdarg.h>
 #include <cstdio>
 
 #include "ska-sdp-func/utility/sdp_mem.h"

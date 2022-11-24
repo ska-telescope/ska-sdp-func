@@ -9,8 +9,8 @@
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
-#include <vector>
 #include <iostream>
+#include <vector>
 
 #include "ska-sdp-func/rfi/sdp_twosm_rfi_flagger.h"
 #include "ska-sdp-func/utility/sdp_logging.h"

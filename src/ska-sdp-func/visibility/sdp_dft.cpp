@@ -3,10 +3,10 @@
 #include <cmath>
 #include <complex>
 
-#include "ska-sdp-func/visibility/sdp_dft.h"
+#include "ska-sdp-func/utility/sdp_data_model_checks.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
-#include "ska-sdp-func/utility/sdp_data_model_checks.h"
+#include "ska-sdp-func/visibility/sdp_dft.h"
 
 #define C_0 299792458.0
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
@@ -107,28 +107,28 @@ static void check_params_v00(
 )
 {
     if (*status) return;
-    const sdp_MemLocation location = sdp_mem_location(vis);
-    if (sdp_mem_location(source_fluxes) != location ||
-            sdp_mem_location(source_directions) != location ||
-            sdp_mem_location(uvw_lambda) != location)
+
+    // Check metadata.
+    sdp_MemLocation vis_location = SDP_MEM_CPU;
+    int64_t num_times = 0;
+    int64_t num_baselines = 0;
+    int64_t num_channels = 0;
+    int64_t num_pols = 0;
+    sdp_data_model_get_vis_metadata(vis, 0, &vis_location,
+            &num_times, &num_baselines, &num_channels, &num_pols, status
+    );
+    sdp_mem_check_c_contiguity(source_directions, status);
+    sdp_mem_check_c_contiguity(source_fluxes, status);
+    sdp_mem_check_c_contiguity(uvw_lambda, status);
+    sdp_mem_check_c_contiguity(vis, status);
+    sdp_mem_check_writeable(vis, status);
+
+    if (sdp_mem_location(source_fluxes) != vis_location ||
+            sdp_mem_location(source_directions) != vis_location ||
+            sdp_mem_location(uvw_lambda) != vis_location)
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Memory location mismatch");
-        return;
-    }
-    if (sdp_mem_is_read_only(vis))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Visibility data must be writable.");
-        return;
-    }
-    if (!sdp_mem_is_c_contiguous(source_fluxes) ||
-            !sdp_mem_is_c_contiguous(source_directions) ||
-            !sdp_mem_is_c_contiguous(uvw_lambda) ||
-            !sdp_mem_is_c_contiguous(vis))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("All arrays must be C contiguous");
         return;
     }
     if (!sdp_mem_is_complex(source_fluxes))
@@ -137,56 +137,13 @@ static void check_params_v00(
         SDP_LOG_ERROR("Source flux values must be complex");
         return;
     }
-    if (!sdp_mem_is_complex(vis))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Visibility values must be complex");
-        return;
-    }
-    const int64_t num_times      = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_baselines  = sdp_mem_shape_dim(vis, 1);
-    const int64_t num_channels   = sdp_mem_shape_dim(vis, 2);
-    const int64_t num_pols       = sdp_mem_shape_dim(vis, 3);
     const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
-    if (num_pols != 4 && num_pols != 1)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The number of polarisations should be 4 or 1");
-        return;
-    }
-    if (sdp_mem_shape_dim(source_directions, 1) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The source_directions array must have shape "
-                "[num_components, 3] (expected [%d, 3])", num_components
-        );
-        return;
-    }
-    if (sdp_mem_shape_dim(source_fluxes, 0) != num_components ||
-            sdp_mem_shape_dim(source_fluxes, 1) != num_channels ||
-            sdp_mem_shape_dim(source_fluxes, 2) != num_pols)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The source_fluxes array must have shape "
-                "[num_components, num_channels, num_pols] "
-                "(expected [%d, %d, %d])",
-                num_components, num_channels, num_pols
-        );
-        return;
-    }
-    if (sdp_mem_shape_dim(uvw_lambda, 0) != num_times ||
-            sdp_mem_shape_dim(uvw_lambda, 1) != num_baselines ||
-            sdp_mem_shape_dim(uvw_lambda, 2) != num_channels ||
-            sdp_mem_shape_dim(uvw_lambda, 3) != 3)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("The uvw_lamda array must have shape "
-                "[num_times, num_baselines, num_channels, 3] "
-                "(expected [%d, %d, %d, 3])",
-                num_times, num_baselines, num_channels
-        );
-        return;
-    }
+    const int64_t shape_directions[] = {num_components, 3};
+    const int64_t shape_fluxes[] = {num_components, num_channels, num_pols};
+    const int64_t shape_uvw[] = {num_times, num_baselines, num_channels, 3};
+    sdp_mem_check_shape(source_directions, 2, shape_directions, status);
+    sdp_mem_check_shape(source_fluxes, 3, shape_fluxes, status);
+    sdp_mem_check_shape(uvw_lambda, 4, shape_uvw, status);
 }
 
 
@@ -389,6 +346,7 @@ static void check_params_v01(
 {
     if (*status) return;
 
+    // Check metadata for visibilities.
     sdp_MemType vis_type = SDP_MEM_VOID;
     sdp_MemLocation vis_location = SDP_MEM_CPU;
     int64_t num_times = 0;
@@ -408,6 +366,7 @@ static void check_params_v01(
     sdp_mem_check_writeable(vis, status);
     sdp_mem_check_c_contiguity(vis, status);
 
+    // Check metadata for uvw.
     sdp_data_model_check_uvw(
             uvw,
             SDP_MEM_VOID,
@@ -417,11 +376,13 @@ static void check_params_v01(
             status
     );
 
+    // Check metadata for source directions.
     sdp_mem_check_location(source_directions, vis_location, status);
     sdp_mem_check_c_contiguity(source_directions, status);
     const int64_t num_components = sdp_mem_shape_dim(source_directions, 0);
     sdp_mem_check_dim_size(source_directions, 1, 3, status);
 
+    // Check metadata for source fluxes.
     if (*status) return;
     if (!sdp_mem_is_complex(source_fluxes))
     {
@@ -431,11 +392,7 @@ static void check_params_v01(
     }
     sdp_mem_check_location(source_fluxes, vis_location, status);
     sdp_mem_check_c_contiguity(source_fluxes, status);
-    int64_t sf_shape[3] = {
-        num_components,
-        num_channels,
-        num_pols
-    };
+    const int64_t sf_shape[] = {num_components, num_channels, num_pols};
     sdp_mem_check_shape(source_fluxes, 3, sf_shape, status);
 }
 

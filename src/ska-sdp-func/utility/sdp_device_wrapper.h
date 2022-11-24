@@ -7,8 +7,9 @@
  * @file sdp_device_wrapper.h
  */
 
-#include "ska-sdp-func/utility/sdp_errors.h"
 #include <stdint.h>
+
+#include "ska-sdp-func/utility/sdp_errors.h"
 
 #ifdef __cplusplus
 extern "C" {
