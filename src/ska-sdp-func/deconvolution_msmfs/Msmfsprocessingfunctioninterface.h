@@ -20,6 +20,11 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup deconvolution_msmfs_func
+ * @{
+ */
+
+/**
  * @brief C (untemplated) version of the function which allocates and clears the data structure that will
  * hold all the dirty moment images on the device.
  *
@@ -126,6 +131,8 @@ void sdp_msmfs_perform
     sdp_Mem *gaussian_source_variance,
     sdp_Mem *gaussian_source_taylor_intensities
     );
+
+/** @} */ /* End group deconvolution_msmfs_func. */
 
 #ifdef __cplusplus
 }

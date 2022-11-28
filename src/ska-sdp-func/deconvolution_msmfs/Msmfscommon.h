@@ -74,7 +74,7 @@ struct Gaussian_shape_configurations
  * @var Gaussian_source::variance
  * Member 'variance' variance of this gaussian source.
  * @var Gaussian_source::intensities
- * Member 'intensities' intensity at peak of source (once loop­_gain applied in cleaning minor cycle) at each of num_taylor moments.
+ * Member 'intensities' intensity at peak of source (once loop_gain applied in cleaning minor cycle) at each of num_taylor moments.
  */
 template<typename PRECISION>
 struct Gaussian_source
