@@ -198,6 +198,15 @@ PRECISION2* allocate_gains_device
     (const unsigned int num_receivers);
 
 /**
+ * @brief Gain calibration utility function that generates pseudo-random numbers
+ * Uses Knuth's method to find a pseudo-gaussian random number with mean 0 and standard deviation 1
+ *
+ * @return The pseudo-random number.
+ */
+template<typename PRECISION>
+PRECISION get_random_gaussian();
+
+/**
  * @brief Gain calibration function that displays the actual and calculated gains with
  * all the calculated gains rotated so receiver 0 has zero phase.
  *
@@ -222,8 +231,6 @@ void display_gains_actual_and_calculated
  */
 template<typename PRECISION2>
 void free_gains_device(PRECISION2 *gains_device);
-
-
 
 
 #endif /* include guard */

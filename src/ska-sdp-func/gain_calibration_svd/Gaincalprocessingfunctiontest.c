@@ -80,24 +80,6 @@ int gain_calibration_interface_test()
     sdp_gaincal_set_receiver_pairs_device(receiver_pairs_host, receiver_pairs_device, num_baselines);
     sdp_Mem *gains_device = sdp_gaincal_allocate_gains_device(num_receivers, SDP_MEM_PRECISION);
 
-/*
-    calculate_measured_and_predicted_visibilities_device<VIS_PRECISION2, VIS_PRECISION, PRECISION2>
-        (vis_predicted_host, receiver_pairs_host, num_baselines, actual_gains_host,
-        num_receivers, vis_measured_device, vis_predicted_device);
-    uint2 *receiver_pairs_device = allocate_receiver_pairs_device(num_baselines);
-    set_receiver_pairs_device(receiver_pairs_host, receiver_pairs_device, num_baselines);
-    PRECISION2 *gains_device = allocate_gains_device<PRECISION2>(num_receivers);
-    // wrap the simple measured visibilities, predicted visibilities, receiver pairs and gains as sdp_Mem
-    sdp_Error *status;
-    const int64_t vis_shape[] = {num_baselines};
-    sdp_Mem *vis_measured = sdp_mem_create_wrapper(vis_measured_device, SDP_MEM_PRECISION, SDP_MEM_GPU, 1, vis_shape, 0, status);
-    sdp_Mem *vis_predicted = sdp_mem_create_wrapper(vis_predicted_device, SDP_MEM_PRECISION, SDP_MEM_GPU, 1, vis_shape, 0, status);
-    const int64_t receiver_pairs_shape[] = {num_baselines, 2};
-    sdp_Mem *receiver_pairs = sdp_mem_create_wrapper(receiver_pairs_device, SDP_MEM_INT, SDP_MEM_GPU, 2, receiver_pairs_shape, 0, status);
-    const int64_t gains_shape[] = {num_receivers};
-    sdp_Mem *gains = sdp_mem_create_wrapper(gains_device, SDP_MEM_PRECISION, SDP_MEM_GPU, 1, gains_shape, 0, status);
-*/
-
     sdp_gaincal_perform(vis_measured_device, vis_predicted_device, receiver_pairs_device, num_receivers, num_baselines,
         max_calibration_cycles, gains_device);
 

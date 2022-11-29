@@ -16,6 +16,9 @@
 
 #include "ska-sdp-func/utility/sdp_mem.h"
 
-// put any Gaincalprocessingfunctiontest.c function declarations here
+/**
+ * @brief Main function to execute the interface test.
+ */
+int gain_calibration_interface_test(void);
 
 #endif /* include guard */

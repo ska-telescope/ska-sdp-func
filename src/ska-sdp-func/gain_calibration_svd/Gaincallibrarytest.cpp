@@ -8,27 +8,10 @@
 
 #define GAINCAL_PRECISION_SINGLE 1
 
-// use Knuth's method to find a pseudo-gaussian random number with mean 0 and standard deviation 1
-double get_random_gaussian()
-{
-    double v1, v2, s;
-    do
-    {
-        v1 = 2.0 * ((double) rand()/RAND_MAX) - 1;
-        v2 = 2.0 * ((double) rand()/RAND_MAX) - 1;
-        s = v1*v1 + v2*v2;
-    }
-    while (s>=1.0);
-    if (s == 0.0)
-        return 0.0;
-    else
-        return v1 * sqrt(-2.0*log(s)/s);
-}
-
 /**********************************************************************
  * Main method to execute
  **********************************************************************/
-int main(int argc, char *argv[])
+int gain_calibration_library_test()
 {
     printf("Gain calibration library test starting");
     #ifdef GAINCAL_PRECISION_SINGLE
@@ -58,10 +41,10 @@ int main(int argc, char *argv[])
     VIS_PRECISION2 *vis_predicted_device = allocate_visibilities_device<VIS_PRECISION2>(num_baselines);
     VIS_PRECISION2 *vis_measured_device = allocate_visibilities_device<VIS_PRECISION2>(num_baselines);
     PRECISION2 actual_gains_host[num_receivers];
-    for (int receiver=0; receiver<num_receivers; receiver++)
+    for (unsigned int receiver=0; receiver<num_receivers; receiver++)
     {
-        PRECISION amplitude = (PRECISION)(1.0+get_random_gaussian()*0.1);
-        PRECISION phase = get_random_gaussian()*0.1;
+        PRECISION amplitude = (PRECISION)(1.0+get_random_gaussian<PRECISION>()*0.1);
+        PRECISION phase = get_random_gaussian<PRECISION>()*(PRECISION)0.1;
         actual_gains_host[receiver].x = amplitude * cos(phase);
         actual_gains_host[receiver].y = amplitude * sin(phase);
     }

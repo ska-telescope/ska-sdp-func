@@ -2,6 +2,7 @@
 set(${CMAKE_PROJECT_NAME}_TEST_FOLDERS
     examples
     fourier_transforms
+    gain_calibration
     grid_data
     rfi
     utility

@@ -157,7 +157,8 @@ void calculate_cuda_configs(int *cuda_block_size, int *cuda_num_threads)
 template<typename PRECISION> cusolverStatus_t CUSOLVERDNGESVD_BUFFERSIZE
     (cusolverDnHandle_t handle, int m, int n, int *Lwork)
 {
-    PRECISION::unimplemented_function; // only allow specialisations of this function 
+    PRECISION::unimplemented_function; // only allow specialisations of this function
+    return CUSOLVER_STATUS_EXECUTION_FAILED;
 }
 template<> cusolverStatus_t CUSOLVERDNGESVD_BUFFERSIZE<float>
     (cusolverDnHandle_t handle, int m, int n, int *Lwork)
@@ -175,6 +176,7 @@ template<typename PRECISION> cusolverStatus_t CUSOLVERDNGESVD
     PRECISION *S, PRECISION *U, int ldu, PRECISION *VT, int ldvt, PRECISION *work, int lwork, PRECISION *rwork, int *devInfo)
 {
     PRECISION::unimplemented_function; // only allow specialisations of this function 
+    return CUSOLVER_STATUS_EXECUTION_FAILED;
 }
 template<> cusolverStatus_t CUSOLVERDNGESVD<float>
     (cusolverDnHandle_t handle, signed char jobu, signed char jobvt, int m, int n, float *A, int lda,

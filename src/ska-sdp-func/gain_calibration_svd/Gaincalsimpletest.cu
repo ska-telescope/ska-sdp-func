@@ -107,7 +107,7 @@ uint2* allocate_receiver_pairs_host
 
 
 /*****************************************************************************
- * Gain calibration function that generates some simple sample visibilities on the host
+ * Gain calibration function that generates receiver pairs on the host
  *****************************************************************************/
 void generate_sample_receiver_pairs_host
     (
@@ -286,6 +286,31 @@ PRECISION2* allocate_gains_device
 
 template float2* allocate_gains_device<float2>(const unsigned int);
 template double2* allocate_gains_device<double2>(const unsigned int);
+
+
+/*****************************************************************************
+ * Gain calibration utility function that generates pseudo-random numbers
+ * Uses Knuth's method to find a pseudo-gaussian random number with mean 0 and standard deviation 1
+ *****************************************************************************/
+template<typename PRECISION>
+PRECISION get_random_gaussian()
+{
+    PRECISION v1, v2, s;
+    do
+    {
+        v1 = 2.0 * ((PRECISION) rand()/RAND_MAX) - 1;
+        v2 = 2.0 * ((PRECISION) rand()/RAND_MAX) - 1;
+        s = v1*v1 + v2*v2;
+    }
+    while (s>=1.0);
+    if (s == 0.0)
+        return 0.0;
+    else
+        return v1 * sqrt(-2.0*log(s)/s);
+}
+
+template float get_random_gaussian<float>();
+template double get_random_gaussian<double>();
 
 
 /*****************************************************************************
