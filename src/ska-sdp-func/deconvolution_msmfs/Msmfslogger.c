@@ -58,9 +58,10 @@ void logger(enum logType messageLevel, const char *message, ...)
  *****************************************************************************/
 void setLogLevel(enum logType newLevel)
 {
-    if (newLevel < LOG_EMERG)
+    if (newLevel < LOG_EMERG) {
         newLevel = LOG_EMERG;
-    else if (newLevel > LOG_DEBUG)
+    } else if (newLevel > LOG_DEBUG) {
         newLevel = LOG_DEBUG;
+}
     logLevel = newLevel;
 }

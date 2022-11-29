@@ -14,7 +14,7 @@
  * Templated (non-C interface) version of the function which performs the entire msmfs deconvolution
  *****************************************************************************/
 template<typename PRECISION>
-void perform_msmfs
+void sdp_perform_msmfs
     (
     PRECISION *dirty_moment_images_device,
     PRECISION *psf_moment_images_device,
@@ -42,9 +42,9 @@ void perform_msmfs
         num_psf, psf_moment_size, psf_moment_size);
 
     // calculate suitable cuda block size in1D and 2D and number of available cuda threads
-    int cuda_block_size;
+    int cuda_block_size = 0;
     dim3 cuda_block_size_2D;
-    int cuda_num_threads;
+    int cuda_num_threads = 0;
     calculate_cuda_configs(&cuda_block_size, &cuda_block_size_2D, &cuda_num_threads);
     
     // set up gaussian shape scales with specified or default variances all L1-normalised
@@ -312,7 +312,7 @@ void sdp_msmfs_perform
         // create an initially empty list of sources to hold those gaussian source found in the minor cycle loops (for single major cycle)
         Gaussian_source_list<float> gaussian_source_list = allocate_gaussian_source_list<float>(max_gaussian_sources_host);
         
-        perform_msmfs<float>(
+        sdp_perform_msmfs<float>(
             (float *)sdp_mem_data(dirty_moment_images), (float *)sdp_mem_data(psf_moment_images),
             dirty_moment_size, num_scales, num_taylor, psf_moment_size, image_border,
             (float)convolution_accuracy, (float)clean_loop_gain, max_gaussian_sources_host,
@@ -320,7 +320,7 @@ void sdp_msmfs_perform
             gaussian_source_list);
 
         // copy the resulting gaussian_source_list back to the host
-        Gaussian_source<float> *gaussian_sources_host; // sources that have distinct scales/positions (duplicates get merged)
+        Gaussian_source<float> *gaussian_sources_host = nullptr; // sources that have distinct scales/positions (duplicates get merged)
         gaussian_sources_host = (Gaussian_source<float>*)malloc(max_gaussian_sources_host*sizeof(Gaussian_source<float>));
         copy_gaussian_source_list_to_host<float>
             (gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,
@@ -361,7 +361,7 @@ void sdp_msmfs_perform
         // create an initially empty list of sources to hold those gaussian source found in the minor cycle loops (for single major cycle)
         Gaussian_source_list<double> gaussian_source_list = allocate_gaussian_source_list<double>(max_gaussian_sources_host);
         
-        perform_msmfs<double>(
+        sdp_perform_msmfs<double>(
             (double *)sdp_mem_data(dirty_moment_images), (double *)sdp_mem_data(psf_moment_images),
             dirty_moment_size, num_scales, num_taylor, psf_moment_size, image_border,
             convolution_accuracy, clean_loop_gain, max_gaussian_sources_host,
@@ -369,7 +369,7 @@ void sdp_msmfs_perform
             gaussian_source_list);
 
         // copy the resulting gaussian_source_list back to the host
-        Gaussian_source<double> *gaussian_sources_host; // sources that have distinct scales/positions (duplicates get merged)
+        Gaussian_source<double> *gaussian_sources_host = nullptr; // sources that have distinct scales/positions (duplicates get merged)
         gaussian_sources_host = (Gaussian_source<double>*)malloc(max_gaussian_sources_host*sizeof(Gaussian_source<double>));
         copy_gaussian_source_list_to_host<double>
             (gaussian_source_list.gaussian_sources_device, gaussian_source_list.num_gaussian_sources_device,

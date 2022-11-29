@@ -11,7 +11,7 @@
 /**********************************************************************
  * Main method to execute
  **********************************************************************/
-int msmfs_library_test()
+int sdp_msmfs_library_test()
 {
     printf("Msmfs library test starting");
     #ifdef MSMFS_PRECISION_SINGLE
@@ -62,9 +62,9 @@ int msmfs_library_test()
     calculate_simple_psf_image<PRECISION>(psf_moment_images_device, psf_moment_size, num_psf);
 
     // calculate suitable cuda block size in1D and 2D and number of available cuda threads
-    int cuda_block_size;
+    int cuda_block_size = 0;
     dim3 cuda_block_size_2D;
-    int cuda_num_threads;
+    int cuda_num_threads = 0;
     calculate_cuda_configs(&cuda_block_size, &cuda_block_size_2D, &cuda_num_threads);
     
     // set up gaussian shape scales with specified or default variances all L1-normalised
