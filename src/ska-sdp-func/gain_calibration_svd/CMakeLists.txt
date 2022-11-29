@@ -1,0 +1,16 @@
+SKA_SDP_FUNC_SRC(
+    Gaincallogger.h
+    Gaincallogger.c
+    Gaincalfunctionsdevice.h
+    Gaincalfunctionsdevice.cu
+    Gaincalfunctionshost.h
+    Gaincalfunctionshost.cu
+    Gaincalsimpletest.h
+    Gaincalsimpletest.cu
+    Gaincallibrarytest.h
+    Gaincallibrarytest.cpp
+    Gaincalprocessingfunctioninterface.h
+    Gaincalprocessingfunctioninterface.cpp
+    Gaincalprocessingfunctiontest.h
+    Gaincalprocessingfunctiontest.c
+)
