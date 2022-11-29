@@ -35,7 +35,7 @@ void sdp_perform_msmfs
     const unsigned int num_psf = 2*num_taylor - 1; // determined by the number of Taylor terms
     const unsigned int scale_moment_size = dirty_moment_size-2*image_border; // one dimensional size of scale moment residuals, assumed square
     const unsigned int psf_convolved_size = psf_moment_size-2*image_border; // one dimensional size of convolved psfs, assumed square
-    logger(LOG_NOTICE,
+    sdp_logger(LOG_NOTICE,
         "Msmfs performed on %ux%u image with %u scales, %u Taylor terms, %u border pixels"
         ", and with %u PSF each of size %ux%u",
         dirty_moment_size, dirty_moment_size, num_scales, num_taylor, image_border,
@@ -43,7 +43,7 @@ void sdp_perform_msmfs
 
     // calculate suitable cuda block size in1D and 2D and number of available cuda threads
     int cuda_block_size = 0;
-    dim3 cuda_block_size_2D;
+    dim3 cuda_block_size_2D = 0;
     int cuda_num_threads = 0;
     calculate_cuda_configs(&cuda_block_size, &cuda_block_size_2D, &cuda_num_threads);
     
@@ -157,7 +157,7 @@ sdp_Mem *sdp_msmfs_allocate_dirty_image
     }
     else
     {
-        logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+        sdp_logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
     }
     return dirty_moment_images;
 }
@@ -181,7 +181,7 @@ void sdp_msmfs_calculate_simple_dirty_image
     }
     else
     {
-        logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+        sdp_logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
     }
 }
 
@@ -202,7 +202,7 @@ void sdp_msmfs_free_dirty_image(sdp_Mem *dirty_moment_images)
     }
     else
     {
-        logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+        sdp_logger(LOG_CRIT, "Dirty moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
     }
 }
 
@@ -233,7 +233,7 @@ sdp_Mem *sdp_msmfs_allocate_psf_image
     }
     else
     {
-        logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+        sdp_logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
     }
     return psf_moment_images;
 }
@@ -258,7 +258,7 @@ void sdp_msmfs_calculate_simple_psf_image
     }
     else
     {
-        logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+        sdp_logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
     }
 }
 
@@ -279,7 +279,7 @@ void sdp_msmfs_free_psf_image(sdp_Mem *psf_moment_images)
     }
     else
     {
-        logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
+        sdp_logger(LOG_CRIT, "PSF moment images must be either SDP_MEM_FLOAT or else SDP_MEM_DOUBLE");
     }
 }
 
@@ -407,6 +407,6 @@ void sdp_msmfs_perform
     }
     else
     {
-        logger(LOG_CRIT, "Dirty moment images and PSF moment images must both be either SDP_MEM_FLOAT or else both SDP_MEM_DOUBLE");
+        sdp_logger(LOG_CRIT, "Dirty moment images and PSF moment images must both be either SDP_MEM_FLOAT or else both SDP_MEM_DOUBLE");
     }
 }

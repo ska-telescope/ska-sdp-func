@@ -22,7 +22,7 @@ int sdp_msmfs_library_test()
         #define PRECISION double
     #endif
 
-    setLogLevel(LOG_INFO);
+    sdp_set_log_level(LOG_INFO);
 
     // specify msmsf key configuration parameters
     const unsigned int dirty_moment_size = 8192; // one dimensional size of image, assumed square
@@ -30,7 +30,7 @@ int sdp_msmfs_library_test()
     unsigned int num_taylor = 3; // number of taylor moments to use in msmfs cleaning
     if (num_taylor > MAX_TAYLOR_MOMENTS)
     {
-        logger(LOG_WARNING,
+        sdp_logger(LOG_WARNING,
             "Number of Taylor moments was set at %u but will be capped at %u, change MAX_TAYLOR_MOMENTS to adjust",
             num_taylor, MAX_TAYLOR_MOMENTS);
         num_taylor = MAX_TAYLOR_MOMENTS;
@@ -47,7 +47,7 @@ int sdp_msmfs_library_test()
     const unsigned int num_psf = 2*num_taylor - 1; // determined by the number of Taylor terms
     const unsigned int scale_moment_size = dirty_moment_size-2*image_border; // one dimensional size of scale moment residuals, assumed square
     const unsigned int psf_convolved_size = psf_moment_size-2*image_border; // one dimensional size of convolved psfs, assumed square
-    logger(LOG_NOTICE,
+    sdp_logger(LOG_NOTICE,
         "Msmfs performed on %ux%u image with %u scales, %u Taylor terms, %u border pixels"
         ", and with %u PSF each of size %ux%u",
         dirty_moment_size, dirty_moment_size, num_scales, num_taylor, image_border,

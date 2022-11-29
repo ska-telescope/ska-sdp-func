@@ -42,9 +42,9 @@ cudaError_t checkCudaStatus()
     cudaError_t errorSynch = cudaGetLastError();
     cudaError_t errorAsync = cudaDeviceSynchronize(); // blocks host thread until all previously issued CUDA commands have completed
     if (errorSynch != cudaSuccess)
-        logger(LOG_ERR, "Cuda synchronous error %s", cudaGetErrorString(errorSynch));
+        sdp_logger(LOG_ERR, "Cuda synchronous error %s", cudaGetErrorString(errorSynch));
     if (errorAsync != cudaSuccess)
-        logger(LOG_ERR, "Cuda asynchronous error %s", cudaGetErrorString(errorAsync));
+        sdp_logger(LOG_ERR, "Cuda asynchronous error %s", cudaGetErrorString(errorAsync));
     if (errorSynch != cudaSuccess)
         return errorSynch;
     else
@@ -78,7 +78,7 @@ void calculate_cuda_configs(int *cuda_block_size, dim3 *cuda_block_size_2D, int 
     (*cuda_block_size_2D).x = cuda_block_size_sqrt;
     (*cuda_block_size_2D).y = cuda_block_size_sqrt;
     (*cuda_block_size_2D).z = 1;
-    logger(LOG_DEBUG,
+    sdp_logger(LOG_DEBUG,
         "Cuda minimum 1D grid size available is %d"
         " and using 1D block size %d and 2D block size (%d,%d)",
         min_cuda_grid_size, *cuda_block_size,
@@ -91,7 +91,7 @@ void calculate_cuda_configs(int *cuda_block_size, dim3 *cuda_block_size_2D, int 
     CUDA_CHECK_RETURN(cudaDeviceGetAttribute(&cuda_num_multiprocessors, cudaDevAttrMultiProcessorCount, cuda_device));
     CUDA_CHECK_RETURN(cudaDeviceGetAttribute(&cuda_warp_size, cudaDevAttrWarpSize, cuda_device));
     *cuda_num_threads = cuda_num_multiprocessors*cuda_warp_size;
-    logger(LOG_DEBUG,
+    sdp_logger(LOG_DEBUG,
         "Cuda device has %d multiprocessors and %d threads per warp",
         cuda_num_multiprocessors, cuda_warp_size);
     checkCudaStatus();
@@ -156,7 +156,7 @@ Gaussian_shape_configurations<PRECISION> allocate_shape_configurations
         // note the support is proportional to the square root of the variance for a gaussian kernel
         scale_bias_host[scale_index] = (PRECISION)1.0
             - scale_bias_factor*sqrt(variances_host[scale_index]/variances_max);
-        logger(LOG_DEBUG,
+        sdp_logger(LOG_DEBUG,
             "Kernel index %u has variance %f and scale bias %f",
             scale_index, variances_host[scale_index], scale_bias_host[scale_index]);
     }
@@ -175,7 +175,7 @@ Gaussian_shape_configurations<PRECISION> allocate_shape_configurations
     for (unsigned int scale_index=0; scale_index<num_scales; scale_index++)
     {
         convolution_support_host[scale_index] = (unsigned int)floor(sqrt(-2*variances_host[scale_index]*log(convolution_accuracy)));        
-        logger(LOG_DEBUG,
+        sdp_logger(LOG_DEBUG,
             "Kernel index %u will use convolution support %u",
             scale_index, convolution_support_host[scale_index]);
         for (unsigned int scale_index2=0; scale_index2<num_scales; scale_index2++)
@@ -372,7 +372,7 @@ void calculate_scale_moment_residuals
     cudaEventRecord(stop_time);
     cudaEventSynchronize(stop_time);
     cudaEventElapsedTime(&execution_time, start_time, stop_time);
-    logger(LOG_DEBUG, "Execution time for calculating scale moment residuals is %.3fms", execution_time);
+    sdp_logger(LOG_DEBUG, "Execution time for calculating scale moment residuals is %.3fms", execution_time);
 }
 
 template void calculate_scale_moment_residuals<float>(float*, const unsigned int, const unsigned int, float*, const unsigned int, const unsigned int, float*, unsigned int*, dim3);
@@ -593,7 +593,7 @@ void calculate_inverse_hessian_matrices
     cusolverStatus_t cusolver_status = cusolverDnCreate(&cusolver);
     if (cusolver_status != CUSOLVER_STATUS_SUCCESS)
     {
-        logger(LOG_CRIT, "Unable to create a cuSolver handle");
+        sdp_logger(LOG_CRIT, "Unable to create a cuSolver handle");
     }
     // create an int[] on device to represent the row pivots for permutation matrix
     int *pivot_rows_device;
@@ -619,7 +619,7 @@ void calculate_inverse_hessian_matrices
             working_space_device, pivot_rows_device, cusolver_info_device);
         if (cusolver_status != CUSOLVER_STATUS_SUCCESS)
         {
-            logger(LOG_CRIT, "LU factorization unsuccessful for hessian matrix for scale index %u", hessian_index);
+            sdp_logger(LOG_CRIT, "LU factorization unsuccessful for hessian matrix for scale index %u", hessian_index);
         }
         if (check_cusolver_info)
         {
@@ -628,7 +628,7 @@ void calculate_inverse_hessian_matrices
             CUDA_CHECK_RETURN(cudaMemcpy(&cusolver_info_host, cusolver_info_device, sizeof(int), cudaMemcpyDeviceToHost));
             if (cusolver_info_host != 0)
             {
-                logger(LOG_WARNING, "LU factorization for hessian matrix for scale index %u returned device info %d",
+                sdp_logger(LOG_WARNING, "LU factorization for hessian matrix for scale index %u returned device info %d",
                     hessian_index, cusolver_info_host);
             }
         }
@@ -641,7 +641,7 @@ void calculate_inverse_hessian_matrices
             inverse_hessian_device, num_taylor, cusolver_info_device);
         if (cusolver_status != CUSOLVER_STATUS_SUCCESS)
         {
-            logger(LOG_CRIT, "LU inversion unsuccessful for hessian matrix for scale index ", hessian_index);
+            sdp_logger(LOG_CRIT, "LU inversion unsuccessful for hessian matrix for scale index ", hessian_index);
         }
         if (check_cusolver_info)
         {
@@ -650,7 +650,7 @@ void calculate_inverse_hessian_matrices
             CUDA_CHECK_RETURN(cudaMemcpy(&cusolver_info_host, cusolver_info_device, sizeof(int), cudaMemcpyDeviceToHost));
             if (cusolver_info_host != 0)
             {
-                logger(LOG_WARNING, "LU inversion for hessian matrix for scale index %u returned device info %d",
+                sdp_logger(LOG_WARNING, "LU inversion for hessian matrix for scale index %u returned device info %d",
                     hessian_index, cusolver_info_host);
             }
         }
@@ -671,7 +671,7 @@ void calculate_inverse_hessian_matrices
     cudaEventRecord(stop_time);
     cudaEventSynchronize(stop_time);
     cudaEventElapsedTime(&execution_time, start_time, stop_time);
-    logger(LOG_DEBUG, "Execution time for calculating inverse hessian matrices is %.3fms", execution_time);
+    sdp_logger(LOG_DEBUG, "Execution time for calculating inverse hessian matrices is %.3fms", execution_time);
 
 }
 
@@ -1194,11 +1194,11 @@ int perform_major_cycles
     {
         if (max_clean_cycles<10 || clean_cycle%10==0)
         {
-            logger(LOG_INFO, "Commencing clean cycle minor iteration %d", clean_cycle);
+            sdp_logger(LOG_INFO, "Commencing clean cycle minor iteration %d", clean_cycle);
         }
         else
         {
-            logger(LOG_DEBUG, "Commencing clean cycle minor iteration %d", clean_cycle);
+            sdp_logger(LOG_DEBUG, "Commencing clean cycle minor iteration %d", clean_cycle);
         }
 
         // calculate the principal solution at t=0
@@ -1213,7 +1213,7 @@ int perform_major_cycles
         cudaEventRecord(stop_time);
         cudaEventSynchronize(stop_time);
         cudaEventElapsedTime(&execution_time, start_time, stop_time);
-        logger(LOG_DEBUG, "Execution time for finding principal solution at peak across all scales at t=0 is %.3fms", execution_time);
+        sdp_logger(LOG_DEBUG, "Execution time for finding principal solution at peak across all scales at t=0 is %.3fms", execution_time);
         summed_time += execution_time;
 
         checkCudaStatus();
@@ -1245,7 +1245,7 @@ int perform_major_cycles
             cudaEventRecord(stop_time);
             cudaEventSynchronize(stop_time);
             cudaEventElapsedTime(&execution_time, start_time, stop_time);
-            logger(LOG_DEBUG, "Execution time for subtracting peak from each of the scale moment residuals is %.3fms", execution_time);
+            sdp_logger(LOG_DEBUG, "Execution time for subtracting peak from each of the scale moment residuals is %.3fms", execution_time);
             summed_time += execution_time;
 
             checkCudaStatus();
@@ -1259,7 +1259,7 @@ int perform_major_cycles
             cudaEventRecord(stop_time);
             cudaEventSynchronize(stop_time);
             cudaEventElapsedTime(&execution_time, start_time, stop_time);
-            logger(LOG_DEBUG, "Execution time for updating the source model is %.3fms", execution_time);
+            sdp_logger(LOG_DEBUG, "Execution time for updating the source model is %.3fms", execution_time);
             summed_time += execution_time;
 
             checkCudaStatus();
@@ -1267,7 +1267,7 @@ int perform_major_cycles
             clean_cycle++;
         }
     }
-    logger(LOG_NOTICE, "Cleaning completed after completing %u clean minor cycles in time %.3fms", clean_cycle, summed_time);
+    sdp_logger(LOG_NOTICE, "Cleaning completed after completing %u clean minor cycles in time %.3fms", clean_cycle, summed_time);
     // end of minor cycles
     return clean_cycle;
 }
