@@ -11,7 +11,7 @@
 /**********************************************************************
  * Main method to execute
  **********************************************************************/
-int library_test()
+int msmfs_library_test()
 {
     printf("Msmfs library test starting");
     #ifdef MSMFS_PRECISION_SINGLE
