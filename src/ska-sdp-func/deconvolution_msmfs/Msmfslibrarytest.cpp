@@ -63,7 +63,7 @@ int sdp_msmfs_library_test()
 
     // calculate suitable cuda block size in1D and 2D and number of available cuda threads
     int cuda_block_size = 0;
-    dim3 cuda_block_size_2D;
+    dim3 cuda_block_size_2D = 0;
     int cuda_num_threads = 0;
     calculate_cuda_configs(&cuda_block_size, &cuda_block_size_2D, &cuda_num_threads);
     

@@ -35,12 +35,12 @@
 
 #include "Msmfslogger.h"
 
-enum logType logLevel; /* please only change via setLogLevel */
+enum logType logLevel; /* please only change via sdp_set_log_level */
 
 /*****************************************************************************
  * Provides a basic logger via printf statements
  *****************************************************************************/
-void logger(enum logType messageLevel, const char *message, ...)
+void sdp_logger(enum logType messageLevel, const char *message, ...)
 {
     if (messageLevel <= logLevel)
     {
@@ -56,12 +56,15 @@ void logger(enum logType messageLevel, const char *message, ...)
 /*****************************************************************************
  * Sets the logging level
  *****************************************************************************/
-void setLogLevel(enum logType newLevel)
+void sdp_set_log_level(enum logType newLevel)
 {
-    if (newLevel < LOG_EMERG) {
+    if (newLevel < LOG_EMERG) 
+    {
         newLevel = LOG_EMERG;
-    } else if (newLevel > LOG_DEBUG) {
+    } 
+    else if (newLevel > LOG_DEBUG) 
+    {
         newLevel = LOG_DEBUG;
-}
+    }
     logLevel = newLevel;
 }

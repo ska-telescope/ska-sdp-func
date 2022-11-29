@@ -13,7 +13,7 @@
 /**********************************************************************
  * Main function to execute the interface test
  **********************************************************************/
-int interface_test()
+int sdp_interface_test()
 {
     printf("Msmfs processing function interface test starting");
     #ifdef MSMFS_PRECISION_SINGLE

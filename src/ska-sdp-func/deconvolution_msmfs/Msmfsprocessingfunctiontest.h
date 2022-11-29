@@ -20,6 +20,6 @@
 /**
  * @brief Main function to execute the interface test.
  */
-int interface_test(void);
+int sdp_interface_test(void);
 
 #endif /* include guard */

@@ -51,14 +51,14 @@ enum logType {LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR, LOG_WARNING, LOG_NOTICE, 
  * @param messageLevel Logging level for message, one of the IETF syslog standard LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR, LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG.
  * @param message Message to output with trailing variabel arguments.
  */
-void logger(enum logType messageLevel, const char *message, ...);
+void sdp_logger(enum logType messageLevel, const char *message, ...);
 
 /**
  * @brief Sets the logging level
  * 
  * @param newLevel Logging level for message, one of the IETF syslog standard LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR, LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG.
  */
-void setLogLevel(enum logType newLevel);
+void sdp_set_log_level(enum logType newLevel);
 
 #ifdef __cplusplus
 }
