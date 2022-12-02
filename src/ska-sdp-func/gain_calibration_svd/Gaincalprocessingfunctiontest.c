@@ -42,8 +42,6 @@ int gain_calibration_interface_test()
         #define SDP_MEM_PRECISION SDP_MEM_COMPLEX_DOUBLE
     #endif
 
-    // note call srand with seed to have different random gains
-
     // create some simple sample visibilities and gains for testing
     const unsigned int num_receivers = 10;
     const unsigned int num_baselines = num_receivers*(num_receivers-1)/2;

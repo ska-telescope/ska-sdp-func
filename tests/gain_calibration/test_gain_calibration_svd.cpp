@@ -79,7 +79,6 @@ static void run_and_check(
         sdp_Mem *vis_predicted_device = sdp_gaincal_allocate_visibilities_device(num_baselines, input_type);
         sdp_Mem *vis_measured_device = sdp_gaincal_allocate_visibilities_device(num_baselines, input_type);
 
-        sdp_Error *status = NULL;
         const int64_t gains_shape[] = {num_receivers};
         sdp_Mem *actual_gains_host = NULL;
         if (input_type == SDP_MEM_COMPLEX_FLOAT)
@@ -120,8 +119,79 @@ static void run_and_check(
         if (expect_pass && !*status)
         {
             sdp_gaincal_display_gains_actual_and_calculated(actual_gains_host, gains_device, num_receivers);
-            // TODO perform a check on how close the actual and measured gains are to each other
-            assert(1);
+            // copy calculated gains back to the host
+            sdp_Mem *calculated_gains_host = sdp_mem_create_copy(gains_device, SDP_MEM_CPU, status);
+            // calculate the phase rotation required to align phase for receiver 0, just in float precision okay for display
+            float rotationActualReal;
+            float rotationActualImag;
+            float rotationCalculatedReal;
+            float rotationCalculatedImag;
+            if (input_type == SDP_MEM_COMPLEX_FLOAT)
+            {
+                rotationActualReal = ((float2 *)sdp_mem_data(actual_gains_host))[0].x
+                    / sqrt((float)(((float2 *)sdp_mem_data(actual_gains_host))[0].x*((float2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(actual_gains_host))[0].y*((float2 *)sdp_mem_data(actual_gains_host))[0].y));
+                rotationActualImag = -((float2 *)sdp_mem_data(actual_gains_host))[0].y
+                    / sqrt((float)(((float2 *)sdp_mem_data(actual_gains_host))[0].x*((float2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(actual_gains_host))[0].y*((float2 *)sdp_mem_data(actual_gains_host))[0].y));
+                rotationCalculatedReal = ((float2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    / sqrt((float)(((float2 *)sdp_mem_data(calculated_gains_host))[0].x*((float2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(calculated_gains_host))[0].y*((float2 *)sdp_mem_data(calculated_gains_host))[0].y));
+                rotationCalculatedImag = (float)-((float2 *)sdp_mem_data(calculated_gains_host))[0].y
+                    / sqrt((float)(((float2 *)sdp_mem_data(calculated_gains_host))[0].x*((float2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(calculated_gains_host))[0].y*((float2 *)sdp_mem_data(calculated_gains_host))[0].y));
+            }
+            else
+            {
+                rotationActualReal = (float)(((double2 *)sdp_mem_data(actual_gains_host))[0].x
+                    / sqrt((float)(((double2 *)sdp_mem_data(actual_gains_host))[0].x*((double2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((double2 *)sdp_mem_data(actual_gains_host))[0].y*((double2 *)sdp_mem_data(actual_gains_host))[0].y)));
+                rotationActualImag = -(float)(((double2 *)sdp_mem_data(actual_gains_host))[0].y
+                    / sqrt((float)(((double2 *)sdp_mem_data(actual_gains_host))[0].x*((double2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((double2 *)sdp_mem_data(actual_gains_host))[0].y*((double2 *)sdp_mem_data(actual_gains_host))[0].y)));
+                rotationCalculatedReal = ((double2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    / sqrt((float)(((double2 *)sdp_mem_data(calculated_gains_host))[0].x*((double2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    + ((double2 *)sdp_mem_data(calculated_gains_host))[0].y*((double2 *)sdp_mem_data(calculated_gains_host))[0].y));
+                rotationCalculatedImag = (float)-((float2 *)sdp_mem_data(calculated_gains_host))[0].y
+                    / sqrt((float)(((double2 *)sdp_mem_data(calculated_gains_host))[0].x*((double2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    + ((double2 *)sdp_mem_data(calculated_gains_host))[0].y*((double2 *)sdp_mem_data(calculated_gains_host))[0].y));
+            }
+            float tolerance_sq_dif = (float)(0.5*sqrt(num_receivers));
+            float sum_sq_dif = 0;
+            for (unsigned int receiver=0; receiver<num_receivers; receiver++)
+            {
+                float rotatedActualReal;
+                float rotatedActualImag;
+                float calculatedGainX;
+                float calculatedGainY;
+                if (input_type == SDP_MEM_COMPLEX_FLOAT)
+                {
+                    rotatedActualReal = ((float2 *)sdp_mem_data(actual_gains_host))[receiver].x*rotationActualReal
+                        - ((float2 *)sdp_mem_data(actual_gains_host))[receiver].y*rotationActualImag;
+                    rotatedActualImag = ((float2 *)sdp_mem_data(actual_gains_host))[receiver].x*rotationActualImag
+                        + ((float2 *)sdp_mem_data(actual_gains_host))[receiver].y*rotationActualReal;
+                    calculatedGainX = ((float2 *)sdp_mem_data(calculated_gains_host))[receiver].x;
+                    calculatedGainY = ((float2 *)sdp_mem_data(calculated_gains_host))[receiver].y;
+                }
+                else
+                {
+                    rotatedActualReal = (float)(((double2 *)sdp_mem_data(actual_gains_host))[receiver].x*rotationActualReal
+                        - ((double2 *)sdp_mem_data(actual_gains_host))[receiver].y*rotationActualImag);
+                    rotatedActualImag = (float)(((double2 *)sdp_mem_data(actual_gains_host))[receiver].x*rotationActualImag
+                        + ((double2 *)sdp_mem_data(actual_gains_host))[receiver].y*rotationActualReal);
+                    calculatedGainX = (float)((double2 *)sdp_mem_data(calculated_gains_host))[receiver].x;
+                    calculatedGainY = (float)((double2 *)sdp_mem_data(calculated_gains_host))[receiver].y;
+                }
+                float rotatedCalculatedReal = calculatedGainX*rotationCalculatedReal - calculatedGainY*rotationCalculatedImag;
+                float rotatedCalculatedImag = calculatedGainX*rotationCalculatedImag + calculatedGainY*rotationCalculatedReal;
+                sum_sq_dif += (rotatedCalculatedReal-rotatedActualReal)*(rotatedCalculatedReal-rotatedActualReal)
+                    + (rotatedCalculatedImag-rotatedActualImag)*(rotatedCalculatedImag-rotatedActualImag);
+                printf("Receiver %u has actual gain (%+9.4lf,%9.4lf) and rotated calculated gain (%+9.4lf,%9.4lf)\n",
+                    receiver, rotatedActualReal, rotatedActualImag, rotatedCalculatedReal, rotatedCalculatedImag);
+            }
+            sdp_mem_free(calculated_gains_host);
+            printf("L2 norm separation is %f\n", sqrt(sum_sq_dif));
+//            assert(sqrt(sum_sq_dif) < tolerance_sq_dif);
         }
 
         // clean up the allocated sdp_Mem data structures
