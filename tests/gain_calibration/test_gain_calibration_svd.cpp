@@ -62,7 +62,7 @@ static void run_and_check(
 )
 {
     // create some simple sample visibilities and gains for testing
-    const unsigned int num_receivers = 10;
+    const unsigned int num_receivers = 16;
     const unsigned int num_baselines = num_receivers*(num_receivers-1)/2;
     const unsigned int max_calibration_cycles = 10;
 
@@ -118,7 +118,7 @@ static void run_and_check(
 
         if (expect_pass && !*status)
         {
-            sdp_gaincal_display_gains_actual_and_calculated(actual_gains_host, gains_device, num_receivers);
+//            sdp_gaincal_display_gains_actual_and_calculated(actual_gains_host, gains_device, num_receivers);
             // copy calculated gains back to the host
             sdp_Mem *calculated_gains_host = sdp_mem_create_copy(gains_device, SDP_MEM_CPU, status);
             // calculate the phase rotation required to align phase for receiver 0, just in float precision okay for display
@@ -129,34 +129,34 @@ static void run_and_check(
             if (input_type == SDP_MEM_COMPLEX_FLOAT)
             {
                 rotationActualReal = ((float2 *)sdp_mem_data(actual_gains_host))[0].x
-                    / sqrt((float)(((float2 *)sdp_mem_data(actual_gains_host))[0].x*((float2 *)sdp_mem_data(actual_gains_host))[0].x
-                    + ((float2 *)sdp_mem_data(actual_gains_host))[0].y*((float2 *)sdp_mem_data(actual_gains_host))[0].y));
+                    / sqrt(((float2 *)sdp_mem_data(actual_gains_host))[0].x*((float2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(actual_gains_host))[0].y*((float2 *)sdp_mem_data(actual_gains_host))[0].y);
                 rotationActualImag = -((float2 *)sdp_mem_data(actual_gains_host))[0].y
-                    / sqrt((float)(((float2 *)sdp_mem_data(actual_gains_host))[0].x*((float2 *)sdp_mem_data(actual_gains_host))[0].x
-                    + ((float2 *)sdp_mem_data(actual_gains_host))[0].y*((float2 *)sdp_mem_data(actual_gains_host))[0].y));
+                    / sqrt(((float2 *)sdp_mem_data(actual_gains_host))[0].x*((float2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(actual_gains_host))[0].y*((float2 *)sdp_mem_data(actual_gains_host))[0].y);
                 rotationCalculatedReal = ((float2 *)sdp_mem_data(calculated_gains_host))[0].x
-                    / sqrt((float)(((float2 *)sdp_mem_data(calculated_gains_host))[0].x*((float2 *)sdp_mem_data(calculated_gains_host))[0].x
-                    + ((float2 *)sdp_mem_data(calculated_gains_host))[0].y*((float2 *)sdp_mem_data(calculated_gains_host))[0].y));
-                rotationCalculatedImag = (float)-((float2 *)sdp_mem_data(calculated_gains_host))[0].y
-                    / sqrt((float)(((float2 *)sdp_mem_data(calculated_gains_host))[0].x*((float2 *)sdp_mem_data(calculated_gains_host))[0].x
-                    + ((float2 *)sdp_mem_data(calculated_gains_host))[0].y*((float2 *)sdp_mem_data(calculated_gains_host))[0].y));
+                    / sqrt(((float2 *)sdp_mem_data(calculated_gains_host))[0].x*((float2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(calculated_gains_host))[0].y*((float2 *)sdp_mem_data(calculated_gains_host))[0].y);
+                rotationCalculatedImag = -((float2 *)sdp_mem_data(calculated_gains_host))[0].y
+                    / sqrt(((float2 *)sdp_mem_data(calculated_gains_host))[0].x*((float2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    + ((float2 *)sdp_mem_data(calculated_gains_host))[0].y*((float2 *)sdp_mem_data(calculated_gains_host))[0].y);
             }
             else
             {
                 rotationActualReal = (float)(((double2 *)sdp_mem_data(actual_gains_host))[0].x
-                    / sqrt((float)(((double2 *)sdp_mem_data(actual_gains_host))[0].x*((double2 *)sdp_mem_data(actual_gains_host))[0].x
-                    + ((double2 *)sdp_mem_data(actual_gains_host))[0].y*((double2 *)sdp_mem_data(actual_gains_host))[0].y)));
+                    / sqrt(((double2 *)sdp_mem_data(actual_gains_host))[0].x*((double2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((double2 *)sdp_mem_data(actual_gains_host))[0].y*((double2 *)sdp_mem_data(actual_gains_host))[0].y));
                 rotationActualImag = -(float)(((double2 *)sdp_mem_data(actual_gains_host))[0].y
-                    / sqrt((float)(((double2 *)sdp_mem_data(actual_gains_host))[0].x*((double2 *)sdp_mem_data(actual_gains_host))[0].x
-                    + ((double2 *)sdp_mem_data(actual_gains_host))[0].y*((double2 *)sdp_mem_data(actual_gains_host))[0].y)));
-                rotationCalculatedReal = ((double2 *)sdp_mem_data(calculated_gains_host))[0].x
-                    / sqrt((float)(((double2 *)sdp_mem_data(calculated_gains_host))[0].x*((double2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    / sqrt(((double2 *)sdp_mem_data(actual_gains_host))[0].x*((double2 *)sdp_mem_data(actual_gains_host))[0].x
+                    + ((double2 *)sdp_mem_data(actual_gains_host))[0].y*((double2 *)sdp_mem_data(actual_gains_host))[0].y));
+                rotationCalculatedReal = (float)(((double2 *)sdp_mem_data(calculated_gains_host))[0].x
+                    / sqrt(((double2 *)sdp_mem_data(calculated_gains_host))[0].x*((double2 *)sdp_mem_data(calculated_gains_host))[0].x
                     + ((double2 *)sdp_mem_data(calculated_gains_host))[0].y*((double2 *)sdp_mem_data(calculated_gains_host))[0].y));
-                rotationCalculatedImag = (float)-((float2 *)sdp_mem_data(calculated_gains_host))[0].y
-                    / sqrt((float)(((double2 *)sdp_mem_data(calculated_gains_host))[0].x*((double2 *)sdp_mem_data(calculated_gains_host))[0].x
+                rotationCalculatedImag = -(float)(((double2 *)sdp_mem_data(calculated_gains_host))[0].y
+                    / sqrt(((double2 *)sdp_mem_data(calculated_gains_host))[0].x*((double2 *)sdp_mem_data(calculated_gains_host))[0].x
                     + ((double2 *)sdp_mem_data(calculated_gains_host))[0].y*((double2 *)sdp_mem_data(calculated_gains_host))[0].y));
             }
-            float tolerance_sq_dif = (float)(0.5*sqrt(num_receivers));
+            float tolerance_sq_dif = (float)(0.4*sqrt(num_receivers));
             float sum_sq_dif = 0;
             for (unsigned int receiver=0; receiver<num_receivers; receiver++)
             {
@@ -184,14 +184,15 @@ static void run_and_check(
                 }
                 float rotatedCalculatedReal = calculatedGainX*rotationCalculatedReal - calculatedGainY*rotationCalculatedImag;
                 float rotatedCalculatedImag = calculatedGainX*rotationCalculatedImag + calculatedGainY*rotationCalculatedReal;
-                sum_sq_dif += (rotatedCalculatedReal-rotatedActualReal)*(rotatedCalculatedReal-rotatedActualReal)
+                float sq_dif = (rotatedCalculatedReal-rotatedActualReal)*(rotatedCalculatedReal-rotatedActualReal)
                     + (rotatedCalculatedImag-rotatedActualImag)*(rotatedCalculatedImag-rotatedActualImag);
-                printf("Receiver %u has actual gain (%+9.4lf,%9.4lf) and rotated calculated gain (%+9.4lf,%9.4lf)\n",
-                    receiver, rotatedActualReal, rotatedActualImag, rotatedCalculatedReal, rotatedCalculatedImag);
+                sum_sq_dif += sq_dif;
+//                printf("Receiver %u has actual gain (%+9.4lf,%9.4lf) and rotated calculated gain (%+9.4lf,%9.4lf) with squared dif %.3f\n",
+//                    receiver, rotatedActualReal, rotatedActualImag, rotatedCalculatedReal, rotatedCalculatedImag, sq_dif);
             }
             sdp_mem_free(calculated_gains_host);
-            printf("L2 norm separation is %f\n", sqrt(sum_sq_dif));
-//            assert(sqrt(sum_sq_dif) < tolerance_sq_dif);
+//            printf("L2 norm separation is %f\n", sqrt(sum_sq_dif));
+            assert(sqrt(sum_sq_dif) < tolerance_sq_dif);
         }
 
         // clean up the allocated sdp_Mem data structures
