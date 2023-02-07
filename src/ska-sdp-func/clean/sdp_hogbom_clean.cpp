@@ -1,4 +1,16 @@
-/* See the LICENSE file at the top-level directory of this distribution. */
+/* See the LICENSE file at the top-level directory of this distribution. 
+
+CLEAN algorithm taken from:
+A.R. Thompson, J.M. Moran, and G.W. Swenson Jr., Interferometry and Synthesis
+in Radio Astronomy, Astronomy and Astrophysics Library, 2017, page 552
+DOI 10.1007/978-3-319-44431-4_11
+
+and
+
+Deconvolution Tutorial, December 1996, T. Cornwell and A.H. Bridle, page 6
+https://www.researchgate.net/publication/2336887_Deconvolution_Tutorial
+
+*/
 
 #include "ska-sdp-func/clean/sdp_hogbom_clean.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
@@ -10,18 +22,19 @@
 
 #define INDEX_2D(N2, N1, I2, I1)    (N1 * I2 + I1)
 
-inline void create_cbeam(const double* psf,
-                        double* cbeam,
-                        int16_t psf_dim
+inline void create_cbeam(
+        const double* cbeam_details,
+        int16_t psf_dim,
+        double* cbeam
 ){
     // fit a guassian to the main lobe of the psf
 
     double A = 1;
     double x0 = psf_dim/2;
     double y0 = psf_dim/2;
-    double sigma_X = 10;
-    double sigma_Y = 20;
-    double theta = 0;
+    double sigma_X = cbeam_details[0];
+    double sigma_Y = cbeam_details[1];
+    double theta = cbeam_details[2];
 
     double a = pow(cos(theta),2) / (2 * pow(sigma_X,2)) + pow(sin(theta),2) / (2 * pow(sigma_Y,2));
     double b = sin(2 * theta) / (4 * pow(sigma_X,2)) - sin(2 * theta) / (4 * pow(sigma_Y,2));
@@ -40,6 +53,7 @@ inline void create_cbeam(const double* psf,
 static void hogbom_clean(
         const double* dirty_img,
         const double* psf,
+        const double* cbeam_details,
         const double loop_gain,
         const double threshold,
         const double cycle_limit,
@@ -60,14 +74,14 @@ static void hogbom_clean(
         double* cbeam = (double*) calloc(psf_dim, sizeof(double));
 
         // set up some loop variables
-        int cur_cycle;
-        bool stop;
+        int cur_cycle = 0;
+        bool stop = false;
 
         // create CLEAN Beam
-        create_cbeam(psf, cbeam, psf_dim);
+        create_cbeam(cbeam_details, psf_dim, cbeam);
 
         // CLEAN loop executes while the stop conditions (threashold and cycle limit) are not met
-        while (cur_cycle < cycle_limit && stop == 0) {
+        while (cur_cycle < cycle_limit && stop == false) {
 
             printf("Current Cycle: %d of %d Cycles Limit\r", cur_cycle, cycle_limit); // for debugging, to be removed when finished
 
@@ -75,7 +89,7 @@ static void hogbom_clean(
             double highest_value = residual[0];
             int max_idx_flat = 0;
 
-            for (int i = 0; i < dirty_img_size * dirty_img_size; i++) {
+            for (int i = 0; i < dirty_img_size; i++) {
                 if (residual[i] > highest_value) {
                     highest_value = residual[i];
                     max_idx_flat = i;
@@ -96,8 +110,13 @@ static void hogbom_clean(
             max_idx_y = max_idx_flat % dirty_img_size;
 
             // Save position and peak value
-            maximum[cur_cycle] = highest_value;
+            unsigned int i_maximum = INDEX_2D(cycle_limit,3,cur_cycle,0);
+            maximum[i_maximum] = highest_value;
+
+            i_maximum = INDEX_2D(cycle_limit,3,cur_cycle,1);
             maximum[cur_cycle + 1] = max_idx_x;
+
+            i_maximum = INDEX_2D(cycle_limit,3,cur_cycle,2);
             maximum[cur_cycle + 2] = max_idx_y;
 
             // add fraction of maximum to clean components list
@@ -192,6 +211,7 @@ static void hogbom_clean(
 void sdp_hogbom_clean(
         const sdp_Mem* dirty_img,
         const sdp_Mem* psf,
+        const sdp_Mem* cbeam_details,
         const double loop_gain,
         const double threshold,
         const double cycle_limit,
@@ -209,7 +229,7 @@ void sdp_hogbom_clean(
         return;
     }
 
-    if (sdp_mem_location(dirty_img) != sdp_mem_location(psf)){
+    if (sdp_mem_location(dirty_img) != sdp_mem_location(psf) != sdp_mem_location(cbeam_details)){
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Memory location mismatch");
         return;
@@ -226,6 +246,7 @@ void sdp_hogbom_clean(
         hogbom_clean(
             (const double*)sdp_mem_data_const(dirty_img),
             (const double*)sdp_mem_data_const(psf),
+            (const double*)sdp_mem_data_const(cbeam_details),
             loop_gain,
             threshold,
             cycle_limit,
