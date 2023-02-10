@@ -39,16 +39,33 @@ extern "C" {
  * @param uvw Baseline (u,v,w) coordinates, in metres. Dimensions as above.
  * @param freq_hz Channel frequencies, in Hz. Dimensions as above.
  * @param max_abs_uv Maximum absolute value of UV coordinates in wavelength units.
- * @param grid_uv Output number of hits per grid cell. Dimensions as above.
- * @param weights Output uniform weights. Dimensions as above.
+ * @param weight_grid_uv Output number of hits per grid cell. Dimensions as above.
+ * @param input_weights Input weights for the visibilities. Dimensions as above.
+ * @param output_weights Output of the function including the weights for each grid cell. Dimensions as above.
+ * @param weighting_type Weighting type defined by the user for matching the uv function. Enum Type.
+ * @param robust_param Input parameter by the user to determine robustness of the weighting. Integer value between -2 and 2.
  * @param status Error status.
  */
-void sdp_weighting_uniform(
+
+enum weighting_type{
+    
+    // Weighting scheme to be utilized in the function is Robust
+    ROBUST_WEIGHTING = 1,
+
+    //Weighting scheme to be utilized in the function is Uniform
+    UNIFORM_WEIGHTING = 2
+
+};
+
+void sdp_weighting_briggs(
         const sdp_Mem* uvw,
         const sdp_Mem* freq_hz,
         double max_abs_uv,
-        sdp_Mem* grid_uv,
-        sdp_Mem* weights,
+        weighting_type wt,
+        const double robust_param,
+        sdp_Mem* weight_grid_uv,
+        sdp_Mem* input_weights,
+        sdp_Mem* output_weights,
         sdp_Error* status
 );
 

@@ -4,4 +4,4 @@
 
 from .dft import dft_point_v00, dft_point_v01
 from .phase_rotate import phase_rotate_uvw, phase_rotate_vis
-from .weighting import get_uv_range, uniform_weights
+from .weighting import get_uv_range, briggs_weights
