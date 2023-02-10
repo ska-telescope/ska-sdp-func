@@ -9,12 +9,13 @@
 
 #define C_0 299792458.0
 
-#define INDEX_2D(N2,N1,I2,I1)(N1 * I2 + I1)
+#define INDEX_2D(N2, N1, I2, I1)(N1 * I2 + I1)
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 #define INDEX_4D(N4, N3, N2, N1, I4, I3, I2, I1) \
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
-//Generate grid of weights
+
+// Generate grid of weights
 template<typename UVW_TYPE, typename FREQ_TYPE, typename WEIGHT_TYPE>
 static void briggs_weights_grid_write(
         const int64_t num_times,
@@ -51,22 +52,29 @@ static void briggs_weights_grid_write(
                         half_grid_size);
                 if (idx_u >= grid_size || idx_v >= grid_size) continue;
                 const int64_t i_pol_s = INDEX_3D(
-                                idx_u * grid_size, idx_v * grid_size, num_pols, idx_u, idx_v, 0
+                        idx_u * grid_size,
+                        idx_v * grid_size,
+                        num_pols,
+                        idx_u,
+                        idx_v,
+                        0
                 );
                 const int64_t i_pol_start = INDEX_4D(
-                                num_times, num_baselines, num_channels, num_pols,
-                                i_time, i_baseline, i_channel, 0
-                        );
-                for(int64_t i_pol = 0; i_pol < num_pols; i_pol++){
-                    weights_grid_uv[i_pol_s + i_pol] += input_weight[i_pol_start + i_pol];
+                        num_times, num_baselines, num_channels, num_pols,
+                        i_time, i_baseline, i_channel, 0
+                );
+                for (int64_t i_pol = 0; i_pol < num_pols; i_pol++)
+                {
+                    weights_grid_uv[i_pol_s +
+                            i_pol] += input_weight[i_pol_start + i_pol];
                 }
-                
             }
         }
     }
 }
 
-//Calculate the sum of weights and the sum of the gridded weights squared
+
+// Calculate the sum of weights and the sum of the gridded weights squared
 template<typename UVW_TYPE, typename FREQ_TYPE, typename WEIGHT_TYPE>
 static void sum_weights_calc(
         const int64_t num_times,
@@ -81,7 +89,7 @@ static void sum_weights_calc(
         const WEIGHT_TYPE* input_weight,
         double* sumweight,
         double* sumweight2
-) 
+)
 {
     const int64_t half_grid_size = grid_size / 2;
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
@@ -105,21 +113,29 @@ static void sum_weights_calc(
                         half_grid_size);
                 if (idx_u >= grid_size || idx_v >= grid_size) continue;
                 const int64_t i_pol_start = INDEX_4D(
-                                num_times, num_baselines, num_channels, num_pols,
-                                i_time, i_baseline, i_channel, 0
-                        );
+                        num_times, num_baselines, num_channels, num_pols,
+                        i_time, i_baseline, i_channel, 0
+                );
                 const int64_t i_pol_s = INDEX_3D(
-                                idx_u * grid_size, idx_v * grid_size, num_pols, idx_u, idx_v, 0
+                        idx_u * grid_size,
+                        idx_v * grid_size,
+                        num_pols,
+                        idx_u,
+                        idx_v,
+                        0
                 );
                 for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
                 {
                     *sumweight += input_weight[i_pol_start + i_pol];
-                    *sumweight2 += (weights_grid_uv[i_pol_s + i_pol] * weights_grid_uv[i_pol_s + i_pol]);
-                }  
+                    *sumweight2 +=
+                            (weights_grid_uv[i_pol_s + i_pol] *
+                            weights_grid_uv[i_pol_s + i_pol]);
+                }
             }
         }
     }
 }
+
 
 // Calculate the robustness function
 static double robustness_calc(
@@ -128,10 +144,11 @@ static double robustness_calc(
         const double robust_param
 )
 {
-        double numerator = pow(5.0 * 1/(pow(10.0,robust_param)),2.0);  
-        double division_param = sumweight2 / sumweight;
-        return numerator/division_param;
+    double numerator = pow(5.0 * 1 / (pow(10.0, robust_param)), 2.0);
+    double division_param = sumweight2 / sumweight;
+    return numerator / division_param;
 }
+
 
 // Read from the grid of weights according to the enum type
 template<typename UVW_TYPE, typename FREQ_TYPE, typename WEIGHT_TYPE>
@@ -150,7 +167,7 @@ static void briggs_weights_grid_read(
         WEIGHT_TYPE* output_weights,
         double robustness
 )
-{   
+{
     const int64_t half_grid_size = grid_size / 2;
     for (int64_t i_time = 0; i_time < num_times; ++i_time)
     {
@@ -172,25 +189,36 @@ static void briggs_weights_grid_read(
                 const int64_t idx_v =
                         (int64_t) (floor(grid_v / max_abs_uv * half_grid_size) +
                         half_grid_size);
-                if (idx_u < grid_size && idx_v < grid_size) {
+                if (idx_u < grid_size && idx_v < grid_size)
+                {
                     const int64_t i_pol_s = INDEX_3D(
-                                idx_u * grid_size, idx_v * grid_size, num_pols, idx_u, idx_v, 0
-                        );
+                            idx_u * grid_size,
+                            idx_v * grid_size,
+                            num_pols,
+                            idx_u,
+                            idx_v,
+                            0
+                    );
                     const int64_t i_pol_start = INDEX_4D(
-                                num_times, num_baselines, num_channels, num_pols,
-                                i_time, i_baseline, i_channel, 0
-                        );
+                            num_times, num_baselines, num_channels, num_pols,
+                            i_time, i_baseline, i_channel, 0
+                    );
                     for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
                     {
-                        if(wt == UNIFORM_WEIGHTING){
-                            weight_val = 1.0 / weights_grid_uv[i_pol_s + i_pol]; 
+                        if (wt == UNIFORM_WEIGHTING)
+                        {
+                            weight_val = 1.0 / weights_grid_uv[i_pol_s + i_pol];
                             output_weights[i_pol_start + i_pol] = weight_val;
                         }
-                        else if(wt == ROBUST_WEIGHTING){
-                            weight_val = input_weights[i_pol_start+i_pol]/(1+ (robustness * weights_grid_uv[i_pol_s + i_pol]));
+                        else if (wt == ROBUST_WEIGHTING)
+                        {
+                            weight_val = input_weights[i_pol_start + i_pol] /
+                                    (1 +
+                                    (robustness *
+                                    weights_grid_uv[i_pol_s + i_pol]));
                             output_weights[i_pol_start + i_pol] = weight_val;
                         }
-                    } 
+                    }
                 }
             }
         }
@@ -299,9 +327,9 @@ void sdp_weighting_briggs(
             );
 
             double robustness = robustness_calc(
-                sumweight2,
-                sumweight,
-                robust_param
+                    sumweight2,
+                    sumweight,
+                    robust_param
             );
 
             briggs_weights_grid_read(
@@ -352,9 +380,9 @@ void sdp_weighting_briggs(
                     &sumweight2
             );
             double robustness = robustness_calc(
-                sumweight2,
-                sumweight,
-                robust_param
+                    sumweight2,
+                    sumweight,
+                    robust_param
             );
             briggs_weights_grid_read(
                     num_times,

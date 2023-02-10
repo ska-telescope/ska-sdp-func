@@ -47,14 +47,13 @@ extern "C" {
  * @param status Error status.
  */
 
-enum weighting_type{
-    
+enum weighting_type
+{
     // Weighting scheme to be utilized in the function is Robust
     ROBUST_WEIGHTING = 1,
 
-    //Weighting scheme to be utilized in the function is Uniform
+    // Weighting scheme to be utilized in the function is Uniform
     UNIFORM_WEIGHTING = 2
-
 };
 
 void sdp_weighting_briggs(

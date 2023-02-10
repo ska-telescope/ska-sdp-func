@@ -15,7 +15,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         ctypes.c_double,
-        ctypes.c_uint, 
+        ctypes.c_uint,
         ctypes.c_double,
         Mem.handle_type(),
         Mem.handle_type(),
@@ -47,7 +47,8 @@ def get_uv_range(uvw, freq_hz):
     return max_abs_uv
 
 
-def briggs_weights(uvw, freq_hz, max_abs_uv, wt, robust_param, grid_uv, input_weights, output_weights):
+def briggs_weights(uvw,freq_hz,max_abs_uv,weight_type,
+    robust_param, grid_uv, input_weights, output_weights):
     """
     Calculate the number of hits per UV cell and use the inverse of this
     as the weight.
@@ -64,12 +65,14 @@ def briggs_weights(uvw, freq_hz, max_abs_uv, wt, robust_param, grid_uv, input_we
                        in wavelength units, real-valued.
     :type max_abs_uv: float
 
-    :param wt: Parameter for switching between Uniform and Robust Weighting.
-               Value of 1(Robust) or 2(Uniform) 
-    :type wt: enum/int
+    :param weight_type: Parameter for switching between Uniform and Robust Weighting.
+                        Value of 1(Robust) or 2(Uniform) 
+    :type weight_typet: enum/int
 
-    :param robust_param: Parameter given by the user to gauge the robustness of the weighting function. 
-                         A value of -2 would be closer to uniform weighting and 2 would be closer to natural weighting. 
+    :param robust_param: Parameter given by the user to gauge the robustness
+                         of the weighting function. 
+                         A value of -2 would be closer to uniform weighting and 
+                         2 would be closer to natural weighting. 
 
     :param grid_uv: A initially zero-valued 2D UV grid array.
                     Returns the number of hits per UV cell.
@@ -81,5 +84,6 @@ def briggs_weights(uvw, freq_hz, max_abs_uv, wt, robust_param, grid_uv, input_we
     :type weights: numpy.ndarray
     """
     Lib.sdp_weighting_briggs(
-        Mem(uvw), Mem(freq_hz), max_abs_uv, wt, robust_param, Mem(grid_uv), Mem(input_weights), Mem(output_weights)
+        Mem(uvw),Mem(freq_hz),max_abs_uv,weight_type,
+        robust_param,Mem(grid_uv),Mem(input_weights),Mem(output_weights)
     )
