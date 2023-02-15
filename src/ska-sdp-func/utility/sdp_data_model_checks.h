@@ -108,7 +108,7 @@ void sdp_data_model_check_uvw_at(
         status, \
         #uvw, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -245,7 +245,7 @@ void sdp_data_model_check_vis_at(
         status, \
         #vis, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
@@ -385,7 +385,7 @@ void sdp_data_model_check_weights_at(
         status, \
         #weights, \
         __func__, \
-        __FILE__, \
+        FILENAME, \
         __LINE__ \
     )
 
