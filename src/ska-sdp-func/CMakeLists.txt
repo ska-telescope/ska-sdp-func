@@ -6,6 +6,7 @@ set(${CMAKE_PROJECT_NAME}_FOLDERS
     rfi
     utility
     visibility
+    clean
 )
 
 # Auto-generate the source lists and pass up to the parent.

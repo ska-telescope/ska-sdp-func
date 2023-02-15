@@ -16,16 +16,21 @@ https://www.researchgate.net/publication/2336887_Deconvolution_Tutorial
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
+#include "ska-sdp-func/utility/sdp_mem.h"
 
-#include <string.h>
-#include <math.h>
+#include <string>
+#include <cmath>
+#include <complex>
+#include <iostream>
+
+using std::complex;
 
 #define INDEX_2D(N2, N1, I2, I1)    (N1 * I2 + I1)
 
 inline void create_cbeam(
         const double* cbeam_details,
         int16_t psf_dim,
-        double* cbeam
+        complex<double>* cbeam
 ){
     // fit a guassian to the main lobe of the psf
 
@@ -40,13 +45,25 @@ inline void create_cbeam(
     double b = sin(2 * theta) / (4 * pow(sigma_X,2)) - sin(2 * theta) / (4 * pow(sigma_Y,2));
     double c = pow(sin(theta),2) / (2 * pow(sigma_X,2)) + pow(cos(theta),2) / (2 * pow(sigma_Y,2));
 
-    for(double x = 0; x <= psf_dim; x += 1) {
-        for(double y = 0; y <= psf_dim; y += 1) {
+    for(int x = 0; x < psf_dim; x ++) {
+        for(int y = 0; y < psf_dim; y ++) {
 
             const unsigned int i_cbeam = INDEX_2D(psf_dim,psf_dim,x,y);
-            cbeam[i_cbeam] = A * exp(-(a * pow(x - x0,2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0,2)));
+            double component = A * exp(-(a * pow(x - x0,2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0,2)));
+            cbeam[i_cbeam] = complex<double>(component, 0.0);
 
             }
+        }
+}
+
+inline void create_copy_complex(
+        const double* in,
+        int64_t size,
+        complex<double>* out
+){
+        // creates a copy of a double array to a complex double array
+        for(int i = 0; i < size; i++ ){
+            out[i] = complex<double>(in[i], 0.0);
         }
 }
 
@@ -62,42 +79,46 @@ static void hogbom_clean(
         double* skymodel,
         sdp_Error* status
 ){
+        // calculate useful shapes and sizes
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
+        int64_t psf_size = psf_dim * psf_dim;
+
+        int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
+        int64_t psf_shape[] = {psf_dim, psf_dim};
 
         // Create intermediate data arrays
-        double* maximum = (double*) calloc(cycle_limit * 3, sizeof(double));
-        double* clean_comp = (double*) calloc(dirty_img_size, sizeof(double));
-        double* residual = (double*) malloc(dirty_img_size * sizeof(double));
-        memcpy(residual, dirty_img, dirty_img_size * sizeof(double));
-        double* multiply = (double*) malloc(dirty_img_size * sizeof(double));
-        double* result_of_convolution = (double*) malloc(dirty_img_size * sizeof(double));
-        double* cbeam = (double*) calloc(psf_dim, sizeof(double));
+        sdp_Mem* cbeam_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, psf_shape, status);
+        complex<double>* cbeam_ptr = (complex<double>*)sdp_mem_data(cbeam_mem);
+        sdp_Mem* clean_comp_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
+        complex<double>* clean_comp_ptr = (complex<double>*)sdp_mem_data(clean_comp_mem);
+        sdp_Mem* residual_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
+        complex<double>* residual_ptr = (complex<double>*)sdp_mem_data(residual_mem);
 
+        create_copy_complex(dirty_img, dirty_img_size, residual_ptr);
+        
         // set up some loop variables
         int cur_cycle = 0;
-        bool stop = false;
+        bool stop = 0;
 
         // create CLEAN Beam
-        create_cbeam(cbeam_details, psf_dim, cbeam);
+        create_cbeam(cbeam_details, psf_dim, cbeam_ptr);
 
         // CLEAN loop executes while the stop conditions (threashold and cycle limit) are not met
-        while (cur_cycle < cycle_limit && stop == false) {
-
-            printf("Current Cycle: %d of %d Cycles Limit\r", cur_cycle, cycle_limit); // for debugging, to be removed when finished
+        while (cur_cycle < cycle_limit && stop == 0) {
 
             // Find index and value of the maximum value in residual
-            double highest_value = residual[0];
+            double highest_value = std::real(residual_ptr[0]);
             int max_idx_flat = 0;
 
             for (int i = 0; i < dirty_img_size; i++) {
-                if (residual[i] > highest_value) {
-                    highest_value = residual[i];
+                if (std::real(residual_ptr[i]) > highest_value) {
+                    highest_value = std::real(residual_ptr[i]);
                     max_idx_flat = i;
                 }
             }
             
             // check maximum value against threshold
-            if (residual[max_idx_flat] < threshold) {
+            if (std::real(residual_ptr[max_idx_flat]) < threshold) {
                 stop = 1;
                 break;
             }
@@ -106,106 +127,182 @@ static void hogbom_clean(
             int max_idx_x;
             int max_idx_y;
 
-            max_idx_x = max_idx_flat / dirty_img_size;
-            max_idx_y = max_idx_flat % dirty_img_size;
-
-            // Save position and peak value
-            unsigned int i_maximum = INDEX_2D(cycle_limit,3,cur_cycle,0);
-            maximum[i_maximum] = highest_value;
-
-            i_maximum = INDEX_2D(cycle_limit,3,cur_cycle,1);
-            maximum[cur_cycle + 1] = max_idx_x;
-
-            i_maximum = INDEX_2D(cycle_limit,3,cur_cycle,2);
-            maximum[cur_cycle + 2] = max_idx_y;
+            max_idx_x = max_idx_flat / dirty_img_dim;
+            max_idx_y = max_idx_flat % dirty_img_dim;
 
             // add fraction of maximum to clean components list
-            clean_comp[max_idx_flat] += loop_gain * highest_value;
+            clean_comp_ptr[max_idx_flat] += complex<double>(loop_gain * highest_value, 0);
 
             // identify psf window to subtract from residual
-            int psf_x_start, psf_x_end, psf_y_start, psf_y_end;
+            int64_t psf_x_start, psf_x_end, psf_y_start, psf_y_end;
 
-            psf_x_start = dirty_img_size - max_idx_x;
-            psf_x_end = dirty_img_size - max_idx_x + dirty_img_size;
-            psf_y_start = dirty_img_size - max_idx_y;
-            psf_y_end = dirty_img_size - max_idx_y + dirty_img_size;
+            psf_x_start = dirty_img_dim - max_idx_x;
+            psf_x_end = psf_x_start + dirty_img_dim;
+            psf_y_start = dirty_img_dim - max_idx_y;
+            psf_y_end = dirty_img_dim - max_idx_y + dirty_img_dim;
 
             for (int x = psf_x_start, i = 0; x < psf_x_end; x++, i++){
                 for (int y = psf_y_start, j = 0; y < psf_y_end; y++, j++){
 
                     const unsigned int i_psf = INDEX_2D(psf_dim,psf_dim,x,y);
                     const unsigned int i_res = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-                    residual[i_res] -= (loop_gain * highest_value * psf[i_psf]);
+                    residual_ptr[i_res] -= complex<double>((loop_gain * highest_value * psf[i_psf]), 0.0);
                 }
             }
 
              cur_cycle += 1;
         }
 
+
         // convolve clean components with clean beam
         /* 
-        use the convolution theorem with the SDP FFT function to complete this
-        save the result to result_of_convolution for the next step.        
+        use the convolution theorem with the SDP FFT function to complete this      
         */
 
-        // wrap cbeam in sdp_mem, so it can be used with FFT code
-        int64_t cbeam_shape[] = {psf_dim, psf_dim};
-        sdp_Mem* cbeam_mem = sdp_mem_create_wrapper(cbeam, SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, cbeam_shape, NULL, status);
+        // pad images
+        int64_t pad_dim = dirty_img_dim + psf_dim - 1;
 
-        // wrap clean compentents in sdp_mem, so it can be used with FFT code
-        int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
-        sdp_Mem* clean_com_mem = sdp_mem_create_wrapper(clean_comp, SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, NULL, status);
+        // make sure padded image is a power of 2
+        while (ceil(log2(pad_dim)) != floor(log2(pad_dim))){
 
-        // get FFT of clean components
-        sdp_Mem* clean_comp_fft_result = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
+            pad_dim += 1;
+        }
+
+        int64_t pad_shape[] = {pad_dim, pad_dim};
+        int64_t pad_size = pad_dim * pad_dim;
         
-        sdp_Fft *clean_comp_fft_plan = sdp_fft_create(clean_com_mem, clean_comp_fft_result, 2, 1, status);
-        sdp_fft_exec(clean_comp_fft_plan, clean_com_mem, clean_comp_fft_result, status);
+        sdp_Mem* cbeam_pad_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
+        complex<double>* cbeam_pad_ptr = (complex<double>*)sdp_mem_data(cbeam_pad_mem);
+
+        sdp_mem_clear_contents(cbeam_pad_mem, status);
+
+        int64_t extra_cbeam = (pad_dim - psf_dim)/2;
+
+        for (int x = extra_cbeam, i = 0; x < (extra_cbeam + psf_dim); x++, i ++){
+            for (int y = extra_cbeam, j = 0; y < (extra_cbeam + psf_dim); y++, j++){
+
+                const unsigned int i_padded = INDEX_2D(pad_dim,pad_dim,x,y);
+                const unsigned int i_cbeam = INDEX_2D(psf_dim,psf_dim,i,j);
+
+                cbeam_pad_ptr[i_padded] = cbeam_ptr[i_cbeam];
+            }
+        }
+
+        sdp_Mem* clean_comp_pad_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
+        complex<double>* clean_comp_pad_ptr = (complex<double>*)sdp_mem_data(clean_comp_pad_mem);
+
+        sdp_mem_clear_contents(clean_comp_pad_mem, status);
+
+        int64_t extra_clean_comp = (pad_dim - dirty_img_dim)/2;
+
+        for (int x = extra_clean_comp, i = 0; x < (extra_clean_comp + dirty_img_dim); x++, i ++){
+            for (int y = extra_clean_comp, j = 0; y < (extra_clean_comp + dirty_img_dim); y++, j++){
+
+                const unsigned int i_padded = INDEX_2D(pad_dim,pad_dim,x,y);
+                const unsigned int i_clean_comp = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
+
+                clean_comp_pad_ptr[i_padded] = clean_comp_ptr[i_clean_comp];
+            }
+        }
+
+        sdp_Mem* cbeam_fft_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
+        complex<double>* cbeam_fft_result_ptr = (complex<double>*)sdp_mem_data(cbeam_fft_result_mem);
+        sdp_Mem* clean_comp_fft_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
+        complex<double>* clean_comp_fft_result_ptr = (complex<double>*)sdp_mem_data(clean_comp_fft_result_mem);
+
+        // get FFT of padded clean beam
+        sdp_Fft *cbeam_fft_plan = sdp_fft_create(cbeam_pad_mem, cbeam_fft_result_mem, 2, 1, status);
+        sdp_fft_exec(cbeam_fft_plan, cbeam_pad_mem, cbeam_fft_result_mem, status);
+        sdp_fft_free(cbeam_fft_plan);
+        
+        // get FFT of padded clean components
+        sdp_Fft *clean_comp_fft_plan = sdp_fft_create(clean_comp_pad_mem, clean_comp_fft_result_mem, 2, 1, status);
+        sdp_fft_exec(clean_comp_fft_plan, clean_comp_pad_mem, clean_comp_fft_result_mem, status);
         sdp_fft_free(clean_comp_fft_plan);
 
-        // get FFT of clean beam
-        sdp_Mem* cbeam_fft_result = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, cbeam_shape, status);
-        
-        sdp_Fft *cbeam_fft_plan = sdp_fft_create(cbeam_mem, cbeam_fft_result,2,1,status);
-        sdp_fft_exec(cbeam_fft_plan, cbeam_mem, cbeam_fft_result, status);
-        sdp_fft_free(cbeam_fft_plan);
+        sdp_Mem* multiply_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
+        complex<double>* multiply_ptr = (complex<double>*)sdp_mem_data(multiply_mem);
+
+        sdp_mem_clear_contents(multiply_mem, status);
 
         // multiply FFTs together
-        double* clean_comp_fft = (double*)sdp_mem_data(clean_comp_fft_result);
-        double* cbeam_fft = (double*)sdp_mem_data(cbeam_fft_result);
-
-        for (int i = 0; i < dirty_img_size; i++){
+        for (int i = 0; i < pad_size; i++){
             
-            multiply[i] = clean_comp_fft[i] * cbeam_fft[i];
-        }
+            multiply_ptr[i] = clean_comp_fft_result_ptr[i] * cbeam_fft_result_ptr[i];
 
-        // wrap multiply in sdp_mem, so it can be used with FFT code
-        sdp_Mem* multiply_mem = sdp_mem_create_wrapper(multiply, SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, cbeam_shape, NULL, status);
+            // double a_real = std::real(clean_comp_fft_result_ptr[i]);
+            // double b_real = std::real(cbeam_fft_result_ptr[i]);
+            // double a_img = std::imag(clean_comp_fft_result_ptr[i]);
+            // double b_img = std::imag(cbeam_fft_result_ptr[i]);
+                
+
+            // multiply_ptr[i] = complex<double>(a_real * b_real - a_img * b_img, a_real * b_img + a_img * b_real);
+
+        }
 
         // inverse FFT of result
-        sdp_Mem* multip_result = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
+        sdp_Mem* multiply_fft_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
+        complex<double>* multiply_fft_result_ptr = (complex<double>*)sdp_mem_data(multiply_fft_result_mem);
         
-        sdp_Fft *conv_fft_plan = sdp_fft_create(multiply_mem, multip_result,2,0,status);
-        sdp_fft_exec(conv_fft_plan,multiply_mem,multip_result,status);
+        sdp_Fft *conv_fft_plan = sdp_fft_create(multiply_mem, multiply_fft_result_mem,2,0,status);
+        sdp_fft_exec(conv_fft_plan,multiply_mem,multiply_fft_result_mem,status);
         sdp_fft_free(conv_fft_plan);
 
-        double* result_of_convolution = (double*)sdp_mem_data(multip_result);
+        // shift edges to centre (FFTshift) and remove padding
+        for (int x = (pad_dim - dirty_img_dim/2), i = 0; x < (pad_dim); x++, i ++){
+            for (int y = (pad_dim - dirty_img_dim/2), j = 0; y < (pad_dim); y++, j++){
 
-        // add residual to the results of the convolution
-        for (int i = 0; i < dirty_img_size; i++){
-            
-            skymodel[i] = result_of_convolution[i] + residual[i];
+                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
+                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
+
+                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
+
+            }
         }
 
-        sdp_mem_ref_dec(clean_comp_fft_result);
-        sdp_mem_ref_dec(cbeam_fft_result);
-        sdp_mem_ref_dec(multip_result);
-        free(maximum);
-        free(clean_comp);
-        free(residual);
-        free(multiply);
-        free(result_of_convolution);
-        free(cbeam);
+        for (int x = (0), i = (dirty_img_dim/2); x < (dirty_img_dim/2); x++, i ++){
+            for (int y = (pad_dim - dirty_img_dim/2), j = 0; y < (pad_dim); y++, j++){
+
+                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
+                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
+
+                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
+
+            }
+        }
+
+        for (int x = (pad_dim - dirty_img_dim/2), i = 0; x < (pad_dim); x++, i ++){
+            for (int y = (0), j = (dirty_img_dim/2); y < (dirty_img_dim/2); y++, j++){
+
+                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
+                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
+
+                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
+
+            }
+        }
+
+        for (int x = (0), i = (dirty_img_dim/2); x < (dirty_img_dim/2); x++, i ++){
+            for (int y = (0), j = (dirty_img_dim/2); y < (dirty_img_dim/2); y++, j++){
+
+                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
+                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
+
+                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
+
+            }
+        }
+
+        sdp_mem_ref_dec(cbeam_mem);
+        sdp_mem_ref_dec(clean_comp_mem);
+        sdp_mem_ref_dec(residual_mem);
+        sdp_mem_ref_dec(cbeam_pad_mem);
+        sdp_mem_ref_dec(clean_comp_pad_mem);
+        sdp_mem_ref_dec(clean_comp_fft_result_mem);
+        sdp_mem_ref_dec(cbeam_fft_result_mem);
+        sdp_mem_ref_dec(multiply_mem);
+        sdp_mem_ref_dec(multiply_fft_result_mem);
+
 }
 
 void sdp_hogbom_clean(
@@ -229,7 +326,7 @@ void sdp_hogbom_clean(
         return;
     }
 
-    if (sdp_mem_location(dirty_img) != sdp_mem_location(psf) != sdp_mem_location(cbeam_details)){
+    if (sdp_mem_location(dirty_img) != sdp_mem_location(psf)){
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Memory location mismatch");
         return;
