@@ -6,6 +6,7 @@ set(${CMAKE_PROJECT_NAME}_TEST_FOLDERS
     rfi
     utility
     visibility
+    clean
 )
 
 # Build tests.
