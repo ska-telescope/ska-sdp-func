@@ -67,6 +67,18 @@ inline void create_copy_complex(
         }
 }
 
+inline void fft_normalise(
+        complex<double>* fft_in,
+        int64_t size){
+
+            // double normalise = (double) 1/size;
+            complex<double> normalise = complex<double>(size,0);
+
+            for(int i = 0; i < size; i++){
+                fft_in[i] = fft_in[i] / normalise;
+            }
+        }
+
 static void hogbom_clean(
         const double* dirty_img,
         const double* psf,
@@ -247,6 +259,7 @@ static void hogbom_clean(
         sdp_Fft *conv_fft_plan = sdp_fft_create(multiply_mem, multiply_fft_result_mem,2,0,status);
         sdp_fft_exec(conv_fft_plan,multiply_mem,multiply_fft_result_mem,status);
         sdp_fft_free(conv_fft_plan);
+        fft_normalise(multiply_fft_result_ptr, pad_size);
 
         // shift edges to centre (FFTshift) and remove padding
         for (int x = (pad_dim - dirty_img_dim/2), i = 0; x < (pad_dim); x++, i ++){
