@@ -35,11 +35,11 @@ inline void create_cbeam(
     // fit a guassian to the main lobe of the psf
 
     double A = 1;
-    double x0 = psf_dim/2;
-    double y0 = psf_dim/2;
+    double x0 = (psf_dim/2);
+    double y0 = (psf_dim/2);
     double sigma_X = cbeam_details[0];
     double sigma_Y = cbeam_details[1];
-    double theta = cbeam_details[2];
+    double theta = (M_PI/180) * cbeam_details[2];
 
     double a = pow(cos(theta),2) / (2 * pow(sigma_X,2)) + pow(sin(theta),2) / (2 * pow(sigma_Y,2));
     double b = sin(2 * theta) / (4 * pow(sigma_X,2)) - sin(2 * theta) / (4 * pow(sigma_Y,2));
@@ -79,6 +79,75 @@ inline void fft_normalise(
             }
         }
 
+
+inline void fft_shift_2D(
+        complex<double> *data,
+        int64_t rows,
+        int64_t cols) {
+
+    int64_t i, j;
+    int64_t half_rows = rows / 2;
+    int64_t half_cols = cols / 2;
+    complex<double> tmp;
+
+    // shift rows
+    for (i = 0; i < half_rows; i++) {
+        for (j = 0; j < cols; j++) {
+            tmp = data[i*cols + j];
+            data[i*cols + j] = data[(i+half_rows)*cols + j];
+            data[(i+half_rows)*cols + j] = tmp;
+        }
+    }
+
+    // shift columns
+    for (i = 0; i < rows; i++) {
+        for (j = 0; j < half_cols; j++) {
+            tmp = data[i*cols + j];
+            data[i*cols + j] = data[i*cols + j+half_cols];
+            data[i*cols + j+half_cols] = tmp;
+        }
+    }
+}
+
+inline void pad_2D(
+        complex<double> *data,
+        complex<double> *padded_data,
+        int64_t rows,
+        int64_t cols,
+        int64_t pad_rows,
+        int64_t pad_cols) {
+
+    int64_t i, j; 
+    int64_t padded_rows = rows + 2*pad_rows;
+    int64_t padded_cols = cols + 2*pad_cols;
+
+
+    for (i = 0; i < rows; i++) {
+        for (j = 0; j < cols; j++) {
+            padded_data[(i+pad_rows)*padded_cols + (j+pad_cols)] = data[i*cols + j];
+        }
+    }
+}
+
+inline void remove_padding_2D(
+        complex<double> *padded_data,
+        double *data,
+        int64_t rows,
+        int64_t cols,
+        int64_t pad_rows,
+        int64_t pad_cols) {
+
+    int64_t i, j;
+    int64_t original_rows = rows - 2*pad_rows;
+    int64_t original_cols = cols - 2*pad_cols;
+
+    for (i = 0; i < original_rows; i++) {
+        for (j = 0; j < original_cols; j++) {
+            data[i*original_cols + j] = std::real(padded_data[(i+pad_rows)*cols + (j+pad_cols)]);
+        }
+    }
+}
+
 static void hogbom_clean(
         const double* dirty_img,
         const double* psf,
@@ -103,6 +172,7 @@ static void hogbom_clean(
         complex<double>* cbeam_ptr = (complex<double>*)sdp_mem_data(cbeam_mem);
         sdp_Mem* clean_comp_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
         complex<double>* clean_comp_ptr = (complex<double>*)sdp_mem_data(clean_comp_mem);
+        sdp_mem_clear_contents(clean_comp_mem, status);
         sdp_Mem* residual_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
         complex<double>* residual_ptr = (complex<double>*)sdp_mem_data(residual_mem);
 
@@ -113,6 +183,7 @@ static void hogbom_clean(
         bool stop = 0;
 
         // create CLEAN Beam
+        sdp_mem_clear_contents(cbeam_mem, status);
         create_cbeam(cbeam_details, psf_dim, cbeam_ptr);
 
         // CLEAN loop executes while the stop conditions (threashold and cycle limit) are not met
@@ -172,6 +243,8 @@ static void hogbom_clean(
         */
 
         // pad images
+        // calculate minimum length for padding of each dim
+        // m + n -1 
         int64_t pad_dim = dirty_img_dim + psf_dim - 1;
 
         // make sure padded image is a power of 2
@@ -185,38 +258,25 @@ static void hogbom_clean(
         
         sdp_Mem* cbeam_pad_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
         complex<double>* cbeam_pad_ptr = (complex<double>*)sdp_mem_data(cbeam_pad_mem);
-
         sdp_mem_clear_contents(cbeam_pad_mem, status);
 
+        // calculate the number of extra columns and rows need to reach padded lenth
         int64_t extra_cbeam = (pad_dim - psf_dim)/2;
 
-        for (int x = extra_cbeam, i = 0; x < (extra_cbeam + psf_dim); x++, i ++){
-            for (int y = extra_cbeam, j = 0; y < (extra_cbeam + psf_dim); y++, j++){
-
-                const unsigned int i_padded = INDEX_2D(pad_dim,pad_dim,x,y);
-                const unsigned int i_cbeam = INDEX_2D(psf_dim,psf_dim,i,j);
-
-                cbeam_pad_ptr[i_padded] = cbeam_ptr[i_cbeam];
-            }
-        }
+        // pad clean beam
+        pad_2D(cbeam_ptr, cbeam_pad_ptr, 2048,2048,extra_cbeam,extra_cbeam);
 
         sdp_Mem* clean_comp_pad_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
         complex<double>* clean_comp_pad_ptr = (complex<double>*)sdp_mem_data(clean_comp_pad_mem);
-
         sdp_mem_clear_contents(clean_comp_pad_mem, status);
 
+        // calculate the number of extra columns and rows need to reach padded lenth
         int64_t extra_clean_comp = (pad_dim - dirty_img_dim)/2;
 
-        for (int x = extra_clean_comp, i = 0; x < (extra_clean_comp + dirty_img_dim); x++, i ++){
-            for (int y = extra_clean_comp, j = 0; y < (extra_clean_comp + dirty_img_dim); y++, j++){
+        // pad clean components
+        pad_2D(clean_comp_ptr,clean_comp_pad_ptr, 1024, 1024, extra_clean_comp,extra_clean_comp);
 
-                const unsigned int i_padded = INDEX_2D(pad_dim,pad_dim,x,y);
-                const unsigned int i_clean_comp = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-
-                clean_comp_pad_ptr[i_padded] = clean_comp_ptr[i_clean_comp];
-            }
-        }
-
+        // create variables for FFT results
         sdp_Mem* cbeam_fft_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
         complex<double>* cbeam_fft_result_ptr = (complex<double>*)sdp_mem_data(cbeam_fft_result_mem);
         sdp_Mem* clean_comp_fft_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
@@ -232,23 +292,15 @@ static void hogbom_clean(
         sdp_fft_exec(clean_comp_fft_plan, clean_comp_pad_mem, clean_comp_fft_result_mem, status);
         sdp_fft_free(clean_comp_fft_plan);
 
+        // create variables for frequency domain multiplication result
         sdp_Mem* multiply_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, pad_shape, status);
         complex<double>* multiply_ptr = (complex<double>*)sdp_mem_data(multiply_mem);
-
         sdp_mem_clear_contents(multiply_mem, status);
 
         // multiply FFTs together
         for (int i = 0; i < pad_size; i++){
             
             multiply_ptr[i] = clean_comp_fft_result_ptr[i] * cbeam_fft_result_ptr[i];
-
-            // double a_real = std::real(clean_comp_fft_result_ptr[i]);
-            // double b_real = std::real(cbeam_fft_result_ptr[i]);
-            // double a_img = std::imag(clean_comp_fft_result_ptr[i]);
-            // double b_img = std::imag(cbeam_fft_result_ptr[i]);
-                
-
-            // multiply_ptr[i] = complex<double>(a_real * b_real - a_img * b_img, a_real * b_img + a_img * b_real);
 
         }
 
@@ -261,50 +313,11 @@ static void hogbom_clean(
         sdp_fft_free(conv_fft_plan);
         fft_normalise(multiply_fft_result_ptr, pad_size);
 
-        // shift edges to centre (FFTshift) and remove padding
-        for (int x = (pad_dim - dirty_img_dim/2), i = 0; x < (pad_dim); x++, i ++){
-            for (int y = (pad_dim - dirty_img_dim/2), j = 0; y < (pad_dim); y++, j++){
+        // shift the result to the center of the image
+        fft_shift_2D(multiply_fft_result_ptr, pad_dim,pad_dim);
 
-                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
-                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-
-                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
-
-            }
-        }
-
-        for (int x = (0), i = (dirty_img_dim/2); x < (dirty_img_dim/2); x++, i ++){
-            for (int y = (pad_dim - dirty_img_dim/2), j = 0; y < (pad_dim); y++, j++){
-
-                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
-                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-
-                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
-
-            }
-        }
-
-        for (int x = (pad_dim - dirty_img_dim/2), i = 0; x < (pad_dim); x++, i ++){
-            for (int y = (0), j = (dirty_img_dim/2); y < (dirty_img_dim/2); y++, j++){
-
-                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
-                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-
-                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
-
-            }
-        }
-
-        for (int x = (0), i = (dirty_img_dim/2); x < (dirty_img_dim/2); x++, i ++){
-            for (int y = (0), j = (dirty_img_dim/2); y < (dirty_img_dim/2); y++, j++){
-
-                const unsigned int i_quarter = INDEX_2D(pad_dim,pad_dim,x,y);
-                const unsigned int i_skymodel = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-
-                skymodel[i_skymodel] = std::real(multiply_fft_result_ptr[i_quarter]);
-
-            }
-        }
+        // remove padding from the convolved result
+        remove_padding_2D(multiply_fft_result_ptr, skymodel, pad_dim, pad_dim, extra_clean_comp, extra_clean_comp);
 
         sdp_mem_ref_dec(cbeam_mem);
         sdp_mem_ref_dec(clean_comp_mem);
@@ -315,7 +328,6 @@ static void hogbom_clean(
         sdp_mem_ref_dec(cbeam_fft_result_mem);
         sdp_mem_ref_dec(multiply_mem);
         sdp_mem_ref_dec(multiply_fft_result_mem);
-
 }
 
 void sdp_hogbom_clean(

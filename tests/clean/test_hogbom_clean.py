@@ -10,7 +10,6 @@ except ImportError:
 
 import numpy as np
 import scipy.signal as sig
-import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from ska_sdp_func.visibility import dft_point_v01
 from ska_sdp_func.grid_data import GridderUvwEsFft
@@ -23,7 +22,7 @@ def create_test_data():
     num_components = 10
     num_pols = 1
     num_channels = 1
-    num_baselines = 1000
+    num_baselines = 2000
     num_times = 1
     channel_start_hz = 100e6
     channel_step_hz = 100e3
@@ -166,14 +165,48 @@ def create_test_data():
     psf = psf / num_baselines
     dirty_image = dirty_image / num_baselines
 
+    # plt.figure()
+    # plt.title("UV positions")
+    # plt.xlabel("U")
+    # plt.ylabel("V")
+    # plt.scatter(uvw[:,0], uvw[:,1])
+
+    # plt.figure()
+    # plt.title("Dirty Image")
+    # # plt.xlabel("U")
+    # # plt.ylabel("V")
+    # plt.imshow(dirty_image, vmin=0, vmax=10)
+    # plt.colorbar(label="Jy", ticks=[0,1,2,3,4,5,6,7,8,9,10])
+
+    # plt.figure()
+    # plt.title("PSF")
+    # # plt.xlabel("U")
+    # # plt.ylabel("V")
+    # plt.imshow(psf, vmin=0, vmax=1)
+    # plt.colorbar(label="Jy", ticks=[0,0.25, 0.5,0.75,1])
+
+    # plt.figure()
+    # plt.title("lm positions")
+    # # plt.xlabel("l")
+    # # plt.ylabel("m")
+    # # plt.gca().invert_xaxis()
+    # plt.xlim([-0.015,0.015])
+    # plt.ylim([-0.015,0.015])
+    # plt.gca().invert_yaxis()
+    # plt.scatter(directions[:,1],directions[:,0])
+
+    # print(fluxes)
+
+    # plt.show()
+
     return dirty_image, psf
 
 
-def create_cbeam(coeffs):
+def create_cbeam(coeffs, size):
     # create clean beam
 
-    size = 200
-    center = 100
+    # size = 512
+    center = size / 2 - 1
 
     cbeam = np.zeros([size, size])
 
@@ -206,9 +239,11 @@ def create_cbeam(coeffs):
 
 def error_residuals(coeffs, psf):
 
-    half_width = 100
+    fitting_size = 256
 
-    c = create_cbeam(coeffs)
+    half_width = int(fitting_size / 2)
+
+    c = create_cbeam(coeffs, fitting_size)
     c = c.flatten()
 
     p = psf[
@@ -225,6 +260,7 @@ def reference_hogbom_clean(
 
     # calculate useful shapes and sizes
     dirty_size = dirty_img.shape[0]
+    psf_size = psf.shape[0]
 
     # set up so loop variables
     cur_cycle = 0
@@ -236,22 +272,22 @@ def reference_hogbom_clean(
     residual = np.copy(dirty_img)
 
     # create CLEAN beam
-    cbeam = create_cbeam(cbeam_details)
+    cbeam = create_cbeam(cbeam_details, psf_size)
 
     # begin CLEAN while thereshold and number of iterations not exceded
     while cur_cycle < cycle_limit and stop is False:
 
-        print(
-            f"Current Cycle: {cur_cycle} of {cycle_limit} Cycles Limit",
-            end="\r",
-        )
+        # print(
+        #     f"Current Cycle: {cur_cycle} of {cycle_limit} Cycles Limit",
+        #     end="\r",
+        # )
 
         # Find index of the maximum value in residual
         max_idx_flat = residual.argmax()
         max_idx = np.unravel_index(max_idx_flat, residual.shape)
 
-        print("\n")
-        print(residual[max_idx])
+        # print("\n")
+        # print(residual[max_idx])
 
         # check maximum value against threshold
         if residual[max_idx] < threshold:
@@ -282,7 +318,7 @@ def reference_hogbom_clean(
     # Add remaining residual
     # skymodel = np.add(inbetween, residual)
 
-    return skymodel
+    return skymodel, cbeam, clean_comp, residual
 
 
 def test_hogbom_clean():
@@ -303,22 +339,23 @@ def test_hogbom_clean():
 
     print("Fitting CLEAN beam to PSF ...")
     fit = least_squares(
-        error_residuals, cbeam_details, args=([psf]), ftol=1e-03, xtol=1e-3, verbose=0
+        error_residuals, cbeam_details, args=([psf]), verbose=0
     )
 
     # [23.89807183 24.63014124 23.59091923]
     cbeam_details = fit.x
 
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference = reference_hogbom_clean(
+    skymodel_reference, cbeam, clean_comp, residual = reference_hogbom_clean(
         dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit
     )
-
+    
     print("Testing Hogbom CLEAN on CPU from ska-sdp-func...")
 
     hogbom_clean(
         dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit, skymodel
     )
 
-    np.testing.assert_array_almost_equal(skymodel, skymodel_reference)
+    np.testing.assert_allclose(skymodel, skymodel_reference)
     print("DFT on CPU: Test passed")
+
