@@ -9,6 +9,7 @@
 #include <complex>
 #include <iostream>
 #include <cassert>
+#include <ostream>
 
 #include "ska-sdp-func/clean/sdp_hogbom_clean.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
@@ -50,11 +51,11 @@ static void create_test_data(
     // initialise empty arrays for dirty image generation
     const int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
     sdp_Mem *vis = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 4, vis_shape, status);
-    double *vis_ptr = (double *)sdp_mem_data(vis);
+    complex<double> *vis_ptr = (complex<double> *)sdp_mem_data(vis);
     sdp_mem_clear_contents(vis, status);
 
     sdp_Mem *vis_psf = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 4, vis_shape, status);
-    double *vis_psf_ptr = (double *)sdp_mem_data(vis_psf);
+    complex<double> *vis_psf_ptr = (complex<double> *)sdp_mem_data(vis_psf);
     sdp_mem_clear_contents(vis_psf, status);
 
     const int64_t fluxes_shape[] = {num_components, num_channels, num_pols};
@@ -66,7 +67,7 @@ static void create_test_data(
     sdp_Mem *fluxes_psf = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 3, fluxes_psf_shape, status);
     complex<double> *fluxes_psf_ptr = (complex<double> *)sdp_mem_data(fluxes_psf);
     sdp_mem_clear_contents(fluxes_psf, status);
-    fluxes_psf_ptr[0] = std::complex<double>(0,1);
+    fluxes_psf_ptr[0] = std::complex<double>(1,0);
 
     const int64_t directions_shape[] = {num_components, 3};
     sdp_Mem *directions = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, directions_shape, status);
@@ -118,14 +119,19 @@ static void create_test_data(
         fluxes_ptr[i_fluxes] = complex<double>(ran_flux, 0);
     }
 
+    // Create flux of 1 + 0j's for psf
+
+
+
+
     // create random lmn co-ordinates between (-0.015,-0.015) and (0.015,0.015)
-    upper = -0.015, upper = 0.015;
+    upper = 0, upper = 30;
     double ran_l = 0, ran_m = 0, ran_n = 0;
     for (int i = 0; i < num_components; i++)
     {
 
-        ran_l = (rand() % (upper - lower + 1)) + lower;
-        ran_m = (rand() % (upper - lower + 1)) + lower;
+        ran_l = (double)((rand() % (upper - lower + 1)) + lower - 15) / 100;
+        ran_m = (double)((rand() % (upper - lower + 1)) + lower - 15) / 100;
         ran_n = 1 - pow(ran_l, 2) - pow(ran_m, 2);
 
         const unsigned int i_directions = INDEX_2D(num_components, 3, i, 0);
@@ -146,7 +152,7 @@ static void create_test_data(
     double pixel_size_rad_psf = fov * M_PI / 180 / nxypsf;
     bool do_w_stacking = false;
     double epsilon = 1e-5;
-    int num_vis = num_times * num_baselines * num_channels * num_pols;
+    int num_vis = num_baselines * num_channels;
 
     const int64_t freqs_shape[] = {num_channels};
     sdp_Mem *freqs = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 1, freqs_shape, status);
@@ -166,27 +172,41 @@ static void create_test_data(
 
     // reshape vis output from DFT to fit input of gridder
     const int64_t vis_grid_shape[] = {num_baselines, num_channels}; // num_times = 1 so can be ignored, num_rows = num_baselines
-    sdp_Mem *vis_grid = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, vis_grid_shape, status);
-    double *vis_grid_ptr = (double *)sdp_mem_data(vis_grid);
+    sdp_Mem *vis_grid = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, vis_grid_shape, status);
+    complex<double> *vis_grid_ptr = (complex<double> *)sdp_mem_data(vis_grid);
 
     for (int i = 0; i < num_baselines; i++)
     {
 
         const unsigned int i_vis = INDEX_4D(num_times, num_baselines, num_channels, num_pols, 0, i, 0, 0);
         const unsigned int i_vis_grid = INDEX_2D(num_baselines, num_channels, i, 0);
-        vis_ptr[i_vis] = vis_grid_ptr[i_vis_grid];
+        vis_grid_ptr[i_vis_grid] = vis_ptr[i_vis];
     }
 
-    sdp_Mem *vis_grid_psf = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, vis_grid_shape, status);
-    double *vis_grid_psf_ptr = (double *)sdp_mem_data(vis_grid_psf);
+    // int64_t len = num_times * num_baselines * num_channels * num_pols;
 
-    for (int i = 0; i < num_baselines; i++)
+    // for (int i = 0; i < len; i++)
+    // {
+    //     SDP_LOG_INFO("value: %f", vis_grid_ptr[i]);
+    //     SDP_LOG_INFO("number: %d", i);
+    // }
+
+    sdp_Mem *vis_grid_psf = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, vis_grid_shape, status);
+    complex<double> *vis_grid_psf_ptr = (complex<double> *)sdp_mem_data(vis_grid_psf);
+
+    for (int i = 0; i < 1; i++)
     {
 
         const unsigned int i_vis = INDEX_4D(num_times, num_baselines, num_channels, num_pols, 0, i, 0, 0);
         const unsigned int i_vis_grid = INDEX_2D(num_baselines, num_channels, i, 0);
-        vis_psf_ptr[i_vis] = vis_grid_psf_ptr[i_vis_grid];
+        vis_grid_psf_ptr[i_vis_grid] = vis_psf_ptr[i_vis];
     }
+
+    // for (int i = 0; i < 1; i++)
+    // {
+    //     SDP_LOG_INFO("value: %f", vis_psf_ptr[i]);
+    //     SDP_LOG_INFO("number: %d", i);
+    // }
 
     // reshape UVW to fit input of gridder
     const int64_t uvw_grid_shape[] = {num_baselines, 3}; // num_times = 1 so can be ignored, num_rows = num_baselines
@@ -330,7 +350,7 @@ static void run_and_check(
 
     // settings
     int nxydirty = 1024;
-    int nxypsf = 1024;
+    int nxypsf = 2048;
     double loop_gain = 0.1;
     double threshold = 0.001;
     int cycle_limit = 10000;
@@ -361,7 +381,7 @@ static void run_and_check(
 
     // create output
     const int64_t skymodel_shape[] = {nxydirty, nxydirty};
-    sdp_Mem *skymodel = sdp_mem_create(output_type, output_location, 2, skymodel_shape, status);
+    sdp_Mem *skymodel = sdp_mem_create(output_type, SDP_MEM_CPU, 2, skymodel_shape, status);
     sdp_mem_clear_contents(skymodel, status);
 
     // call function to test
@@ -384,14 +404,42 @@ static void run_and_check(
 
 int main()
 {
+    SDP_LOG_INFO("start of test:");
+
     // happy paths
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, double precision", true, false,
-                      SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                      SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
                       SDP_MEM_CPU, SDP_MEM_CPU, &status);
         assert(status == SDP_SUCCESS);
     }
+
+        // unhappy paths
+    // {
+    //     sdp_Error status = SDP_SUCCESS;
+    //     run_and_check("CPU, Type Mismatch", false, false,
+    //                   SDP_MEM_DOUBLE, SDP_MEM_FLOAT,
+    //                   SDP_MEM_CPU, SDP_MEM_CPU, &status);
+    //     assert(status != SDP_SUCCESS);
+    // }
+
+    // {
+    //     sdp_Error status = SDP_SUCCESS;
+    //     run_and_check("CPU, Output set to read-only", false, true,
+    //                   SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
+    //                   SDP_MEM_CPU, SDP_MEM_CPU, &status);
+    //     assert(status != SDP_ERR_DATA_TYPE);
+    // }
+
+    // {
+    //     sdp_Error status = SDP_SUCCESS;
+    //     run_and_check("CPU, location mis-match", false, false,
+    //                   SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
+    //                   SDP_MEM_CPU, SDP_MEM_GPU, &status);
+    //     assert(status == SDP_ERR_MEM_LOCATION);
+    // }
+
 
     return 0;
 }

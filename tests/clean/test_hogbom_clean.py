@@ -1,6 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-"""Integration test for CLEAN using DTF and gridder functions."""
+"""Integration test for Hogbom CLEAN using DFT and gridder functions."""
 
 try:
     import cupy
