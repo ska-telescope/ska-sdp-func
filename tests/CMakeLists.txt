@@ -7,6 +7,7 @@ set(${CMAKE_PROJECT_NAME}_TEST_FOLDERS
     utility
     visibility
     clean
+    numeric_functions
 )
 
 # Build tests.
