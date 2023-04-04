@@ -7,6 +7,7 @@ set(${CMAKE_PROJECT_NAME}_FOLDERS
     utility
     visibility
     clean
+    numeric_functions
 )
 
 # Auto-generate the source lists and pass up to the parent.
