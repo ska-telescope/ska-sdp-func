@@ -4,17 +4,13 @@
 #undef NDEBUG
 #endif
 
-#include <string>
 #include <cmath>
 #include <complex>
-#include <iostream>
 #include <cassert>
-#include <ostream>
 
 #include "ska-sdp-func/clean/sdp_hogbom_clean.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
-#include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
 #include "ska-sdp-func/visibility/sdp_dft.h"
@@ -47,9 +43,14 @@ static void create_test_data(
     // const int64_t psf_size = psf_dim * psf_dim;
     // const int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
     // const int64_t psf_shape[] = {psf_dim, psf_dim};
+    const int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
+    const int64_t fluxes_shape[] = {num_components, num_channels, num_pols};
+    const int64_t fluxes_psf_shape[] = {1, num_channels, num_pols};
+    const int64_t directions_shape[] = {num_components, 3};
+    const int64_t directions_psf_shape[] = {1, 3};
+    const int64_t uvw_shape[] = {num_times, num_baselines, 3};
 
     // initialise empty arrays for dirty image generation
-    const int64_t vis_shape[] = {num_times, num_baselines, num_channels, num_pols};
     sdp_Mem *vis = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 4, vis_shape, status);
     complex<double> *vis_ptr = (complex<double> *)sdp_mem_data(vis);
     sdp_mem_clear_contents(vis, status);
@@ -58,28 +59,24 @@ static void create_test_data(
     complex<double> *vis_psf_ptr = (complex<double> *)sdp_mem_data(vis_psf);
     sdp_mem_clear_contents(vis_psf, status);
 
-    const int64_t fluxes_shape[] = {num_components, num_channels, num_pols};
     sdp_Mem *fluxes = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 3, fluxes_shape, status);
     complex<double> *fluxes_ptr = (complex<double> *)sdp_mem_data(fluxes);
     sdp_mem_clear_contents(fluxes, status);
 
-    const int64_t fluxes_psf_shape[] = {1, num_channels, num_pols};
     sdp_Mem *fluxes_psf = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 3, fluxes_psf_shape, status);
     complex<double> *fluxes_psf_ptr = (complex<double> *)sdp_mem_data(fluxes_psf);
     sdp_mem_clear_contents(fluxes_psf, status);
+    // Create flux of 1 + 0j's for psf
     fluxes_psf_ptr[0] = std::complex<double>(1,0);
 
-    const int64_t directions_shape[] = {num_components, 3};
     sdp_Mem *directions = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, directions_shape, status);
     double *directions_ptr = (double *)sdp_mem_data(directions);
     sdp_mem_clear_contents(directions, status);
 
-    const int64_t directions_psf_shape[] = {1, 3};
     sdp_Mem *directions_psf = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, directions_psf_shape, status);
-    double *directions_psf_ptr = (double *)sdp_mem_data(directions_psf);
+    // double *directions_psf_ptr = (double *)sdp_mem_data(directions_psf);
     sdp_mem_clear_contents(directions_psf, status);
 
-    const int64_t uvw_shape[] = {num_times, num_baselines, 3};
     sdp_Mem *uvw = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_CPU, 3, uvw_shape, status);
     double *uvw_ptr = (double *)sdp_mem_data(uvw);
     sdp_mem_clear_contents(uvw, status);
@@ -118,11 +115,6 @@ static void create_test_data(
         const unsigned int i_fluxes = INDEX_3D(num_components, num_channels, num_pols, i, 0, 0);
         fluxes_ptr[i_fluxes] = complex<double>(ran_flux, 0);
     }
-
-    // Create flux of 1 + 0j's for psf
-
-
-
 
     // create random lmn co-ordinates between (-0.015,-0.015) and (0.015,0.015)
     upper = 0, upper = 30;
@@ -183,14 +175,6 @@ static void create_test_data(
         vis_grid_ptr[i_vis_grid] = vis_ptr[i_vis];
     }
 
-    // int64_t len = num_times * num_baselines * num_channels * num_pols;
-
-    // for (int i = 0; i < len; i++)
-    // {
-    //     SDP_LOG_INFO("value: %f", vis_grid_ptr[i]);
-    //     SDP_LOG_INFO("number: %d", i);
-    // }
-
     sdp_Mem *vis_grid_psf = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, vis_grid_shape, status);
     complex<double> *vis_grid_psf_ptr = (complex<double> *)sdp_mem_data(vis_grid_psf);
 
@@ -201,12 +185,6 @@ static void create_test_data(
         const unsigned int i_vis_grid = INDEX_2D(num_baselines, num_channels, i, 0);
         vis_grid_psf_ptr[i_vis_grid] = vis_psf_ptr[i_vis];
     }
-
-    // for (int i = 0; i < 1; i++)
-    // {
-    //     SDP_LOG_INFO("value: %f", vis_psf_ptr[i]);
-    //     SDP_LOG_INFO("number: %d", i);
-    // }
 
     // reshape UVW to fit input of gridder
     const int64_t uvw_grid_shape[] = {num_baselines, 3}; // num_times = 1 so can be ignored, num_rows = num_baselines
@@ -339,7 +317,6 @@ static void create_test_data(
 
 static void run_and_check(
     const char *test_name,
-    bool expect_pass,
     bool read_only_output,
     sdp_MemType input_type,
     sdp_MemType output_type,
@@ -381,8 +358,9 @@ static void run_and_check(
 
     // create output
     const int64_t skymodel_shape[] = {nxydirty, nxydirty};
-    sdp_Mem *skymodel = sdp_mem_create(output_type, SDP_MEM_CPU, 2, skymodel_shape, status);
+    sdp_Mem *skymodel = sdp_mem_create(output_type, output_location, 2, skymodel_shape, status);
     sdp_mem_clear_contents(skymodel, status);
+    sdp_mem_set_read_only(skymodel, read_only_output);
 
     // call function to test
     SDP_LOG_INFO("Running test: %s", test_name);
@@ -409,37 +387,36 @@ int main()
     // happy paths
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, double precision", true, false,
+        run_and_check("CPU, double precision", false,
                       SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
                       SDP_MEM_CPU, SDP_MEM_CPU, &status);
         assert(status == SDP_SUCCESS);
     }
 
-        // unhappy paths
-    // {
-    //     sdp_Error status = SDP_SUCCESS;
-    //     run_and_check("CPU, Type Mismatch", false, false,
-    //                   SDP_MEM_DOUBLE, SDP_MEM_FLOAT,
-    //                   SDP_MEM_CPU, SDP_MEM_CPU, &status);
-    //     assert(status != SDP_SUCCESS);
-    // }
+    // unhappy paths
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("CPU, Type Mismatch", false,
+                      SDP_MEM_DOUBLE, SDP_MEM_FLOAT,
+                      SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status == SDP_ERR_DATA_TYPE);
+    }
 
-    // {
-    //     sdp_Error status = SDP_SUCCESS;
-    //     run_and_check("CPU, Output set to read-only", false, true,
-    //                   SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-    //                   SDP_MEM_CPU, SDP_MEM_CPU, &status);
-    //     assert(status != SDP_ERR_DATA_TYPE);
-    // }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("CPU, Output set to read-only", true,
+                      SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
+                      SDP_MEM_CPU, SDP_MEM_CPU, &status);
+        assert(status == SDP_ERR_RUNTIME);
+    }
 
-    // {
-    //     sdp_Error status = SDP_SUCCESS;
-    //     run_and_check("CPU, location mis-match", false, false,
-    //                   SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-    //                   SDP_MEM_CPU, SDP_MEM_GPU, &status);
-    //     assert(status == SDP_ERR_MEM_LOCATION);
-    // }
-
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("CPU, location mis-match", false,
+                      SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
+                      SDP_MEM_CPU, SDP_MEM_GPU, &status);
+        assert(status == SDP_ERR_MEM_LOCATION);
+    }
 
     return 0;
 }

@@ -123,8 +123,6 @@ static void fft_convolution(
             pad_dim += 1;
         }
 
-        SDP_LOG_INFO("padding dimension: %d", pad_dim);
-
         int64_t pad_shape[] = {pad_dim, pad_dim};
         int64_t pad_size = pad_dim * pad_dim;
 
