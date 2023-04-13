@@ -241,7 +241,7 @@ void sdp_weighting_briggs(
     if (*status) return;
     sdp_MemType uvw_type = sdp_mem_type(uvw);
     sdp_MemType weights_type = SDP_MEM_VOID;
-    sdp_MemLocation weights_location = SDP_MEM_CPU;
+    sdp_MemLocation weights_location = sdp_mem_location(output_weight);
     double sumweight = 0;
     double sumweight2 = 0;
     int64_t num_times = 0;
@@ -408,9 +408,180 @@ void sdp_weighting_briggs(
     }
     else if (weights_location == SDP_MEM_GPU)
     {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("A GPU version of the uniform weighting function "
-                "is not currently implemented"
+        const uint64_t num_threads[] = {128, 2, 2};
+        const uint64_t num_blocks[] = {
+            (num_baselines + num_threads[0] - 1) / num_threads[0],
+            (num_channels + num_threads[1] - 1) / num_threads[1],
+            (num_times + num_threads[2] - 1) / num_threads[2]
+        };
+        const char* kernel_name = 0;
+        if (uvw_type == SDP_MEM_DOUBLE &&
+                weights_type == SDP_MEM_DOUBLE &&
+                sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(weights_grid_uv) == SDP_MEM_DOUBLE)
+        {
+            kernel_name = "grid_write_gpu<double, double, double>";
+        }
+        else if (uvw_type == SDP_MEM_DOUBLE &&
+                weights_type == SDP_MEM_FLOAT &&
+                sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(weights_grid_uv) == SDP_MEM_FLOAT)
+        {
+            kernel_name = "grid_write_gpu<double, double, float>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type(s)");
+        }
+
+        const void* args[]{
+            (const void*)&num_times,
+            (const void*)&num_baselines,
+            (const void*)&num_channels,
+            (const void*)&num_pols,
+            (const void*)&grid_size,
+            sdp_mem_gpu_buffer_const(uvw, status),
+            sdp_mem_gpu_buffer_const(freq_hz, status),
+            (const void*)&max_abs_uv,
+            sdp_mem_gpu_buffer(weights_grid_uv, status),
+            sdp_mem_gpu_buffer_const(input_weight, status),
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks,
+                num_threads,
+                0,
+                0,
+                args,
+                status
+        );
+
+        int64_t sumweight_shape[] = {1};
+        int64_t sumweight2_shape[] = {1};
+        sdp_Mem* sumweight_gpu = sdp_mem_create(SDP_MEM_DOUBLE,
+                SDP_MEM_GPU,
+                1,
+                sumweight_shape,
+                status
+        );
+        sdp_Mem* sumweight2_gpu = sdp_mem_create(SDP_MEM_DOUBLE,
+                SDP_MEM_GPU,
+                1,
+                sumweight2_shape,
+                status
+        );
+
+        const char* kernel_name1 = 0;
+        if (uvw_type == SDP_MEM_DOUBLE &&
+                weights_type == SDP_MEM_DOUBLE &&
+                sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(weights_grid_uv) == SDP_MEM_DOUBLE)
+        {
+            kernel_name1 = "calc_sum_gpu<double, double, double>";
+        }
+        else if (uvw_type == SDP_MEM_DOUBLE &&
+                weights_type == SDP_MEM_FLOAT &&
+                sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(weights_grid_uv) == SDP_MEM_FLOAT)
+        {
+            kernel_name1 = "calc_sum_gpu<double, double, float>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type(s)");
+        }
+
+        const void* args1[]{
+            (const void*)&num_times,
+            (const void*)&num_baselines,
+            (const void*)&num_channels,
+            (const void*)&num_pols,
+            (const void*)&grid_size,
+            sdp_mem_gpu_buffer_const(uvw, status),
+            sdp_mem_gpu_buffer_const(freq_hz, status),
+            (const void*)&max_abs_uv,
+            sdp_mem_gpu_buffer_const(weights_grid_uv, status),
+            sdp_mem_gpu_buffer_const(input_weight, status),
+            sdp_mem_gpu_buffer(sumweight_gpu, status),
+            sdp_mem_gpu_buffer(sumweight2_gpu, status)
+        };
+
+        sdp_launch_cuda_kernel(kernel_name1,
+                num_blocks,
+                num_threads,
+                0,
+                0,
+                args1,
+                status
+        );
+
+        // copy back from gpu sumweight and sumweight2
+        sdp_Mem* sumweight2_gpu_cpy = sdp_mem_create_copy(sumweight2_gpu,
+                SDP_MEM_CPU,
+                status
+        );
+        sdp_Mem* sumweight_gpu_cpy = sdp_mem_create_copy(sumweight_gpu,
+                SDP_MEM_CPU,
+                status
+        );
+
+        double robustness = robustness_calc(
+                *((double*)sdp_mem_data(sumweight2_gpu_cpy)),
+                *((double*)sdp_mem_data(sumweight_gpu_cpy)),
+                robust_param
+        );
+
+        sdp_mem_ref_dec(sumweight2_gpu);
+        sdp_mem_ref_dec(sumweight_gpu);
+        sdp_mem_ref_dec(sumweight_gpu_cpy);
+        sdp_mem_ref_dec(sumweight2_gpu_cpy);
+
+        const char* kernel_name2 = 0;
+        if (uvw_type == SDP_MEM_DOUBLE &&
+                weights_type == SDP_MEM_DOUBLE &&
+                sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(weights_grid_uv) == SDP_MEM_DOUBLE)
+        {
+            kernel_name2 = "grid_read_gpu<double, double, double>";
+        }
+        else if (uvw_type == SDP_MEM_DOUBLE &&
+                weights_type == SDP_MEM_FLOAT &&
+                sdp_mem_type(freq_hz) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(weights_grid_uv) == SDP_MEM_FLOAT)
+        {
+            kernel_name2 = "grid_read_gpu<double, double, float>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type(s)");
+        }
+
+        const void* args2[]{
+            (const void*)&num_times,
+            (const void*)&num_baselines,
+            (const void*)&num_channels,
+            (const void*)&num_pols,
+            (const void*)&grid_size,
+            (const void*)&wt,
+            sdp_mem_gpu_buffer_const(uvw, status),
+            sdp_mem_gpu_buffer_const(freq_hz, status),
+            (const void*)&max_abs_uv,
+            sdp_mem_gpu_buffer_const(weights_grid_uv, status),
+            sdp_mem_gpu_buffer_const(input_weight, status),
+            sdp_mem_gpu_buffer(output_weight, status),
+            (const void*)&robustness
+        };
+
+        sdp_launch_cuda_kernel(kernel_name2,
+                num_blocks,
+                num_threads,
+                0,
+                0,
+                args2,
+                status
         );
     }
 }
