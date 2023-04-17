@@ -3,9 +3,13 @@
 """Test weighting functions."""
 
 from math import floor
-
-import cupy as cp
 import numpy as np
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
 
 from ska_sdp_func.visibility.weighting import briggs_weights
 
