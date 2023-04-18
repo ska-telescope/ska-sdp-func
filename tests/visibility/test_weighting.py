@@ -3,6 +3,7 @@
 """Test weighting functions."""
 
 from math import floor
+
 import numpy as np
 
 try:
