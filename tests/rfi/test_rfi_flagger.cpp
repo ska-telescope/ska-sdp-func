@@ -50,7 +50,7 @@ static void threshold_calc(
 {
     for (int f = 0; f < num_sequence_el; f++)
     {
-        double m = pow( rho, std::log2((double) (1 << f)));
+        double m = pow(rho, (double)f);
         thresholds[f] = (input_type) (initial_value / m);
     }
 }
