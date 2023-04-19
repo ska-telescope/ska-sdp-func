@@ -1,5 +1,6 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
+#include <stdlib.h>
 #include "ska-sdp-func/examples/sdp_function_example_a.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
