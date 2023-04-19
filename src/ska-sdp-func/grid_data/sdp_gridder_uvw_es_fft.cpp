@@ -1,6 +1,7 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #include <complex>
+#include <cstdlib>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
