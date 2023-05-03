@@ -11,6 +11,7 @@ returned convolution is the same size as in1, similar to scipy.signal.convolve "
 #include <complex>
 
 #include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 #include "ska-sdp-func/numeric_functions/sdp_fft_convolution.h"
@@ -131,7 +132,7 @@ static void fft_convolution(
         complex<T>* in1_pad_ptr = (complex<T>*)sdp_mem_data(in1_pad_mem);
         sdp_mem_clear_contents(in1_pad_mem, status);
 
-        // calculate the number of extra columns and rows need to reach padded lenth
+        // calculate the number of extra columns and rows need to reach padded length
         int64_t extra_in1 = (pad_dim - in1_dim)/2;
 
         // pad in1
@@ -142,7 +143,7 @@ static void fft_convolution(
         complex<T>* in2_pad_ptr = (complex<T>*)sdp_mem_data(in2_pad_mem);
         sdp_mem_clear_contents(in2_pad_mem, status);
 
-        // calculate the number of extra columns and rows need to reach padded lenth
+        // calculate the number of extra columns and rows need to reach padded length
         int64_t extra_in2 = (pad_dim - in2_dim)/2;
 
         // pad in2
@@ -201,6 +202,257 @@ static void fft_convolution(
         sdp_mem_ref_dec(multiply_ifft_result_mem);
 }
 
+static void fft_convolution_gpu(
+        const sdp_Mem* in1,
+        const sdp_Mem* in2,
+        const int64_t in1_dim,
+        const int64_t in2_dim,
+        const sdp_MemType data_type,
+        sdp_Mem* out,
+        sdp_Error* status
+){
+        const char* kernel_name = 0;
+
+        // pad images
+        // calculate minimum length for padding of each dim
+        // m + n -1 
+        int64_t pad_dim = in1_dim + in2_dim - 1;
+
+        // make sure padded image is a power of 2
+        while (ceil(log2(pad_dim)) != floor(log2(pad_dim))){
+
+            pad_dim += 1;
+        }
+
+        int64_t pad_shape[] = {pad_dim, pad_dim};
+        int64_t pad_size = pad_dim * pad_dim;
+
+        // create memory to save padded input in1
+        sdp_Mem* in1_pad_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
+        sdp_mem_clear_contents(in1_pad_mem, status);
+
+        // calculate the number of extra columns and rows need to reach padded length
+        int64_t extra_in1 = (pad_dim - in1_dim)/2;
+
+        // pad in1
+        uint64_t num_threads1[] = {32, 32, 1};
+        uint64_t num_blocks1[] = {
+            (in1_dim + num_threads1[0] - 1) / num_threads1[0], (in1_dim + num_threads1[1] - 1) / num_threads1[1], 1
+        };
+
+        if (data_type == SDP_MEM_COMPLEX_DOUBLE){
+            kernel_name = "pad_2D_gpu<cuDoubleComplex>";
+        }
+        else if (data_type == SDP_MEM_COMPLEX_FLOAT){
+            kernel_name = "pad_2D_gpu<cuFloatComplex>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }     
+        
+        const void* args1[] = {
+            sdp_mem_gpu_buffer_const(in1, status),
+            sdp_mem_gpu_buffer(in1_pad_mem, status),
+            &in1_dim,
+            &in1_dim,
+            &extra_in1,
+            &extra_in1,
+            &pad_dim
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks1, num_threads1, 0, 0, args1, status
+        );
+        
+
+        // create memory to save padded input in2
+        sdp_Mem* in2_pad_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
+        sdp_mem_clear_contents(in2_pad_mem, status);
+
+        // calculate the number of extra columns and rows need to reach padded length
+        int64_t extra_in2 = (pad_dim - in2_dim)/2;
+
+        // pad in2
+        uint64_t num_blocks2[] = {
+            (in2_dim + num_threads1[0] - 1) / num_threads1[0], (in2_dim + num_threads1[1] - 1) / num_threads1[1], 1
+        };
+      
+        const void* args2[] = {
+            sdp_mem_gpu_buffer_const(in2, status),
+            sdp_mem_gpu_buffer(in2_pad_mem, status),
+            &in2_dim,
+            &in2_dim,
+            &extra_in2,
+            &extra_in2,
+            &pad_dim
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks2, num_threads1, 0, 0, args2, status
+        );
+
+
+        // create variables for FFT results
+        sdp_Mem* in1_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
+        sdp_mem_clear_contents(in1_fft_result_mem, status);
+        sdp_Mem* in2_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
+        sdp_mem_clear_contents(in2_fft_result_mem, status);
+
+        // get FFT of padded in1
+        sdp_Fft *in1_fft_plan = sdp_fft_create(in1_pad_mem, in1_fft_result_mem, 2, 1, status);
+        sdp_fft_exec(in1_fft_plan, in1_pad_mem, in1_fft_result_mem, status);
+        sdp_fft_free(in1_fft_plan);
+
+        // get FFT of padded in2
+        sdp_Fft *in2_fft_plan = sdp_fft_create(in2_pad_mem, in2_fft_result_mem, 2, 1, status);
+        sdp_fft_exec(in2_fft_plan, in2_pad_mem, in2_fft_result_mem, status);
+        sdp_fft_free(in2_fft_plan);
+
+        // create variables for frequency domain multiplication result
+        sdp_Mem* multiply_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
+        sdp_mem_clear_contents(multiply_mem, status);
+
+        uint64_t num_threads3[] = {256, 1, 1};
+        uint64_t num_blocks3[] = {
+            (pad_size + num_threads3[0] - 1) / num_threads3[0], 1, 1
+        };
+
+        if (data_type == SDP_MEM_COMPLEX_DOUBLE){
+            kernel_name = "complex_multiply<cuDoubleComplex>";
+        }
+        else if (data_type == SDP_MEM_COMPLEX_FLOAT){
+            kernel_name = "complex_multiply<cuFloatComplex>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }   
+        
+        const void* args3[] = {
+            sdp_mem_gpu_buffer(in1_fft_result_mem, status),
+            sdp_mem_gpu_buffer(in2_fft_result_mem, status),
+            sdp_mem_gpu_buffer(multiply_mem, status),
+            &pad_size
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks3, num_threads3, 0, 0, args3, status
+        );
+
+        // inverse FFT of result
+        sdp_Mem* multiply_ifft_result_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
+        
+        sdp_Fft *result_ifft_plan = sdp_fft_create(multiply_mem, multiply_ifft_result_mem,2,0,status);
+        sdp_fft_exec(result_ifft_plan,multiply_mem,multiply_ifft_result_mem,status);
+        sdp_fft_free(result_ifft_plan);
+
+        uint64_t num_threads4[] = {256, 1, 1};
+        uint64_t num_blocks4[] = {
+            (pad_size + num_threads4[0] - 1) / num_threads4[0], 1, 1
+        };
+
+        if (data_type == SDP_MEM_COMPLEX_DOUBLE){
+            kernel_name = "fft_normalise_gpu<cuDoubleComplex>";
+        }
+        else if (data_type == SDP_MEM_COMPLEX_FLOAT){
+            kernel_name = "fft_normalise_gpu<cuFloatComplex>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }   
+      
+        const void* args4[] = {
+            sdp_mem_gpu_buffer(multiply_ifft_result_mem, status),
+            &pad_size
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks4, num_threads4, 0, 0, args4, status
+        );
+
+        // shift the result to the center of the image
+        sdp_Mem* shift_result_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
+        sdp_mem_clear_contents(shift_result_mem, status);
+
+        int64_t half_rows = pad_dim / 2;
+        int64_t half_cols = pad_dim / 2;
+        
+        uint64_t num_threads5[] = {32, 32, 1};
+        uint64_t num_blocks5[] = {
+            (half_rows + num_threads5[0] - 1) / num_threads5[0], (half_cols + num_threads5[1] - 1) / num_threads5[1], 1
+        };
+
+        if (data_type == SDP_MEM_COMPLEX_DOUBLE){
+            kernel_name = "fft_shift_2D_gpu<cuDoubleComplex>";
+        }
+        else if (data_type == SDP_MEM_COMPLEX_FLOAT){
+            kernel_name = "fft_shift_2D_gpu<cuFloatComplex>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }  
+
+        const void* args5[] = {
+            sdp_mem_gpu_buffer(multiply_ifft_result_mem, status),
+            sdp_mem_gpu_buffer(shift_result_mem, status),
+            &pad_dim,
+            &pad_dim,
+            &half_rows,
+            &half_cols
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks5, num_threads5, 0, 0, args5, status
+        );
+
+        // sdp_mem_copy_contents(out,shift_result_mem,0,0,pad_size,status);
+
+        // remove padding from the convolved result      
+        uint64_t num_threads6[] = {32, 32, 1};
+        uint64_t num_blocks6[] = {
+            (in1_dim + num_threads6[0] - 1) / num_threads6[0], (in1_dim + num_threads6[1] - 1) / num_threads6[1], 1
+        };
+
+        if (data_type == SDP_MEM_COMPLEX_DOUBLE){
+            kernel_name = "remove_padding_2D_gpu<cuDoubleComplex>";
+        }
+        else if (data_type == SDP_MEM_COMPLEX_FLOAT){
+            kernel_name = "remove_padding_2D_gpu<cuFloatComplex>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }  
+
+        const void* args6[] = {
+            sdp_mem_gpu_buffer(shift_result_mem, status),
+            sdp_mem_gpu_buffer(out, status),
+            &pad_dim,
+            &pad_dim,
+            &extra_in1,
+            &extra_in1,
+            &in1_dim,
+            &in1_dim
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks6, num_threads6, 0, 0, args6, status
+        );
+
+
+        sdp_mem_ref_dec(in1_pad_mem);
+        sdp_mem_ref_dec(in2_pad_mem);
+        sdp_mem_ref_dec(in1_fft_result_mem);
+        sdp_mem_ref_dec(in2_fft_result_mem);
+        sdp_mem_ref_dec(multiply_mem);
+        sdp_mem_ref_dec(multiply_ifft_result_mem);
+        sdp_mem_ref_dec(shift_result_mem);
+
+}
+
 void sdp_fft_convolution(
         const sdp_Mem* in1,
         const sdp_Mem* in2,
@@ -212,6 +464,7 @@ void sdp_fft_convolution(
     const int64_t in1_dim = sdp_mem_shape_dim(in1, 0);
     const int64_t in2_dim = sdp_mem_shape_dim(in2, 0);
 
+    const sdp_MemLocation location = sdp_mem_location(in1);
     const sdp_MemType data_type = sdp_mem_type(in1);
 
     if (sdp_mem_is_read_only(out)){
@@ -238,9 +491,9 @@ void sdp_fft_convolution(
         return;
     }
 
-    if (sdp_mem_location(in1) == SDP_MEM_CPU)
+    if (location == SDP_MEM_CPU)
     {
-        if (sdp_mem_type(in1) == SDP_MEM_COMPLEX_DOUBLE){
+        if (data_type == SDP_MEM_COMPLEX_DOUBLE){
             fft_convolution<double>(
                 (const complex<double>*)sdp_mem_data_const(in1),
                 (const complex<double>*)sdp_mem_data_const(in2),
@@ -252,7 +505,7 @@ void sdp_fft_convolution(
             );
         }
 
-        if (sdp_mem_type(in1) == SDP_MEM_COMPLEX_FLOAT){
+        else if (data_type == SDP_MEM_COMPLEX_FLOAT){
             fft_convolution<float>(
                 (const complex<float>*)sdp_mem_data_const(in1),
                 (const complex<float>*)sdp_mem_data_const(in2),
@@ -263,5 +516,25 @@ void sdp_fft_convolution(
                 status
             );
         }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }
+        
     }
+    else if (location == SDP_MEM_GPU){
+
+
+            fft_convolution_gpu(
+                in1,
+                in2,
+                in1_dim,
+                in2_dim,
+                data_type,
+                out,
+                status
+            );
+
+    }
+    
 }
