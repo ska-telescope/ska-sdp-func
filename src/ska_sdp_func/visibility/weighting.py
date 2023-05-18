@@ -15,7 +15,20 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         ctypes.c_double,
-        ctypes.c_uint,
+        ctypes.c_double,
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_weighting_uniform",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
         ctypes.c_double,
         Mem.handle_type(),
         Mem.handle_type(),
@@ -51,7 +64,6 @@ def briggs_weights(
     uvw,
     freq_hz,
     max_abs_uv,
-    weight_type,
     robust_param,
     grid_uv,
     input_weights,
@@ -73,11 +85,6 @@ def briggs_weights(
                        in wavelength units, real-valued.
     :type max_abs_uv: float
 
-    :param weight_type: Parameter for switching between
-                        Uniform and Robust Weighting.
-                        Value of 1(Robust) or 2(Uniform)
-    :type weight_typet: enum/int
-
     :param robust_param: Parameter given by the user to gauge the robustness
                          of the weighting function.
                          A value of -2 would be closer to uniform weighting and
@@ -96,8 +103,50 @@ def briggs_weights(
         Mem(uvw),
         Mem(freq_hz),
         max_abs_uv,
-        weight_type,
         robust_param,
+        Mem(grid_uv),
+        Mem(input_weights),
+        Mem(output_weights),
+    )
+
+
+def uniform_weights(
+    uvw,
+    freq_hz,
+    max_abs_uv,
+    grid_uv,
+    input_weights,
+    output_weights,
+):
+    """
+    Calculate the number of hits per UV cell and use the inverse of this
+    as the weight.
+
+    :param uvw: List of UVW coordinates in metres, real-valued.
+                Dimensions are [num_times, num_baselines, 3]
+    :type uvw: numpy.ndarray
+
+    :param freq_hz: List of frequencies in Hz, real-valued.
+                    Dimension is [num_channels]
+    :type freq_hz: numpy.ndarray
+
+    :param max_abs_uv: Maximum absolute value of UV coordinates
+                       in wavelength units, real-valued.
+    :type max_abs_uv: float
+
+    :param grid_uv: A initially zero-valued 2D UV grid array.
+                    Returns the number of hits per UV cell.
+    :type grid_uv: numpy.ndarray
+
+    :param weights: A real-valued 4D array, returns the weights.
+                    Dimensions are
+                    [num_times, num_baselines, num_channels, num_pols]
+    :type weights: numpy.ndarray
+    """
+    Lib.sdp_weighting_uniform(
+        Mem(uvw),
+        Mem(freq_hz),
+        max_abs_uv,
         Mem(grid_uv),
         Mem(input_weights),
         Mem(output_weights),

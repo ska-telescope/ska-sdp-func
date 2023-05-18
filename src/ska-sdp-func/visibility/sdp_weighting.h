@@ -47,21 +47,30 @@ extern "C" {
  * @param status Error status.
  */
 
-enum weighting_type
-{
-    // Weighting scheme to be utilized in the function is Robust
-    ROBUST_WEIGHTING = 1,
+// enum weighting_type
+// {
+//     // Weighting scheme to be utilized in the function is Robust
+//     ROBUST_WEIGHTING = 1,
 
-    // Weighting scheme to be utilized in the function is Uniform
-    UNIFORM_WEIGHTING = 2
-};
+//     // Weighting scheme to be utilized in the function is Uniform
+//     UNIFORM_WEIGHTING = 2
+// };
 
 void sdp_weighting_briggs(
         const sdp_Mem* uvw,
         const sdp_Mem* freq_hz,
         double max_abs_uv,
-        weighting_type wt,
         const double robust_param,
+        sdp_Mem* weight_grid_uv,
+        sdp_Mem* input_weights,
+        sdp_Mem* output_weights,
+        sdp_Error* status
+);
+
+void sdp_weighting_uniform(
+        const sdp_Mem* uvw,
+        const sdp_Mem* freq_hz,
+        double max_abs_uv,
         sdp_Mem* weight_grid_uv,
         sdp_Mem* input_weights,
         sdp_Mem* output_weights,
