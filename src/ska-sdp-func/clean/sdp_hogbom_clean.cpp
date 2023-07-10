@@ -104,6 +104,7 @@ static void hogbom_clean(
         sdp_Mem* residual_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
         complex<double>* residual_ptr = (complex<double>*)sdp_mem_data(residual_mem);
 
+        // Convolution code only works with complex input, so make residual complex
         create_copy_complex(dirty_img, dirty_img_size, residual_ptr);
         
         // set up some loop variables
@@ -150,7 +151,7 @@ static void hogbom_clean(
             psf_x_start = dirty_img_dim - max_idx_x;
             psf_x_end = psf_x_start + dirty_img_dim;
             psf_y_start = dirty_img_dim - max_idx_y;
-            psf_y_end = dirty_img_dim - max_idx_y + dirty_img_dim;
+            psf_y_end = psf_y_start + dirty_img_dim;
 
             for (int x = psf_x_start, i = 0; x < psf_x_end; x++, i++){
                 for (int y = psf_y_start, j = 0; y < psf_y_end; y++, j++){
@@ -179,6 +180,249 @@ static void hogbom_clean(
         sdp_mem_ref_dec(convolution_result_mem);
 }
 
+void hogbom_clean_gpu(
+        const sdp_Mem* dirty_img,
+        const sdp_Mem* psf,
+        const sdp_Mem* cbeam_details,
+        const double loop_gain,
+        const double threshold,
+        const double cycle_limit,
+        const int64_t dirty_img_dim,
+        const int64_t psf_dim,
+        sdp_Mem* skymodel,
+        sdp_Error* status
+
+){
+        // calculate useful shapes and sizes
+        int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
+        int64_t psf_size = psf_dim * psf_dim;
+
+        int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
+        int64_t psf_shape[] = {psf_dim, psf_dim};
+
+        // Create intermediate data arrays
+        // for CLEAN beam
+        sdp_Mem* cbeam_complex_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, 2, psf_shape, status);
+        sdp_mem_clear_contents(cbeam_complex_mem, status);
+
+        // for CLEAN components
+        sdp_Mem* clean_comp_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_Mem* clean_comp_complex_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_mem_clear_contents(clean_comp_mem, status);
+        sdp_mem_clear_contents(clean_comp_complex_mem, status);
+
+        // for residual image
+        sdp_Mem* residual_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_mem_copy_contents(residual_mem, dirty_img, 0, 0, dirty_img_size, status);
+
+        // for result of convolution of CLEAN beam and with CLEAN components
+        sdp_Mem* convolution_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_mem_clear_contents(convolution_result_mem, status);
+
+        // set up some loop variables
+        int cur_cycle = 0;
+        bool stop = 0;
+
+        const char* kernel_name = 0;
+
+        uint64_t num_threads[] = {256, 1, 1};
+        uint64_t num_blocks[] = {
+            ((dirty_img_size + num_threads[0] - 1) / num_threads[0]), 1, 1
+        };
+
+        int64_t max_shape[] = {num_blocks[0]};
+
+        // to store image maximum value and index
+        sdp_Mem* max_val_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 1, max_shape, status);
+        sdp_Mem* max_idx_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1, max_shape, status);
+
+
+        // CLEAN loop executes while the stop conditions (threshold and cycle limit) are not met
+        while (cur_cycle < cycle_limit && !stop) {
+            
+            // reset maximum values for new loop
+            sdp_mem_clear_contents(max_val_mem, status);
+            sdp_mem_clear_contents(max_idx_mem, status);
+
+            bool init_idx = false;
+                
+            const void* args[] = {
+                sdp_mem_gpu_buffer_const(residual_mem, status),
+                sdp_mem_gpu_buffer(max_idx_mem, status),
+                sdp_mem_gpu_buffer(max_val_mem, status),
+                sdp_mem_gpu_buffer(max_idx_mem, status),
+                &init_idx
+            };
+
+            kernel_name = "find_maximum_value";
+
+            while (num_blocks[0] > 1)
+            {
+
+                sdp_launch_cuda_kernel(kernel_name,
+                        num_blocks, num_threads, 0, 0, args, status
+                );
+
+                num_blocks[0] = ((num_blocks[0] + num_threads[0] - 1) / num_threads[0]);
+
+                args[0] = sdp_mem_gpu_buffer_const(max_val_mem, status);
+                
+                init_idx = true;
+            }
+
+            sdp_launch_cuda_kernel(kernel_name,
+                        num_blocks, num_threads, 0, 0, args, status
+                );
+
+             num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);            
+
+
+            
+
+            // kernel_name = "find_maximum_value";
+
+            // const void* args[] = {
+            //     sdp_mem_gpu_buffer_const(residual_mem, status),
+            //     sdp_mem_gpu_buffer(max_idx_mem, status),
+            //     sdp_mem_gpu_buffer(max_val_mem, status),
+            //     sdp_mem_gpu_buffer(max_idx_mem, status),
+            //     &init_idx
+            // };
+
+            // sdp_launch_cuda_kernel(kernel_name,
+            //         num_blocks, num_threads, 0, 0, args, status
+            // );
+
+            // init_idx = true;
+
+            // uint64_t num_threads2[] = {256, 1, 1};
+            // uint64_t num_blocks2[] = {
+            //     ((4096 + num_threads[0] - 1) / num_threads[0]), 1, 1
+            // };
+
+            // const void* args1[] = {
+            //     sdp_mem_gpu_buffer_const(max_val_mem, status),
+            //     sdp_mem_gpu_buffer(max_idx_mem, status),
+            //     sdp_mem_gpu_buffer(max_val_mem2, status),
+            //     sdp_mem_gpu_buffer(max_idx_mem2, status),
+            //     &init_idx
+            // };
+
+            // sdp_launch_cuda_kernel(kernel_name,
+            //         num_blocks2, num_threads2, 0, 0, args1, status
+            // );
+
+            // uint64_t num_threads3[] = {256, 1, 1};
+            // uint64_t num_blocks3[] = {
+            //     ((16 + num_threads[0] - 1) / num_threads[0]), 1, 1
+            // };
+
+            // const void* args2[] = {
+            //     sdp_mem_gpu_buffer_const(max_val_mem2, status),
+            //     sdp_mem_gpu_buffer(max_idx_mem2, status),
+            //     sdp_mem_gpu_buffer(max_val_mem3, status),
+            //     sdp_mem_gpu_buffer(max_idx_mem3, status),
+            //     &init_idx
+            // };
+
+            // sdp_launch_cuda_kernel(kernel_name,
+            //         num_blocks3, num_threads3, 0, 0, args2, status
+            // );
+
+            // sdp_mem_copy_contents(skymodel, max_val_mem, 0, 0, max_size, status);
+
+            // add clean components here
+            uint64_t num_threadsx[] = {1, 1, 1};
+            uint64_t num_blocksx[] = {1, 1, 1};
+
+            kernel_name = "add_clean_comp";
+            const void* argsXX[] = {
+                sdp_mem_gpu_buffer(clean_comp_mem, status),
+                sdp_mem_gpu_buffer(max_idx_mem, status),
+                &loop_gain,
+                sdp_mem_gpu_buffer(max_val_mem, status),
+                &threshold,
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocksx, num_threadsx, 0, 0, argsXX, status
+            );
+
+            kernel_name = "subtract_psf";
+
+            const void* args2[] = {
+                &dirty_img_dim,
+                &psf_dim,
+                &loop_gain,
+                sdp_mem_gpu_buffer(max_idx_mem, status),
+                sdp_mem_gpu_buffer(max_val_mem, status),
+                sdp_mem_gpu_buffer_const(psf, status),
+                sdp_mem_gpu_buffer(residual_mem,status),
+                sdp_mem_gpu_buffer(clean_comp_mem, status),
+                sdp_mem_gpu_buffer(skymodel, status),
+                &threshold
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, args2, status
+            );
+
+            cur_cycle += 1;
+        }
+
+        kernel_name = "create_copy_complex";
+
+        const void* args3[] = {
+            sdp_mem_gpu_buffer_const(clean_comp_mem, status),
+            &dirty_img_size,
+            sdp_mem_gpu_buffer(clean_comp_complex_mem, status)
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, args3, status
+        );
+
+        // create cbeam
+        uint64_t num_threads2[] = {256, 1, 1};
+        uint64_t num_blocks2[] = {
+            ((psf_size + num_threads[0] - 1) / num_threads[0]), 1, 1
+        };
+        kernel_name = "create_cbeam";
+
+        const void* args4[] = {
+            sdp_mem_gpu_buffer_const(cbeam_details, status),
+            &psf_dim,
+            sdp_mem_gpu_buffer(cbeam_complex_mem, status)
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks2, num_threads2, 0, 0, args4, status
+        );
+
+        // convolve clean components with clean beam
+        sdp_fft_convolution(clean_comp_complex_mem, cbeam_complex_mem, convolution_result_mem, status);
+
+        kernel_name = "create_copy_real";
+
+        const void* args5[] = {
+            sdp_mem_gpu_buffer_const(convolution_result_mem, status),
+            &dirty_img_size,
+            sdp_mem_gpu_buffer(skymodel, status)
+        };
+
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, args5, status
+        );
+
+        sdp_mem_ref_dec(residual_mem);
+        sdp_mem_ref_dec(clean_comp_mem);
+        sdp_mem_ref_dec(clean_comp_complex_mem);
+        sdp_mem_ref_dec(convolution_result_mem);
+        sdp_mem_ref_dec(cbeam_complex_mem);
+        sdp_mem_ref_dec(max_val_mem);
+        sdp_mem_ref_dec(max_idx_mem);
+}
+
 void sdp_hogbom_clean(
         const sdp_Mem* dirty_img,
         const sdp_Mem* psf,
@@ -193,6 +437,8 @@ void sdp_hogbom_clean(
 
     const int64_t dirty_img_dim = sdp_mem_shape_dim(dirty_img, 0);
     const int64_t psf_dim = sdp_mem_shape_dim(psf, 0);
+
+    const sdp_MemLocation location = sdp_mem_location(dirty_img);
 
     if (sdp_mem_is_read_only(skymodel)){
         *status = SDP_ERR_RUNTIME;
@@ -218,7 +464,7 @@ void sdp_hogbom_clean(
         return;
     }
 
-    if (sdp_mem_location(dirty_img) == SDP_MEM_CPU)
+    if (location == SDP_MEM_CPU)
     {
         hogbom_clean(
             (const double*)sdp_mem_data_const(dirty_img),
@@ -232,6 +478,55 @@ void sdp_hogbom_clean(
             (double*)sdp_mem_data(skymodel),
             status
         );
+    }
+    else if (location == SDP_MEM_GPU){
+
+        hogbom_clean_gpu(
+            dirty_img,
+            psf,
+            cbeam_details,
+            loop_gain,
+            threshold,
+            cycle_limit,
+            dirty_img_dim,
+            psf_dim,
+            skymodel,
+            status
+        );
+
+        // // calculate useful shapes and sizes
+        // int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
+        // int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
+
+        // // Create intermediate data arrays
+        // sdp_Mem* maximum_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        // sdp_mem_clear_contents(maximum_mem, status);
+        // sdp_Mem* idx_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        // sdp_mem_clear_contents(idx_mem, status);
+
+        // const char* kernel_name = 0;
+
+        // uint64_t num_threads[] = {256, 1, 1};
+        // uint64_t num_blocks[] = {
+        //     ((dirty_img_size + num_threads[0] - 1) / num_threads[0]), 1, 1
+        // };
+
+        // kernel_name = "find_maximum_value_atomic";
+
+        // const void* args[] = {
+        //     sdp_mem_gpu_buffer_const(dirty_img, status),
+        //     &dirty_img_size,
+        //     sdp_mem_gpu_buffer(maximum_mem, status),
+        //     sdp_mem_gpu_buffer(idx_mem, status)
+        // };
+
+        // sdp_launch_cuda_kernel(kernel_name,
+        //         num_blocks, num_threads, 0, 0, args, status
+        // );
+
+        // sdp_mem_copy_contents(skymodel, maximum_mem, 0, 0, dirty_img_size, status);
+
+   
     }
     
 }

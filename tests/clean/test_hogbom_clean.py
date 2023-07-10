@@ -4,13 +4,15 @@
 
 try:
     import cupy
+    print("cupy loaded")
 except ImportError:
     cupy = None
     print("no cupy")
 
+import time
 import numpy as np
 import scipy.signal as sig
-from scipy.optimize import least_squares
+# from scipy.optimize import least_squares
 from ska_sdp_func.visibility import dft_point_v01
 from ska_sdp_func.grid_data import GridderUvwEsFft
 from ska_sdp_func.clean import hogbom_clean
@@ -113,6 +115,8 @@ def create_test_data():
     uvw = uvw[0, :, :]
 
     # Run gridder test on GPU, using cupy arrays.
+    print(cupy)
+
     if cupy:
         freqs_gpu = cupy.asarray(freqs)
         uvw_gpu = cupy.asarray(uvw)
@@ -158,46 +162,12 @@ def create_test_data():
         print("Creating PSF using GridderUvwEsFft from ska-sdp-func...")
         gridder.grid_uvw_es_fft(uvw_gpu, freqs_gpu, vis_psf_gpu, weight_gpu, psf_gpu)
 
-    dirty_image = cupy.asnumpy(dirty_image_gpu)
-    psf = cupy.asnumpy(psf_gpu)
+        dirty_image = cupy.asnumpy(dirty_image_gpu)
+        psf = cupy.asnumpy(psf_gpu)
 
     # normalise fluxes by number of baselines
     psf = psf / num_baselines
     dirty_image = dirty_image / num_baselines
-
-    # plt.figure()
-    # plt.title("UV positions")
-    # plt.xlabel("U")
-    # plt.ylabel("V")
-    # plt.scatter(uvw[:,0], uvw[:,1])
-
-    # plt.figure()
-    # plt.title("Dirty Image")
-    # # plt.xlabel("U")
-    # # plt.ylabel("V")
-    # plt.imshow(dirty_image, vmin=0, vmax=10)
-    # plt.colorbar(label="Jy", ticks=[0,1,2,3,4,5,6,7,8,9,10])
-
-    # plt.figure()
-    # plt.title("PSF")
-    # # plt.xlabel("U")
-    # # plt.ylabel("V")
-    # plt.imshow(psf, vmin=0, vmax=1)
-    # plt.colorbar(label="Jy", ticks=[0,0.25, 0.5,0.75,1])
-
-    # plt.figure()
-    # plt.title("lm positions")
-    # # plt.xlabel("l")
-    # # plt.ylabel("m")
-    # # plt.gca().invert_xaxis()
-    # plt.xlim([-0.015,0.015])
-    # plt.ylim([-0.015,0.015])
-    # plt.gca().invert_yaxis()
-    # plt.scatter(directions[:,1],directions[:,0])
-
-    # print(fluxes)
-
-    # plt.show()
 
     return dirty_image, psf
 
@@ -206,7 +176,7 @@ def create_cbeam(coeffs, size):
     # create clean beam
 
     # size = 512
-    center = size / 2 - 1
+    center = size / 2
 
     cbeam = np.zeros([size, size])
 
@@ -220,12 +190,12 @@ def create_cbeam(coeffs, size):
     X = np.arange(0, size, 1)
     Y = np.arange(0, size, 1)
 
-    a = np.cos(theta) ** 2 / (2 * sigma_X**2) + np.sin(theta) ** 2 / (
-        2 * sigma_Y**2
+    a = np.cos(theta) ** 2 / (2 * sigma_X ** 2) + np.sin(theta) ** 2 / (
+        2 * sigma_Y ** 2
     )
-    b = np.sin(2 * theta) / (4 * sigma_X**2) - np.sin(2 * theta) / (4 * sigma_Y**2)
-    c = np.sin(theta) ** 2 / (2 * sigma_X**2) + np.cos(theta) ** 2 / (
-        2 * sigma_Y**2
+    b = np.sin(2 * theta) / (4 * sigma_X ** 2) - np.sin(2 * theta) / (4 * sigma_Y ** 2)
+    c = np.sin(theta) ** 2 / (2 * sigma_X ** 2) + np.cos(theta) ** 2 / (
+        2 * sigma_Y ** 2
     )
 
     for x in X:
@@ -331,31 +301,69 @@ def test_hogbom_clean():
     cycle_limit = 10000
 
     # create empty array for result
-    skymodel = np.zeros([1024, 1024])
+    skymodel = np.zeros((1024, 1024))
 
     # create test data
     print("Creating test data on CPU from ska-sdp-func...")
     dirty_img, psf = create_test_data()
 
-    print("Fitting CLEAN beam to PSF ...")
-    fit = least_squares(
-        error_residuals, cbeam_details, args=([psf]), verbose=0
-    )
+    # print("Fitting CLEAN beam to PSF ...")
+    # fit = least_squares(
+    #     error_residuals, cbeam_details, args=([psf]), verbose=0
+    # )
 
-    # [23.89807183 24.63014124 23.59091923]
-    cbeam_details = fit.x
+    cbeam_details = np.array([10.0, 10.0, 1.0], dtype=np.float64)
+    # cbeam_details = fit.x
 
+    ref_start_time = time.time()
     print("Creating reference data on CPU from ska-sdp-func...")
     skymodel_reference, cbeam, clean_comp, residual = reference_hogbom_clean(
         dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit
     )
-    
+    ref_end_time = time.time() - ref_start_time
+    print(f"Reference created on CPU with python in {ref_end_time:.3f} sec")
+
+    cpu_test_start_time = time.time()
     print("Testing Hogbom CLEAN on CPU from ska-sdp-func...")
 
     hogbom_clean(
         dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit, skymodel
     )
 
-    np.testing.assert_allclose(skymodel, skymodel_reference)
-    print("DFT on CPU: Test passed")
+    np.testing.assert_array_almost_equal(skymodel, skymodel_reference)
+    print("Hogbom CLEAN on CPU: Test passed")
 
+    cpu_test_end_time = time.time() - cpu_test_start_time
+    print(f"CPU test in C completed in {cpu_test_end_time:.3f} sec")
+
+    if cupy:
+        dirty_img_gpu = cupy.asarray(dirty_img)
+        psf_gpu = cupy.asarray(psf)
+        cbeam_details_gpu = cupy.asarray(cbeam_details)
+        skymodel_gpu = cupy.zeros_like(dirty_img_gpu)
+        # skymodel_gpu = cupy.zeros_like(psf_gpu)
+
+        gpu_test_start_time = time.time()
+        print("Testing Hogbom CLEAN on GPU from ska-sdp-func...")
+
+        hogbom_clean(
+            dirty_img_gpu,
+            psf_gpu,
+            cbeam_details_gpu,
+            loop_gain,
+            threshold,
+            cycle_limit,
+            skymodel_gpu,
+        )
+
+        skymodel_check = cupy.asnumpy(skymodel_gpu)
+
+        np.testing.assert_array_almost_equal(skymodel_check, skymodel_reference)
+
+        print("Hogbom CLEAN on GPU: Test passed")
+
+        gpu_test_end_time = time.time() - gpu_test_start_time
+
+        print(f"GPU test completed in {gpu_test_end_time:.3f} sec")
+        print(f"CPU test in C completed in {cpu_test_end_time:.3f} sec")
+        print(f"Reference created on CPU with python in {ref_end_time:.3f} sec")
