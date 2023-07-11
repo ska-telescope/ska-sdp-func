@@ -57,6 +57,30 @@ static void check_params(
     }
 }
 
+
+int compare (const void * a, const void * b){
+    if (*(double*)a > *(double*)b)
+        return 1;
+    else if (*(double*)a < *(double*)b)
+        return -1;
+    else
+        return 0;
+}
+
+double quantile(double* arr, double q, int n){
+    qsort(arr, n, sizeof(double), compare);
+    int cutpoint = round(q * n);
+    return arr[cutpoint];
+}
+
+template<typename AA, typename VL>
+void filler(AA* arr, VL val, int length){
+    for (int i = 0; i < length; i++){
+        arr[i] = val;
+    }
+}
+
+
 template<typename FP>
 static void twosm_rfi_flagger(
         int* flags,
@@ -65,6 +89,36 @@ static void twosm_rfi_flagger(
         const uint64_t num_timesamples,
         const uint64_t num_channels)
 {
+    double what_quantile_for_changes = thresholds[0];
+    double what_quantile_for_vis = thresholds[1];
+    int sampling_step = thresholds[2];
+    double q_for_vis = 0;
+
+    int num_samples = num_channels/sampling_step;
+    double *samples = new double[num_samples];
+    filler(samples, 0, num_samples);
+
+    for (uint64_t t = 0; t < num_timesamples; t++){
+        cout << " Helllllooooo!!" << endl;
+        for (uint64_t s = 0; s < num_samples; s++){
+            samples[s] = abs(visibilities[t * num_channels + s * sampling_step]);
+        }
+        q_for_vis = quantile(samples, what_quantile_for_vis, num_samples);
+        cout << t << "    " << q_for_vis << endl;
+        for (uint64_t c = 0; c < num_channels; c++){
+            double vis0 = abs(visibilities[t * num_channels + c]);
+            if (vis0 > q_for_vis){
+                flags[t * num_channels + c] = 1;
+            }
+        }
+    }
+
+
+
+
+
+
+    /*
     double dv_between_cur_one = 0;
     double dv_ratio = 0;
     double tol_margin_2sm_time = thresholds[0];
@@ -154,6 +208,7 @@ static void twosm_rfi_flagger(
             flags[i] = 1;
         }
     }
+    */
 }
 
 
