@@ -4,6 +4,7 @@
 
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 
+
 template<typename FP, typename FP2>
 __global__ void sdp_station_beam_dft_scalar(
         const FP wavenumber,
@@ -77,7 +78,7 @@ __global__ void sdp_station_beam_dft_scalar(
                 }
                 else
                 {
-                    out.x += re;;
+                    out.x += re;
                     out.y += im;
                 }
             }

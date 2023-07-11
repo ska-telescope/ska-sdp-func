@@ -18,6 +18,7 @@ struct sdp_Station
     sdp_Mem* coords[3];
 };
 
+
 sdp_Station* sdp_station_create(
         sdp_MemType type,
         sdp_MemLocation location,
@@ -98,6 +99,7 @@ void sdp_station_beam_dft_scalar(
     }
 }
 
+
 void sdp_station_beam_array_factor(
         const double wavenumber,
         const sdp_Mem* element_weights,
@@ -153,43 +155,43 @@ void sdp_station_beam_array_factor(
         if (precision == SDP_MEM_FLOAT)
         {
             sdp_station_beam_dft_scalar<float>(
-                wavenumber_f,
-                num_elements,
-                (const complex<float>*)sdp_mem_data_const(element_weights),
-                (const float*)sdp_mem_data_const(element_x),
-                (const float*)sdp_mem_data_const(element_y),
-                (const float*)sdp_mem_data_const(element_z),
-                index_offset_points,
-                num_points,
-                (const float*)sdp_mem_data_const(point_x),
-                (const float*)sdp_mem_data_const(point_y),
-                (const float*)sdp_mem_data_const(point_z),
-                (const int*)sdp_mem_data_const(data_index),
-                (const complex<float>*)sdp_mem_data_const(data),
-                index_offset_beam,
-                (complex<float>*)sdp_mem_data(beam),
-                norm_factor_f
+                    wavenumber_f,
+                    num_elements,
+                    (const complex<float>*)sdp_mem_data_const(element_weights),
+                    (const float*)sdp_mem_data_const(element_x),
+                    (const float*)sdp_mem_data_const(element_y),
+                    (const float*)sdp_mem_data_const(element_z),
+                    index_offset_points,
+                    num_points,
+                    (const float*)sdp_mem_data_const(point_x),
+                    (const float*)sdp_mem_data_const(point_y),
+                    (const float*)sdp_mem_data_const(point_z),
+                    (const int*)sdp_mem_data_const(data_index),
+                    (const complex<float>*)sdp_mem_data_const(data),
+                    index_offset_beam,
+                    (complex<float>*)sdp_mem_data(beam),
+                    norm_factor_f
             );
         }
         else if (precision == SDP_MEM_DOUBLE)
         {
             sdp_station_beam_dft_scalar<double>(
-                wavenumber,
-                num_elements,
-                (const complex<double>*)sdp_mem_data_const(element_weights),
-                (const double*)sdp_mem_data_const(element_x),
-                (const double*)sdp_mem_data_const(element_y),
-                (const double*)sdp_mem_data_const(element_z),
-                index_offset_points,
-                num_points,
-                (const double*)sdp_mem_data_const(point_x),
-                (const double*)sdp_mem_data_const(point_y),
-                (const double*)sdp_mem_data_const(point_z),
-                (const int*)sdp_mem_data_const(data_index),
-                (const complex<double>*)sdp_mem_data_const(data),
-                index_offset_beam,
-                (complex<double>*)sdp_mem_data(beam),
-                norm_factor
+                    wavenumber,
+                    num_elements,
+                    (const complex<double>*)sdp_mem_data_const(element_weights),
+                    (const double*)sdp_mem_data_const(element_x),
+                    (const double*)sdp_mem_data_const(element_y),
+                    (const double*)sdp_mem_data_const(element_z),
+                    index_offset_points,
+                    num_points,
+                    (const double*)sdp_mem_data_const(point_x),
+                    (const double*)sdp_mem_data_const(point_y),
+                    (const double*)sdp_mem_data_const(point_z),
+                    (const int*)sdp_mem_data_const(data_index),
+                    (const complex<double>*)sdp_mem_data_const(data),
+                    index_offset_beam,
+                    (complex<double>*)sdp_mem_data(beam),
+                    norm_factor
             );
         }
         else

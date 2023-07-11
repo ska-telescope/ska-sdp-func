@@ -16,6 +16,7 @@ except ImportError:
 
 from ska_sdp_func.station_beam import array_factor
 
+
 def test_station_beam_array_factor():
     """Test station beam array factor."""
     # Run array factor test on CPU, using numpy arrays.
