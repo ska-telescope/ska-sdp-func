@@ -111,6 +111,7 @@ sdp_Mem* sdp_mem_create_wrapper(
     mem->type = type;
     mem->location = location;
     mem->num_dims = num_dims;
+    if (type == SDP_MEM_VOID) return mem;
     const int64_t element_size = sdp_mem_type_size(type);
     if (element_size <= 0)
     {
