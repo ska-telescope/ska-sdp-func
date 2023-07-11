@@ -38,8 +38,18 @@ def test_station_beam_array_factor():
     # Call library function to evaluate array factor.
     print("Testing array factor on CPU from ska-sdp-func...")
     array_factor(
-        wavenumber, element_weights, element_x, element_y, element_z,
-        point_x, point_y, point_z, None, None, beam, normalise=True
+        wavenumber,
+        element_weights,
+        element_x,
+        element_y,
+        element_z,
+        point_x,
+        point_y,
+        point_z,
+        None,
+        None,
+        beam,
+        normalise=True,
     )
     if plt:
         plt.scatter(point_x, point_y, c=numpy.abs(beam))
@@ -58,10 +68,18 @@ def test_station_beam_array_factor():
         beam_gpu = cupy.zeros_like(point_x_gpu, dtype=cupy.complex128)
         print("Testing array factor on GPU from ska-sdp-func...")
         array_factor(
-            wavenumber, element_weights_gpu,
-            element_x_gpu, element_y_gpu, element_z_gpu,
-            point_x_gpu, point_y_gpu, point_z_gpu,
-            None, None, beam_gpu, normalise=True
+            wavenumber,
+            element_weights_gpu,
+            element_x_gpu,
+            element_y_gpu,
+            element_z_gpu,
+            point_x_gpu,
+            point_y_gpu,
+            point_z_gpu,
+            None,
+            None,
+            beam_gpu,
+            normalise=True,
         )
         beam_gpu_copy = cupy.asnumpy(beam_gpu)
         numpy.testing.assert_array_almost_equal(beam_gpu_copy, beam)
@@ -70,4 +88,3 @@ def test_station_beam_array_factor():
             plt.scatter(point_x, point_y, c=numpy.abs(beam_gpu_copy))
             plt.colorbar()
             plt.savefig("test_array_factor_gpu.png")
-
