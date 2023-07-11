@@ -189,6 +189,7 @@ void hogbom_clean_gpu(
         const double cycle_limit,
         const int64_t dirty_img_dim,
         const int64_t psf_dim,
+        const sdp_MemType data_type,
         sdp_Mem* skymodel,
         sdp_Error* status
 
@@ -254,8 +255,19 @@ void hogbom_clean_gpu(
                 &init_idx
             };
 
-            kernel_name = "find_maximum_value";
+            if (data_type == SDP_MEM_DOUBLE){
+                kernel_name = "find_maximum_value<double>";
+            }
+            else if (data_type == SDP_MEM_FLOAT){
+                kernel_name = "find_maximum_value<float>";
+            }
+            else{
+                *status = SDP_ERR_DATA_TYPE;
+                SDP_LOG_ERROR("Unsupported data type");
+            }     
 
+            // launch mulitple kernels to perform reduction
+            // scale the number of blocks according to the size of the reduction
             while (num_blocks[0] > 1)
             {
 
@@ -270,73 +282,30 @@ void hogbom_clean_gpu(
                 init_idx = true;
             }
 
+            // perform final reduction with 1 block for final answer
             sdp_launch_cuda_kernel(kernel_name,
                         num_blocks, num_threads, 0, 0, args, status
                 );
 
-             num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);            
-
-
-            
-
-            // kernel_name = "find_maximum_value";
-
-            // const void* args[] = {
-            //     sdp_mem_gpu_buffer_const(residual_mem, status),
-            //     sdp_mem_gpu_buffer(max_idx_mem, status),
-            //     sdp_mem_gpu_buffer(max_val_mem, status),
-            //     sdp_mem_gpu_buffer(max_idx_mem, status),
-            //     &init_idx
-            // };
-
-            // sdp_launch_cuda_kernel(kernel_name,
-            //         num_blocks, num_threads, 0, 0, args, status
-            // );
-
-            // init_idx = true;
-
-            // uint64_t num_threads2[] = {256, 1, 1};
-            // uint64_t num_blocks2[] = {
-            //     ((4096 + num_threads[0] - 1) / num_threads[0]), 1, 1
-            // };
-
-            // const void* args1[] = {
-            //     sdp_mem_gpu_buffer_const(max_val_mem, status),
-            //     sdp_mem_gpu_buffer(max_idx_mem, status),
-            //     sdp_mem_gpu_buffer(max_val_mem2, status),
-            //     sdp_mem_gpu_buffer(max_idx_mem2, status),
-            //     &init_idx
-            // };
-
-            // sdp_launch_cuda_kernel(kernel_name,
-            //         num_blocks2, num_threads2, 0, 0, args1, status
-            // );
-
-            // uint64_t num_threads3[] = {256, 1, 1};
-            // uint64_t num_blocks3[] = {
-            //     ((16 + num_threads[0] - 1) / num_threads[0]), 1, 1
-            // };
-
-            // const void* args2[] = {
-            //     sdp_mem_gpu_buffer_const(max_val_mem2, status),
-            //     sdp_mem_gpu_buffer(max_idx_mem2, status),
-            //     sdp_mem_gpu_buffer(max_val_mem3, status),
-            //     sdp_mem_gpu_buffer(max_idx_mem3, status),
-            //     &init_idx
-            // };
-
-            // sdp_launch_cuda_kernel(kernel_name,
-            //         num_blocks3, num_threads3, 0, 0, args2, status
-            // );
-
-            // sdp_mem_copy_contents(skymodel, max_val_mem, 0, 0, max_size, status);
+            num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);            
 
             // add clean components here
-            uint64_t num_threadsx[] = {1, 1, 1};
-            uint64_t num_blocksx[] = {1, 1, 1};
+            uint64_t num_threads_clean_comp[] = {1, 1, 1};
+            uint64_t num_blocks_clean_comp[] = {1, 1, 1};
 
-            kernel_name = "add_clean_comp";
-            const void* argsXX[] = {
+
+            if (data_type == SDP_MEM_DOUBLE){
+                kernel_name = "add_clean_comp<double>";
+            }
+            else if (data_type == SDP_MEM_FLOAT){
+                kernel_name = "add_clean_comp<float>";
+            }
+            else{
+                *status = SDP_ERR_DATA_TYPE;
+                SDP_LOG_ERROR("Unsupported data type");
+            } 
+
+            const void* args_clean_comp[] = {
                 sdp_mem_gpu_buffer(clean_comp_mem, status),
                 sdp_mem_gpu_buffer(max_idx_mem, status),
                 &loop_gain,
@@ -345,12 +314,21 @@ void hogbom_clean_gpu(
             };
 
             sdp_launch_cuda_kernel(kernel_name,
-                    num_blocksx, num_threadsx, 0, 0, argsXX, status
+                    num_blocks_clean_comp, num_threads_clean_comp, 0, 0, args_clean_comp, status
             );
 
-            kernel_name = "subtract_psf";
+            if (data_type == SDP_MEM_DOUBLE){
+                kernel_name = "subtract_psf<double>";
+            }
+            else if (data_type == SDP_MEM_FLOAT){
+                kernel_name = "subtract_psf<float>";
+            }
+            else{
+                *status = SDP_ERR_DATA_TYPE;
+                SDP_LOG_ERROR("Unsupported data type");
+            } 
 
-            const void* args2[] = {
+            const void* args_subtract_psf[] = {
                 &dirty_img_dim,
                 &psf_dim,
                 &loop_gain,
@@ -364,30 +342,49 @@ void hogbom_clean_gpu(
             };
 
             sdp_launch_cuda_kernel(kernel_name,
-                    num_blocks, num_threads, 0, 0, args2, status
+                    num_blocks, num_threads, 0, 0, args_subtract_psf, status
             );
 
             cur_cycle += 1;
         }
 
-        kernel_name = "create_copy_complex";
+        if (data_type == SDP_MEM_DOUBLE){
+            kernel_name = "create_copy_complex<double, cuDoubleComplex>";
+        }
+        else if (data_type == SDP_MEM_FLOAT){
+            kernel_name = "create_copy_complex<float, cuFloatComplex>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        } 
 
-        const void* args3[] = {
+        const void* args_create_complex[] = {
             sdp_mem_gpu_buffer_const(clean_comp_mem, status),
             &dirty_img_size,
             sdp_mem_gpu_buffer(clean_comp_complex_mem, status)
         };
 
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args3, status
+                num_blocks, num_threads, 0, 0, args_create_complex, status
         );
 
         // create cbeam
-        uint64_t num_threads2[] = {256, 1, 1};
-        uint64_t num_blocks2[] = {
-            ((psf_size + num_threads[0] - 1) / num_threads[0]), 1, 1
+        uint64_t num_threads_create_cbeam[] = {256, 1, 1};
+        uint64_t num_blocks_create_cbeam[] = {
+            ((psf_size + num_threads_create_cbeam[0] - 1) / num_threads_create_cbeam[0]), 1, 1
         };
-        kernel_name = "create_cbeam";
+
+        if (data_type == SDP_MEM_DOUBLE){
+            kernel_name = "create_cbeam<cuDoubleComplex>";
+        }
+        else if (data_type == SDP_MEM_FLOAT){
+            kernel_name = "create_cbeam<cuFloatComplex>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        } 
 
         const void* args4[] = {
             sdp_mem_gpu_buffer_const(cbeam_details, status),
@@ -396,22 +393,31 @@ void hogbom_clean_gpu(
         };
 
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks2, num_threads2, 0, 0, args4, status
+                num_blocks_create_cbeam, num_threads_create_cbeam, 0, 0, args4, status
         );
 
         // convolve clean components with clean beam
         sdp_fft_convolution(clean_comp_complex_mem, cbeam_complex_mem, convolution_result_mem, status);
 
-        kernel_name = "create_copy_real";
+        if (data_type == SDP_MEM_DOUBLE){
+            kernel_name = "create_copy_real<cuDoubleComplex, double>";
+        }
+        else if (data_type == SDP_MEM_FLOAT){
+            kernel_name = "create_copy_real<cuFloatComplex, float>";
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        } 
 
-        const void* args5[] = {
+        const void* args_create_real[] = {
             sdp_mem_gpu_buffer_const(convolution_result_mem, status),
             &dirty_img_size,
             sdp_mem_gpu_buffer(skymodel, status)
         };
 
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args5, status
+                num_blocks, num_threads, 0, 0, args_create_real, status
         );
 
         sdp_mem_ref_dec(residual_mem);
@@ -439,6 +445,8 @@ void sdp_hogbom_clean(
     const int64_t psf_dim = sdp_mem_shape_dim(psf, 0);
 
     const sdp_MemLocation location = sdp_mem_location(dirty_img);
+    const sdp_MemType data_type = sdp_mem_type(dirty_img);
+
 
     if (sdp_mem_is_read_only(skymodel)){
         *status = SDP_ERR_RUNTIME;
@@ -490,6 +498,7 @@ void sdp_hogbom_clean(
             cycle_limit,
             dirty_img_dim,
             psf_dim,
+            data_type,
             skymodel,
             status
         );

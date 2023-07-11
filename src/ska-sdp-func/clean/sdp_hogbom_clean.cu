@@ -5,26 +5,59 @@
 #include "ska-sdp-func/utility/sdp_mem.h"
 
 #include <cuComplex.h>
+#include <cuda_bf16.h>
 
 // #define INDEX_2D(N2, N1, I2, I1)    (N1 * I2 + I1)
 
-
+template<typename CT, typename T>
 __global__ void create_copy_real(
+    const CT* in,
+    int64_t size,
+    T* out){
+
+    }
+
+template<>
+__global__ void create_copy_real<cuDoubleComplex, double>(
     const cuDoubleComplex* in,
     int64_t size,
     double* out
 ) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i < size) {
         out[i] = cuCreal(in[i]);
     }
 }
 
-SDP_CUDA_KERNEL(create_copy_real);
+template<>
+__global__ void create_copy_real<cuFloatComplex, float>(
+    const cuFloatComplex* in,
+    int64_t size,
+    float* out
+) {
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < size) {
+        out[i] = cuCrealf(in[i]);
+    }
+}
+
+SDP_CUDA_KERNEL(create_copy_real<cuDoubleComplex, double>);
+SDP_CUDA_KERNEL(create_copy_real<cuFloatComplex, float>);
 
 
+template<typename T>
 __global__ void create_cbeam(
+    const double* cbeam_details,
+    int16_t psf_dim,
+    T* cbeam
+) {
+
+}
+
+template<>
+__global__ void create_cbeam<cuDoubleComplex>(
     const double* cbeam_details,
     int16_t psf_dim,
     cuDoubleComplex* cbeam
@@ -42,7 +75,7 @@ __global__ void create_cbeam(
     double b = sin(2 * theta) / (4 * pow(sigma_X, 2)) - sin(2 * theta) / (4 * pow(sigma_Y, 2));
     double c = pow(sin(theta), 2) / (2 * pow(sigma_X, 2)) + pow(cos(theta), 2) / (2 * pow(sigma_Y, 2));
 
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
     int size = psf_dim * psf_dim;
 
     if (i < size){ 
@@ -54,16 +87,54 @@ __global__ void create_cbeam(
     }
 }
 
-SDP_CUDA_KERNEL(create_cbeam);
+template<>
+__global__ void create_cbeam<cuFloatComplex>(
+    const double* cbeam_details,
+    int16_t psf_dim,
+    cuFloatComplex* cbeam
+) {
+    // Fit a Gaussian to the main lobe of the PSF based on the parameters passed
+
+    double A = 1;
+    double x0 = (psf_dim / 2);
+    double y0 = (psf_dim / 2);
+    double sigma_X = cbeam_details[0];
+    double sigma_Y = cbeam_details[1];
+    double theta = (M_PI / 180) * cbeam_details[2];
+
+    double a = pow(cos(theta), 2) / (2 * pow(sigma_X, 2)) + pow(sin(theta), 2) / (2 * pow(sigma_Y, 2));
+    double b = sin(2 * theta) / (4 * pow(sigma_X, 2)) - sin(2 * theta) / (4 * pow(sigma_Y, 2));
+    double c = pow(sin(theta), 2) / (2 * pow(sigma_X, 2)) + pow(cos(theta), 2) / (2 * pow(sigma_Y, 2));
+
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    int size = psf_dim * psf_dim;
+
+    if (i < size){ 
+        int x = i / psf_dim;
+        int y = i % psf_dim;
+
+        double component = A * exp(-(a * pow(x - x0, 2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0, 2)));
+        cbeam[i] = make_cuFloatComplex(component, 0);
+    }
+}
+
+SDP_CUDA_KERNEL(create_cbeam<cuDoubleComplex>);
+SDP_CUDA_KERNEL(create_cbeam<cuFloatComplex>);
 
 
-__global__ void find_maximum_value(const double *input, int *index_in, double *output, int *index_out, bool init_idx)
+template<typename T>
+__global__ void find_maximum_value(
+            const T *input,
+            int *index_in,
+            T *output,
+            int *index_out,
+            bool init_idx)
 {
-    __shared__ double max_values[256];
+    __shared__ T max_values[256];
     __shared__ int max_indices[256];
 
-    int tid = threadIdx.x;
-    int i = blockIdx.x * (blockDim.x) + threadIdx.x;
+    int64_t tid = threadIdx.x;
+    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
     // Load input elements into shared memory
     max_values[tid] = input[i];
@@ -100,14 +171,17 @@ __global__ void find_maximum_value(const double *input, int *index_in, double *o
 
 }
 
-SDP_CUDA_KERNEL(find_maximum_value);
+SDP_CUDA_KERNEL(find_maximum_value<double>);
+SDP_CUDA_KERNEL(find_maximum_value<float>);
+SDP_CUDA_KERNEL(find_maximum_value<__nv_bfloat16>);
 
 
+template<typename T>
 __global__ void add_clean_comp(
-            double* clean_comp,
+            T* clean_comp,
             int* max_idx_flat,
             double loop_gain,
-            double* highest_value,
+            T* highest_value,
             double threshold
 ){
     // check threshold
@@ -119,19 +193,22 @@ __global__ void add_clean_comp(
 
 }
 
-SDP_CUDA_KERNEL(add_clean_comp)
+SDP_CUDA_KERNEL(add_clean_comp<double>);
+SDP_CUDA_KERNEL(add_clean_comp<float>);
+// SDP_CUDA_KERNEL(add_clean_comp<__nv_bfloat16>);
 
 
+template<typename T>
 __global__ void subtract_psf(
             int64_t dirty_img_dim, 
             int64_t psf_dim, 
             double loop_gain, 
             int* max_idx_flat, 
-            double* highest_value, 
-            const double* psf, 
-            double* residual,
-            double* clean_comp,
-            double* skymodel,
+            T* highest_value, 
+            const T* psf, 
+            T* residual,
+            T* clean_comp,
+            T* skymodel,
             double threshold) {
 
     // check threshold
@@ -148,7 +225,7 @@ __global__ void subtract_psf(
         int64_t psf_x_start = dirty_img_dim - max_idx_x;
         int64_t psf_y_start = dirty_img_dim - max_idx_y;
 
-        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
         if (i < dirty_img_size){
 
@@ -168,30 +245,140 @@ __global__ void subtract_psf(
 
             // Subtract the PSF contribution from the residual
             residual[i] -= (loop_gain * highest_value[0] * psf[psf_flat_idx]);
-
-            // skymodel[i] = psf[psf_flat_idx];
-
         }
 
     }
 }
 
-SDP_CUDA_KERNEL(subtract_psf);
+SDP_CUDA_KERNEL(subtract_psf<double>);
+SDP_CUDA_KERNEL(subtract_psf<float>);
+// SDP_CUDA_KERNEL(subtract_psf<__nv_bfloat16>);
 
 
+template<typename T, typename CT>
 __global__ void create_copy_complex(
+    const T* in,
+    int64_t size,
+    CT* out
+) {
+
+}
+
+template<>
+__global__ void create_copy_complex<double, cuDoubleComplex>(
     const double* in,
     int64_t size,
     cuDoubleComplex* out
 ) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i < size){
         out[i] = make_cuDoubleComplex(in[i], 0);
     }
 }
 
-SDP_CUDA_KERNEL(create_copy_complex)
+template<>
+__global__ void create_copy_complex<float, cuFloatComplex>(
+    const float* in,
+    int64_t size,
+    cuFloatComplex* out
+) {
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < size){
+        out[i] = make_cuFloatComplex(in[i], 0);
+    }
+}
+
+SDP_CUDA_KERNEL(create_copy_complex<double, cuDoubleComplex>);
+SDP_CUDA_KERNEL(create_copy_complex<float, cuFloatComplex>);
+
+
+template<typename T>
+__global__ void convert_from_bfloat(
+    const __nv_bfloat16* in,
+    int64_t size,
+    T* out
+){
+
+}
+
+template<>
+__global__ void convert_from_bfloat<float>(
+    const __nv_bfloat16* in,
+    int64_t size,
+    float* out
+){
+    
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < size){
+        out[i] = __bfloat162float(in[i]);
+         
+    }
+}
+
+template<>
+__global__ void convert_from_bfloat<double>(
+    const __nv_bfloat16* in,
+    int64_t size,
+    double* out
+){
+        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < size){
+        out[i] = in[i];
+         
+    }
+}
+
+SDP_CUDA_KERNEL(convert_from_bfloat<double>);
+SDP_CUDA_KERNEL(convert_from_bfloat<float>);
+
+
+template<typename T>
+__global__ void convert_to_bfloat(
+    const T* in,
+    int64_t size,
+    __nv_bfloat16* out
+){
+
+}
+
+template<>
+__global__ void convert_to_bfloat<double>(
+    const double* in,
+    int64_t size,
+    __nv_bfloat16* out
+){
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < size){
+        out[i] = __double2bfloat16(in[i]);
+         
+    }
+
+}
+
+template<>
+__global__ void convert_to_bfloat<float>(
+    const float* in,
+    int64_t size,
+    __nv_bfloat16* out
+){
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < size){
+        out[i] = __float2bfloat16(in[i]);
+        
+    }
+
+}
+
+SDP_CUDA_KERNEL(convert_to_bfloat<double>);
+SDP_CUDA_KERNEL(convert_to_bfloat<float>);
+
+
 
 
 
