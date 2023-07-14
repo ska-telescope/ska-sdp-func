@@ -89,126 +89,58 @@ static void twosm_rfi_flagger(
         const uint64_t num_timesamples,
         const uint64_t num_channels)
 {
+    cout << " Helllllooooo!!" << endl;
+
     double what_quantile_for_changes = thresholds[0];
     double what_quantile_for_vis = thresholds[1];
     int sampling_step = thresholds[2];
+    double alpha = thresholds[3];
     double q_for_vis = 0;
+    double q_for_ts = 0;
 
     int num_samples = num_channels/sampling_step;
     double *samples = new double[num_samples];
+    double *transit_score = new double[num_channels];
+    double *transit_samples = new double[num_samples];
     filler(samples, 0, num_samples);
+    filler(transit_score, 0, num_channels);
 
     for (uint64_t t = 0; t < num_timesamples; t++){
-        cout << " Helllllooooo!!" << endl;
         for (uint64_t s = 0; s < num_samples; s++){
             samples[s] = abs(visibilities[t * num_channels + s * sampling_step]);
         }
         q_for_vis = quantile(samples, what_quantile_for_vis, num_samples);
-        cout << t << "    " << q_for_vis << endl;
-        for (uint64_t c = 0; c < num_channels; c++){
-            double vis0 = abs(visibilities[t * num_channels + c]);
-            if (vis0 > q_for_vis){
+
+        for (uint64_t c = 0; c < num_channels; c++) {
+            double vis1 = abs(visibilities[t * num_channels + c]);
+            if (vis1 > q_for_vis) {
                 flags[t * num_channels + c] = 1;
             }
         }
-    }
 
-
-
-
-
-
-    /*
-    double dv_between_cur_one = 0;
-    double dv_ratio = 0;
-    double tol_margin_2sm_time = thresholds[0];
-    double tol_margin_2sm_freq = thresholds[1];
-    uint64_t num_elements = num_timesamples * num_channels;
-
-    for (uint64_t c = 0; c < num_channels; c++){
-        for (uint64_t t = 1; t < num_timesamples; t++) {
-            uint64_t pos_current = t * num_channels + c; // current position
-            uint64_t pos_minusone = (t - 1) * num_channels + c; //position at t-1
-            double vis0 = std::abs(visibilities[pos_current]);
-            double vis1 = std::abs(visibilities[pos_minusone]);
-            dv_between_cur_one = vis0 - vis1;
-            dv_ratio =  dv_between_cur_one/vis1;
-            if (flags[pos_current] != 1){
-                bool cnd0 = dv_ratio > tol_margin_2sm_time;
-                bool cnd1 = dv_ratio < (-1) * tol_margin_2sm_time;
-                bool cnd2 = dv_ratio > (-1) * tol_margin_2sm_time;
-                bool cnd3 = dv_ratio < tol_margin_2sm_time;
-                bool cnd4 = dv_ratio < 0;
-                bool cnd5 = dv_ratio > 0;
-                bool cnd6 = flags[pos_minusone] == 1;
-                bool cnd7 = flags[pos_minusone] == 0;
-
-                //detecting uphill transition ('good' to 'bad') or remaining in the bad position
-                if (cnd0 || (((cnd2 && cnd4) || (cnd3 && cnd5)) && cnd6)){
-                    uint64_t pos = t * num_channels + c;
-                    flags[pos] = 1;
+        if (t > 0){
+            for (uint64_t c = 0; c < num_channels; c++){
+                double vis0 = abs(visibilities[(t - 1) * num_channels + c]);
+                double vis1 = abs(visibilities[t * num_channels + c]);
+                double rate_of_change = abs(vis1 - vis0);
+                if (t == 1){
+                    transit_score[c] = rate_of_change;
+                } else{
+                    transit_score[c] = alpha * rate_of_change + (1 - alpha) * transit_score[c];
                 }
-                // downhill transition detection and back-tracking (if we detect a big downhill we know that we
-                // have been in the 'bad' state, so we flag the previous samples)
-                if (cnd1 && (cnd7 == 0)){
-                    uint64_t i = 0;
-                    uint64_t pos = pos_minusone;
-                    while (flags[pos] == 0 && t > i){
-                        flags[pos] = 1;
-                        i = i + 1;
-                        pos = (t - i) * num_channels + c;
-                    }
-                }
-
             }
 
-        }
-    }
-    // two-state machine algorithm applied to frequency dimension
-    // we register the flag with number 2 in here to make calculating the union
-    // of the flags in frequency and time directions easier.
-    for (uint64_t t = 0; t < num_timesamples; t++){
-        for (uint64_t c = 1; c < num_channels; c++) {
-            uint64_t pos_current = t * num_channels + c;
-            uint64_t pos_minusone = t * num_channels + c - 1;
-            double vis0 = std::abs(visibilities[pos_current]);
-            double vis1 = std::abs(visibilities[pos_minusone]);
-            dv_between_cur_one = vis0 - vis1;
-            dv_ratio =  dv_between_cur_one/vis1;
-            if (flags[pos_current] != 1){
-                bool cnd0 = dv_ratio > tol_margin_2sm_freq;
-                bool cnd1 = dv_ratio < (-1) * tol_margin_2sm_freq;
-                bool cnd2 = dv_ratio > (-1) * tol_margin_2sm_freq;
-                bool cnd3 = dv_ratio < tol_margin_2sm_freq;
-                bool cnd4 = dv_ratio < 0;
-                bool cnd5 = dv_ratio > 0;
-                bool cnd6 = flags[pos_minusone] == 2;
-                bool cnd7 = flags[pos_minusone] == 0 || flags[pos_minusone] == 1;
-                //detecting uphill transition ('good' to 'bad') or remaining in the bad position
-                if (cnd0 || (((cnd2 && cnd4) || (cnd3 && cnd5)) && cnd6)){
-                   flags[pos_current] = 2;
-                }
-                // downhill transition detection and back-tracking (if we detect a big downhill we know that we
-                // have been in the 'bad' state, so we flag the previous samples)
-                if (cnd1 && (cnd7 == 0)){
-                    uint64_t i = 0;
-                    uint64_t pos = pos_minusone;
-                    while ((flags[pos] == 0 || flags[pos] == 1) && t > i){
-                        flags[pos] = 2;
-                        i = i + 1;
-                        pos = t * num_channels + (c - i) ;
-                    }
+            for (uint64_t s = 0; s < num_samples; s++){
+                transit_samples[s] = transit_score[s * sampling_step];
+            }
+            q_for_ts = quantile(transit_samples, what_quantile_for_changes, num_samples);
+            for (uint64_t c = 0; c < num_channels; c++){
+                if (transit_score[c] > q_for_ts){
+                    flags[t * num_channels + c] = 1;
                 }
             }
         }
     }
-    // calculating the union (replace all 2's and 1's with 1)
-    for (uint64_t i = 0; i < num_elements; i++){
-        if (flags[i] > 0){
-            flags[i] = 1;
-        }
-    }
-    */
 }
 
 

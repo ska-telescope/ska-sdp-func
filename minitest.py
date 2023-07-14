@@ -2,6 +2,7 @@ from ska_sdp_func import twosm_rfi_flagger
 import casacore.tables as tables
 import numpy as np
 import ms_operations
+import sys
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -13,8 +14,8 @@ measurementSet = ms_operations.ReadMS(table_address)
 #ms = tables.table(table_address)
 
 
-th0 = 0.5
-th1 = 0.5
+th0 = 0.8
+th1 = 0.8
 th2 = 1
 thresholds = np.array([th0, th1, th2], dtype=np.float32)
 
@@ -41,6 +42,7 @@ vis = np.ascontiguousarray(np.squeeze(vis_all[17:30, 0, :, 0]))
 flags = np.zeros(vis.shape, dtype=np.int32)
 
 twosm_rfi_flagger(vis, thresholds, flags)
+
 
 cmap = sns.cubehelix_palette(start=1.8, rot=1.1, light=0.7, n_colors=2)
 ticks = np.array([0, 1])
