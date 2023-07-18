@@ -1,7 +1,7 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
-  CUDA_ARCH: "7.0"
+  CUDA_ARCH: "7.0;8.0"
 
 stages:
   - lint
@@ -101,7 +101,7 @@ python-gemnasium-scan-legacy:
 
 build-test-debug:
   stage: test
-  image: nvidia/cuda:11.6.2-devel-ubuntu20.04
+  image: nvidia/cuda:12.2.0-devel-ubuntu20.04
   tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
@@ -129,7 +129,7 @@ build-test-debug:
 
 build-test-release:
   stage: test
-  image: nvidia/cuda:11.6.2-devel-ubuntu20.04
+  image: nvidia/cuda:12.2.0-devel-ubuntu20.04
   tags: [k8srunner-gpu-v100]
   before_script:
     - *ready_reports
@@ -170,7 +170,7 @@ python-build-for-development:
 # Need to override the template stage because we want to run this on a GPU.
 python-test:
   stage: test
-  image: nvidia/cuda:11.6.2-devel-ubuntu20.04
+  image: nvidia/cuda:12.2.0-devel-ubuntu20.04
   tags: [k8srunner-gpu-v100]
   before_script:
     - echo "Running Python test stage"
