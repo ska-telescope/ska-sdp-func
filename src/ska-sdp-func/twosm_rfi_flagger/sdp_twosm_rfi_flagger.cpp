@@ -80,6 +80,57 @@ void filler(AA* arr, VL val, int length){
     }
 }
 
+double distance(double x0, double y0, double x1, double y1, double x2, double y2){
+    double top = abs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1));
+    double bottom = sqrt(pow((x2 - x1), 2) + pow((y2 - y1), 2));
+    double dist = top/bottom;
+    return dist;
+}
+
+double knee(double* arr, double termination, int n){
+    int place = -1;
+    double interval = 1;
+    double central = 0.5;
+    double left = 0.25;
+    double right = 0.75;
+    int central_pos = round(central * n);
+    int left_pos = round(left * n);
+    int right_pos = round(right * n);
+
+    double x1 = arr[0];
+    double y1 = 1/n;
+    double x2 = arr[n-1];
+    double y2 = 1;
+
+    while (interval > termination){
+        double dist_left = distance(arr[left_pos], left, x1, y1, x2, y2);
+        double dist_right = distance(arr[right_pos], right, x1, y1, x2, y2);
+        if (dist_left > dist_right){
+            interval = interval/2;
+            central = left;
+            left = left - interval/2;
+            right = left + interval/2;
+            left_pos = round(left * n);
+            right_pos = round(right * n);
+        } else{
+            interval = interval/2;
+            central = right;
+            left = right - interval/2;
+            right = right + interval/2;
+            left_pos = round(left * n);
+            right_pos = round(right * n);
+        }
+    }
+    cout << "This is the quantile: " << central << endl;
+    return central;
+}
+
+double auto_quantile(double* arr, double termination, int n){
+    qsort(arr, n, sizeof(double), compare);
+    int cutpoint = knee(arr, termination, n);
+    return arr[cutpoint];
+}
+
 
 template<typename FP>
 static void twosm_rfi_flagger(
@@ -95,6 +146,9 @@ static void twosm_rfi_flagger(
     double what_quantile_for_vis = thresholds[1];
     int sampling_step = thresholds[2];
     double alpha = thresholds[3];
+    int window = thresholds[4];
+    int settlement = thresholds[5];
+    double termination = thresholds[6];
     double q_for_vis = 0;
     double q_for_ts = 0;
 
@@ -109,12 +163,22 @@ static void twosm_rfi_flagger(
         for (uint64_t s = 0; s < num_samples; s++){
             samples[s] = abs(visibilities[t * num_channels + s * sampling_step]);
         }
-        q_for_vis = quantile(samples, what_quantile_for_vis, num_samples);
-
+     //   q_for_vis = quantile(samples, what_quantile_for_vis, num_samples);
+        q_for_vis = auto_quantile(samples, termination, num_samples);
         for (uint64_t c = 0; c < num_channels; c++) {
             double vis1 = abs(visibilities[t * num_channels + c]);
             if (vis1 > q_for_vis) {
                 flags[t * num_channels + c] = 1;
+                if (window > 0){
+                    for (int w = 0; w < window; w++){
+                        if (c-w-1 > 0){
+                            flags[t * num_channels + c - w - 1] = 1;
+                        }
+                        if (c+w+1 < num_channels){
+                            flags[t * num_channels + c + w + 1] = 1;
+                        }
+                    }
+                }
             }
         }
 
@@ -133,10 +197,22 @@ static void twosm_rfi_flagger(
             for (uint64_t s = 0; s < num_samples; s++){
                 transit_samples[s] = transit_score[s * sampling_step];
             }
-            q_for_ts = quantile(transit_samples, what_quantile_for_changes, num_samples);
+          //  q_for_ts = quantile(transit_samples, what_quantile_for_changes, num_samples);
+            q_for_ts = quantile(transit_samples, termination, num_samples);
             for (uint64_t c = 0; c < num_channels; c++){
                 if (transit_score[c] > q_for_ts){
                     flags[t * num_channels + c] = 1;
+                    flags[(t - 1) * num_channels + c] = 1;
+                    if (window > 0){
+                        for (int w = 0; w < window; w++){
+                            if (c-w-1 > 0){
+                                flags[t * num_channels + c - w - 1] = 1;
+                            }
+                            if (c+w+1 < num_channels){
+                                flags[t * num_channels + c + w + 1] = 1;
+                            }
+                        }
+                    }
                 }
             }
         }
