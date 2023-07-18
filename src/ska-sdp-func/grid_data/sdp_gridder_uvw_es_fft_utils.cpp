@@ -1,7 +1,7 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #include <cmath>
-#include <cstdint>
+#include <stdint.h>
 
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.h"
 
