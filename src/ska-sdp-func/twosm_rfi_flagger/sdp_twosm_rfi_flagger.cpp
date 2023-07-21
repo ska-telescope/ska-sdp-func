@@ -89,7 +89,7 @@ double distance(double x0, double y0, double x1, double y1, double x2, double y2
 
 double knee(double* arr, double termination, int n){
     int place = -1;
-    double interval = 1;
+    double interval = 0.5;
     double central = 0.5;
     double left = 0.25;
     double right = 0.75;
@@ -121,13 +121,15 @@ double knee(double* arr, double termination, int n){
             right_pos = round(right * n);
         }
     }
-    cout << "This is the quantile: " << central << endl;
     return central;
 }
 
 double auto_quantile(double* arr, double termination, int n){
     qsort(arr, n, sizeof(double), compare);
-    int cutpoint = knee(arr, termination, n);
+    double q = knee(arr, termination, n);
+    cout << "This is q: " << q << endl;
+    int cutpoint = round(q * n);
+    cout << "This is cutpoint:  " << cutpoint << endl;
     return arr[cutpoint];
 }
 
@@ -146,47 +148,85 @@ static void twosm_rfi_flagger(
     double what_quantile_for_vis = thresholds[1];
     int sampling_step = thresholds[2];
     double alpha = thresholds[3];
+    double beta = thresholds[8];
     int window = thresholds[4];
     int settlement = thresholds[5];
     double termination = thresholds[6];
+    int which_approach = thresholds[7];
     double q_for_vis = 0;
     double q_for_ts = 0;
+    double median_for_vis = 0;
+    double median_for_ts = 0;
 
     int num_samples = num_channels/sampling_step;
     double *samples = new double[num_samples];
     double *transit_score = new double[num_channels];
     double *transit_samples = new double[num_samples];
+
     filler(samples, 0, num_samples);
     filler(transit_score, 0, num_channels);
+    filler(transit_samples, 0, num_samples);
 
     for (uint64_t t = 0; t < num_timesamples; t++){
-        for (uint64_t s = 0; s < num_samples; s++){
-            samples[s] = abs(visibilities[t * num_channels + s * sampling_step]);
-        }
-     //   q_for_vis = quantile(samples, what_quantile_for_vis, num_samples);
-        q_for_vis = auto_quantile(samples, termination, num_samples);
-        for (uint64_t c = 0; c < num_channels; c++) {
-            double vis1 = abs(visibilities[t * num_channels + c]);
-            if (vis1 > q_for_vis) {
-                flags[t * num_channels + c] = 1;
-                if (window > 0){
-                    for (int w = 0; w < window; w++){
-                        if (c-w-1 > 0){
-                            flags[t * num_channels + c - w - 1] = 1;
+        if (t == 0) {
+            for (uint64_t s = 0; s < num_samples; s++) {
+                samples[s] = abs(visibilities[t * num_channels + s * sampling_step]);
+            }
+            qsort(samples, num_samples, sizeof(double), compare);
+            median_for_vis = samples[int(round(0.5 * num_samples))];
+
+            if (which_approach == 0) {
+                q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))];
+            } else if (which_approach == 1) {
+                q_for_vis = samples[int(round(num_samples * knee(samples, termination, num_samples)))];
+            }
+
+            if (which_approach == 0){
+                for (uint64_t c = 0; c < num_channels; c++) {
+                    double vis1 = abs(visibilities[t * num_channels + c]);
+                    // if a value closer to the threshold than the median it is flagged
+                    if (vis1 > q_for_vis) {
+                        flags[t * num_channels + c] = 1;
+                        if (window > 0) {
+                            for (int w = 0; w < window; w++) {
+                                if (c - w - 1 > 0) {
+                                    flags[t * num_channels + c - w - 1] = 1;
+                                }
+                                if (c + w + 1 < num_channels) {
+                                    flags[t * num_channels + c + w + 1] = 1;
+                                }
+                            }
                         }
-                        if (c+w+1 < num_channels){
-                            flags[t * num_channels + c + w + 1] = 1;
+                    }
+                }
+            } else if (which_approach == 1){
+                for (uint64_t c = 0; c < num_channels; c++) {
+                    double vis1 = abs(visibilities[t * num_channels + c]);
+                    // if a value closer to the threshold than the median it is flagged
+                    if (vis1 > q_for_vis || abs(vis1 - q_for_vis) < abs(vis1 - median_for_vis)) {
+                        flags[t * num_channels + c] = 1;
+                        if (window > 0) {
+                            for (int w = 0; w < window; w++) {
+                                if (c - w - 1 > 0) {
+                                    flags[t * num_channels + c - w - 1] = 1;
+                                }
+                                if (c + w + 1 < num_channels) {
+                                    flags[t * num_channels + c + w + 1] = 1;
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
+
         if (t > 0){
             for (uint64_t c = 0; c < num_channels; c++){
                 double vis0 = abs(visibilities[(t - 1) * num_channels + c]);
                 double vis1 = abs(visibilities[t * num_channels + c]);
                 double rate_of_change = abs(vis1 - vis0);
+
                 if (t == 1){
                     transit_score[c] = rate_of_change;
                 } else{
@@ -194,22 +234,99 @@ static void twosm_rfi_flagger(
                 }
             }
 
+            for (uint64_t s = 0; s < num_samples; s++) {
+                samples[s] = abs(visibilities[t * num_channels + s * sampling_step]);
+            }
+
+            qsort(samples, num_samples, sizeof(double), compare);
+            median_for_vis = samples[int(round(0.5 * num_samples))];
+
+            if (which_approach == 0) {
+                q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))];
+            } else if (which_approach == 1) {
+                q_for_vis = samples[int(round(num_samples * knee(samples, termination, num_samples)))];
+            }
+
+            if (which_approach == 0){
+                for (uint64_t c = 0; c < num_channels; c++) {
+                    double vis1 = abs(visibilities[t * num_channels + c]);
+                    // if a value closer to the threshold than the median it is flagged
+                    if (vis1 > q_for_vis) {
+                        flags[t * num_channels + c] = 1;
+                        if (window > 0) {
+                            for (int w = 0; w < window; w++) {
+                                if (c - w - 1 > 0) {
+                                    flags[t * num_channels + c - w - 1] = 1;
+                                }
+                                if (c + w + 1 < num_channels) {
+                                    flags[t * num_channels + c + w + 1] = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (which_approach == 1){
+                for (uint64_t c = 0; c < num_channels; c++) {
+                    double vis1 = abs(visibilities[t * num_channels + c]);
+                    // if a value closer to the threshold than the median it is flagged
+                    if (vis1 > q_for_vis || abs(vis1 - q_for_vis) < abs(vis1 - median_for_vis)) {
+                        flags[t * num_channels + c] = 1;
+                        if (window > 0) {
+                            for (int w = 0; w < window; w++) {
+                                if (c - w - 1 > 0) {
+                                    flags[t * num_channels + c - w - 1] = 1;
+                                }
+                                if (c + w + 1 < num_channels) {
+                                    flags[t * num_channels + c + w + 1] = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             for (uint64_t s = 0; s < num_samples; s++){
                 transit_samples[s] = transit_score[s * sampling_step];
             }
-          //  q_for_ts = quantile(transit_samples, what_quantile_for_changes, num_samples);
-            q_for_ts = quantile(transit_samples, termination, num_samples);
+
+            qsort(transit_samples, num_samples, sizeof(double), compare);
+            median_for_ts = transit_samples[int(round(0.5 * num_samples))];
+
+            if (which_approach == 0){
+                q_for_ts = transit_samples[int(round(what_quantile_for_changes * num_samples))];
+            } else if (which_approach == 1){
+                q_for_ts = transit_samples[int(round(num_samples * knee(samples, termination, num_samples)))];
+            }
+
+
             for (uint64_t c = 0; c < num_channels; c++){
-                if (transit_score[c] > q_for_ts){
-                    flags[t * num_channels + c] = 1;
-                    flags[(t - 1) * num_channels + c] = 1;
-                    if (window > 0){
-                        for (int w = 0; w < window; w++){
-                            if (c-w-1 > 0){
-                                flags[t * num_channels + c - w - 1] = 1;
+                if (which_approach == 0){
+                    if (transit_score[c] > q_for_ts){
+                        flags[t * num_channels + c] = 1;
+                        flags[(t - 1) * num_channels + c] = 1;
+                        if (window > 0){
+                            for (int w = 0; w < window; w++){
+                                if (c-w-1 > 0){
+                                    flags[t * num_channels + c - w - 1] = 1;
+                                }
+                                if (c+w+1 < num_channels){
+                                    flags[t * num_channels + c + w + 1] = 1;
+                                }
                             }
-                            if (c+w+1 < num_channels){
-                                flags[t * num_channels + c + w + 1] = 1;
+                        }
+                    }
+                } else if (which_approach == 1){
+                    if (transit_score[c] > q_for_ts || abs(transit_score[c] - median_for_ts) > abs(transit_score[c] - q_for_ts)){
+                        flags[t * num_channels + c] = 1;
+                        flags[(t - 1) * num_channels + c] = 1;
+                        if (window > 0){
+                            for (int w = 0; w < window; w++){
+                                if (c-w-1 > 0){
+                                    flags[t * num_channels + c - w - 1] = 1;
+                                }
+                                if (c+w+1 < num_channels){
+                                    flags[t * num_channels + c + w + 1] = 1;
+                                }
                             }
                         }
                     }
