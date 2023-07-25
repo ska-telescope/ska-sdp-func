@@ -2,4 +2,4 @@
 
 """Import functions that we want to expose under ska_sdp_func.station_beam"""
 
-from .station import array_factor
+from .station import aperture_array

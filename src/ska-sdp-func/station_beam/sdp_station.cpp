@@ -79,10 +79,10 @@ void sdp_station_beam_dft_scalar(
             for (int i = 0; i < num_in; ++i)
             {
                 const double phase = xo * x_in[i] + yo * y_in[i] + zo * z_in[i];
-                const double cos_phase = cos(phase), sin_phase = sin(phase);
-                const complex<FP> phasor(cos_phase, sin_phase);
                 const int i_in = (data_idx ? data_idx[i] : i) * num_out + i_out;
-                out += phasor * weights_in[i] * data[i_in];
+                out += complex<FP>(cos(phase), sin(phase)) * (
+                    weights_in[i] * data[i_in]
+                );
             }
         }
         else
@@ -90,9 +90,7 @@ void sdp_station_beam_dft_scalar(
             for (int i = 0; i < num_in; ++i)
             {
                 const double phase = xo * x_in[i] + yo * y_in[i] + zo * z_in[i];
-                const double cos_phase = cos(phase), sin_phase = sin(phase);
-                const complex<FP> phasor(cos_phase, sin_phase);
-                out += phasor * weights_in[i];
+                out += complex<FP>(cos(phase), sin(phase)) * weights_in[i];
             }
         }
         output[i_out + idx_offset_data] = out * norm_factor;
@@ -100,7 +98,7 @@ void sdp_station_beam_dft_scalar(
 }
 
 
-void sdp_station_beam_array_factor(
+void sdp_station_beam_aperture_array(
         const double wavenumber,
         const sdp_Mem* element_weights,
         const sdp_Mem* element_x,
@@ -111,17 +109,17 @@ void sdp_station_beam_array_factor(
         const sdp_Mem* point_x,
         const sdp_Mem* point_y,
         const sdp_Mem* point_z,
-        const sdp_Mem* data_index,
-        const sdp_Mem* data,
-        int index_offset_beam,
-        sdp_Mem* beam,
+        const sdp_Mem* element_beam_index,
+        const sdp_Mem* element_beam,
+        int index_offset_station_beam,
+        sdp_Mem* station_beam,
         int normalise,
         sdp_Error* status
 )
 {
     if (*status) return;
-    sdp_MemLocation location = sdp_mem_location(beam);
-    sdp_MemType precision = sdp_mem_type(element_x);
+    const sdp_MemLocation location = sdp_mem_location(station_beam);
+    const sdp_MemType precision = sdp_mem_type(element_x);
     const int num_elements = sdp_mem_num_elements(element_x);
     const float wavenumber_f = (float) wavenumber;
     const double norm_factor = normalise ? 1.0 / num_elements : 1.0;
@@ -132,19 +130,21 @@ void sdp_station_beam_array_factor(
         SDP_LOG_ERROR("Input element_weights array must be complex");
         return;
     }
-    if (sdp_mem_data_const(data) && !sdp_mem_is_complex(data))
+    if (sdp_mem_data_const(element_beam) &&
+            !sdp_mem_is_complex(element_beam))
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR("Input data array must be complex");
         return;
     }
-    if (sdp_mem_data_const(data_index) && sdp_mem_type(data) != SDP_MEM_INT)
+    if (sdp_mem_data_const(element_beam_index) &&
+            sdp_mem_type(element_beam_index) != SDP_MEM_INT)
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR("Input data index array must be integer");
         return;
     }
-    if (!sdp_mem_is_complex(beam))
+    if (!sdp_mem_is_complex(station_beam))
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR("Output beam array must be complex");
@@ -166,10 +166,10 @@ void sdp_station_beam_array_factor(
                     (const float*)sdp_mem_data_const(point_x),
                     (const float*)sdp_mem_data_const(point_y),
                     (const float*)sdp_mem_data_const(point_z),
-                    (const int*)sdp_mem_data_const(data_index),
-                    (const complex<float>*)sdp_mem_data_const(data),
-                    index_offset_beam,
-                    (complex<float>*)sdp_mem_data(beam),
+                    (const int*)sdp_mem_data_const(element_beam_index),
+                    (const complex<float>*)sdp_mem_data_const(element_beam),
+                    index_offset_station_beam,
+                    (complex<float>*)sdp_mem_data(station_beam),
                     norm_factor_f
             );
         }
@@ -187,10 +187,10 @@ void sdp_station_beam_array_factor(
                     (const double*)sdp_mem_data_const(point_x),
                     (const double*)sdp_mem_data_const(point_y),
                     (const double*)sdp_mem_data_const(point_z),
-                    (const int*)sdp_mem_data_const(data_index),
-                    (const complex<double>*)sdp_mem_data_const(data),
-                    index_offset_beam,
-                    (complex<double>*)sdp_mem_data(beam),
+                    (const int*)sdp_mem_data_const(element_beam_index),
+                    (const complex<double>*)sdp_mem_data_const(element_beam),
+                    index_offset_station_beam,
+                    (complex<double>*)sdp_mem_data(station_beam),
                     norm_factor
             );
         }
@@ -242,10 +242,10 @@ void sdp_station_beam_array_factor(
             sdp_mem_gpu_buffer_const(point_x, status),
             sdp_mem_gpu_buffer_const(point_y, status),
             sdp_mem_gpu_buffer_const(point_z, status),
-            sdp_mem_gpu_buffer_const(data_index, status),
-            sdp_mem_gpu_buffer_const(data, status),
-            &index_offset_beam,
-            sdp_mem_gpu_buffer(beam, status),
+            sdp_mem_gpu_buffer_const(element_beam_index, status),
+            sdp_mem_gpu_buffer_const(element_beam, status),
+            &index_offset_station_beam,
+            sdp_mem_gpu_buffer(station_beam, status),
             is_dbl ? (const void*)&norm_factor : (const void*)&norm_factor_f,
             &max_in_chunk
         };

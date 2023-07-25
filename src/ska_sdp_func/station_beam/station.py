@@ -7,7 +7,7 @@ import ctypes
 from ..utility import Lib, Mem
 
 Lib.wrap_func(
-    "sdp_station_beam_array_factor",
+    "sdp_station_beam_aperture_array",
     restype=None,
     argtypes=[
         ctypes.c_double,
@@ -30,7 +30,7 @@ Lib.wrap_func(
 )
 
 
-def array_factor(
+def aperture_array(
     wavenumber: float,
     element_weights,
     element_x,
@@ -39,12 +39,12 @@ def array_factor(
     point_x,
     point_y,
     point_z,
-    data_index,
-    data,
-    beam,
+    element_beam_index,
+    element_beam,
+    station_beam,
     normalise: bool,
 ) -> None:
-    """Evaluates a basic array factor.
+    """Evaluates a station beam from an aperture array.
 
     Args:
         wavenumber (float): Wavenumber for the current frequency channel.
@@ -62,17 +62,17 @@ def array_factor(
             Source y direction cosines.
         point_z (numpy.ndarray or cupy.ndarray):
             Source z direction cosines.
-        data_index (numpy.ndarray or cupy.ndarray):
-            Optional pointer to indirection indices. May be None.
-        data (numpy.ndarray or cupy.ndarray):
-            Optional pointer to element response matrix. May be None.
-        beam (numpy.ndarray or cupy.ndarray):
-            Output complex beam array.
+        element_beam_index (numpy.ndarray or cupy.ndarray):
+            Optional pointer to element beam indices. May be None.
+        element_beam (numpy.ndarray or cupy.ndarray):
+            Optional pointer to element beam matrix. May be None.
+        station_beam (numpy.ndarray or cupy.ndarray):
+            Output complex station beam array.
         normalise (bool):
             If true, normalise output by dividing by the number of elements.
 
     """
-    Lib.sdp_station_beam_array_factor(
+    Lib.sdp_station_beam_aperture_array(
         wavenumber,
         Mem(element_weights),
         Mem(element_x),
@@ -83,9 +83,9 @@ def array_factor(
         Mem(point_x),
         Mem(point_y),
         Mem(point_z),
-        Mem(data_index),
-        Mem(data),
+        Mem(element_beam_index),
+        Mem(element_beam),
         0,
-        Mem(beam),
+        Mem(station_beam),
         normalise,
     )
