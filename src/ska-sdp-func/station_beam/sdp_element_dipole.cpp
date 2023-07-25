@@ -12,9 +12,16 @@ using std::complex;
 
 #define C_0 299792458.0
 
+
 template<typename FP>
-void sdp_dipole(FP kL, FP cos_kL, FP phi_rad, FP sin_theta, FP cos_theta,
-        complex<FP>& e_theta, complex<FP>& e_phi
+void sdp_dipole(
+        FP kL,
+        FP cos_kL,
+        FP phi_rad,
+        FP sin_theta,
+        FP cos_theta,
+        complex<FP>& e_theta,
+        complex<FP>& e_phi
 )
 {
     const FP cos_phi = cos(phi_rad);
@@ -31,6 +38,7 @@ void sdp_dipole(FP kL, FP cos_kL, FP phi_rad, FP sin_theta, FP cos_theta,
         e_phi = complex<FP>(sin(phi_rad) * temp, 0);
     }
 }
+
 
 template<typename FP>
 void sdp_dipole_pattern(
@@ -55,6 +63,7 @@ void sdp_dipole_pattern(
         );
     }
 }
+
 
 template<typename FP>
 void sdp_dipole_pattern_scalar(
@@ -85,6 +94,7 @@ void sdp_dipole_pattern_scalar(
         pattern[i * stride + offset] = complex<FP>(amp, 0);
     }
 }
+
 
 void sdp_element_beam_dipole(
         int num_points,
@@ -133,7 +143,8 @@ void sdp_element_beam_dipole(
                         kL_f, cos_kL_f,
                         stride_element_beam, E_theta_offset, E_phi_offset,
                         (complex<float>*)sdp_mem_data(element_beam),
-                        (complex<float>*)sdp_mem_data(element_beam));
+                        (complex<float>*)sdp_mem_data(element_beam)
+                );
             }
             else if (type == SDP_MEM_COMPLEX_DOUBLE)
             {
@@ -143,7 +154,8 @@ void sdp_element_beam_dipole(
                         kL, cos_kL,
                         stride_element_beam, E_theta_offset, E_phi_offset,
                         (complex<double>*)sdp_mem_data(element_beam),
-                        (complex<double>*)sdp_mem_data(element_beam));
+                        (complex<double>*)sdp_mem_data(element_beam)
+                );
             }
             else
             {
@@ -160,7 +172,8 @@ void sdp_element_beam_dipole(
                         (const float*)sdp_mem_data_const(phi_rad),
                         kL_f, cos_kL_f,
                         stride_element_beam, index_offset_element_beam,
-                        (complex<float>*)sdp_mem_data(element_beam));
+                        (complex<float>*)sdp_mem_data(element_beam)
+                );
             }
             else if (type == SDP_MEM_COMPLEX_DOUBLE)
             {
@@ -169,7 +182,8 @@ void sdp_element_beam_dipole(
                         (const double*)sdp_mem_data_const(phi_rad),
                         kL, cos_kL,
                         stride_element_beam, index_offset_element_beam,
-                        (complex<double>*)sdp_mem_data(element_beam));
+                        (complex<double>*)sdp_mem_data(element_beam)
+                );
             }
             else
             {
@@ -202,16 +216,16 @@ void sdp_element_beam_dipole(
                 SDP_LOG_ERROR("Unsupported data type");
             }
             const void* args[] = {
-                    &num_points,
-                    sdp_mem_gpu_buffer_const(theta_rad, status),
-                    sdp_mem_gpu_buffer_const(phi_rad, status),
-                    is_dbl ? (const void*)&kL : (const void*)&kL_f,
-                    is_dbl ? (const void*)&cos_kL : (const void*)&cos_kL_f,
-                    &stride_element_beam,
-                    &E_theta_offset,
-                    &E_phi_offset,
-                    sdp_mem_gpu_buffer(element_beam, status),
-                    sdp_mem_gpu_buffer(element_beam, status)
+                &num_points,
+                sdp_mem_gpu_buffer_const(theta_rad, status),
+                sdp_mem_gpu_buffer_const(phi_rad, status),
+                is_dbl ? (const void*)&kL : (const void*)&kL_f,
+                is_dbl ? (const void*)&cos_kL : (const void*)&cos_kL_f,
+                &stride_element_beam,
+                &E_theta_offset,
+                &E_phi_offset,
+                sdp_mem_gpu_buffer(element_beam, status),
+                sdp_mem_gpu_buffer(element_beam, status)
             };
             sdp_launch_cuda_kernel(
                     kernel_name, num_blocks, num_threads, 0, 0, args, status
@@ -233,14 +247,14 @@ void sdp_element_beam_dipole(
                 SDP_LOG_ERROR("Unsupported data type");
             }
             const void* args[] = {
-                    &num_points,
-                    sdp_mem_gpu_buffer_const(theta_rad, status),
-                    sdp_mem_gpu_buffer_const(phi_rad, status),
-                    is_dbl ? (const void*)&kL : (const void*)&kL_f,
-                    is_dbl ? (const void*)&cos_kL : (const void*)&cos_kL_f,
-                    &stride_element_beam,
-                    &index_offset_element_beam,
-                    sdp_mem_gpu_buffer(element_beam, status)
+                &num_points,
+                sdp_mem_gpu_buffer_const(theta_rad, status),
+                sdp_mem_gpu_buffer_const(phi_rad, status),
+                is_dbl ? (const void*)&kL : (const void*)&kL_f,
+                is_dbl ? (const void*)&cos_kL : (const void*)&cos_kL_f,
+                &stride_element_beam,
+                &index_offset_element_beam,
+                sdp_mem_gpu_buffer(element_beam, status)
             };
             sdp_launch_cuda_kernel(
                     kernel_name, num_blocks, num_threads, 0, 0, args, status
