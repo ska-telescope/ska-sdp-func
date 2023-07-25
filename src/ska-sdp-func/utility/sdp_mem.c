@@ -332,15 +332,7 @@ int32_t sdp_mem_is_floating_point(const sdp_Mem* mem)
     {
         return 0;
     }
-    else if (mem->type == SDP_MEM_FLOAT
-            || mem->type == SDP_MEM_DOUBLE)
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
+    return (mem->type == SDP_MEM_FLOAT || mem->type == SDP_MEM_DOUBLE);
 }
 
 
@@ -351,6 +343,28 @@ int32_t sdp_mem_is_complex(const sdp_Mem* mem)
         return 0;
     }
     return (mem->type & SDP_MEM_COMPLEX) == SDP_MEM_COMPLEX;
+}
+
+
+int32_t sdp_mem_is_complex4(const sdp_Mem* mem)
+{
+    if (!sdp_mem_is_complex(mem))
+    {
+        return 0;
+    }
+    const int32_t nd = mem->num_dims;
+    return ((nd >= 1 && mem->shape[nd - 1] == 4) ||
+            (nd >= 2 && mem->shape[nd - 1] == 2 && mem->shape[nd - 2] == 2));
+}
+
+
+int32_t sdp_mem_is_double(const sdp_Mem* mem)
+{
+    if (!mem || !mem->data)
+    {
+        return 0;
+    }
+    return (mem->type & SDP_MEM_DOUBLE) == SDP_MEM_DOUBLE;
 }
 
 
