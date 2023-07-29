@@ -108,11 +108,14 @@ endif()
 # Build tests.
 add_subdirectory(tests)
 
-install(TARGETS ${CMAKE_PROJECT_NAME}
+install(TARGETS "${CMAKE_PROJECT_NAME}"
+    EXPORT ska_sdp_funcTargets
     ARCHIVE DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
     LIBRARY DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
     RUNTIME DESTINATION ${SDP_FUNC_BIN_INSTALL_DIR} COMPONENT runtime
+    INCLUDES DESTINATION ${SDP_FUNC_INCLUDE_INSTALL_DIR}
 )
+
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/src/ska-sdp-func"
     DESTINATION ${SDP_FUNC_INCLUDE_INSTALL_DIR}
     COMPONENT headers
@@ -122,3 +125,24 @@ install(FILES "${PROJECT_BINARY_DIR}/src/sdp_func_version.h"
     DESTINATION "${SDP_FUNC_INCLUDE_INSTALL_DIR}/ska-sdp-func/"
     COMPONENT headers
 )
+
+install(EXPORT ska_sdp_funcTargets
+    FILE "ska-sdp-funcTargets.cmake"
+    NAMESPACE ska-sdp-func::
+    DESTINATION "lib/cmake/ska-sdp-func")
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "ska-sdp-funcConfigVersion.cmake"
+    VERSION "${SDP_FUNC_VERSION_MAJOR}.${SDP_FUNC_VERSION_MINOR}.${SDP_FUNC_VERSION_PATCH}"
+    COMPATIBILITY AnyNewerVersion)
+
+# The config file in the source tree has the suffix ".in" to keep
+# find_package from mistaking the source tree for installed location.
+# The suffix is removed upon installation
+install(FILES "${PROJECT_SOURCE_DIR}/cmake/ska-sdp-funcConfig.cmake.in"
+RENAME "ska-sdp-funcConfig.cmake"
+DESTINATION "${SDP_FUNC_LIB_INSTALL_DIR}/cmake/ska-sdp-func")
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/ska-sdp-funcConfigVersion.cmake"
+DESTINATION "${SDP_FUNC_LIB_INSTALL_DIR}/cmake/ska-sdp-func")
