@@ -20,55 +20,59 @@ https://www.researchgate.net/publication/2336887_Deconvolution_Tutorial
 
 #include <cmath>
 #include <complex>
+#include <stdlib.h>
 
 using std::complex;
 
 #define INDEX_2D(N2, N1, I2, I1)    (N1 * I2 + I1)
 
+template<typename T>
 inline void create_cbeam(
-        const double* cbeam_details,
+        const T* cbeam_details,
         int16_t psf_dim,
-        complex<double>* cbeam
+        complex<T>* cbeam
 ){
     // fit a guassian to the main lobe of the psf
 
-    double A = 1;
-    double x0 = (psf_dim/2);
-    double y0 = (psf_dim/2);
-    double sigma_X = cbeam_details[0];
-    double sigma_Y = cbeam_details[1];
-    double theta = (M_PI/180) * cbeam_details[2];
+    T A = 1;
+    T x0 = (psf_dim/2);
+    T y0 = (psf_dim/2);
+    T sigma_X = cbeam_details[0];
+    T sigma_Y = cbeam_details[1];
+    T theta = (M_PI/180) * cbeam_details[2];
 
-    double a = pow(cos(theta),2) / (2 * pow(sigma_X,2)) + pow(sin(theta),2) / (2 * pow(sigma_Y,2));
-    double b = sin(2 * theta) / (4 * pow(sigma_X,2)) - sin(2 * theta) / (4 * pow(sigma_Y,2));
-    double c = pow(sin(theta),2) / (2 * pow(sigma_X,2)) + pow(cos(theta),2) / (2 * pow(sigma_Y,2));
+    T a = pow(cos(theta),2) / (2 * pow(sigma_X,2)) + pow(sin(theta),2) / (2 * pow(sigma_Y,2));
+    T b = sin(2 * theta) / (4 * pow(sigma_X,2)) - sin(2 * theta) / (4 * pow(sigma_Y,2));
+    T c = pow(sin(theta),2) / (2 * pow(sigma_X,2)) + pow(cos(theta),2) / (2 * pow(sigma_Y,2));
 
     for(int x = 0; x < psf_dim; x ++) {
         for(int y = 0; y < psf_dim; y ++) {
 
             const unsigned int i_cbeam = INDEX_2D(psf_dim,psf_dim,x,y);
-            double component = A * exp(-(a * pow(x - x0,2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0,2)));
-            cbeam[i_cbeam] = complex<double>(component, 0.0);
+            T component = A * exp(-(a * pow(x - x0,2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0,2)));
+            cbeam[i_cbeam] = complex<T>(component, 0.0);
 
             }
         }
 }
 
+template<typename T>
 inline void create_copy_complex(
-        const double* in,
+        const T* in,
         int64_t size,
-        complex<double>* out
+        complex<T>* out
 ){
-        // creates a copy of a double array to a complex double array
+        // creates a copy of an array to a complex array
         for(int i = 0; i < size; i++ ){
-            out[i] = complex<double>(in[i], 0.0);
+            out[i] = complex<T>(in[i], 0.0);
         }
 }
 
+template<typename T>
 inline void create_copy_real(
-        const complex<double>* in,
+        const complex<T>* in,
         int64_t size,
-        double* out
+        T* out
 ){
         // creates a copy of a complex double array to a double array
         for(int i = 0; i < size; i++ ){
@@ -76,16 +80,19 @@ inline void create_copy_real(
         }
 }
 
+
+template<typename T>
 static void hogbom_clean(
-        const double* dirty_img,
-        const double* psf,
-        const double* cbeam_details,
-        const double loop_gain,
-        const double threshold,
-        const double cycle_limit,
+        const T* dirty_img,
+        const T* psf,
+        const T* cbeam_details,
+        const T loop_gain,
+        const T threshold,
+        const int cycle_limit,
         const int64_t dirty_img_dim,
         const int64_t psf_dim,
-        double* skymodel,
+        const sdp_MemType data_type,
+        T* skymodel,
         sdp_Error* status
 ){
         // calculate useful shapes and sizes
@@ -95,17 +102,30 @@ static void hogbom_clean(
         int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
         int64_t psf_shape[] = {psf_dim, psf_dim};
 
+        sdp_MemType complex_data_type;
+
+        if (data_type == SDP_MEM_DOUBLE){
+            complex_data_type = SDP_MEM_COMPLEX_DOUBLE;
+        }
+        else if (data_type == SDP_MEM_FLOAT){
+            complex_data_type = SDP_MEM_COMPLEX_FLOAT;
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }   
+
         // Create intermediate data arrays
-        sdp_Mem* cbeam_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, psf_shape, status);
-        complex<double>* cbeam_ptr = (complex<double>*)sdp_mem_data(cbeam_mem);
-        sdp_Mem* clean_comp_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
-        complex<double>* clean_comp_ptr = (complex<double>*)sdp_mem_data(clean_comp_mem);
+        sdp_Mem* cbeam_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, psf_shape, status);
+        complex<T>* cbeam_ptr = (complex<T>*)sdp_mem_data(cbeam_mem);
+        sdp_Mem* clean_comp_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
+        complex<T>* clean_comp_ptr = (complex<T>*)sdp_mem_data(clean_comp_mem);
         sdp_mem_clear_contents(clean_comp_mem, status);
-        sdp_Mem* residual_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
-        complex<double>* residual_ptr = (complex<double>*)sdp_mem_data(residual_mem);
+        sdp_Mem* residual_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
+        complex<T>* residual_ptr = (complex<T>*)sdp_mem_data(residual_mem);
 
         // Convolution code only works with complex input, so make residual complex
-        create_copy_complex(dirty_img, dirty_img_size, residual_ptr);
+        create_copy_complex<T>(dirty_img, dirty_img_size, residual_ptr);
         
         // set up some loop variables
         int cur_cycle = 0;
@@ -113,7 +133,7 @@ static void hogbom_clean(
 
         // create CLEAN Beam
         sdp_mem_clear_contents(cbeam_mem, status);
-        create_cbeam(cbeam_details, psf_dim, cbeam_ptr);
+        create_cbeam<T>(cbeam_details, psf_dim, cbeam_ptr);
 
         // CLEAN loop executes while the stop conditions (threashold and cycle limit) are not met
         while (cur_cycle < cycle_limit && stop == 0) {
@@ -143,7 +163,7 @@ static void hogbom_clean(
             max_idx_y = max_idx_flat % dirty_img_dim;
 
             // add fraction of maximum to clean components list
-            clean_comp_ptr[max_idx_flat] += complex<double>(loop_gain * highest_value, 0);
+            clean_comp_ptr[max_idx_flat] += complex<T>(loop_gain * highest_value, 0);
 
             // identify psf window to subtract from residual
             int64_t psf_x_start, psf_x_end, psf_y_start, psf_y_end;
@@ -158,7 +178,7 @@ static void hogbom_clean(
 
                     const unsigned int i_psf = INDEX_2D(psf_dim,psf_dim,x,y);
                     const unsigned int i_res = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-                    residual_ptr[i_res] -= complex<double>((loop_gain * highest_value * psf[i_psf]), 0.0);
+                    residual_ptr[i_res] -= complex<T>((loop_gain * highest_value * psf[i_psf]), 0.0);
                 }
             }
 
@@ -166,13 +186,13 @@ static void hogbom_clean(
         }
 
         // convolve clean components with clean beam
-        sdp_Mem* convolution_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, dirty_img_shape, status);
-        complex<double>* convolution_result_ptr = (complex<double>*)sdp_mem_data(convolution_result_mem);
+        sdp_Mem* convolution_result_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
+        complex<T>* convolution_result_ptr = (complex<T>*)sdp_mem_data(convolution_result_mem);
 
         sdp_fft_convolution(clean_comp_mem, cbeam_mem, convolution_result_mem, status);
 
         // complex result to real for the output
-        create_copy_real(convolution_result_ptr, dirty_img_size, skymodel);
+        create_copy_real<T>(convolution_result_ptr, dirty_img_size, skymodel);
 
         sdp_mem_ref_dec(cbeam_mem);
         sdp_mem_ref_dec(clean_comp_mem);
@@ -180,61 +200,285 @@ static void hogbom_clean(
         sdp_mem_ref_dec(convolution_result_mem);
 }
 
+template<typename T>
 void hogbom_clean_gpu(
         const sdp_Mem* dirty_img,
         const sdp_Mem* psf,
         const sdp_Mem* cbeam_details,
-        const double loop_gain,
-        const double threshold,
-        const double cycle_limit,
+        const T loop_gain,
+        const T threshold,
+        const int cycle_limit,
         const int64_t dirty_img_dim,
         const int64_t psf_dim,
         const sdp_MemType data_type,
         sdp_Mem* skymodel,
+        const bool use_bfloat,
         sdp_Error* status
 
 ){
+
         // calculate useful shapes and sizes
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
         int64_t psf_size = psf_dim * psf_dim;
+        int64_t variable_size = 1;
 
         int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
         int64_t psf_shape[] = {psf_dim, psf_dim};
+        int64_t variable_shape[] = {variable_size};
+
+        const char* kernel_name = 0;
+
+        // select correct complex variable to use
+        sdp_MemType complex_data_type = SDP_MEM_COMPLEX_DOUBLE;
+
+        if (data_type == SDP_MEM_DOUBLE){
+            complex_data_type = SDP_MEM_COMPLEX_DOUBLE;
+        }
+        else if (data_type == SDP_MEM_FLOAT){
+            complex_data_type = SDP_MEM_COMPLEX_FLOAT;
+        }
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }  
 
         // Create intermediate data arrays
+        // to hold loop gain and threshold in GPU memory, allowing conversion to bfloat16
+        sdp_Mem* loop_gain_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, variable_shape, status);
+        sdp_Mem* threshold_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, variable_shape, status);
+
         // for CLEAN beam
-        sdp_Mem* cbeam_complex_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, 2, psf_shape, status);
+        sdp_Mem* cbeam_complex_mem = sdp_mem_create(complex_data_type, SDP_MEM_GPU, 2, psf_shape, status);
         sdp_mem_clear_contents(cbeam_complex_mem, status);
 
         // for CLEAN components
-        sdp_Mem* clean_comp_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
-        sdp_Mem* clean_comp_complex_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_Mem* clean_comp_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_Mem* clean_comp_complex_mem = sdp_mem_create(complex_data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_Mem* clean_comp_bfloat_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
         sdp_mem_clear_contents(clean_comp_mem, status);
         sdp_mem_clear_contents(clean_comp_complex_mem, status);
+        sdp_mem_clear_contents(clean_comp_bfloat_mem, status);
+
+
+        // for psf working space
+        sdp_Mem* working_psf_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, psf_shape, status);
+        sdp_mem_clear_contents(working_psf_mem, status);
 
         // for residual image
-        sdp_Mem* residual_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
-        sdp_mem_copy_contents(residual_mem, dirty_img, 0, 0, dirty_img_size, status);
+        sdp_Mem* residual_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_mem_clear_contents(residual_mem, status);
 
         // for result of convolution of CLEAN beam and with CLEAN components
-        sdp_Mem* convolution_result_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, 2, dirty_img_shape, status);
+        sdp_Mem* convolution_result_mem = sdp_mem_create(complex_data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
         sdp_mem_clear_contents(convolution_result_mem, status);
+
+        // if bfloat conversion selected, convert dirty image, psf, loop gain and threshold
+        if (data_type == SDP_MEM_DOUBLE && use_bfloat){
+
+            // covert dirty image
+            uint64_t num_threads_dirty_img_to_bfloat[] = {256, 1, 1};
+            uint64_t num_blocks_dirty_img_to_bfloat[] = {
+                ((dirty_img_size + num_threads_dirty_img_to_bfloat[0] - 1) / num_threads_dirty_img_to_bfloat[0]), 1, 1
+            };
+
+            kernel_name = "convert_to_bfloat<double>";
+
+            const void* args_dirty_img_to_bfloat[] = {
+                sdp_mem_gpu_buffer_const(dirty_img, status),
+                &dirty_img_size,
+                sdp_mem_gpu_buffer(residual_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_dirty_img_to_bfloat, num_threads_dirty_img_to_bfloat, 0, 0, args_dirty_img_to_bfloat, status
+            );
+
+            // convert psf
+            uint64_t num_threads_psf_to_bfloat[] = {256, 1, 1};
+            uint64_t num_blocks_psf_to_bfloat[] = {
+                ((psf_size + num_threads_psf_to_bfloat[0] - 1) / num_threads_psf_to_bfloat[0]), 1, 1
+            };
+
+            const void* args_psf_to_bfloat[] = {
+                sdp_mem_gpu_buffer_const(psf, status),
+                &psf_size,
+                sdp_mem_gpu_buffer(working_psf_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_psf_to_bfloat, num_threads_psf_to_bfloat, 0, 0, args_psf_to_bfloat, status
+            );
+
+            // convert loop gain
+            kernel_name = "copy_var_gpu<double, __nv_bfloat16>";
+
+            uint64_t num_threads_copy_gpu[] = {1, 1, 1};
+            uint64_t num_blocks_copy_gpu[] = {1, 1, 1};
+
+            const void* args_loop_gain_to_gpu[] = {
+                &loop_gain,
+                sdp_mem_gpu_buffer(loop_gain_mem, status),
+            };
+
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_loop_gain_to_gpu, status
+            );
+
+            // convert threshold
+            const void* args_threshold_to_gpu[] = {
+                &threshold,
+                sdp_mem_gpu_buffer(threshold_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_threshold_to_gpu, status
+            );
+
+        }
+        // else use double
+        else if (data_type == SDP_MEM_DOUBLE && !use_bfloat){
+            sdp_mem_copy_contents(residual_mem, dirty_img, 0, 0, dirty_img_size, status);
+            sdp_mem_copy_contents(working_psf_mem, psf, 0, 0, psf_size, status);
+
+            kernel_name = "copy_var_gpu<double, double>";
+
+            uint64_t num_threads_copy_gpu[] = {1, 1, 1};
+            uint64_t num_blocks_copy_gpu[] = {1, 1, 1};
+
+            const void* args_loop_gain_to_gpu[] = {
+                &loop_gain,
+                sdp_mem_gpu_buffer(loop_gain_mem, status),
+            };
+
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_loop_gain_to_gpu, status
+            );
+
+            const void* args_threshold_to_gpu[] = {
+                &threshold,
+                sdp_mem_gpu_buffer(threshold_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_threshold_to_gpu, status
+            );
+        }
+
+        else if (data_type == SDP_MEM_FLOAT && use_bfloat){
+            // convert dirty image
+            uint64_t num_threads_dirty_img_to_bfloat[] = {256, 1, 1};
+            uint64_t num_blocks_dirty_img_to_bfloat[] = {
+                ((dirty_img_size + num_threads_dirty_img_to_bfloat[0] - 1) / num_threads_dirty_img_to_bfloat[0]), 1, 1
+            };
+
+            kernel_name = "convert_to_bfloat<float>";
+
+            const void* args_dirty_img_to_bfloat[] = {
+                sdp_mem_gpu_buffer_const(dirty_img, status),
+                &dirty_img_size,
+                sdp_mem_gpu_buffer(residual_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_dirty_img_to_bfloat, num_threads_dirty_img_to_bfloat, 0, 0, args_dirty_img_to_bfloat, status
+            );
+
+            // convert psf
+            uint64_t num_threads_psf_to_bfloat[] = {256, 1, 1};
+            uint64_t num_blocks_psf_to_bfloat[] = {
+                ((psf_size + num_threads_psf_to_bfloat[0] - 1) / num_threads_psf_to_bfloat[0]), 1, 1
+            };
+
+            const void* args_psf_to_bfloat[] = {
+                sdp_mem_gpu_buffer_const(psf, status),
+                &psf_size,
+                sdp_mem_gpu_buffer(working_psf_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_psf_to_bfloat, num_threads_psf_to_bfloat, 0, 0, args_psf_to_bfloat, status
+            );
+
+            // convert loop gain
+            kernel_name = "copy_var_gpu<float, __nv_bfloat16>";
+
+            uint64_t num_threads_copy_gpu[] = {1, 1, 1};
+            uint64_t num_blocks_copy_gpu[] = {1, 1, 1};
+
+            const void* args_loop_gain_to_gpu[] = {
+                &loop_gain,
+                sdp_mem_gpu_buffer(loop_gain_mem, status),
+            };
+
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_loop_gain_to_gpu, status
+            );
+
+            // convert threshold
+            const void* args_threshold_to_gpu[] = {
+                &threshold,
+                sdp_mem_gpu_buffer(threshold_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_threshold_to_gpu, status
+            );
+
+        }
+        // else use use float
+        else if (data_type == SDP_MEM_FLOAT && !use_bfloat){
+            sdp_mem_copy_contents(residual_mem, dirty_img, 0, 0, dirty_img_size, status);
+            sdp_mem_copy_contents(working_psf_mem, psf, 0, 0, psf_size, status);
+
+            kernel_name = "copy_var_gpu<float, float>";
+
+            uint64_t num_threads_copy_gpu[] = {1, 1, 1};
+            uint64_t num_blocks_copy_gpu[] = {1, 1, 1};
+
+            const void* args_loop_gain_to_gpu[] = {
+                &loop_gain,
+                sdp_mem_gpu_buffer(loop_gain_mem, status),
+            };
+
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_loop_gain_to_gpu, status
+            );
+
+            const void* args_threshold_to_gpu[] = {
+                &threshold,
+                sdp_mem_gpu_buffer(threshold_mem, status),
+            };
+
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_threshold_to_gpu, status
+            );
+
+        }
+
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }  
 
         // set up some loop variables
         int cur_cycle = 0;
         bool stop = 0;
 
-        const char* kernel_name = 0;
 
         uint64_t num_threads[] = {256, 1, 1};
         uint64_t num_blocks[] = {
             ((dirty_img_size + num_threads[0] - 1) / num_threads[0]), 1, 1
         };
 
-        int64_t max_shape[] = {num_blocks[0]};
+        int64_t max_size = (int64_t)num_blocks[0];
+        int64_t max_shape[] = {max_size};
 
         // to store image maximum value and index
-        sdp_Mem* max_val_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 1, max_shape, status);
+        sdp_Mem* max_val_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, max_shape, status);
         sdp_Mem* max_idx_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1, max_shape, status);
 
 
@@ -255,7 +499,11 @@ void hogbom_clean_gpu(
                 &init_idx
             };
 
-            if (data_type == SDP_MEM_DOUBLE){
+            // find the maximum value in the residual
+            if (use_bfloat){
+                kernel_name = "find_maximum_value<__nv_bfloat16>";
+            }
+            else if (data_type == SDP_MEM_DOUBLE){
                 kernel_name = "find_maximum_value<double>";
             }
             else if (data_type == SDP_MEM_FLOAT){
@@ -293,8 +541,10 @@ void hogbom_clean_gpu(
             uint64_t num_threads_clean_comp[] = {1, 1, 1};
             uint64_t num_blocks_clean_comp[] = {1, 1, 1};
 
-
-            if (data_type == SDP_MEM_DOUBLE){
+            if (use_bfloat){
+                kernel_name = "add_clean_comp<__nv_bfloat16>";
+            }
+            else if (data_type == SDP_MEM_DOUBLE){
                 kernel_name = "add_clean_comp<double>";
             }
             else if (data_type == SDP_MEM_FLOAT){
@@ -308,16 +558,20 @@ void hogbom_clean_gpu(
             const void* args_clean_comp[] = {
                 sdp_mem_gpu_buffer(clean_comp_mem, status),
                 sdp_mem_gpu_buffer(max_idx_mem, status),
-                &loop_gain,
+                sdp_mem_gpu_buffer(loop_gain_mem, status),
                 sdp_mem_gpu_buffer(max_val_mem, status),
-                &threshold,
+                sdp_mem_gpu_buffer(threshold_mem, status),
             };
 
             sdp_launch_cuda_kernel(kernel_name,
                     num_blocks_clean_comp, num_threads_clean_comp, 0, 0, args_clean_comp, status
             );
 
-            if (data_type == SDP_MEM_DOUBLE){
+            // subtract psf            
+            if (use_bfloat){
+                kernel_name = "subtract_psf<__nv_bfloat16>";
+            }
+            else if (data_type == SDP_MEM_DOUBLE){
                 kernel_name = "subtract_psf<double>";
             }
             else if (data_type == SDP_MEM_FLOAT){
@@ -331,14 +585,14 @@ void hogbom_clean_gpu(
             const void* args_subtract_psf[] = {
                 &dirty_img_dim,
                 &psf_dim,
-                &loop_gain,
+                sdp_mem_gpu_buffer(loop_gain_mem, status),
                 sdp_mem_gpu_buffer(max_idx_mem, status),
                 sdp_mem_gpu_buffer(max_val_mem, status),
-                sdp_mem_gpu_buffer_const(psf, status),
+                sdp_mem_gpu_buffer(working_psf_mem, status),
                 sdp_mem_gpu_buffer(residual_mem,status),
                 sdp_mem_gpu_buffer(clean_comp_mem, status),
                 sdp_mem_gpu_buffer(skymodel, status),
-                &threshold
+                sdp_mem_gpu_buffer(threshold_mem, status),
             };
 
             sdp_launch_cuda_kernel(kernel_name,
@@ -348,6 +602,35 @@ void hogbom_clean_gpu(
             cur_cycle += 1;
         }
 
+        // if bfloat, convert back to original precision for convolution with cbeam
+        const void* args_convert_from_bfloat[] = {
+            sdp_mem_gpu_buffer(clean_comp_mem, status),
+            &dirty_img_size,
+            sdp_mem_gpu_buffer(clean_comp_bfloat_mem, status)
+        };
+
+        if (data_type == SDP_MEM_DOUBLE && use_bfloat){
+            kernel_name = "convert_from_bfloat<double>";
+
+            sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, args_convert_from_bfloat, status
+            );
+
+            sdp_mem_copy_contents(clean_comp_mem, clean_comp_bfloat_mem, 0, 0, dirty_img_size, status);
+            
+        }
+        else if (data_type == SDP_MEM_FLOAT && use_bfloat){
+            kernel_name = "convert_from_bfloat<float>";
+
+             sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, args_convert_from_bfloat, status
+            );
+
+            sdp_mem_copy_contents(clean_comp_mem, clean_comp_bfloat_mem, 0, 0, dirty_img_size, status);
+
+        }
+
+        // convert to complex representaion for convolution with cbeam
         if (data_type == SDP_MEM_DOUBLE){
             kernel_name = "create_copy_complex<double, cuDoubleComplex>";
         }
@@ -376,10 +659,10 @@ void hogbom_clean_gpu(
         };
 
         if (data_type == SDP_MEM_DOUBLE){
-            kernel_name = "create_cbeam<cuDoubleComplex>";
+            kernel_name = "create_cbeam<double, cuDoubleComplex>";
         }
         else if (data_type == SDP_MEM_FLOAT){
-            kernel_name = "create_cbeam<cuFloatComplex>";
+            kernel_name = "create_cbeam<float, cuFloatComplex>";
         }
         else{
             *status = SDP_ERR_DATA_TYPE;
@@ -399,6 +682,7 @@ void hogbom_clean_gpu(
         // convolve clean components with clean beam
         sdp_fft_convolution(clean_comp_complex_mem, cbeam_complex_mem, convolution_result_mem, status);
 
+        // convert back to real number only representation
         if (data_type == SDP_MEM_DOUBLE){
             kernel_name = "create_copy_real<cuDoubleComplex, double>";
         }
@@ -420,8 +704,10 @@ void hogbom_clean_gpu(
                 num_blocks, num_threads, 0, 0, args_create_real, status
         );
 
+        // clear memory
         sdp_mem_ref_dec(residual_mem);
         sdp_mem_ref_dec(clean_comp_mem);
+        sdp_mem_ref_dec(working_psf_mem);
         sdp_mem_ref_dec(clean_comp_complex_mem);
         sdp_mem_ref_dec(convolution_result_mem);
         sdp_mem_ref_dec(cbeam_complex_mem);
@@ -435,8 +721,9 @@ void sdp_hogbom_clean(
         const sdp_Mem* cbeam_details,
         const double loop_gain,
         const double threshold,
-        const double cycle_limit,
+        const int cycle_limit,
         sdp_Mem* skymodel,
+        const bool use_bfloat,
         sdp_Error* status
 ){
     if (*status) return;
@@ -474,34 +761,91 @@ void sdp_hogbom_clean(
 
     if (location == SDP_MEM_CPU)
     {
-        hogbom_clean(
-            (const double*)sdp_mem_data_const(dirty_img),
-            (const double*)sdp_mem_data_const(psf),
-            (const double*)sdp_mem_data_const(cbeam_details),
-            loop_gain,
-            threshold,
-            cycle_limit,
-            dirty_img_dim,
-            psf_dim,
-            (double*)sdp_mem_data(skymodel),
-            status
-        );
+        if (use_bfloat == true){
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Bfloat16 can only be used on GPU");
+            return;
+        }
+
+        if (data_type == SDP_MEM_DOUBLE){
+
+            hogbom_clean<double>(
+                (const double*)sdp_mem_data_const(dirty_img),
+                (const double*)sdp_mem_data_const(psf),
+                (const double*)sdp_mem_data_const(cbeam_details),
+                loop_gain,
+                threshold,
+                cycle_limit,
+                dirty_img_dim,
+                psf_dim,
+                data_type,
+                (double*)sdp_mem_data(skymodel),
+                status
+            );
+        }
+
+        else if (data_type == SDP_MEM_FLOAT){
+            hogbom_clean<float>(
+                (const float*)sdp_mem_data_const(dirty_img),
+                (const float*)sdp_mem_data_const(psf),
+                (const float*)sdp_mem_data_const(cbeam_details),
+                (float)loop_gain,
+                (float)threshold,
+                cycle_limit,
+                dirty_img_dim,
+                psf_dim,
+                data_type,
+                (float*)sdp_mem_data(skymodel),
+                status
+            );
+        
+        
+        }
+
+        else{
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type");
+        }
     }
     else if (location == SDP_MEM_GPU){
 
-        hogbom_clean_gpu(
-            dirty_img,
-            psf,
-            cbeam_details,
-            loop_gain,
-            threshold,
-            cycle_limit,
-            dirty_img_dim,
-            psf_dim,
-            data_type,
-            skymodel,
-            status
-        );
+        if (data_type == SDP_MEM_DOUBLE){
+
+            hogbom_clean_gpu<double>(
+                dirty_img,
+                psf,
+                cbeam_details,
+                loop_gain,
+                threshold,
+                cycle_limit,
+                dirty_img_dim,
+                psf_dim,
+                data_type,
+                skymodel,
+                use_bfloat,
+                status
+            );
+        }
+
+        else if (data_type == SDP_MEM_FLOAT){
+
+            hogbom_clean_gpu<float>(
+                dirty_img,
+                psf,
+                cbeam_details,
+                (float)loop_gain,
+                (float)threshold,
+                cycle_limit,
+                dirty_img_dim,
+                psf_dim,
+                data_type,
+                skymodel,
+                use_bfloat,
+                status
+            );
+
+        }
+
 
         // // calculate useful shapes and sizes
         // int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;

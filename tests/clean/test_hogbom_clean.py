@@ -12,13 +12,14 @@ except ImportError:
 import time
 import numpy as np
 import scipy.signal as sig
+
 # from scipy.optimize import least_squares
 from ska_sdp_func.visibility import dft_point_v01
 from ska_sdp_func.grid_data import GridderUvwEsFft
 from ska_sdp_func.clean import hogbom_clean
 
 
-def create_test_data():
+def create_test_data(dirty_size, psf_size):
     """Test DFT function."""
     # Initialise settings
     num_components = 10
@@ -97,8 +98,8 @@ def create_test_data():
     )
 
     # initialise settings for gridder
-    nxydirty = 1024
-    nxydirty_psf = 2048
+    nxydirty = dirty_size
+    nxydirty_psf = psf_size
     fov = 2  # degrees
     pixel_size_rad = fov * np.pi / 180 / nxydirty
     pixel_size_rad_psf = fov * np.pi / 180 / nxydirty_psf
@@ -115,8 +116,6 @@ def create_test_data():
     uvw = uvw[0, :, :]
 
     # Run gridder test on GPU, using cupy arrays.
-    print(cupy)
-
     if cupy:
         freqs_gpu = cupy.asarray(freqs)
         uvw_gpu = cupy.asarray(uvw)
@@ -207,21 +206,22 @@ def create_cbeam(coeffs, size):
     return cbeam
 
 
-def error_residuals(coeffs, psf):
+# error residuals for least squares fit
+# def error_residuals(coeffs, psf):
 
-    fitting_size = 256
+#     fitting_size = 256
 
-    half_width = int(fitting_size / 2)
+#     half_width = int(fitting_size / 2)
 
-    c = create_cbeam(coeffs, fitting_size)
-    c = c.flatten()
+#     c = create_cbeam(coeffs, fitting_size)
+#     c = c.flatten()
 
-    p = psf[
-        1024 - half_width : 1024 + half_width, 1024 - half_width : 1024 + half_width
-    ]
-    p = p.flatten()
+#     p = psf[
+#         1024 - half_width : 1024 + half_width, 1024 - half_width : 1024 + half_width
+#     ]
+#     p = p.flatten()
 
-    return np.subtract(p, c)
+#     return np.subtract(p, c)
 
 
 def reference_hogbom_clean(
@@ -295,17 +295,20 @@ def test_hogbom_clean():
     """Test the Hogbom CLEAN function"""
 
     # initalise settings
+    dirty_size = 1024
+    psf_size = 2048
     cbeam_details = np.ones(3)
     loop_gain = 0.1
     threshold = 0.001
     cycle_limit = 10000
+    use_bfloat = False
 
     # create empty array for result
-    skymodel = np.zeros((1024, 1024))
+    skymodel = np.zeros((dirty_size, dirty_size))
 
     # create test data
     print("Creating test data on CPU from ska-sdp-func...")
-    dirty_img, psf = create_test_data()
+    dirty_img, psf = create_test_data(dirty_size, psf_size)
 
     # print("Fitting CLEAN beam to PSF ...")
     # fit = least_squares(
@@ -327,14 +330,46 @@ def test_hogbom_clean():
     print("Testing Hogbom CLEAN on CPU from ska-sdp-func...")
 
     hogbom_clean(
-        dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit, skymodel
+        dirty_img,
+        psf,
+        cbeam_details,
+        loop_gain,
+        threshold,
+        cycle_limit,
+        skymodel,
+        use_bfloat,
     )
 
+    cpu_test_end_time = time.time() - cpu_test_start_time
     np.testing.assert_array_almost_equal(skymodel, skymodel_reference)
     print("Hogbom CLEAN on CPU: Test passed")
 
-    cpu_test_end_time = time.time() - cpu_test_start_time
-    print(f"CPU test in C completed in {cpu_test_end_time:.3f} sec")
+    print(f"CPU test in C at double precision completed in {cpu_test_end_time:.3f} sec")
+
+    dirty_img_float = dirty_img.astype(np.float32)
+    psf_float = psf.astype(np.float32)
+    skymodel_float = skymodel.astype(np.float32)
+    cbeam_details_float = cbeam_details.astype(np.float32)
+
+    cpu_float_test_start_time = time.time()
+
+    hogbom_clean(
+        dirty_img_float,
+        psf_float,
+        cbeam_details_float,
+        loop_gain,
+        threshold,
+        cycle_limit,
+        skymodel_float,
+        use_bfloat,
+    )
+
+    cpu_float_test_end_time = time.time() - cpu_float_test_start_time
+    np.testing.assert_array_almost_equal(skymodel_float, skymodel_reference, decimal=4)
+
+    print(
+        f"CPU test in C at float precision completed in {cpu_float_test_end_time:.3f} sec"
+    )
 
     if cupy:
         dirty_img_gpu = cupy.asarray(dirty_img)
@@ -342,9 +377,10 @@ def test_hogbom_clean():
         cbeam_details_gpu = cupy.asarray(cbeam_details)
         skymodel_gpu = cupy.zeros_like(dirty_img_gpu)
         # skymodel_gpu = cupy.zeros_like(psf_gpu)
+        use_bfloat = False
 
-        gpu_test_start_time = time.time()
         print("Testing Hogbom CLEAN on GPU from ska-sdp-func...")
+        gpu_test_start_time = time.time()
 
         hogbom_clean(
             dirty_img_gpu,
@@ -354,16 +390,50 @@ def test_hogbom_clean():
             threshold,
             cycle_limit,
             skymodel_gpu,
+            use_bfloat,
         )
+
+        gpu_test_end_time = time.time() - gpu_test_start_time
 
         skymodel_check = cupy.asnumpy(skymodel_gpu)
 
         np.testing.assert_array_almost_equal(skymodel_check, skymodel_reference)
 
+        dirty_img_gpu_float = cupy.asarray(dirty_img_float)
+        psf_gpu_float = cupy.asarray(psf_float)
+        cbeam_details_gpu_float = cupy.asarray(cbeam_details_float)
+        skymodel_gpu_float = cupy.zeros_like(dirty_img_gpu_float)
+
+        gpu_float_test_start_time = time.time()
+
+        hogbom_clean(
+            dirty_img_gpu_float,
+            psf_gpu_float,
+            cbeam_details_gpu_float,
+            loop_gain,
+            threshold,
+            cycle_limit,
+            skymodel_gpu_float,
+            use_bfloat,
+        )
+        gpu_float_test_end_time = time.time() - gpu_float_test_start_time
+
+        skymodel_check_float = cupy.asnumpy(skymodel_gpu_float)
+
+        np.testing.assert_array_almost_equal(
+            skymodel_check_float, skymodel_reference, decimal=4
+        )
+
         print("Hogbom CLEAN on GPU: Test passed")
 
-        gpu_test_end_time = time.time() - gpu_test_start_time
-
-        print(f"GPU test completed in {gpu_test_end_time:.3f} sec")
-        print(f"CPU test in C completed in {cpu_test_end_time:.3f} sec")
+        print(f"GPU test at double precision completed in {gpu_test_end_time:.3f} sec")
+        print(
+            f"GPU test at float precision completed in {gpu_float_test_end_time:.3f} sec"
+        )
+        print(
+            f"CPU test in C at double precision completed in {cpu_test_end_time:.3f} sec"
+        )
+        print(
+            f"CPU test in C at float precision completed in {cpu_float_test_end_time:.3f} sec"
+        )
         print(f"Reference created on CPU with python in {ref_end_time:.3f} sec")

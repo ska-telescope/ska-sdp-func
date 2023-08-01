@@ -23,6 +23,7 @@ extern "C" {
  * @param threshold Minimum intensity of peak to search for, loop terminates if peak is found under this threshold. 
  * @param cycle_limit Maximum nuber of loops to perform, if the stop threshold is not reached first.
  * @param skymodel Output Skymodel (CLEANed image).
+ * @param use_bfloat Use bfloat16 in CLEAN algorithm (only available on GPU)
  * @param status Error status.
  */
 void sdp_hogbom_clean(
@@ -31,8 +32,9 @@ void sdp_hogbom_clean(
         const sdp_Mem* cbeam_details,
         const double loop_gain,
         const double threshold,
-        const double cycle_limit,
+        const int cycle_limit,
         sdp_Mem* skymodel,
+        const bool use_bfloat,
         sdp_Error* status
 );
 

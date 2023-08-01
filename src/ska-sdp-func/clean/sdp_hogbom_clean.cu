@@ -9,6 +9,7 @@
 
 // #define INDEX_2D(N2, N1, I2, I1)    (N1 * I2 + I1)
 
+// create a copy of a complex number using only its real part
 template<typename CT, typename T>
 __global__ void create_copy_real(
     const CT* in,
@@ -47,17 +48,18 @@ SDP_CUDA_KERNEL(create_copy_real<cuDoubleComplex, double>);
 SDP_CUDA_KERNEL(create_copy_real<cuFloatComplex, float>);
 
 
-template<typename T>
+// create the CLEAN beam
+template<typename T, typename CT>
 __global__ void create_cbeam(
-    const double* cbeam_details,
+    const T* cbeam_details,
     int16_t psf_dim,
-    T* cbeam
+    CT* cbeam
 ) {
 
 }
 
 template<>
-__global__ void create_cbeam<cuDoubleComplex>(
+__global__ void create_cbeam<double, cuDoubleComplex>(
     const double* cbeam_details,
     int16_t psf_dim,
     cuDoubleComplex* cbeam
@@ -88,23 +90,23 @@ __global__ void create_cbeam<cuDoubleComplex>(
 }
 
 template<>
-__global__ void create_cbeam<cuFloatComplex>(
-    const double* cbeam_details,
+__global__ void create_cbeam<float, cuFloatComplex>(
+    const float* cbeam_details,
     int16_t psf_dim,
     cuFloatComplex* cbeam
 ) {
     // Fit a Gaussian to the main lobe of the PSF based on the parameters passed
 
-    double A = 1;
-    double x0 = (psf_dim / 2);
-    double y0 = (psf_dim / 2);
-    double sigma_X = cbeam_details[0];
-    double sigma_Y = cbeam_details[1];
-    double theta = (M_PI / 180) * cbeam_details[2];
+    float A = 1;
+    float x0 = (psf_dim / 2);
+    float y0 = (psf_dim / 2);
+    float sigma_X = cbeam_details[0];
+    float sigma_Y = cbeam_details[1];
+    float theta = (M_PI / 180) * cbeam_details[2];
 
-    double a = pow(cos(theta), 2) / (2 * pow(sigma_X, 2)) + pow(sin(theta), 2) / (2 * pow(sigma_Y, 2));
-    double b = sin(2 * theta) / (4 * pow(sigma_X, 2)) - sin(2 * theta) / (4 * pow(sigma_Y, 2));
-    double c = pow(sin(theta), 2) / (2 * pow(sigma_X, 2)) + pow(cos(theta), 2) / (2 * pow(sigma_Y, 2));
+    float a = pow(cos(theta), 2) / (2 * pow(sigma_X, 2)) + pow(sin(theta), 2) / (2 * pow(sigma_Y, 2));
+    float b = sin(2 * theta) / (4 * pow(sigma_X, 2)) - sin(2 * theta) / (4 * pow(sigma_Y, 2));
+    float c = pow(sin(theta), 2) / (2 * pow(sigma_X, 2)) + pow(cos(theta), 2) / (2 * pow(sigma_Y, 2));
 
     int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
     int size = psf_dim * psf_dim;
@@ -113,15 +115,16 @@ __global__ void create_cbeam<cuFloatComplex>(
         int x = i / psf_dim;
         int y = i % psf_dim;
 
-        double component = A * exp(-(a * pow(x - x0, 2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0, 2)));
+        float component = A * exp(-(a * pow(x - x0, 2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0, 2)));
         cbeam[i] = make_cuFloatComplex(component, 0);
     }
 }
 
-SDP_CUDA_KERNEL(create_cbeam<cuDoubleComplex>);
-SDP_CUDA_KERNEL(create_cbeam<cuFloatComplex>);
+SDP_CUDA_KERNEL(create_cbeam<double, cuDoubleComplex>);
+SDP_CUDA_KERNEL(create_cbeam<float, cuFloatComplex>);
 
 
+// find the maximum value in a list using reduction
 template<typename T>
 __global__ void find_maximum_value(
             const T *input,
@@ -176,43 +179,45 @@ SDP_CUDA_KERNEL(find_maximum_value<float>);
 SDP_CUDA_KERNEL(find_maximum_value<__nv_bfloat16>);
 
 
+// add a component to the CLEAN component list
 template<typename T>
 __global__ void add_clean_comp(
             T* clean_comp,
             int* max_idx_flat,
-            double loop_gain,
+            T* loop_gain,
             T* highest_value,
-            double threshold
+            T* threshold
 ){
     // check threshold
-    if (highest_value[0] > threshold){
+    if (highest_value[0] > threshold[0]){
         
-    // Add fraction of maximum to clean components list
-    clean_comp[max_idx_flat[0]] += (loop_gain * highest_value[0]);
+        // Add fraction of maximum to clean components list
+        clean_comp[max_idx_flat[0]] = clean_comp[max_idx_flat[0]] + (loop_gain[0] * highest_value[0]);
     }
 
 }
 
 SDP_CUDA_KERNEL(add_clean_comp<double>);
 SDP_CUDA_KERNEL(add_clean_comp<float>);
-// SDP_CUDA_KERNEL(add_clean_comp<__nv_bfloat16>);
+SDP_CUDA_KERNEL(add_clean_comp<__nv_bfloat16>);
 
 
+// subtract the psf from the residual image
 template<typename T>
 __global__ void subtract_psf(
             int64_t dirty_img_dim, 
             int64_t psf_dim, 
-            double loop_gain, 
+            T* loop_gain, 
             int* max_idx_flat, 
             T* highest_value, 
             const T* psf, 
             T* residual,
             T* clean_comp,
             T* skymodel,
-            double threshold) {
+            T* threshold) {
 
     // check threshold
-    if (highest_value[0] > threshold){
+    if (highest_value[0] > threshold[0]){
 
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
         // int64_t psf_size = psf_dim * psf_dim;
@@ -244,7 +249,7 @@ __global__ void subtract_psf(
             int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
             // Subtract the PSF contribution from the residual
-            residual[i] -= (loop_gain * highest_value[0] * psf[psf_flat_idx]);
+            residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
         }
 
     }
@@ -252,9 +257,10 @@ __global__ void subtract_psf(
 
 SDP_CUDA_KERNEL(subtract_psf<double>);
 SDP_CUDA_KERNEL(subtract_psf<float>);
-// SDP_CUDA_KERNEL(subtract_psf<__nv_bfloat16>);
+SDP_CUDA_KERNEL(subtract_psf<__nv_bfloat16>);
 
 
+// create a copy of a real value as a complex value with imaginary part set to 0
 template<typename T, typename CT>
 __global__ void create_copy_complex(
     const T* in,
@@ -294,6 +300,7 @@ SDP_CUDA_KERNEL(create_copy_complex<double, cuDoubleComplex>);
 SDP_CUDA_KERNEL(create_copy_complex<float, cuFloatComplex>);
 
 
+// convert a number from bfloat16 to float or double precision
 template<typename T>
 __global__ void convert_from_bfloat(
     const __nv_bfloat16* in,
@@ -336,6 +343,7 @@ SDP_CUDA_KERNEL(convert_from_bfloat<double>);
 SDP_CUDA_KERNEL(convert_from_bfloat<float>);
 
 
+// cpnvert a double or single precision number to bfloat16
 template<typename T>
 __global__ void convert_to_bfloat(
     const T* in,
@@ -379,9 +387,52 @@ SDP_CUDA_KERNEL(convert_to_bfloat<double>);
 SDP_CUDA_KERNEL(convert_to_bfloat<float>);
 
 
+// copy a one value to gpu, can convert to bfloat from float or double precision
+// needed to convert loop gain and threshold to bfloat16 for correct use in maths with bfloat16 data 
+template<typename T, typename OT>
+__global__ void copy_var_gpu(
+    T in,
+    OT* out
+){
 
+}
 
+template<>
+__global__ void copy_var_gpu<double, double>(
+    double in,
+    double* out
+){
+    out[0] = in;
+}
 
+template<>
+__global__ void copy_var_gpu<float, float>(
+    float in,
+    float* out
+){
+    out[0] = in;
+}
+
+template<>
+__global__ void copy_var_gpu<double, __nv_bfloat16>(
+    double in,
+    __nv_bfloat16* out
+){
+    out[0] = __double2bfloat16(in);
+}
+
+template<>
+__global__ void copy_var_gpu<float, __nv_bfloat16>(
+    float in,
+    __nv_bfloat16* out
+){
+    out[0] = __float2bfloat16(in);
+}
+
+SDP_CUDA_KERNEL(copy_var_gpu<double, double>);
+SDP_CUDA_KERNEL(copy_var_gpu<float, float>);
+SDP_CUDA_KERNEL(copy_var_gpu<double, __nv_bfloat16>);
+SDP_CUDA_KERNEL(copy_var_gpu<float, __nv_bfloat16>);
 
 // // max finding atomic experiment
 // __device__ __forceinline__ void my_atomic_max(double* addr, double value)

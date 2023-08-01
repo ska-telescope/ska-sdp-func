@@ -13,8 +13,9 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_double,
         ctypes.c_double,
-        ctypes.c_double,
+        ctypes.c_int,
         Mem.handle_type(),
+        ctypes.c_bool,
     ],
     check_errcode=True,
 )
@@ -28,6 +29,7 @@ def hogbom_clean(
     threshold,
     cycle_limit,
     skymodel,
+    use_bfloat,
  ):
     """Implimentation of Hogbom CLEAN, requires dirty image, psf and
     detals of the CLEAN beam
@@ -51,6 +53,8 @@ def hogbom_clean(
     :type cycle_limit: float
     :param skymodel: Output Skymodel (CLEANed image).:type
     :type skymodel: numpy.ndarray or cupy.ndarray
+    :param use_bfloat: Use bfloat16 in CLEAN algorithm (only available on GPU)
+    :type use_bfloat: bool
     """
 
     Lib.sdp_hogbom_clean(
@@ -61,4 +65,5 @@ def hogbom_clean(
         threshold,
         cycle_limit,
         Mem(skymodel),
+        use_bfloat,
     )

@@ -331,6 +331,7 @@ static void run_and_check(
     double loop_gain = 0.1;
     double threshold = 0.001;
     int cycle_limit = 10000;
+    bool use_bfloat = false;
 
     // create test data
     const int64_t diryt_img_shape[] = {nxydirty, nxydirty};
@@ -379,6 +380,7 @@ static void run_and_check(
         threshold,
         cycle_limit,
         skymodel_copy,
+        use_bfloat,
         status);
 
     sdp_mem_ref_dec(dirty_img);

@@ -31,12 +31,34 @@ def test_fft_convolution():
 
     out_reference = sig.convolve(in1, in2, mode="same")
 
-    print("Performing convolution on CPU using ska-sdp-func...")
+    print("Performing convolution at double precision on CPU using ska-sdp-func...")
     fft_convolution(in1, in2, out)
 
     np.testing.assert_allclose(out, out_reference)
 
-    print("FFT convlution on CPU: Test passed")
+    print("FFT convlution at double precision on CPU: Test passed")
+
+    # Test for complex float
+    print(in1.dtype)
+
+    in1_float = in1.astype(dtype=np.complex64)
+
+    in2_float = in2.astype(dtype=np.complex64)
+
+    out_float = np.zeros_like(in1_float)
+
+    print(in1.dtype)
+
+    out_reference_float = sig.convolve(in1_float, in2_float, mode="same")
+
+    print(out.dtype)
+
+    print("Performing convolution at float precision on CPU using ska-sdp-func...")
+    fft_convolution(in1_float, in2_float, out_float)
+
+    np.testing.assert_array_almost_equal(out_float, out_reference_float, decimal=0)
+
+    print("FFT convlution at float precision on CPU: Test passed")
 
     # Run FFT convolution test on GPU using cumpy arrays.
     if cupy:
@@ -50,7 +72,20 @@ def test_fft_convolution():
         
         output_gpu_check = cupy.asnumpy(out_gpu)
 
-        np.testing.assert_allclose(output_gpu_check, out_reference)
+        np.testing.assert_array_almost_equal(output_gpu_check, out_reference)
 
-        print("FFT convlution on GPU: Test passed")
+        print("FFT convlution at double precision on GPU: Test passed")
 
+        # Test for complex float
+        in1_gpu_float = cupy.asarray(in1_float)
+        in2_gpu_float = cupy.asarray(in2_float)
+        out_gpu_float = cupy.zeros_like(in1_gpu_float)
+
+        print("Performing convolution at float precision on GPU using ska-sdp-func...")
+        fft_convolution(in1_gpu_float, in2_gpu_float, out_gpu_float)
+        
+        output_gpu_check = cupy.asnumpy(out_gpu_float)
+
+        np.testing.assert_array_almost_equal(output_gpu_check, out_reference_float, decimal=0)
+
+        print("FFT convlution at float precision on GPU: Test passed")
