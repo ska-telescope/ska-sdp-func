@@ -294,8 +294,6 @@ void sdp_weighting_uniform(
     sdp_MemType uvw_type = sdp_mem_type(uvw);
     sdp_MemType weights_type = SDP_MEM_VOID;
     sdp_MemLocation weights_location = sdp_mem_location(output_weight);
-    double sumweight = 0;
-    double sumweight2 = 0;
     int64_t num_times = 0;
     int64_t num_baselines = 0;
     int64_t num_channels = 0;
