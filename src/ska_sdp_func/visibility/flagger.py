@@ -2,7 +2,22 @@
 
 """Module for RFI flagging functions."""
 
-from ..utility import Error, Lib, Mem
+from ..utility import  Lib, Mem
+
+Lib.wrap_func(
+    "sdp_flagger",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
+
 
 
 def flagger(vis, parameters, flags, antennas, baselines1, baselines2):
@@ -39,30 +54,13 @@ def flagger(vis, parameters, flags, antennas, baselines1, baselines2):
     :type flags: numpy.ndarray
     """
 
-    mem_vis = Mem(vis)
-    mem_parameters = Mem(parameters)
-    mem_flags = Mem(flags)
-    mem_baselines1 = Mem(baselines1)
-    mem_baselines2 = Mem(baselines2)
-    mem_antennas = Mem(antennas)
-    error_status = Error()
-    lib_rfi_flagger = Lib.handle().sdp_flagger
-    lib_rfi_flagger.argtypes = [
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Error.handle_type(),
-    ]
-    lib_rfi_flagger(
-        mem_vis.handle(),
-        mem_parameters.handle(),
-        mem_flags.handle(),
-        mem_antennas.handle(),
-        mem_baselines1.handle(),
-        mem_baselines2.handle(),
-        error_status.handle(),
+    Lib.sdp_flagger(
+        Mem(vis),
+        Mem(parameters),
+        Mem(flags),
+        Mem(antennas),
+        Mem(baseline1),
+        Mem(baseline2),
     )
-    error_status.check()
+
+
