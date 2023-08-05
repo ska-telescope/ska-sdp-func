@@ -476,7 +476,7 @@ static void flagger(
 
 
 
-void sdp_twosm_algo_flagger(
+void sdp_flagger(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,

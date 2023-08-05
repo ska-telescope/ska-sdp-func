@@ -59,8 +59,8 @@ def flagger(vis, parameters, flags, antennas, baselines1, baselines2):
         Mem(parameters),
         Mem(flags),
         Mem(antennas),
-        Mem(baseline1),
-        Mem(baseline2),
+        Mem(baselines1),
+        Mem(baselines2),
     )
 
 
