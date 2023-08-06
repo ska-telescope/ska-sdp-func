@@ -16,14 +16,10 @@ measurementSet = ms_operations.ReadMS(table_address)
 
 th0 = 0.8
 th1 = 0.8
-th2 = 8
+th2 = 4
 th3 = 0.9
-th4 = 0
-th5 = 2
-th6 = 0.2
-th7 = 1
-th8 = 0.8
-parameters = np.array([th0, th1, th2, th3, th4, th5, th6, th7, th8], dtype=np.float32)
+
+parameters = np.array([th0, th1, th2, th3], dtype=np.float32)
 
 vis_ms = measurementSet.GetMainTableData('DATA')
 flags_ms = measurementSet.GetMainTableData('FLAG')
