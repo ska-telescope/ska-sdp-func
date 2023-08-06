@@ -5,7 +5,21 @@
 from ..utility import Lib, Mem
 
 Lib.wrap_func(
-    "sdp_flagger",
+    "sdp_flagger_fixed_threshold",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_flagger_dynamic_threshold",
     restype=None,
     argtypes=[
         Mem.handle_type(),
