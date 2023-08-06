@@ -36,7 +36,39 @@ extern "C" {
  * @param flags Output flags. Dimensions as above.
  * @param status Error status.
  */
-void sdp_flagger(
+void sdp_flagger_fixed_threshold(
+        const sdp_Mem* vis,
+        const sdp_Mem* parameters,
+        sdp_Mem* flags,
+        const sdp_Mem* antennas,
+        const sdp_Mem* baselines1,
+        const sdp_Mem* baselines2,
+        sdp_Error* status);
+
+/**
+ * @defgroup flag_func
+ * @{
+ */
+
+/**
+ * @brief Basic RFI flagger based on two-state machine model.
+ *
+ * Array dimensions are as follows, from slowest to fastest varying:
+ *
+ * - @p vis is 2D and complex-valued, with shape:
+ *   - [ num_timesamples, num_channels]
+ *
+ * - @p thresholds is 1D and real-valued.
+ *   - The size of the array is n, where 2^(n-1) = @p max_sequence_length .
+ *
+ * - @p flags is 2D and integer-valued, with the same shape as @p vis .
+ *
+ * @param vis Complex valued visibilities. Dimensions as above.
+ * @param thresholds thresholds for time and frequency domains.
+ * @param flags Output flags. Dimensions as above.
+ * @param status Error status.
+ */
+void sdp_flagger_dynamic_threshold(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
@@ -46,6 +78,9 @@ void sdp_flagger(
         sdp_Error* status);
 
 /** @} */ /* End group flag_func. */
+
+
+
 
 #ifdef __cplusplus
 }
