@@ -169,7 +169,7 @@ static void flagger_fixed_threshold(
     double what_quantile_for_vis = parameters[1];
     int sampling_step = parameters[2];
     double alpha = parameters[3];
-    int window = parameters[4]
+    int window = parameters[4];
     double q_for_vis = 0;
     double q_for_ts = 0;
 
