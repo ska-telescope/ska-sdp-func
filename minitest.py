@@ -18,8 +18,9 @@ th0 = 0.8
 th1 = 0.8
 th2 = 4
 th3 = 0.9
+th4 = 2
 
-parameters = np.array([th0, th1, th2, th3], dtype=np.float32)
+parameters = np.array([th0, th1, th2, th3, th4], dtype=np.float32)
 
 vis_ms = measurementSet.GetMainTableData('DATA')
 flags_ms = measurementSet.GetMainTableData('FLAG')

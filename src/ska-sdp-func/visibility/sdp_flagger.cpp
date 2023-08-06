@@ -97,12 +97,10 @@ double distance(double x0, double y0, double x1, double y1, double x2, double y2
 }
 
 double knee(double* arr, double termination, int n){
-    int place = -1;
     double interval = 0.5;
     double central = 0.5;
     double left = 0.25;
     double right = 0.75;
-    int central_pos = round(central * n);
     int left_pos = round(left * n);
     int right_pos = round(right * n);
 
@@ -171,6 +169,7 @@ static void flagger_fixed_threshold(
     double what_quantile_for_vis = parameters[1];
     int sampling_step = parameters[2];
     double alpha = parameters[3];
+    int window = parameters[4]
     double q_for_vis = 0;
     double q_for_ts = 0;
 
@@ -212,7 +211,7 @@ static void flagger_fixed_threshold(
                     q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))];
 
                     for (uint64_t c = 0; c < num_channels; c++){
-                        pos = baseline_pos + c * num_channels + p;
+                        int pos = baseline_pos + c * num_channels + p;
                         double vis1 = abs(visibilities[pos]);
                         if (vis1 > q_for_vis){
                             for (uint64_t bb = 0; bb < num_antennas; bb++){
@@ -373,7 +372,7 @@ static void flagger_dynamic_threshold(
                     median_for_vis = samples[int(round(0.5 * num_samples))];
 
                     for (uint64_t c = 0; c < num_channels; c++){
-                        pos = baseline_pos + c * num_channels + p;
+                        int pos = baseline_pos + c * num_channels + p;
                         double vis1 = abs(visibilities[pos]);
                         if (vis1 > q_for_vis || abs(vis1 - q_for_vis) < abs(vis1 - median_for_vis)){
                             for (uint64_t bb = 0; bb < num_antennas; bb++){
@@ -401,7 +400,7 @@ static void flagger_dynamic_threshold(
                     // method 2 operating on rate of changes (fluctuations):
                     if (t > 0){
                         for (uint64_t c = 0; c < num_channels; c++) {
-                            int pos = baseline_pos + c * num_channels + p;
+                            int pos0 = baseline_pos + c * num_channels + p;
                             int pos1 = (t - 1) * time_block + b * baseline_block + c * num_channels + p;
                             double vis0 = abs(visibilities[pos0]);
                             double vis1 = abs(visibilities[pos1]);
