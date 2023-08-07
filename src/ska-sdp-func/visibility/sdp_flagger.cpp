@@ -165,8 +165,8 @@ static void flagger_fixed_threshold(
         const uint64_t num_antennas){
     clock_t start, end;
     start = clock();
-    double what_quantile_for_changes = parameters[0];
-    double what_quantile_for_vis = parameters[1];
+    double what_quantile_for_vis = parameters[0];
+    double what_quantile_for_changes = parameters[1];
     int sampling_step = parameters[2];
     double alpha = parameters[3];
     int window = parameters[4];
@@ -185,45 +185,52 @@ static void flagger_fixed_threshold(
     filler(transit_score, 0, num_channels);
     filler(transit_samples, 0, num_samples);
     filler(my_ids, 0, num_antennas);
-
-#pragma omp parallel shared(flags)
-    {
-        my_thread = omp_get_thread_num();
-        printf("Hello from thread %d\n", my_thread);
-        #pragma omp for
+    
+    int time_block = num_baselines * num_channels * num_pols;
+    int baseline_block = num_channels * num_pols;
+    
+//#pragma omp parallel shared(flags)
+  //  {
+        
+   //     #pragma omp for
         for (int a = 0; a < num_antennas; a++){
             int current_antenna = antennas[a];
             int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_antennas);
             for (int p = 0; p < num_pols; p++){
-                for (uint64_t t = 0; t < num_timesamples; t++){
-                    int time_block = num_baselines * num_channels * num_pols;
-                    int baseline_block = num_channels * num_pols;
+                for (int t = 0; t < num_timesamples; t++){
+                    // cout <<b <<"    " << p << "     "<< t <<endl;
                     int time_pos = t * time_block;
                     int baseline_pos = t * time_block + b * baseline_block;
+                   
+                    
                     // method 1 only operating on absolute values:
 
                     //calculating the threshold by sorting the sampled channels and find the value of the given percentile
-                    for (uint64_t s = 0; s < num_samples; s++) {
+                    for (int s = 0; s < num_samples; s++) {
                         int pos = baseline_pos + (s * sampling_step) * num_pols + p;
+                        // cout << "t: " <<t << "  b:" << b << "   s:" << s << "   p:" << p <<"   pos: " << pos << endl; 
                         samples[s] = abs(visibilities[pos]);
                     }
                     qsort(samples, num_samples, sizeof(double), compare);
                     q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))];
-
-                    for (uint64_t c = 0; c < num_channels; c++){
-                        int pos = baseline_pos + c * num_channels + p;
+                    
+                    // cout << "this is q for vis: " << q_for_vis << endl;
+                    for (int c = 0; c < num_channels; c++){
+                        int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
+                       // if (b == 0 && p == 0){
+                         //   cout << vis1 << "   " << q_for_vis << endl;
+                       // }
                         if (vis1 > q_for_vis){
-                            for (uint64_t bb = 0; bb < num_antennas; bb++){
+                            for (int bb = 0; bb < num_antennas; bb++){
                                 int bs = my_ids[bb];
                                 int baseline_pos_for_bs = time_pos + bs * baseline_block;
                                 pos = baseline_pos_for_bs + c * num_pols + p;
                                 flags[pos] = 1;
                                 if (window > 0) {
-                                    for (uint64_t w = 0; w < window; w++) {
+                                    for (int w = 0; w < window; w++) {
                                         if (c - w - 1 > 0) {
-                                            int pos = baseline_pos_for_bs + (c - w - 1) * num_pols +
-                                                      p;
+                                            int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
                                             flags[pos] = 1;
                                         }
                                         if (c + w + 1 < num_channels) {
@@ -234,17 +241,20 @@ static void flagger_fixed_threshold(
                                 }
                             }
                         }
+                   
                     }
 
+                    
+                   
                     // method 2 operating on rate of changes (fluctuations):
                     if (t > 0){
                         for (uint64_t c = 0; c < num_channels; c++) {
-                            int pos0 = baseline_pos + c * num_channels + p;
-                            int pos1 = (t - 1) * time_block + b * baseline_block + c * num_channels + p;
+                            int pos0 = baseline_pos + c * num_pols + p;
+                            int pos1 = (t - 1) * time_block + b * baseline_block + c * num_pols + p;
                             double vis0 = abs(visibilities[pos0]);
                             double vis1 = abs(visibilities[pos1]);
                             double rate_of_change = abs(vis1 - vis0);
-
+                           
                             if (t == 1) {
                                 transit_score[c] = rate_of_change;
                             } else {
@@ -253,46 +263,46 @@ static void flagger_fixed_threshold(
                         }
 
                         for (uint64_t s = 0; s < num_samples; s++) {
-                            int pos = baseline_pos + (s * sampling_step) * num_pols + p;
-                            transit_samples[s] = abs(transit_score[pos]);
+                            transit_samples[s] = abs(transit_score[s * sampling_step]);
                         }
 
                         qsort(transit_samples, num_samples, sizeof(double), compare);
                         q_for_ts = transit_samples[int(round(num_samples * what_quantile_for_changes))];
-
+                        
+                        //cout <<  "t: " << t << "  b: " << b << "  p: " << p << "  q: " << q_for_ts << endl;
                         for (uint64_t c = 0; c < num_channels; c++){
                             int pos = baseline_pos + c * num_pols + p;
-                            double ts = abs(transit_score[pos]);
-
+                            double ts = abs(transit_score[c]);
+                            // cout << t << "    " << ts << "     " << q_for_ts << endl;
                             if (ts > q_for_ts) {
                                 for (int bb = 0; bb < num_antennas; bb++) {
                                     int bs = my_ids[bb];
-                                    int pos = baseline_pos + c * num_pols + p;
+                                    int baseline_pos_for_bs = time_pos + bs * baseline_block;
+                                    pos = baseline_pos_for_bs + c * num_pols + p;
                                     flags[pos] = 1;
                                     if (window > 0) {
-                                        for (int w = 0; w < window; w++) {
-                                            if (c - w - 1 > 0) {
-                                                int pos = t * time_block + bs * baseline_block
-                                                        + (c - w - 1) * num_pols + p;
-                                                flags[pos] = 1;
-                                            }
-                                            if (c + w + 1 < num_channels) {
-                                                int pos = t * time_block + bs * baseline_block +
-                                                        (c + w + 1) * num_pols + p;
-                                                flags[pos] = 1;
-                                            }
-                                        }
+                                       for (int w = 0; w < window; w++) {
+                                          if (c - w - 1 > 0) {
+                                              int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
+                                              flags[pos] = 1;
+                                          }
+                                          if (c + w + 1 < num_channels) {
+                                              int pos = baseline_pos_for_bs + (c + w + 1) * num_pols + p;
+                                              flags[pos] = 1;
+                                       }
                                     }
-                                }
+                                 }
+
                             }
-                        }
+                         }
+                      }
 
-                    }
-
-                }
+                  }
+                 
+               }
             }
         }
-    }
+    //}
 }
 
 
@@ -318,12 +328,12 @@ static void flagger_dynamic_threshold(
         const uint64_t num_antennas){
     clock_t start, end;
     start = clock();
-    int sampling_step = parameters[0];
-    double alpha = parameters[1];
-    double beta = parameters[2];
-    int window = parameters[3];
-    int settlement = parameters[4];
-    double termination = parameters[5];
+    double alpha = parameters[0];
+    double beta = parameters[1];
+    double termination = parameters[2];
+    int sampling_step = parameters[3];
+    int window = parameters[4];
+ 
 
     double q_for_vis = 0;
     double q_for_ts = 0;
@@ -345,12 +355,12 @@ static void flagger_dynamic_threshold(
     filler(transit_samples, 0, num_samples);
     filler(my_ids, 0, num_antennas);
 
-#pragma omp parallel shared(flags)
-    {
-        my_thread = omp_get_thread_num();
-        printf("Hello from thread %d\n", my_thread);
+//#pragma omp parallel shared(flags)
+  //  {
+    //    my_thread = omp_get_thread_num();
+      //  printf("Hello from thread %d\n", my_thread);
 
-        #pragma omp for
+      //  #pragma omp for
         for (int a = 0; a < num_antennas; a++){
             int current_antenna = antennas[a];
             int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_antennas);
@@ -366,13 +376,15 @@ static void flagger_dynamic_threshold(
                     for (uint64_t s = 0; s < num_samples; s++) {
                         int pos = baseline_pos + (s * sampling_step) * num_pols + p;
                         samples[s] = abs(visibilities[pos]);
+   //                        cout << t << "     " << b << "    " << p <<  "    " << samples[s] << endl;
                     }
                     qsort(samples, num_samples, sizeof(double), compare);
                     q_for_vis = samples[int(round(num_samples * knee(samples, termination, num_samples)))];
                     median_for_vis = samples[int(round(0.5 * num_samples))];
-
+                    
+   //                    cout << q_for_vis << "    " << median_for_vis << endl;
                     for (uint64_t c = 0; c < num_channels; c++){
-                        int pos = baseline_pos + c * num_channels + p;
+                        int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
                         if (vis1 > q_for_vis || abs(vis1 - q_for_vis) < abs(vis1 - median_for_vis)){
                             for (uint64_t bb = 0; bb < num_antennas; bb++){
@@ -383,8 +395,7 @@ static void flagger_dynamic_threshold(
                                 if (window > 0) {
                                     for (uint64_t w = 0; w < window; w++) {
                                         if (c - w - 1 > 0) {
-                                            int pos = baseline_pos_for_bs + (c - w - 1) * num_pols +
-                                                      p;
+                                            int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
                                             flags[pos] = 1;
                                         }
                                         if (c + w + 1 < num_channels) {
@@ -400,8 +411,8 @@ static void flagger_dynamic_threshold(
                     // method 2 operating on rate of changes (fluctuations):
                     if (t > 0){
                         for (uint64_t c = 0; c < num_channels; c++) {
-                            int pos0 = baseline_pos + c * num_channels + p;
-                            int pos1 = (t - 1) * time_block + b * baseline_block + c * num_channels + p;
+                            int pos0 = baseline_pos + c * num_pols + p;
+                            int pos1 = (t - 1) * time_block + b * baseline_block + c * num_pols + p;
                             double vis0 = abs(visibilities[pos0]);
                             double vis1 = abs(visibilities[pos1]);
                             double rate_of_change = abs(vis1 - vis0);
@@ -414,8 +425,7 @@ static void flagger_dynamic_threshold(
                         }
 
                         for (uint64_t s = 0; s < num_samples; s++) {
-                            int pos = baseline_pos + (s * sampling_step) * num_pols + p;
-                            transit_samples[s] = abs(transit_score[pos]);
+                            transit_samples[s] = abs(transit_score[s * sampling_step]);
                         }
 
                         qsort(transit_samples, num_samples, sizeof(double), compare);
@@ -425,7 +435,7 @@ static void flagger_dynamic_threshold(
 
                         for (uint64_t c = 0; c < num_channels; c++){
                             int pos = baseline_pos + c * num_pols + p;
-                            double ts = abs(transit_score[pos]);
+                            double ts = abs(transit_score[c]);
 
                             if (ts > q_for_ts || abs(ts - q_for_vis) < abs(ts - median_for_vis)) {
                                 for (int bb = 0; bb < num_antennas; bb++) {
@@ -455,7 +465,7 @@ static void flagger_dynamic_threshold(
                 }
             }
         }
-    }
+  //  }
 }
 
 
