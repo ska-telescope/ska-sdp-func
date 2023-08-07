@@ -186,14 +186,15 @@ static void flagger_fixed_threshold(
     filler(transit_samples, 0, num_samples);
     filler(my_ids, 0, num_antennas);
     
+    int a;
     int time_block = num_baselines * num_channels * num_pols;
     int baseline_block = num_channels * num_pols;
     
-//#pragma omp parallel shared(flags)
-  //  {
+#pragma omp parallel shared(flags) private(a) 
+    {
         
-   //     #pragma omp for
-        for (int a = 0; a < num_antennas; a++){
+        #pragma omp for
+        for (a = 0; a < num_antennas; a++){
             int current_antenna = antennas[a];
             int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_antennas);
             for (int p = 0; p < num_pols; p++){
@@ -302,7 +303,7 @@ static void flagger_fixed_threshold(
                }
             }
         }
-    //}
+    }
 }
 
 
