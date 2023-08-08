@@ -18,7 +18,7 @@
  *
  * Array dimensions are as follows, from slowest to fastest varying:
  *
- * - @p station_coordinates is 2D and real-valued, with shape:
+ * - @p station_coordinates is 3D and real-valued, with shape:
  *   - [ x, y, z ]
  *
  * - @p source_directions is 2D and real-valued, with shape:
@@ -26,6 +26,15 @@
  *
  * - @p source_stoke_parameters is 2D and real-valued, with shape:
  *   - [ num_sources, 4 ]
+ *
+ * - @p jones_matrices is 2D and complex-valued, with shape:
+ *   - [ scalar_jones_values_x, scalar_jones_values_y ]
+ *
+ * - @p jones_matrics_workspace is an empty 2D array, with shape:
+ *   - [ scalar_jones_values_x, scalar_jones_values_y ]
+ *
+ * - @p brightness_matrix_predict is 1D and complex valued, with shape:
+ *   - [ brightness_I ]
  *
  * - @p visibilities is 1D and complex-valued, with shape:
  *   - [ num_visibilites]
@@ -46,12 +55,15 @@ extern "C" {
 #endif
 
 void sdp_station_based_predict(
-        int64_t num_stations,
-        sdp_Mem* station_coordinates,
-        sdp_Mem* source_directions,
-        sdp_Mem* source_stoke_parameters,
+        const int64_t num_stations,
+        const sdp_Mem* station_coordinates,
+        const sdp_Mem* source_directions,
+        const sdp_Mem* source_stoke_parameters,
         int wavenumber,
         sdp_Mem* visibilites,
+        const sdp_Mem* jones_matrices,
+        sdp_Mem* brightness_matrix_predict,
+        sdp_Mem* jones_matrices_workspace,
         sdp_Error* status
 );
 
