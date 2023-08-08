@@ -209,7 +209,7 @@ static void scalar_predict_visibilites(
             complex<double> sum = 0;
             for (int source = 0; source < num_sources; source++)
             {
-                sum += *brightness_matrix_predict *
+                sum += brightness_matrix_predict[source] *
                         jones_matrix[p_station * num_sources + source] *
                         std::conj(jones_matrix[q_station * num_sources +
                         source]
