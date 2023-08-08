@@ -2,5 +2,5 @@
 
 """Import functions that we want to expose under ska_sdp_func.station_beam"""
 
-from .element import dipole
+from .element import dipole, spherical_wave_harp
 from .station import aperture_array
