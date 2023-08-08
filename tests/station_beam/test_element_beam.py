@@ -82,12 +82,12 @@ def test_element_beam_spherical_wave_harp():
     num_coeffs = (l_max + 1) * (l_max + 1) - 1
     coeffs = numpy.zeros((num_coeffs, 4), dtype=numpy.complex128)
     i = 0
-    for l in range(1, l_max + 1):
-        for m in range(-l, l + 1):
-            coeffs[i, 0] = 1.23 * l - 0.12j * m
-            coeffs[i, 1] = 1.45 * l + 0.24j * m
-            coeffs[i, 2] = -1.67 * l - 0.36j * m
-            coeffs[i, 3] = 1.89 * l + 0.48j * m
+    for degree in range(1, l_max + 1):
+        for order in range(-degree, degree + 1):
+            coeffs[i, 0] = 1.23 * degree - 0.12j * order
+            coeffs[i, 1] = 1.45 * degree + 0.24j * order
+            coeffs[i, 2] = -1.67 * degree - 0.36j * order
+            coeffs[i, 3] = 1.89 * degree + 0.48j * order
             i += 1
 
     # Call function to evaluate spherical wave coefficients.
