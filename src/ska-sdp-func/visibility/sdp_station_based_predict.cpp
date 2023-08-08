@@ -61,6 +61,22 @@ static brightness_matrix linear_pol_brightness_values(
 }
 
 
+template<typename BRIGHTNESS_TYPE, typename STOKES_TYPE>
+static void create_brightness_values_for_predict(
+        BRIGHTNESS_TYPE* brightness_matrix_predict,
+        const STOKES_TYPE* stokes_parameters,
+        const int64_t num_sources
+)
+{
+    for (int source = 0; source < num_sources; source++)
+    {
+        brightness_matrix_predict[source] = linear_pol_brightness_values(source,
+                stokes_parameters
+        ).i1;
+    }
+}
+
+
 template<typename DIR_TYPE, typename STATION_COORDINATES,
         typename SCALAR_JONES_TYPE>
 static void scalar_create_phase_difference_Jones_values(
@@ -69,7 +85,8 @@ static void scalar_create_phase_difference_Jones_values(
         const int64_t num_stations,
         const STATION_COORDINATES* station_coordinates,
         const DIR_TYPE* source_directions,
-        SCALAR_JONES_TYPE Jones
+        const SCALAR_JONES_TYPE* jones,
+        SCALAR_JONES_TYPE* jones_workspace
 )
 {
     for (int station = 0; station < num_stations; station++)
@@ -86,7 +103,8 @@ static void scalar_create_phase_difference_Jones_values(
                     (station_coordinates[i_coordinate + 1] * m) +
                     (station_coordinates[i_coordinate + 2] * (n - 1));
             const std::complex<double> phasor(cos(phase), sin(phase));
-            Jones[station * num_sources + source] = phasor;
+            jones_workspace[station * num_sources +
+                    source] = jones[station * num_sources + source] * phasor;
             // copy the scalar twice if it's a matrix...
         }
     }
@@ -171,13 +189,14 @@ static void scalar_create_phase_difference_Jones_values(
 // }
 
 
-template<typename VIS_TYPE, typename SCALAR_JONES_TYPE, typename STOKES_TYPE>
+template<typename VIS_TYPE, typename BRIGHTNESS_TYPE,
+        typename SCALAR_JONES_TYPE>
 static void scalar_predict_visibilites(
         const int64_t num_stations,
         const int64_t num_sources,
-        const SCALAR_JONES_TYPE Jones_Matrix,
-        const STOKES_TYPE stokes_parameters,
-        VIS_TYPE* Visibility
+        const SCALAR_JONES_TYPE* jones_matrix,
+        const BRIGHTNESS_TYPE* brightness_matrix_predict,
+        VIS_TYPE* visibility
 )
 {
     int ivis = 0;
@@ -190,29 +209,29 @@ static void scalar_predict_visibilites(
             complex<double> sum = 0;
             for (int source = 0; source < num_sources; source++)
             {
-                sum += Jones_Matrix[p_station * num_sources + source] *
-                        linear_pol_brightness_values(source,
-                        stokes_parameters
-                        ).i1 *
-                        std::conj(Jones_Matrix[q_station * num_sources +
+                sum += *brightness_matrix_predict *
+                        jones_matrix[p_station * num_sources + source] *
+                        std::conj(jones_matrix[q_station * num_sources +
                         source]
                         );
                 // you can only do this in the scalar version of this function...otherwise the conjugate is differently calculated
             }
-            Visibility[ivis] = sum; // only in the scalar version would the visibilities be scalar...
+            visibility[ivis] = sum; // only in the scalar version would the visibilities be scalar...
         }
     }
 }
 
 
 void sdp_station_based_predict(
-        int64_t num_stations,
-        sdp_Mem* station_coordinates,
-        sdp_Mem* source_directions,
-        sdp_Mem* source_stoke_parameters,
+        const int64_t num_stations,
+        const sdp_Mem* station_coordinates,
+        const sdp_Mem* source_directions,
+        const sdp_Mem* source_stoke_parameters,
         int wavenumber,
         sdp_Mem* visibilites,
-        sdp_Mem* Jones_matrices,
+        const sdp_Mem* jones_matrices,
+        sdp_Mem* brightness_matrix_predict,
+        sdp_Mem* jones_matrices_workspace,
         sdp_Error* status
 )
 {
@@ -242,7 +261,21 @@ void sdp_station_based_predict(
                     num_stations,
                     (const double*) sdp_mem_data_const(station_coordinates),
                     (const double*) sdp_mem_data_const(source_directions),
-                    (std::complex<double>*) sdp_mem_data(Jones_matrices)
+                    (const std::complex<double>*) sdp_mem_data_const(
+                    jones_matrices
+                    ),
+                    (std::complex<double>*) sdp_mem_data(
+                    jones_matrices_workspace
+                    )
+            );
+
+            create_brightness_values_for_predict
+            (
+                    (std::complex<double>*) sdp_mem_data(
+                    brightness_matrix_predict
+                    ),
+                    (const double*) sdp_mem_data_const(source_stoke_parameters),
+                    num_sources
             );
 
             scalar_predict_visibilites
@@ -250,9 +283,11 @@ void sdp_station_based_predict(
                     num_stations,
                     num_sources,
                     (const std::complex<double>*) sdp_mem_data_const(
-                    Jones_matrices
+                    jones_matrices_workspace
                     ),
-                    (const double*) sdp_mem_data_const(source_stoke_parameters),
+                    (const complex<double>*) sdp_mem_data_const(
+                    brightness_matrix_predict
+                    ),
                     (std::complex<double>*) sdp_mem_data(visibilites)
             );
         }
@@ -266,7 +301,21 @@ void sdp_station_based_predict(
                     num_stations,
                     (const double*) sdp_mem_data_const(station_coordinates),
                     (const float*) sdp_mem_data_const(source_directions),
-                    (std::complex<double>*) sdp_mem_data(Jones_matrices)
+                    (const std::complex<double>*) sdp_mem_data_const(
+                    jones_matrices
+                    ),
+                    (std::complex<double>*) sdp_mem_data(
+                    jones_matrices_workspace
+                    )
+            );
+
+            create_brightness_values_for_predict
+            (
+                    (std::complex<double>*) sdp_mem_data(
+                    brightness_matrix_predict
+                    ),
+                    (const float*) sdp_mem_data_const(source_stoke_parameters),
+                    num_sources
             );
 
             scalar_predict_visibilites
@@ -274,9 +323,11 @@ void sdp_station_based_predict(
                     num_stations,
                     num_sources,
                     (const std::complex<double>*) sdp_mem_data_const(
-                    Jones_matrices
+                    jones_matrices_workspace
                     ),
-                    (const float*) sdp_mem_data_const(source_stoke_parameters),
+                    (const complex<double>*) sdp_mem_data_const(
+                    brightness_matrix_predict
+                    ),
                     (std::complex<double>*) sdp_mem_data(visibilites)
             );
         }
@@ -294,6 +345,4 @@ void sdp_station_based_predict(
                 "GPU version of the station based direct predict is currently not implemented"
         );
     }
-
-    // implement and orchestrate the static functions to be able to compile the code successfully...
 }
