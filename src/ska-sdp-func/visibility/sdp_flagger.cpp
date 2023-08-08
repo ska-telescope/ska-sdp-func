@@ -175,31 +175,32 @@ static void flagger_fixed_threshold(
 
     int my_thread;
 
-    int num_samples = num_channels / sampling_step;
-    double *samples = new double[num_samples];
-    double *transit_score = new double[num_channels];
-    double *transit_samples = new double[num_samples];
-    int *my_ids = new int[num_antennas];
-
-    filler(samples, 0, num_samples);
-    filler(transit_score, 0, num_channels);
-    filler(transit_samples, 0, num_samples);
-    filler(my_ids, 0, num_antennas);
-    
-    int a;
-    int time_block = num_baselines * num_channels * num_pols;
-    int baseline_block = num_channels * num_pols;
-    
-#pragma omp parallel shared(flags) private(a) 
+#pragma omp parallel  shared(parameters, flags, visibilities, antennas, baseline1, baseline2) 
     {
-        
-        #pragma omp for
-        for (a = 0; a < num_antennas; a++){
+
+      int num_samples = num_channels / sampling_step;
+      double *samples = new double[num_samples];
+      double *transit_score = new double[num_channels];
+      double *transit_samples = new double[num_samples];
+      int *my_ids = new int[num_antennas];
+
+      filler(samples, 0, num_samples);
+      filler(transit_score, 0, num_channels);
+      filler(transit_samples, 0, num_samples);
+      filler(my_ids, 0, num_antennas);
+    
+      int time_block = num_baselines * num_channels * num_pols;
+      int baseline_block = num_channels * num_pols;
+    
+   
+      
+        #pragma omp for 
+        for (int a = 0; a < num_antennas; a++){
             int current_antenna = antennas[a];
             int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_antennas);
+  
             for (int p = 0; p < num_pols; p++){
                 for (int t = 0; t < num_timesamples; t++){
-                    // cout <<b <<"    " << p << "     "<< t <<endl;
                     int time_pos = t * time_block;
                     int baseline_pos = t * time_block + b * baseline_block;
                    
@@ -207,21 +208,20 @@ static void flagger_fixed_threshold(
                     // method 1 only operating on absolute values:
 
                     //calculating the threshold by sorting the sampled channels and find the value of the given percentile
+                    int sum_pos = 0;
+                    double sum_samples = 0;
                     for (int s = 0; s < num_samples; s++) {
-                        int pos = baseline_pos + (s * sampling_step) * num_pols + p;
-                        // cout << "t: " <<t << "  b:" << b << "   s:" << s << "   p:" << p <<"   pos: " << pos << endl; 
+                        int pos = baseline_pos + (s * sampling_step) * num_pols + p; 
                         samples[s] = abs(visibilities[pos]);
                     }
-                    qsort(samples, num_samples, sizeof(double), compare);
-                    q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))];
                     
-                    // cout << "this is q for vis: " << q_for_vis << endl;
+                  
+                    qsort(samples, num_samples, sizeof(double), compare);
+                    q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))];                   
+                
                     for (int c = 0; c < num_channels; c++){
                         int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
-                       // if (b == 0 && p == 0){
-                         //   cout << vis1 << "   " << q_for_vis << endl;
-                       // }
                         if (vis1 > q_for_vis){
                             for (int bb = 0; bb < num_antennas; bb++){
                                 int bs = my_ids[bb];
@@ -270,18 +270,18 @@ static void flagger_fixed_threshold(
                         qsort(transit_samples, num_samples, sizeof(double), compare);
                         q_for_ts = transit_samples[int(round(num_samples * what_quantile_for_changes))];
                         
-                        //cout <<  "t: " << t << "  b: " << b << "  p: " << p << "  q: " << q_for_ts << endl;
+            
                         for (uint64_t c = 0; c < num_channels; c++){
                             int pos = baseline_pos + c * num_pols + p;
                             double ts = abs(transit_score[c]);
-                            // cout << t << "    " << ts << "     " << q_for_ts << endl;
+                
                             if (ts > q_for_ts) {
                                 for (int bb = 0; bb < num_antennas; bb++) {
                                     int bs = my_ids[bb];
                                     int baseline_pos_for_bs = time_pos + bs * baseline_block;
                                     pos = baseline_pos_for_bs + c * num_pols + p;
                                     flags[pos] = 1;
-                                    if (window > 0) {
+                                     if (window > 0) {
                                        for (int w = 0; w < window; w++) {
                                           if (c - w - 1 > 0) {
                                               int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
@@ -303,6 +303,11 @@ static void flagger_fixed_threshold(
                }
             }
         }
+
+    delete transit_score;
+    delete samples;
+    delete transit_samples;
+    delete my_ids;
     }
 }
 
@@ -345,6 +350,9 @@ static void flagger_dynamic_threshold(
 
     int my_thread;
 
+#pragma omp parallel  shared(parameters, flags, visibilities, antennas, baseline1, baseline2)
+
+  {
     int num_samples = num_channels / sampling_step;
     double *samples = new double[num_samples];
     double *transit_score = new double[num_channels];
@@ -356,12 +364,7 @@ static void flagger_dynamic_threshold(
     filler(transit_samples, 0, num_samples);
     filler(my_ids, 0, num_antennas);
 
-//#pragma omp parallel shared(flags)
-  //  {
-    //    my_thread = omp_get_thread_num();
-      //  printf("Hello from thread %d\n", my_thread);
-
-      //  #pragma omp for
+        #pragma omp for
         for (int a = 0; a < num_antennas; a++){
             int current_antenna = antennas[a];
             int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_antennas);
@@ -377,13 +380,11 @@ static void flagger_dynamic_threshold(
                     for (uint64_t s = 0; s < num_samples; s++) {
                         int pos = baseline_pos + (s * sampling_step) * num_pols + p;
                         samples[s] = abs(visibilities[pos]);
-   //                        cout << t << "     " << b << "    " << p <<  "    " << samples[s] << endl;
                     }
                     qsort(samples, num_samples, sizeof(double), compare);
                     q_for_vis = samples[int(round(num_samples * knee(samples, termination, num_samples)))];
                     median_for_vis = samples[int(round(0.5 * num_samples))];
                     
-   //                    cout << q_for_vis << "    " << median_for_vis << endl;
                     for (uint64_t c = 0; c < num_channels; c++){
                         int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
@@ -466,7 +467,11 @@ static void flagger_dynamic_threshold(
                 }
             }
         }
-  //  }
+    delete transit_score;
+    delete samples;
+    delete transit_samples;
+    delete my_ids;
+    }
 }
 
 
