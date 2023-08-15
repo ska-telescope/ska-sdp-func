@@ -286,7 +286,7 @@ def reference_hogbom_clean(
     skymodel = sig.convolve(clean_comp, cbeam, mode="same")
 
     # Add remaining residual
-    # skymodel = np.add(inbetween, residual)
+    skymodel = np.add(skymodel, residual)
 
     return skymodel, cbeam, clean_comp, residual
 

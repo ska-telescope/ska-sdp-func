@@ -260,6 +260,24 @@ SDP_CUDA_KERNEL(subtract_psf<float>);
 SDP_CUDA_KERNEL(subtract_psf<__nv_bfloat16>);
 
 
+// add the final residual image to the skymodel
+template<typename T>
+__global__ void add_residual(
+            T* in,
+            int64_t size,
+            T* out
+){
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < (1024*1024)){
+        out[i] = out[i] + in[i];
+    }
+}
+
+SDP_CUDA_KERNEL(add_residual<double>);
+SDP_CUDA_KERNEL(add_residual<float>);
+
+
 // create a copy of a real value as a complex value with imaginary part set to 0
 template<typename T, typename CT>
 __global__ void create_copy_complex(
@@ -387,7 +405,7 @@ SDP_CUDA_KERNEL(convert_to_bfloat<double>);
 SDP_CUDA_KERNEL(convert_to_bfloat<float>);
 
 
-// copy a one value to gpu, can convert to bfloat from float or double precision
+// copy one value to gpu, can convert to bfloat from float or double precision
 // needed to convert loop gain and threshold to bfloat16 for correct use in maths with bfloat16 data 
 template<typename T, typename OT>
 __global__ void copy_var_gpu(
