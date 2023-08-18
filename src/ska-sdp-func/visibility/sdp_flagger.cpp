@@ -163,8 +163,9 @@ static void flagger_fixed_threshold(
         const uint64_t num_channels,
         const uint64_t num_pols,
         const uint64_t num_antennas){
-    clock_t start, end;
-    start = clock();
+    double start; 
+    double end;
+    start = omp_get_wtime(); 
     double what_quantile_for_vis = parameters[0];
     double what_quantile_for_changes = parameters[1];
     int sampling_step = parameters[2];
@@ -309,6 +310,8 @@ static void flagger_fixed_threshold(
     delete transit_samples;
     delete my_ids;
     }
+end = omp_get_wtime(); 
+printf("Work took %f seconds\n", end - start);
 }
 
 
@@ -332,8 +335,9 @@ static void flagger_dynamic_threshold(
         const uint64_t num_channels,
         const uint64_t num_pols,
         const uint64_t num_antennas){
-    clock_t start, end;
-    start = clock();
+    double start; 
+    double end;
+    start = omp_get_wtime(); 
     double alpha = parameters[0];
     double beta = parameters[1];
     double termination = parameters[2];
@@ -472,6 +476,8 @@ static void flagger_dynamic_threshold(
     delete transit_samples;
     delete my_ids;
     }
+end = omp_get_wtime(); 
+printf("Work took %f seconds\n", end - start);
 }
 
 
