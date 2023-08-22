@@ -162,7 +162,6 @@ static void uniform_weights_grid_read(
         const FREQ_TYPE* freq_hz,
         const double max_abs_uv,
         const WEIGHT_TYPE* weights_grid_uv,
-        const WEIGHT_TYPE* input_weights,
         WEIGHT_TYPE* output_weights
 )
 {
@@ -294,8 +293,6 @@ void sdp_weighting_uniform(
     sdp_MemType uvw_type = sdp_mem_type(uvw);
     sdp_MemType weights_type = SDP_MEM_VOID;
     sdp_MemLocation weights_location = sdp_mem_location(output_weight);
-    double sumweight = 0;
-    double sumweight2 = 0;
     int64_t num_times = 0;
     int64_t num_baselines = 0;
     int64_t num_channels = 0;
@@ -374,7 +371,6 @@ void sdp_weighting_uniform(
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
                     (const double*)sdp_mem_data_const(weights_grid_uv),
-                    (const double*)sdp_mem_data_const(input_weight),
                     (double*)sdp_mem_data(output_weight)
             );
         }
@@ -405,7 +401,6 @@ void sdp_weighting_uniform(
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
                     (const float*)sdp_mem_data_const(weights_grid_uv),
-                    (const float*)sdp_mem_data_const(input_weight),
                     (float*)sdp_mem_data(output_weight)
             );
         }
