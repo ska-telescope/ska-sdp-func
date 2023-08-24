@@ -19,11 +19,12 @@
     (N1 * (N2 * (N3 * I4 + I3) + I2) + I1)
 
 
-static void create_test_data_single(
+template<typename WEIGHT_TYPE>
+static void create_test_data(
         double* freq_ptr,
         double* uvw_ptr,
-        float* input_weights_ptr,
-        float* weights_grid_uv_ptr
+        WEIGHT_TYPE* input_weights_ptr,
+        WEIGHT_TYPE* weights_grid_uv_ptr
 )
 {
     freq_ptr[0] = 1e9; freq_ptr[1] = 1.1e9; freq_ptr[2] = 1.2e9;
@@ -39,42 +40,6 @@ static void create_test_data_single(
     }
 
     float input_weights_values[3] = {10, 31, 21};
-    for (int k = 0; k < 3; k++)
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            const unsigned int i_val = INDEX_4D(1, 3, 3, 1, 0, k, i, 0);
-            input_weights_ptr[i_val] = input_weights_values[i];
-        }
-    }
-
-    for (int i = 0; i < 9; i++)
-    {
-        weights_grid_uv_ptr[i] = 0;
-    }
-}
-
-
-static void create_test_data_double(
-        double* freq_ptr,
-        double* uvw_ptr,
-        double* input_weights_ptr,
-        double* weights_grid_uv_ptr
-)
-{
-    freq_ptr[0] = 1e9; freq_ptr[1] = 1.1e9; freq_ptr[2] = 1.2e9;
-
-    double uvw_values[1][3][3] = {{{2, 3, 5}, {7, 11, 13}, {17, 19, 23}}};
-    for (int k = 0; k < 3; k++)
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            const unsigned int i_val = INDEX_3D(1, 3, 3, 0, k, i);
-            uvw_ptr[i_val] = uvw_values[0][k][i];
-        }
-    }
-
-    double input_weights_values[3] = {10, 31, 21};
     for (int k = 0; k < 3; k++)
     {
         for (int i = 0; i < 3; i++)
@@ -124,7 +89,6 @@ static void run_and_check_uniform(
             weight_type, SDP_MEM_CPU, 4, weight_shape, status
     );
 
-    double* input_weights_ptr = (double*)sdp_mem_data(input_weights);
     sdp_mem_clear_contents(input_weights, status);
 
     sdp_Mem* output_weights = sdp_mem_create(
@@ -138,52 +102,44 @@ static void run_and_check_uniform(
             weight_type, SDP_MEM_CPU, 3, weights_grid_uv_shape, status
     );
 
-    double* weights_grid_uv_ptr = (double*)sdp_mem_data(weights_grid_uv);
-
     sdp_mem_clear_contents(weights_grid_uv, status);
 
     if (weight_type == SDP_MEM_FLOAT)
     {
-        float* input_weights_ptr = (float*)sdp_mem_data(input_weights);
-        sdp_mem_clear_contents(input_weights, status);
-
-        float* weights_grid_uv_ptr = (float*)sdp_mem_data(weights_grid_uv);
-        sdp_mem_clear_contents(weights_grid_uv, status);
-
-        create_test_data_single(freqs_ptr,
+        create_test_data(freqs_ptr,
                 uvw_ptr,
-                input_weights_ptr,
-                weights_grid_uv_ptr
+                (float*)sdp_mem_data(input_weights),
+                (float*)sdp_mem_data(weights_grid_uv)
         );
     }
     else
     {
-        create_test_data_double(freqs_ptr,
+        create_test_data(freqs_ptr,
                 uvw_ptr,
-                input_weights_ptr,
-                weights_grid_uv_ptr
+                (double*)sdp_mem_data(input_weights),
+                (double*)sdp_mem_data(weights_grid_uv)
         );
     }
 
     sdp_Mem* uvw_cp = sdp_mem_create_copy(uvw, output_location, status);
-    sdp_mem_ref_dec(uvw);
+
     sdp_Mem* freqs_cp = sdp_mem_create_copy(freqs, output_location, status);
-    sdp_mem_ref_dec(freqs);
+
     sdp_Mem* weights_grid_uv_cp = sdp_mem_create_copy(weights_grid_uv,
             output_location,
             status
     );
-    sdp_mem_ref_dec(weights_grid_uv);
+
     sdp_Mem* input_weights_cp = sdp_mem_create_copy(input_weights,
             output_location,
             status
     );
-    sdp_mem_ref_dec(input_weights);
+
     sdp_Mem* output_weights_cp = sdp_mem_create_copy(output_weights,
             output_location,
             status
     );
-    sdp_mem_ref_dec(output_weights);
+
     sdp_mem_set_read_only(output_weights_cp, read_only_output);
 
     double max_abs_uv = 16011.076569511299;
@@ -240,7 +196,6 @@ static void run_and_check_briggs(
             weight_type, SDP_MEM_CPU, 4, weight_shape, status
     );
 
-    double* input_weights_ptr = (double*)sdp_mem_data(input_weights);
     sdp_mem_clear_contents(input_weights, status);
 
     sdp_Mem* output_weights = sdp_mem_create(
@@ -254,52 +209,44 @@ static void run_and_check_briggs(
             weight_type, SDP_MEM_CPU, 3, weights_grid_uv_shape, status
     );
 
-    double* weights_grid_uv_ptr = (double*)sdp_mem_data(weights_grid_uv);
-
     sdp_mem_clear_contents(weights_grid_uv, status);
 
     if (weight_type == SDP_MEM_FLOAT)
     {
-        float* input_weights_ptr = (float*)sdp_mem_data(input_weights);
-        sdp_mem_clear_contents(input_weights, status);
-
-        float* weights_grid_uv_ptr = (float*)sdp_mem_data(weights_grid_uv);
-        sdp_mem_clear_contents(weights_grid_uv, status);
-
-        create_test_data_single(freqs_ptr,
+        create_test_data(freqs_ptr,
                 uvw_ptr,
-                input_weights_ptr,
-                weights_grid_uv_ptr
+                (float*)sdp_mem_data(input_weights),
+                (float*)sdp_mem_data(weights_grid_uv)
         );
     }
     else
     {
-        create_test_data_double(freqs_ptr,
+        create_test_data(freqs_ptr,
                 uvw_ptr,
-                input_weights_ptr,
-                weights_grid_uv_ptr
+                (double*)sdp_mem_data(input_weights),
+                (double*)sdp_mem_data(weights_grid_uv)
         );
     }
 
     sdp_Mem* uvw_cp = sdp_mem_create_copy(uvw, output_location, status);
-    sdp_mem_ref_dec(uvw);
+
     sdp_Mem* freqs_cp = sdp_mem_create_copy(freqs, output_location, status);
-    sdp_mem_ref_dec(freqs);
+
     sdp_Mem* weights_grid_uv_cp = sdp_mem_create_copy(weights_grid_uv,
             output_location,
             status
     );
-    sdp_mem_ref_dec(weights_grid_uv);
+
     sdp_Mem* input_weights_cp = sdp_mem_create_copy(input_weights,
             output_location,
             status
     );
-    sdp_mem_ref_dec(input_weights);
+
     sdp_Mem* output_weights_cp = sdp_mem_create_copy(output_weights,
             output_location,
             status
     );
-    sdp_mem_ref_dec(output_weights);
+    // sdp_mem_ref_dec(output_weights);
     sdp_mem_set_read_only(output_weights_cp, read_only_output);
 
     double max_abs_uv = 16011.076569511299;
@@ -408,29 +355,18 @@ int main()
         assert(status != SDP_SUCCESS);
     }
 
-    // {
-    //     sdp_Error status = SDP_SUCCESS;
-    //     run_and_check_uniform("Type mismatch",  false,
-    //         SDP_MEM_FLOAT, SDP_MEM_DOUBLE, SDP_MEM_FLOAT, SDP_MEM_CPU, &status
-    //     );
-    //     assert(status == SDP_ERR_DATA_TYPE);
-    // }
-
-//     {
-//         sdp_Error status = SDP_SUCCESS;
-//         run_and_check_briggs("Type mismatch",  false,
-//             SDP_MEM_FLOAT, SDP_MEM_DOUBLE, SDP_MEM_FLOAT, SDP_MEM_CPU, &status
-//         );
-//         assert(status == SDP_ERR_DATA_TYPE);
-//     }
-
-    // {
-    //     sdp_Error status = SDP_SUCCESS;
-    //     run_and_check_uniform("Unsupported data type", false,
-    //         SDP_MEM_INT, SDP_MEM_INT, SDP_MEM_INT, SDP_MEM_CPU, &status
-    //     );
-    //     assert(status == SDP_ERR_DATA_TYPE);
-    // }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check_uniform("Type mismatch",
+                false,
+                SDP_MEM_FLOAT,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_CPU,
+                &status
+        );
+        assert(status == SDP_ERR_DATA_TYPE);
+    }
 
 #ifdef SDP_HAVE_CUDA
 
