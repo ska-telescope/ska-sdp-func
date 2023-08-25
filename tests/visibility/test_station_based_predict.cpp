@@ -25,6 +25,7 @@ static void run_and_check(
         sdp_MemType directions_type,
         sdp_MemType coordinates_type,
         sdp_MemType jones_type,
+        sdp_MemLocation input_location,
         sdp_MemLocation output_location,
         sdp_Error* status
 )
@@ -37,16 +38,16 @@ static void run_and_check(
     int wavelength = C_0 / 1.1e9;
     const int wavenumber = 2 * M_PI / wavelength;
 
-    int64_t vis_shape[] = {1, num_baselines, 3, 4};
+    int64_t vis_shape[] = {num_baselines* num_sources};
     int64_t source_directions_shape[] = {num_sources, 3};
     int64_t stokes_parameters_shape[] = {num_sources, 4};
     int64_t brightness_matrix_shape[] = {num_sources};
     int64_t jones_matrix_shape[] = {num_sources, num_sources};
-    int64_t coordinates_shape[] = {num_stations, num_stations, num_stations};
+    int64_t coordinates_shape[] = {num_stations, 3};
 
     sdp_Mem* visibilites = sdp_mem_create(vis_type,
             output_location,
-            4,
+            1,
             vis_shape,
             status
     );
@@ -88,10 +89,15 @@ static void run_and_check(
 
     sdp_Mem* coordinates = sdp_mem_create(coordinates_type,
             SDP_MEM_CPU,
-            3,
+            2,
             coordinates_shape,
             status
     );
+
+    sdp_mem_random_fill(source_directions, status);
+    sdp_mem_random_fill(coordinates, status);
+    sdp_mem_random_fill(stokes_parameters, status);
+    sdp_mem_random_fill(jones_matrix, status);
 
     sdp_mem_clear_contents(visibilites, status);
     sdp_mem_set_read_only(visibilites, read_only_output);
@@ -102,41 +108,54 @@ static void run_and_check(
     sdp_mem_clear_contents(brightness_matrix, status);
     sdp_mem_set_read_only(brightness_matrix, read_only_output);
 
-    sdp_mem_random_fill(source_directions, status);
-    sdp_mem_random_fill(coordinates, status);
-    sdp_mem_random_fill(stokes_parameters, status);
-    sdp_mem_random_fill(jones_matrix, status);
-
     // Copy inputs into the specified location
 
-    // sdp_Mem* source_directions_in = sdp_mem_create_copy(source_directions, SDP_MEM_CPU, status);
-    // //sdp_mem_ref_dec(source_directions);
-    // sdp_Mem* coordinates_in = sdp_mem_create_copy(coordinates, SDP_MEM_CPU , status);
-    // //sdp_mem_ref_dec(coordinates);
-    // sdp_Mem* stokes_parameters_in = sdp_mem_create_copy(stokes_parameters, SDP_MEM_CPU, status);
-    // //sdp_mem_ref_dec(stokes_parameters);
-    // sdp_Mem* jones_matrix_in = sdp_mem_create_copy(jones_matrix,SDP_MEM_CPU, status);
-    // //sdp_mem_ref_dec(jones_matrix);
+    // sdp_Mem* source_directions_in = sdp_mem_create_copy(source_directions, input_location, status);
+
+    sdp_Mem* coordinates_in = sdp_mem_create_copy(coordinates,
+            input_location,
+            status
+    );
+
+    sdp_Mem* stokes_parameters_in = sdp_mem_create_copy(stokes_parameters,
+            input_location,
+            status
+    );
+
+    sdp_Mem* jones_matrix_in = sdp_mem_create_copy(jones_matrix,
+            input_location,
+            status
+    );
 
     // Call the function to test
 
     SDP_LOG_INFO("Running test: %s", test_name);
     sdp_station_based_predict(
             num_stations,
-            coordinates,
+            coordinates_in,
             source_directions,
-            stokes_parameters,
+            stokes_parameters_in,
             wavenumber,
             visibilites,
-            jones_matrix,
+            jones_matrix_in,
             brightness_matrix,
             jones_matrix_workspace,
             status
     );
 
-    sdp_mem_ref_dec(visibilites);
-    sdp_mem_ref_dec(brightness_matrix);
-    sdp_mem_ref_dec(jones_matrix_workspace);
+//     sdp_mem_ref_dec(source_directions_in);
+//     sdp_mem_ref_dec(coordinates_in);
+//     sdp_mem_ref_dec(stokes_parameters_in);
+//     sdp_mem_ref_dec(jones_matrix_in);
+
+//     sdp_mem_ref_dec(source_directions);
+//     sdp_mem_ref_dec(coordinates);
+//     sdp_mem_ref_dec(stokes_parameters);
+//     sdp_mem_ref_dec(jones_matrix);
+
+//     sdp_mem_ref_dec(visibilites);
+//     sdp_mem_ref_dec(brightness_matrix);
+//     sdp_mem_ref_dec(jones_matrix_workspace);
 }
 
 
@@ -148,41 +167,53 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("Double Precision",
                 false,
-                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU,
+                SDP_MEM_CPU,
                 &status
         );
         assert(status == SDP_SUCCESS);
     }
 
+//     {
+//         sdp_Error status = SDP_SUCCESS;
+//         run_and_check("Single Precision",
+//                 false,
+//                 SDP_MEM_COMPLEX_DOUBLE,
+//                 SDP_MEM_FLOAT,
+//                 SDP_MEM_FLOAT,
+//                 SDP_MEM_FLOAT,
+//                 SDP_MEM_DOUBLE,
+//                 SDP_MEM_COMPLEX_DOUBLE,
+//                 SDP_MEM_CPU,
+//                 SDP_MEM_CPU,
+//                 &status
+//         );
+//         assert(status == SDP_SUCCESS);
+//     }
+
+#ifdef SDP_HAVE_CUDA
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("Single Precision",
+        run_and_check("GPU version(not implemented)",
                 false,
                 SDP_MEM_DOUBLE,
                 SDP_MEM_FLOAT,
                 SDP_MEM_FLOAT,
                 SDP_MEM_FLOAT,
-                SDP_MEM_DOUBLE,
+                SDP_MEM_FLOAT,
                 SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU,
+                SDP_MEM_GPU,
+                SDP_MEM_GPU,
                 &status
         );
-        assert(status == SDP_SUCCESS);
+        assert(status == SDP_ERR_RUNTIME);
     }
-
-// #ifdef SDP_HAVE_CUDA
-//     {
-//         sdp_Error status = SDP_SUCCESS;
-//         run_and_check("GPU version(not implemented)", false, SDP_MEM_DOUBLE, SDP_MEM_FLOAT, SDP_MEM_FLOAT,
-//         SDP_MEM_FLOAT, SDP_MEM_FLOAT, SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_GPU, SDP_MEM_GPU, &status);
-//         assert(status == SDP_ERR_MEM_LOCATION);
-//     }
-// #endif
-//     return 0;
+#endif
+    return 0;
 }

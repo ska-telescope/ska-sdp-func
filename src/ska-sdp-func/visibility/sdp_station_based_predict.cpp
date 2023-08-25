@@ -70,7 +70,9 @@ static void create_brightness_values_for_predict(
 {
     for (int source = 0; source < num_sources; source++)
     {
-        brightness_matrix_predict[source] = linear_pol_brightness_values(source,
+        const unsigned int i_source = source * 4;
+        brightness_matrix_predict[source] = linear_pol_brightness_values(
+                i_source,
                 stokes_parameters
         ).i1;
     }
@@ -98,7 +100,7 @@ static void scalar_create_phase_difference_Jones_values(
             const DIR_TYPE l = source_directions[i_dir];
             const DIR_TYPE m = source_directions[i_dir + 1];
             const DIR_TYPE n = source_directions[i_dir + 2];
-            const double phase = wavenumber *
+            const DIR_TYPE phase = wavenumber *
                     (station_coordinates[i_coordinate] * l) +
                     (station_coordinates[i_coordinate + 1] * m) +
                     (station_coordinates[i_coordinate + 2] * (n - 1));
@@ -109,84 +111,6 @@ static void scalar_create_phase_difference_Jones_values(
         }
     }
 }
-
-
-// template<typename DIR_TYPE, typename UVW_COORDINATES, typename VECTOR_JONES_TYPE>
-
-
-// static void vector_create_phase_difference_Jones_values(
-
-
-//     int wavenumber,
-
-
-//     const int64_t num_sources,
-
-
-//     const int64_t num_stations,
-
-
-//     const UVW_COORDINATES* station_coordinates,
-
-
-//     const DIR_TYPE* source_directions,
-
-
-//     VECTOR_JONES_TYPE* Jones
-
-
-// )
-
-
-// {
-
-
-//     for(int station=0; station < num_stations; station++)
-
-
-//     {
-
-
-//         for (int source = 0; source < num_sources; source++)
-
-
-//         {
-
-
-//             const unsigned int i_coordinate = 3 * station;
-
-
-//             const unsigned int i_dir = 3 * source;
-
-
-//             const DIR_TYPE l = source_directions[i_dir];
-
-
-//             const DIR_TYPE m = source_directions[i_dir + 1];
-
-
-//             const DIR_TYPE n = source_directions[i_dir + 2];
-
-
-//             const double phase = wavenumber*(station_coordinates[i_coordinate]*l)+(station_coordinates[i_coordinate+1]*m)+(station_coordinates[i_coordinate+2]*(n-1));
-
-
-//             const VECTOR_JONES_TYPE phasor_x(cos(phase), sin(phase));
-
-
-//             const VECTOR_JONES_TYPE phasor_y = phasor_x;
-
-
-//             Jones[station * num_sources + source] = phasor_x, phasor_y; //check if you can even do this...
-
-
-//         }
-
-
-//     }
-
-
-// }
 
 
 template<typename VIS_TYPE, typename BRIGHTNESS_TYPE,
@@ -206,7 +130,7 @@ static void scalar_predict_visibilites(
                 q_station < num_stations;
                 q_station++, ivis++)
         {
-            complex<double> sum = 0;
+            SCALAR_JONES_TYPE sum = 0;
             for (int source = 0; source < num_sources; source++)
             {
                 sum += brightness_matrix_predict[source] *
