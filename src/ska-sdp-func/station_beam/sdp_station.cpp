@@ -80,7 +80,7 @@ void sdp_station_beam_dft(
         const FP xo = wavenumber * x_out[i_out + idx_offset_out];
         const FP yo = wavenumber * y_out[i_out + idx_offset_out];
         const FP zo = z_out ?
-                wavenumber * z_out[i_out + idx_offset_out] : (FP) 0;
+                    wavenumber * z_out[i_out + idx_offset_out] : (FP) 0;
         if (data)
         {
             for (int i = 0; i < num_in; ++i)
@@ -89,7 +89,7 @@ void sdp_station_beam_dft(
                 const complex<FP> weighted_phasor =
                         complex<FP>(cos(phase), sin(phase)) * weights_in[i];
                 const int i_in = NUM_POL * (
-                        (data_idx ? data_idx[i] : i) * num_out + i_out
+                    (data_idx ? data_idx[i] : i) * num_out + i_out
                 );
                 if (NUM_POL == 1)
                 {

@@ -44,9 +44,9 @@ def aperture_array(
     element_beam_index,
     element_beam,
     station_beam,
-    normalise: bool=True,
-    eval_x: bool=True,
-    eval_y: bool=True,
+    normalise: bool = True,
+    eval_x: bool = True,
+    eval_y: bool = True,
 ) -> None:
     """Evaluates a station beam from an aperture array.
 
