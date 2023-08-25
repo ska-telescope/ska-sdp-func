@@ -25,6 +25,8 @@ Lib.wrap_func(
         ctypes.c_int32,
         Mem.handle_type(),
         ctypes.c_int32,
+        ctypes.c_int32,
+        ctypes.c_int32,
     ],
     check_errcode=True,
 )
@@ -42,7 +44,9 @@ def aperture_array(
     element_beam_index,
     element_beam,
     station_beam,
-    normalise: bool,
+    normalise: bool=True,
+    eval_x: bool=True,
+    eval_y: bool=True,
 ) -> None:
     """Evaluates a station beam from an aperture array.
 
@@ -70,6 +74,10 @@ def aperture_array(
             Output complex station beam array.
         normalise (bool):
             If true, normalise output by dividing by the number of elements.
+        eval_x (bool):
+            If true, evaluate polarised beam using X antennas.
+        eval_y (bool):
+            If true, evaluate polarised beam using Y antennas.
 
     """
     Lib.sdp_station_beam_aperture_array(
@@ -88,4 +96,6 @@ def aperture_array(
         0,
         Mem(station_beam),
         normalise,
+        eval_x,
+        eval_y,
     )

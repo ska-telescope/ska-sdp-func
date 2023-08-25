@@ -274,7 +274,7 @@ const void* sdp_mem_data_const(const sdp_Mem* mem)
 void* sdp_mem_gpu_buffer(sdp_Mem* mem, sdp_Error* status)
 {
     if (*status || !mem) return 0;
-    if (mem->location != SDP_MEM_GPU)
+    if (mem->location != SDP_MEM_GPU && mem->type != SDP_MEM_VOID)
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_CRITICAL("Requested buffer is not in GPU memory");
@@ -287,7 +287,7 @@ void* sdp_mem_gpu_buffer(sdp_Mem* mem, sdp_Error* status)
 const void* sdp_mem_gpu_buffer_const(const sdp_Mem* mem, sdp_Error* status)
 {
     if (*status || !mem) return 0;
-    if (mem->location != SDP_MEM_GPU)
+    if (mem->location != SDP_MEM_GPU && mem->type != SDP_MEM_VOID)
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_CRITICAL("Requested buffer is not in GPU memory");

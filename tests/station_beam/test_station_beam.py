@@ -29,14 +29,14 @@ def test_station_beam_aperture_array():
     element_z = numpy.zeros_like(element_x)
     element_weights = numpy.ones_like(element_x, dtype=numpy.complex128)
 
-    # Generate source positions and empty output array.
+    # Generate source positions.
     x = numpy.linspace(-1.0, 1.0, 50)
     point_x, point_y = numpy.meshgrid(x, x)
     point_z = numpy.sqrt(1.0 - point_x**2 - point_y**2)
-    beam = numpy.zeros_like(point_x, dtype=numpy.complex128)
 
     # Call library function to evaluate array factor.
-    print("Testing aperture array beam on CPU from ska-sdp-func...")
+    print("Testing scalar aperture array beam on CPU from ska-sdp-func...")
+    beam_scalar = numpy.zeros((point_x.size), dtype=numpy.complex128)
     aperture_array(
         wavenumber,
         element_weights,
@@ -48,13 +48,46 @@ def test_station_beam_aperture_array():
         point_z,
         None,
         None,
-        beam,
+        beam_scalar,
+    )
+    beam_pol = numpy.zeros((point_x.size, 4), dtype=numpy.complex128)
+    aperture_array(
+        wavenumber,
+        element_weights,
+        element_x,
+        element_y,
+        element_z,
+        point_x,
+        point_y,
+        point_z,
+        None,
+        None,
+        beam_pol,
         normalise=True,
+        eval_x=False,
+        eval_y=True,
     )
     if plt:
-        plt.scatter(point_x, point_y, c=numpy.abs(beam))
+        plt.figure()
+        plt.scatter(point_x, point_y, c=numpy.abs(beam_scalar))
         plt.colorbar()
         plt.savefig("test_aperture_array_cpu.png")
+
+        fig, ax = plt.subplots(2, 2)
+        fig.suptitle("Polarised station beam patterns")
+        ax[0, 0].set_title("x_theta")
+        sc00 = ax[0, 0].scatter(point_x, point_y, c=numpy.abs(beam_pol[:, 0]))
+        plt.colorbar(sc00, ax=ax[0, 0])
+        ax[0, 1].set_title("x_phi")
+        sc01 = ax[0, 1].scatter(point_x, point_y, c=numpy.abs(beam_pol[:, 1]))
+        plt.colorbar(sc01, ax=ax[0, 1])
+        ax[1, 1].set_title("y_theta")
+        sc11 = ax[1, 1].scatter(point_x, point_y, c=numpy.abs(beam_pol[:, 2]))
+        plt.colorbar(sc11, ax=ax[1, 1])
+        ax[1, 0].set_title("y_phi")
+        sc10 = ax[1, 0].scatter(point_x, point_y, c=numpy.abs(beam_pol[:, 3]))
+        plt.colorbar(sc10, ax=ax[1, 0])
+        plt.savefig("test_aperture_array_cpu_pol.png")
 
     # Run aperture array beam test on GPU, using cupy arrays.
     if cupy:
@@ -65,8 +98,8 @@ def test_station_beam_aperture_array():
         point_x_gpu = cupy.asarray(point_x)
         point_y_gpu = cupy.asarray(point_y)
         point_z_gpu = cupy.asarray(point_z)
-        beam_gpu = cupy.zeros_like(point_x_gpu, dtype=cupy.complex128)
         print("Testing aperture array beam on GPU from ska-sdp-func...")
+        beam_gpu_scalar = cupy.zeros_like(point_x_gpu, dtype=cupy.complex128)
         aperture_array(
             wavenumber,
             element_weights_gpu,
@@ -78,13 +111,13 @@ def test_station_beam_aperture_array():
             point_z_gpu,
             None,
             None,
-            beam_gpu,
-            normalise=True,
+            beam_gpu_scalar,
         )
-        beam_gpu_copy = cupy.asnumpy(beam_gpu)
-        numpy.testing.assert_array_almost_equal(beam_gpu_copy, beam)
+        beam_gpu_copy = cupy.asnumpy(beam_gpu_scalar)
+        numpy.testing.assert_array_almost_equal(beam_gpu_copy, beam_scalar)
         print("aperture array beam on GPU: Test passed")
         if plt:
+            plt.figure()
             plt.scatter(point_x, point_y, c=numpy.abs(beam_gpu_copy))
             plt.colorbar()
             plt.savefig("test_array_factor_gpu.png")

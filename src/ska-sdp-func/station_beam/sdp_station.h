@@ -79,6 +79,8 @@ void sdp_station_free(sdp_Station* model);
  * @param station_beam Output complex station beam array.
  * @param normalise If true, normalise output by dividing by the number
  *                  of elements.
+ * @param eval_x If true, evaluate polarised beam using X antennas.
+ * @param eval_y If true, evaluate polarised beam using Y antennas.
  * @param status Error status.
 */
 void sdp_station_beam_aperture_array(
@@ -87,16 +89,18 @@ void sdp_station_beam_aperture_array(
         const sdp_Mem* element_x,
         const sdp_Mem* element_y,
         const sdp_Mem* element_z,
-        int index_offset_points,
-        int num_points,
+        const int index_offset_points,
+        const int num_points,
         const sdp_Mem* point_x,
         const sdp_Mem* point_y,
         const sdp_Mem* point_z,
         const sdp_Mem* element_beam_index,
         const sdp_Mem* element_beam,
-        int index_offset_station_beam,
+        const int index_offset_station_beam,
         sdp_Mem* station_beam,
-        int normalise,
+        const int normalise,
+        const int eval_x,
+        const int eval_y,
         sdp_Error* status
 );
 
