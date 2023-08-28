@@ -170,7 +170,7 @@ static void run_and_check(
     sdp_Mem* i_c[] = {0, 0, 0};
     sdp_Mem* o_c[] = {0, 0, 0};
     sdp_Mem* in_i_c[] = {0, 0, 0};
-    sdp_Mem *in_o_c[] = {0, 0, 0};
+    sdp_Mem* in_o_c[] = {0, 0, 0};
     for (int i = 0; i < 3; ++i)
     {
         i_c[i] = sdp_mem_create(data_type, SDP_MEM_CPU, 1, &num_ant, status);
