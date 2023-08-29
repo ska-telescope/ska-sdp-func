@@ -204,11 +204,11 @@ void sdp_element_beam_dipole(
         {
             if (type == SDP_MEM_COMPLEX_FLOAT)
             {
-                kernel_name = "sdp_dipole_pattern<float>";
+                kernel_name = "sdp_dipole_pattern<float, float2>";
             }
             else if (type == SDP_MEM_COMPLEX_DOUBLE)
             {
-                kernel_name = "sdp_dipole_pattern<double>";
+                kernel_name = "sdp_dipole_pattern<double, double2>";
             }
             else
             {
@@ -235,11 +235,11 @@ void sdp_element_beam_dipole(
         {
             if (type == SDP_MEM_COMPLEX_FLOAT)
             {
-                kernel_name = "sdp_dipole_pattern_scalar<float>";
+                kernel_name = "sdp_dipole_pattern_scalar<float, float2>";
             }
             else if (type == SDP_MEM_COMPLEX_DOUBLE)
             {
-                kernel_name = "sdp_dipole_pattern_scalar<double>";
+                kernel_name = "sdp_dipole_pattern_scalar<double, double2>";
             }
             else
             {
