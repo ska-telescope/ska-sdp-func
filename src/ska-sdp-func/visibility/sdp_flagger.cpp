@@ -6,6 +6,7 @@
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include <iostream>
 #include <iomanip>
+#include <math.h>  
 #include "omp.h"
 
 
@@ -65,8 +66,6 @@ static void check_params(
         return;
     }
 }
-
-
 int compare (const void * a, const void * b){
     if (*(double*)a > *(double*)b)
         return 1;
@@ -89,47 +88,27 @@ void filler(AA* arr, VL val, int length){
     }
 }
 
-double distance(double x0, double y0, double x1, double y1, double x2, double y2){
-    double top = abs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1));
-    double bottom = sqrt(pow((x2 - x1), 2) + pow((y2 - y1), 2));
-    double dist = top/bottom;
-    return dist;
-}
+double golden_ratio(double* arr, double param, int n){
+      double where = 0;
+      double ratio, res, gr;
+      int mid = int(round(0.5 * n));
+      double median = arr[mid];
+      for (int i = mid; i < n; i++){
+         res = double(n - i + 1)/double(n);
+         ratio =  arr[i]/median;
+         gr = res/ratio;
+         if (gr < param){
+            where = double(i)/double(n);
+            break;
+         }
+      }
+   //   if (where > 0.999 || where < 0.01){
+     //    cout << "Hello:   " << where << endl;
+    //  }     
+      return where;
+} 
 
-double knee(double* arr, double termination, int n){
-    double interval = 0.5;
-    double central = 0.5;
-    double left = 0.25;
-    double right = 0.75;
-    int left_pos = round(left * n);
-    int right_pos = round(right * n);
 
-    double x1 = arr[0];
-    double y1 = 1/n;
-    double x2 = arr[n-1];
-    double y2 = 1;
-
-    while (interval > termination){
-        double dist_left = distance(arr[left_pos], left, x1, y1, x2, y2);
-        double dist_right = distance(arr[right_pos], right, x1, y1, x2, y2);
-        if (dist_left > dist_right){
-            interval = interval/2;
-            central = left;
-            left = left - interval/2;
-            right = left + interval/2;
-            left_pos = round(left * n);
-            right_pos = round(right * n);
-        } else{
-            interval = interval/2;
-            central = right;
-            left = right - interval/2;
-            right = right + interval/2;
-            left_pos = round(left * n);
-            right_pos = round(right * n);
-        }
-    }
-    return central;
-}
 
 int my_baseline_ids(int antenna_id, const int* baseline1, const int* baseline2, int* my_ids, int nbaselines){
     int where_myself = 0;
@@ -138,6 +117,9 @@ int my_baseline_ids(int antenna_id, const int* baseline1, const int* baseline2, 
         if (baseline1[i] == antenna_id || baseline2[i] == antenna_id){
             my_ids[k] = i;
             k++;
+        }
+        if (baseline1[i] == antenna_id && baseline2[i] == antenna_id){
+           where_myself = i;
         }
     }  
     return where_myself;
@@ -170,6 +152,8 @@ static void flagger_fixed_threshold(
     int window = parameters[4];
     
 
+ 
+
 #pragma omp parallel  shared(parameters, flags, visibilities, antennas, baseline1, baseline2) 
     {
 
@@ -190,7 +174,7 @@ static void flagger_fixed_threshold(
       int time_block = num_baselines * num_channels * num_pols;
       int baseline_block = num_channels * num_pols;
     
-
+      
       
         #pragma omp for 
         for (int a = 0; a < num_antennas; a++){
@@ -338,8 +322,8 @@ static void flagger_dynamic_threshold(
     double end;
     start = omp_get_wtime(); 
     double alpha = parameters[0];
-    double beta = parameters[1];
-    double termination = parameters[2];
+    double gparam_vis = parameters[1];
+    double gparam_ts = parameters[2];
     int sampling_step = parameters[3];
     int window = parameters[4];
  
@@ -368,10 +352,9 @@ static void flagger_dynamic_threshold(
         for (int a = 0; a < num_antennas; a++){
             int current_antenna = antennas[a];
             int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_baselines);
-        
+                  
             for (int p = 0; p < num_pols; p++){
-                for (uint64_t t = 0; t < num_timesamples; t++){
-     
+                for (int t = 0; t < num_timesamples; t++){
                     int time_block = num_baselines * num_channels * num_pols;
                     int baseline_block = num_channels * num_pols;
                     int time_pos = t * time_block;
@@ -379,29 +362,27 @@ static void flagger_dynamic_threshold(
                     // method 1 only operating on absolute values:
                    
                     //calculating the threshold by sorting the sampled channels and find the value of the given percentile
-                    for (uint64_t s = 0; s < num_samples; s++) {
+                    for (int s = 0; s < num_samples; s++) {
                         int pos = baseline_pos + (s * sampling_step) * num_pols + p;
                         samples[s] = abs(visibilities[pos]);
                     }
                     qsort(samples, num_samples, sizeof(double), compare);
-                    q_for_vis = samples[int(round(num_samples * knee(samples, termination, num_samples)))];
-                    median_for_vis = samples[int(round(0.5 * num_samples))];
-//                    cout << q_for_vis << "    " << median_for_vis << endl;  
-                                     
-                    for (uint64_t c = 0; c < num_channels; c++){
+                    q_for_vis = samples[int(round(num_samples * golden_ratio(samples, gparam_vis, num_samples)))];
+                               
+                    for (int c = 0; c < num_channels; c++){
                         int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
-                        if (vis1 > q_for_vis || vis1 > median_for_vis + (1 - beta) * (q_for_vis - median_for_vis)){  
-                            
+                        
+                        if (vis1 > q_for_vis){      
                             for (int bb = 0; bb < num_antennas; bb++) {
-                                    int bs = my_ids[bb];
+                                    int bs = my_ids[bb]; 
                                     int baseline_pos_for_bs = time_pos + bs * baseline_block;
                                     pos = baseline_pos_for_bs + c * num_pols + p;
                                     flags[pos] = 1;
                        
                                     if (window > 0) {
                                         for (int w = 0; w < window; w++) {
-                                            if (c - w - 1 > 0) {
+                                            if (c - w - 1 > 0){                           
                                                 int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
                                                 flags[pos] = 1;
                                             } 
@@ -413,7 +394,7 @@ static void flagger_dynamic_threshold(
                                         }
                                     }
 
-                              }
+                             }  
 
                          }
 
@@ -421,8 +402,9 @@ static void flagger_dynamic_threshold(
 
 
                     // method 2 operating on rate of changes (fluctuations):
+
                     if (t > 0){
-                        for (uint64_t c = 0; c < num_channels; c++) {
+                        for (int c = 0; c < num_channels; c++) {
                             int pos0 = baseline_pos + c * num_pols + p;
                             int pos1 = (t - 1) * time_block + b * baseline_block + c * num_pols + p;
                             double vis0 = abs(visibilities[pos0]);
@@ -436,20 +418,18 @@ static void flagger_dynamic_threshold(
                             }
                         }
 
-                        for (uint64_t s = 0; s < num_samples; s++) {
+                        for (int s = 0; s < num_samples; s++) {
                             transit_samples[s] = abs(transit_score[s * sampling_step]);
                         }
 
                         qsort(transit_samples, num_samples, sizeof(double), compare);
-                        q_for_ts = transit_samples[int(round(num_samples * knee(samples, termination, num_samples)))];
-                        median_for_ts = transit_samples[int(round(0.5 * num_samples))];
-//                        cout << q_for_ts << "    " << median_for_ts << endl;
-
-                        for (uint64_t c = 0; c < num_channels; c++){
+                        q_for_ts = transit_samples[int(round(num_samples * golden_ratio(samples, gparam_ts, num_samples)))];
+                        
+                        for (int c = 0; c < num_channels; c++){
                             int pos = baseline_pos + c * num_pols + p;
                             double ts = abs(transit_score[c]);
                       
-                            if (ts > q_for_ts || ts > median_for_ts + (1 - beta) * (q_for_ts - median_for_ts)) {
+                            if (ts > q_for_ts ) {
                                 for (int bb = 0; bb < num_antennas; bb++) {
                                     int bs = my_ids[bb];                                    
                                     int baseline_pos_for_bs = time_pos + bs * baseline_block;
@@ -468,10 +448,10 @@ static void flagger_dynamic_threshold(
                                         }
                                     }
                                 }
-                            }
+                            } 
                         }
 
-                    }
+                    }    
                 }
             }
         }
