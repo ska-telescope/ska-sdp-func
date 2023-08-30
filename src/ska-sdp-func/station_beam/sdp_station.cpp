@@ -10,6 +10,8 @@
 
 using std::complex;
 
+#if 0
+
 // These are not currently used.
 // Still wondering whether or not they're needed.
 
@@ -46,6 +48,7 @@ void sdp_station_free(sdp_Station* model)
     }
 }
 
+#endif
 
 template<typename FP, int NUM_POL>
 void sdp_station_beam_dft(

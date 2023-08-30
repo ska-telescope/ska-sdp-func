@@ -50,6 +50,40 @@ def aperture_array(
 ) -> None:
     """Evaluates a station beam from an aperture array.
 
+    This function evaluates an aperture-array-based station beam for a
+    given set of antenna/element coordinates, at a set of source positions.
+
+    Element beam data can be supplied if required via the ``element_beam``
+    parameter, and may be either complex scalar or fully polarised.
+    If provided, this must be a complex matrix containing the element response
+    for each element type and each direction on the sky.
+    The matrix dimemsions of ``element_beam`` are therefore the number of
+    element responses and the number of point directions, with the point
+    directions the fastest-varying dimension.
+    If there are fewer element types than there are elements, then
+    the ``element_beam_index`` array should be used to specify which vector
+    of the element response matrix is used for each element.
+    If polarised element data is supplied, the output station beam is also
+    polarised, and the fastest-varying dimension or dimensions of both must be
+    either of size 4 or (2, 2).
+
+    Example dimensions allowed for ``element_beam``, if not ``None``:
+
+    - (``num_elements``, ``num_points``) for complex scalar responses.
+    - (``num_elements``, ``num_points``, 1) for complex scalar responses.
+    - (``num_elements``, ``num_points``, 4) for complex polarised responses.
+    - (``num_elements``, ``num_points``, 2, 2) for complex polarised responses.
+
+    The ``station_beam`` array must be consistent in shape, but without
+    the element dimension.
+
+    Example dimensions allowed for ``station_beam``:
+
+    - (``num_points``) for complex scalar responses.
+    - (``num_points``, 1) for complex scalar responses.
+    - (``num_points``, 4) for complex polarised responses.
+    - (``num_points``, 2, 2) for complex polarised responses.
+
     Args:
         wavenumber (float): Wavenumber for the current frequency channel.
         element_weights (numpy.ndarray or cupy.ndarray):
