@@ -50,6 +50,7 @@ void sdp_station_free(sdp_Station* model)
 
 #endif
 
+
 template<typename FP, int NUM_POL>
 void sdp_station_beam_dft(
         const FP wavenumber,
