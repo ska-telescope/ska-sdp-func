@@ -32,6 +32,7 @@ typedef complex<float> complexf;
     } \
 
 
+
 template<typename FP>
 static void check_results(
         const char* test_name,
