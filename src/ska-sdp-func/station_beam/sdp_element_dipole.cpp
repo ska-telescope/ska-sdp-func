@@ -14,7 +14,7 @@ using std::complex;
 
 
 template<typename FP>
-void sdp_dipole(
+static void sdp_dipole(
         FP kL,
         FP cos_kL,
         FP phi_rad,
@@ -41,7 +41,7 @@ void sdp_dipole(
 
 
 template<typename FP>
-void sdp_dipole_pattern(
+static void sdp_dipole_pattern(
         const int num_points,
         const FP* theta_rad,
         const FP* phi_rad,
@@ -66,7 +66,7 @@ void sdp_dipole_pattern(
 
 
 template<typename FP>
-void sdp_dipole_pattern_scalar(
+static void sdp_dipole_pattern_scalar(
         const int num_points,
         const FP* theta_rad,
         const FP* phi_rad,
