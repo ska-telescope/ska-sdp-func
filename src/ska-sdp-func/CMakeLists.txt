@@ -4,6 +4,7 @@ set(${CMAKE_PROJECT_NAME}_FOLDERS
     fourier_transforms
     grid_data
     rfi
+    station_beam
     utility
     visibility
 )

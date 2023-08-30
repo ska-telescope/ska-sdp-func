@@ -21,6 +21,7 @@ class Mem(StructWrapper):
     class MemType:
         """Enumerator to hold memory element type."""
 
+        SDP_MEM_VOID = 0
         SDP_MEM_CHAR = 1
         SDP_MEM_INT = 2
         SDP_MEM_FLOAT = 4
@@ -101,6 +102,21 @@ class Mem(StructWrapper):
             )
             # cupy doesn't appear to have a "writeable" flag.
             Lib.sdp_mem_set_read_only(self, 0)
+
+        elif obj is None:
+            shape = (ctypes.c_int64)(1)
+            strides = (ctypes.c_int64)(1)
+            create_args = (
+                ctypes.c_void_p(),
+                self.MemType.SDP_MEM_VOID,
+                self.MemLocation.SDP_MEM_CPU,
+                0,
+                shape,
+                strides,
+            )
+            super().__init__(
+                Lib.sdp_mem_create_wrapper, create_args, Lib.sdp_mem_free
+            )
         else:
             raise TypeError("Unsupported argument type")
 

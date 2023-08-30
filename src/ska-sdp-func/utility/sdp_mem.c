@@ -111,6 +111,7 @@ sdp_Mem* sdp_mem_create_wrapper(
     mem->type = type;
     mem->location = location;
     mem->num_dims = num_dims;
+    if (type == SDP_MEM_VOID) return mem;
     const int64_t element_size = sdp_mem_type_size(type);
     if (element_size <= 0)
     {
@@ -273,7 +274,7 @@ const void* sdp_mem_data_const(const sdp_Mem* mem)
 void* sdp_mem_gpu_buffer(sdp_Mem* mem, sdp_Error* status)
 {
     if (*status || !mem) return 0;
-    if (mem->location != SDP_MEM_GPU)
+    if (mem->location != SDP_MEM_GPU && mem->type != SDP_MEM_VOID)
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_CRITICAL("Requested buffer is not in GPU memory");
@@ -286,7 +287,7 @@ void* sdp_mem_gpu_buffer(sdp_Mem* mem, sdp_Error* status)
 const void* sdp_mem_gpu_buffer_const(const sdp_Mem* mem, sdp_Error* status)
 {
     if (*status || !mem) return 0;
-    if (mem->location != SDP_MEM_GPU)
+    if (mem->location != SDP_MEM_GPU && mem->type != SDP_MEM_VOID)
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_CRITICAL("Requested buffer is not in GPU memory");
@@ -331,15 +332,7 @@ int32_t sdp_mem_is_floating_point(const sdp_Mem* mem)
     {
         return 0;
     }
-    else if (mem->type == SDP_MEM_FLOAT
-            || mem->type == SDP_MEM_DOUBLE)
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
+    return mem->type == SDP_MEM_FLOAT || mem->type == SDP_MEM_DOUBLE;
 }
 
 
@@ -350,6 +343,28 @@ int32_t sdp_mem_is_complex(const sdp_Mem* mem)
         return 0;
     }
     return (mem->type & SDP_MEM_COMPLEX) == SDP_MEM_COMPLEX;
+}
+
+
+int32_t sdp_mem_is_complex4(const sdp_Mem* mem)
+{
+    if (!sdp_mem_is_complex(mem))
+    {
+        return 0;
+    }
+    const int32_t nd = mem->num_dims;
+    return (nd > 1 && mem->shape[nd - 1] == 4) ||
+           (nd > 2 && mem->shape[nd - 1] == 2 && mem->shape[nd - 2] == 2);
+}
+
+
+int32_t sdp_mem_is_double(const sdp_Mem* mem)
+{
+    if (!mem || !mem->data)
+    {
+        return 0;
+    }
+    return (mem->type & SDP_MEM_DOUBLE) == SDP_MEM_DOUBLE;
 }
 
 
