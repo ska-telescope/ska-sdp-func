@@ -41,8 +41,8 @@ static void run_and_check(
     int64_t vis_shape[] = {num_baselines* num_sources};
     int64_t source_directions_shape[] = {num_sources, 3};
     int64_t stokes_parameters_shape[] = {num_sources, 4};
-    int64_t brightness_matrix_shape[] = {num_sources};
-    int64_t jones_matrix_shape[] = {num_sources, num_sources};
+    int64_t brightness_matrix_shape[] = {num_sources, 4};
+    int64_t jones_matrix_shape[] = {num_stations, num_sources};
     int64_t coordinates_shape[] = {num_stations, 3};
 
     sdp_Mem* visibilites = sdp_mem_create(vis_type,
@@ -68,7 +68,7 @@ static void run_and_check(
 
     sdp_Mem* brightness_matrix = sdp_mem_create(brightness_type,
             output_location,
-            1,
+            2,
             brightness_matrix_shape,
             status
     );
@@ -143,19 +143,18 @@ static void run_and_check(
             status
     );
 
-//     sdp_mem_ref_dec(source_directions_in);
-//     sdp_mem_ref_dec(coordinates_in);
-//     sdp_mem_ref_dec(stokes_parameters_in);
-//     sdp_mem_ref_dec(jones_matrix_in);
+    sdp_mem_ref_dec(coordinates_in);
+    sdp_mem_ref_dec(stokes_parameters_in);
+    sdp_mem_ref_dec(jones_matrix_in);
 
-//     sdp_mem_ref_dec(source_directions);
-//     sdp_mem_ref_dec(coordinates);
-//     sdp_mem_ref_dec(stokes_parameters);
-//     sdp_mem_ref_dec(jones_matrix);
+    sdp_mem_ref_dec(source_directions);
+    sdp_mem_ref_dec(coordinates);
+    sdp_mem_ref_dec(stokes_parameters);
+    sdp_mem_ref_dec(jones_matrix);
 
-//     sdp_mem_ref_dec(visibilites);
-//     sdp_mem_ref_dec(brightness_matrix);
-//     sdp_mem_ref_dec(jones_matrix_workspace);
+    sdp_mem_ref_dec(visibilites);
+    sdp_mem_ref_dec(brightness_matrix);
+    sdp_mem_ref_dec(jones_matrix_workspace);
 }
 
 
