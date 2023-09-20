@@ -19,7 +19,7 @@
  * Array dimensions are as follows, from slowest to fastest varying:
  *
  * - @p station_coordinates is 2D and real-valued, with shape:
- *   - [ num_sources, 3 ]
+ *   - [ num_stations, 3 ]
  *
  * - @p source_directions is 2D and real-valued, with shape:
  *   - [ num_sources, 3 ]
