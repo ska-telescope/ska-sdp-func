@@ -119,10 +119,14 @@ static void fft_convolution(
         int64_t pad_dim = in1_dim + in2_dim - 1;
 
         // make sure padded image is a power of 2
-        while (ceil(log2(pad_dim)) != floor(log2(pad_dim))){
-
+        while ((pad_dim & (pad_dim - 1)) != 0) {
             pad_dim += 1;
         }
+
+        // while (ceil(log2(pad_dim)) != floor(log2(pad_dim))){
+
+        //     pad_dim += 1;
+        // }
 
         int64_t pad_shape[] = {pad_dim, pad_dim};
         int64_t pad_size = pad_dim * pad_dim;
@@ -149,22 +153,22 @@ static void fft_convolution(
         // pad in2
         pad_2D<T>(in2, in2_pad_ptr, in2_dim, in2_dim, extra_in2, extra_in2);
 
-        // create variables for FFT results
-        sdp_Mem* in1_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
-        complex<T>* in1_fft_result_ptr = (complex<T>*)sdp_mem_data(in1_fft_result_mem);
-        sdp_mem_clear_contents(in1_fft_result_mem, status);
-        sdp_Mem* in2_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
-        complex<T>* in2_fft_result_ptr = (complex<T>*)sdp_mem_data(in2_fft_result_mem);
-        sdp_mem_clear_contents(in2_fft_result_mem, status);
+        // // create variables for FFT results
+        // sdp_Mem* in1_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
+        // complex<T>* in1_fft_result_ptr = (complex<T>*)sdp_mem_data(in1_fft_result_mem);
+        // sdp_mem_clear_contents(in1_fft_result_mem, status);
+        // sdp_Mem* in2_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
+        // complex<T>* in2_fft_result_ptr = (complex<T>*)sdp_mem_data(in2_fft_result_mem);
+        // sdp_mem_clear_contents(in2_fft_result_mem, status);
 
         // get FFT of padded in1
-        sdp_Fft *in1_fft_plan = sdp_fft_create(in1_pad_mem, in1_fft_result_mem, 2, 1, status);
-        sdp_fft_exec(in1_fft_plan, in1_pad_mem, in1_fft_result_mem, status);
+        sdp_Fft *in1_fft_plan = sdp_fft_create(in1_pad_mem, in1_pad_mem, 2, 1, status);
+        sdp_fft_exec(in1_fft_plan, in1_pad_mem, in1_pad_mem, status);
         sdp_fft_free(in1_fft_plan);
 
         // get FFT of padded in2
-        sdp_Fft *in2_fft_plan = sdp_fft_create(in2_pad_mem, in2_fft_result_mem, 2, 1, status);
-        sdp_fft_exec(in2_fft_plan, in2_pad_mem, in2_fft_result_mem, status);
+        sdp_Fft *in2_fft_plan = sdp_fft_create(in2_pad_mem, in2_pad_mem, 2, 1, status);
+        sdp_fft_exec(in2_fft_plan, in2_pad_mem, in2_pad_mem, status);
         sdp_fft_free(in2_fft_plan);
 
         // create variables for frequency domain multiplication result
@@ -175,31 +179,31 @@ static void fft_convolution(
         // multiply FFTs together
         for (int i = 0; i < pad_size; i++){
             
-            multiply_ptr[i] = in1_fft_result_ptr[i] * in2_fft_result_ptr[i];
+            multiply_ptr[i] = in1_pad_ptr[i] * in2_pad_ptr[i];
 
         }
 
         // inverse FFT of result
-        sdp_Mem* multiply_ifft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
-        complex<T>* multiply_ifft_result_ptr = (complex<T>*)sdp_mem_data(multiply_ifft_result_mem);
+        // sdp_Mem* multiply_ifft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
+        // complex<T>* multiply_ifft_result_ptr = (complex<T>*)sdp_mem_data(multiply_ifft_result_mem);
         
-        sdp_Fft *result_ifft_plan = sdp_fft_create(multiply_mem, multiply_ifft_result_mem,2,0,status);
-        sdp_fft_exec(result_ifft_plan,multiply_mem,multiply_ifft_result_mem,status);
+        sdp_Fft *result_ifft_plan = sdp_fft_create(multiply_mem, multiply_mem,2,0,status);
+        sdp_fft_exec(result_ifft_plan,multiply_mem,multiply_mem,status);
         sdp_fft_free(result_ifft_plan);
-        fft_normalise<T>(multiply_ifft_result_ptr, pad_size);
+        fft_normalise<T>(multiply_ptr, pad_size);
 
         // shift the result to the center of the image
-        fft_shift_2D<T>(multiply_ifft_result_ptr, pad_dim, pad_dim);
+        fft_shift_2D<T>(multiply_ptr, pad_dim, pad_dim);
 
         // remove padding from the convolved result
-        remove_padding_2D<T>(multiply_ifft_result_ptr, out, pad_dim, pad_dim, extra_in1, extra_in1);
+        remove_padding_2D<T>(multiply_ptr, out, pad_dim, pad_dim, extra_in1, extra_in1);
 
         sdp_mem_ref_dec(in1_pad_mem);
         sdp_mem_ref_dec(in2_pad_mem);
-        sdp_mem_ref_dec(in1_fft_result_mem);
-        sdp_mem_ref_dec(in2_fft_result_mem);
+        // sdp_mem_ref_dec(in1_fft_result_mem);
+        // sdp_mem_ref_dec(in2_fft_result_mem);
         sdp_mem_ref_dec(multiply_mem);
-        sdp_mem_ref_dec(multiply_ifft_result_mem);
+        // sdp_mem_ref_dec(multiply_ifft_result_mem);
 }
 
 static void fft_convolution_gpu(
@@ -219,8 +223,7 @@ static void fft_convolution_gpu(
         int64_t pad_dim = in1_dim + in2_dim - 1;
 
         // make sure padded image is a power of 2
-        while (ceil(log2(pad_dim)) != floor(log2(pad_dim))){
-
+        while ((pad_dim & (pad_dim - 1)) != 0) {
             pad_dim += 1;
         }
 
@@ -292,21 +295,14 @@ static void fft_convolution_gpu(
                 num_blocks2, num_threads1, 0, 0, args2, status
         );
 
-
-        // create variables for FFT results
-        sdp_Mem* in1_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
-        sdp_mem_clear_contents(in1_fft_result_mem, status);
-        sdp_Mem* in2_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
-        sdp_mem_clear_contents(in2_fft_result_mem, status);
-
         // get FFT of padded in1
-        sdp_Fft *in1_fft_plan = sdp_fft_create(in1_pad_mem, in1_fft_result_mem, 2, 1, status);
-        sdp_fft_exec(in1_fft_plan, in1_pad_mem, in1_fft_result_mem, status);
+        sdp_Fft *in1_fft_plan = sdp_fft_create(in1_pad_mem, in1_pad_mem, 2, 1, status);
+        sdp_fft_exec(in1_fft_plan, in1_pad_mem, in1_pad_mem, status);
         sdp_fft_free(in1_fft_plan);
 
         // get FFT of padded in2
-        sdp_Fft *in2_fft_plan = sdp_fft_create(in2_pad_mem, in2_fft_result_mem, 2, 1, status);
-        sdp_fft_exec(in2_fft_plan, in2_pad_mem, in2_fft_result_mem, status);
+        sdp_Fft *in2_fft_plan = sdp_fft_create(in2_pad_mem, in2_pad_mem, 2, 1, status);
+        sdp_fft_exec(in2_fft_plan, in2_pad_mem, in2_pad_mem, status);
         sdp_fft_free(in2_fft_plan);
 
         // create variables for frequency domain multiplication result
@@ -330,8 +326,8 @@ static void fft_convolution_gpu(
         }   
         
         const void* args3[] = {
-            sdp_mem_gpu_buffer(in1_fft_result_mem, status),
-            sdp_mem_gpu_buffer(in2_fft_result_mem, status),
+            sdp_mem_gpu_buffer(in1_pad_mem, status),
+            sdp_mem_gpu_buffer(in2_pad_mem, status),
             sdp_mem_gpu_buffer(multiply_mem, status),
             &pad_size
         };
@@ -340,11 +336,12 @@ static void fft_convolution_gpu(
                 num_blocks3, num_threads3, 0, 0, args3, status
         );
 
-        // inverse FFT of result
-        sdp_Mem* multiply_ifft_result_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, pad_shape, status);
-        
-        sdp_Fft *result_ifft_plan = sdp_fft_create(multiply_mem, multiply_ifft_result_mem,2,0,status);
-        sdp_fft_exec(result_ifft_plan,multiply_mem,multiply_ifft_result_mem,status);
+        // Release memory for padded input, they are not used in any further calculations
+        sdp_mem_ref_dec(in1_pad_mem);
+        sdp_mem_ref_dec(in2_pad_mem);
+
+        sdp_Fft *result_ifft_plan = sdp_fft_create(multiply_mem, multiply_mem,2,0,status);
+        sdp_fft_exec(result_ifft_plan,multiply_mem,multiply_mem,status);
         sdp_fft_free(result_ifft_plan);
 
         uint64_t num_threads4[] = {256, 1, 1};
@@ -364,7 +361,7 @@ static void fft_convolution_gpu(
         }   
       
         const void* args4[] = {
-            sdp_mem_gpu_buffer(multiply_ifft_result_mem, status),
+            sdp_mem_gpu_buffer(multiply_mem, status),
             &pad_size
         };
 
@@ -396,7 +393,7 @@ static void fft_convolution_gpu(
         }  
 
         const void* args5[] = {
-            sdp_mem_gpu_buffer(multiply_ifft_result_mem, status),
+            sdp_mem_gpu_buffer(multiply_mem, status),
             sdp_mem_gpu_buffer(shift_result_mem, status),
             &pad_dim,
             &pad_dim,
@@ -407,8 +404,6 @@ static void fft_convolution_gpu(
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks5, num_threads5, 0, 0, args5, status
         );
-
-        // sdp_mem_copy_contents(out,shift_result_mem,0,0,pad_size,status);
 
         // remove padding from the convolved result      
         uint64_t num_threads6[] = {32, 32, 1};
@@ -442,13 +437,7 @@ static void fft_convolution_gpu(
                 num_blocks6, num_threads6, 0, 0, args6, status
         );
 
-
-        sdp_mem_ref_dec(in1_pad_mem);
-        sdp_mem_ref_dec(in2_pad_mem);
-        sdp_mem_ref_dec(in1_fft_result_mem);
-        sdp_mem_ref_dec(in2_fft_result_mem);
         sdp_mem_ref_dec(multiply_mem);
-        sdp_mem_ref_dec(multiply_ifft_result_mem);
         sdp_mem_ref_dec(shift_result_mem);
 
 }

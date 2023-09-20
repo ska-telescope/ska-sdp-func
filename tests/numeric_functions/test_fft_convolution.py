@@ -29,7 +29,7 @@ def test_fft_convolution():
 
     out = np.zeros_like(in1)
 
-    out_reference = sig.convolve(in1, in2, mode="same")
+    out_reference = sig.fftconvolve(in1, in2, mode="same")
 
     print("Performing convolution at double precision on CPU using ska-sdp-func...")
     fft_convolution(in1, in2, out)
@@ -38,20 +38,12 @@ def test_fft_convolution():
 
     print("FFT convlution at double precision on CPU: Test passed")
 
-    # Test for complex float
-    print(in1.dtype)
-
+    # # Test for complex float
     in1_float = in1.astype(dtype=np.complex64)
-
     in2_float = in2.astype(dtype=np.complex64)
-
     out_float = np.zeros_like(in1_float)
 
-    print(in1.dtype)
-
-    out_reference_float = sig.convolve(in1_float, in2_float, mode="same")
-
-    print(out.dtype)
+    out_reference_float = sig.fftconvolve(in1_float, in2_float, mode="same")
 
     print("Performing convolution at float precision on CPU using ska-sdp-func...")
     fft_convolution(in1_float, in2_float, out_float)
