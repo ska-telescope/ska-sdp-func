@@ -2,13 +2,15 @@
 
 #include <map>
 
-std::map<std::string,
-         std::tuple<make_function_t, destroy_function_t, evaluate_function_t>>&
-get_sdp_element_function_map() {
-  static std::map<std::string, std::tuple<make_function_t, destroy_function_t,
-                                          evaluate_function_t>>
-      function_map;
-  return function_map;
+namespace {
+  std::map<std::string,
+          std::tuple<make_function_t, destroy_function_t, evaluate_function_t>>&
+  get_sdp_element_function_map() {
+    static std::map<std::string, std::tuple<make_function_t, destroy_function_t,
+                                            evaluate_function_t>>
+        function_map;
+    return function_map;
+  }
 }
 
 int register_sdp_element(const char* name,
