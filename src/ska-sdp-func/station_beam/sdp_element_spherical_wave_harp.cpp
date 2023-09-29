@@ -79,10 +79,12 @@ void sdp_spherical_wave_pattern_harp (
                     {
                         FP d_fact = (FP)1, s_fact = (FP)1;
                         const int d_ = l - abs_m, s_ = l + abs_m;
-                        for (int i_ = 2; i_ <= d_; ++i_)
+                        for (int i_ = 2; i_ <= d_; ++i_) {
                             d_fact *= i_;
-                        for (int i_ = 2; i_ <= s_; ++i_)
+}
+                        for (int i_ = 2; i_ <= s_; ++i_) {
                             s_fact *= i_;
+}
                         const FP ff = f_ * d_fact / s_fact;
                         const FP nf = sqrt(ff);
                         const int ind_m = 4 * (ind0 - abs_m);

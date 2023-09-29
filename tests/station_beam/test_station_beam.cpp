@@ -21,7 +21,7 @@ using std::complex;
 
 
 template<typename FP, int NUM_POL>
-void check_results(
+void sdp_check_results(
         const char* test_name,
         const FP wavenumber,
         const int num_in,
@@ -231,7 +231,7 @@ static void run_and_check(
         {
             if (data_type == SDP_MEM_DOUBLE)
             {
-                check_results<double, NUM_POL>(
+                sdp_check_results<double, NUM_POL>(
                         test_name,
                         wavenumber,
                         num_ant,
@@ -256,7 +256,7 @@ static void run_and_check(
             }
             else
             {
-                check_results<float, NUM_POL>(
+                sdp_check_results<float, NUM_POL>(
                         test_name,
                         wavenumber,
                         num_ant,

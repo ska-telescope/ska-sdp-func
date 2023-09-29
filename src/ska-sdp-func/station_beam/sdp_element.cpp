@@ -1,6 +1,7 @@
 #include "sdp_element.h"
 
 #include <map>
+#include <string>
 
 namespace {
   std::map<std::string,
@@ -13,7 +14,7 @@ namespace {
   }
 }
 
-int register_sdp_element(const char* name,
+int sdp_register_element(const char* name,
                               const make_function_t make_function,
                               const destroy_function_t destroy_function,
                               const evaluate_function_t evaluate_function) {
@@ -25,7 +26,7 @@ int register_sdp_element(const char* name,
   return 0;
 }
 
-sdp_Error get_sdp_element_functions(const char* name, make_function_t& make_function,
+sdp_Error sdp_get_element_functions(const char* name, make_function_t& make_function,
                           destroy_function_t& destroy_function,
                           evaluate_function_t& evaluate_function) {
   std::map<std::string, std::tuple<make_function_t, destroy_function_t,
