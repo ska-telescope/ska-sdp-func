@@ -16,9 +16,6 @@ static void check_params(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
-        const sdp_Mem* antennas,
-        const sdp_Mem* baseline1,
-        const sdp_Mem* baseline2,
         sdp_Error* status)
 {
     if (*status) return;
@@ -30,10 +27,7 @@ static void check_params(
     }
     if (!sdp_mem_is_c_contiguous(vis) ||
         !sdp_mem_is_c_contiguous(parameters) ||
-        !sdp_mem_is_c_contiguous(flags) ||
-        !sdp_mem_is_c_contiguous(antennas) ||
-        !sdp_mem_is_c_contiguous(baseline1) ||
-        !sdp_mem_is_c_contiguous(baseline2))
+        !sdp_mem_is_c_contiguous(flags))
     {
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("All arrays must be C contiguous.");
@@ -101,32 +95,9 @@ double golden_ratio(double* arr, double param, int n){
             where = double(i)/double(n);
             break;
          }
-      }
-   //   if (where > 0.999 || where < 0.01){
-     //    cout << "Hello:   " << where << endl;
-    //  }     
+      }     
       return where;
 } 
-
-
-
-int my_baseline_ids(int antenna_id, const int* baseline1, const int* baseline2, int* my_ids, int nbaselines){
-    int where_myself = 0;
-    int k= 0;
-    for (int i = 0; i < nbaselines; i++){
-        if (baseline1[i] == antenna_id || baseline2[i] == antenna_id){
-            my_ids[k] = i;
-            k++;
-        }
-        if (baseline1[i] == antenna_id && baseline2[i] == antenna_id){
-           where_myself = i;
-        }
-    }  
-    return where_myself;
-}
-
-
-
 
 
 template<typename FP>
@@ -134,14 +105,10 @@ static void flagger_fixed_threshold(
         const std::complex<FP>* visibilities,
         const FP* parameters,
         int* flags,
-        const int* antennas,
-        const int* baseline1,
-        const int* baseline2,
         const uint64_t num_timesamples,
         const uint64_t num_baselines,
         const uint64_t num_channels,
-        const uint64_t num_pols,
-        const uint64_t num_antennas){
+        const uint64_t num_pols){
     double start; 
     double end;
     start = omp_get_wtime(); 
@@ -154,7 +121,7 @@ static void flagger_fixed_threshold(
 
  
 
-#pragma omp parallel  shared(parameters, flags, visibilities, antennas, baseline1, baseline2) 
+#pragma omp parallel  shared(parameters, flags, visibilities) 
     {
 
       double q_for_vis = 0;
@@ -164,12 +131,10 @@ static void flagger_fixed_threshold(
       double *samples = new double[num_samples];
       double *transit_score = new double[num_channels];
       double *transit_samples = new double[num_samples];
-      int *my_ids = new int[num_antennas];
 
       filler(samples, 0, num_samples);
       filler(transit_score, 0, num_channels);
       filler(transit_samples, 0, num_samples);
-      filler(my_ids, 0, num_antennas);
     
       int time_block = num_baselines * num_channels * num_pols;
       int baseline_block = num_channels * num_pols;
@@ -177,10 +142,7 @@ static void flagger_fixed_threshold(
       
       
         #pragma omp for 
-        for (int a = 0; a < num_antennas; a++){
-            int current_antenna = antennas[a];
-            int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_baselines);
-              
+        for (int b = 0; b < num_baselines; b++){       
             for (int p = 0; p < num_pols; p++){
                 int k = 0;
                 for (int t = 0; t < num_timesamples; t++){
@@ -207,28 +169,21 @@ static void flagger_fixed_threshold(
                         double vis1 = abs(visibilities[pos]);
 
                         if (vis1 > q_for_vis){ 
-                            for (int bb = 0; bb < num_antennas; bb++){
-                                int bs = my_ids[bb];
-                                int baseline_pos_for_bs = time_pos + bs * baseline_block;
-                                pos = baseline_pos_for_bs + c * num_pols + p;
-                                flags[pos] = 1;
-
-                                if (window > 0) {
-                                    for (int w = 0; w < window; w++) {
-                                        if (c - w - 1 > 0) {
-                                            int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
-                                            flags[pos] = 1;
-                                        }
-                                        if (c + w + 1 < num_channels) {
-                                            int pos = baseline_pos_for_bs + (c + w + 1) * num_pols + p;
-                                           flags[pos] = 1;
-                                        }
+                            flags[pos] = 1;
+                            if (window > 0) {
+                                for (int w = 0; w < window; w++) {
+                                    if (c - w - 1 > 0) {
+                                        pos = baseline_pos + (c - w - 1) * num_pols + p;
+                                        flags[pos] = 1;
                                     }
-                                }
+                                    if (c + w + 1 < num_channels) {
+                                       pos = baseline_pos + (c + w + 1) * num_pols + p;
+                                       flags[pos] = 1;
+                                    }
+                                 }
+                             }
   
-                            }
-                        }
-                   
+                         }               
                     }
 
                  
@@ -261,26 +216,21 @@ static void flagger_fixed_threshold(
                             double ts = abs(transit_score[c]);
                 
                             if (ts > q_for_ts) {
-                                for (int bb = 0; bb < num_antennas; bb++) {
-                                    int bs = my_ids[bb];
-                                    int baseline_pos_for_bs = time_pos + bs * baseline_block;
-                                    pos = baseline_pos_for_bs + c * num_pols + p;
-                                    flags[pos] = 1;
-                                     if (window > 0) {
-                                       for (int w = 0; w < window; w++) {
-                                          if (c - w - 1 > 0) {
-                                              int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
-                                              flags[pos] = 1;
-                                          }
-                                          if (c + w + 1 < num_channels) {
-                                              int pos = baseline_pos_for_bs + (c + w + 1) * num_pols + p;
-                                              flags[pos] = 1;
-                                       }
-                                    }
-                                 }
+                               flags[pos] = 1;
+                               if (window > 0) {
+                                  for (int w = 0; w < window; w++) {
+                                      if (c - w - 1 > 0) {
+                                         pos = baseline_pos + (c - w - 1) * num_pols + p;
+                                         flags[pos] = 1;
+                                      }
+                                      if (c + w + 1 < num_channels) {
+                                          pos = baseline_pos + (c + w + 1) * num_pols + p;
+                                          flags[pos] = 1;
+                                      }
+                                  }
+                               }
 
-                            }
-                         }
+                          }                         
                       }
 
                   }
@@ -291,7 +241,6 @@ static void flagger_fixed_threshold(
     delete transit_score;
     delete samples;
     delete transit_samples;
-    delete my_ids;
    }
 end = omp_get_wtime(); 
 printf("Work took %f seconds\n", end - start);
@@ -310,14 +259,11 @@ static void flagger_dynamic_threshold(
         const std::complex<FP>* visibilities,
         const FP* parameters,
         int* flags,
-        const int* antennas,
-        const int* baseline1,
-        const int* baseline2,
         const uint64_t num_timesamples,
         const uint64_t num_baselines,
         const uint64_t num_channels,
-        const uint64_t num_pols,
-        const uint64_t num_antennas){
+        const uint64_t num_pols
+        ){
     double start; 
     double end;
     start = omp_get_wtime(); 
@@ -329,7 +275,7 @@ static void flagger_dynamic_threshold(
  
     int my_thread;
 
-#pragma omp parallel  shared(parameters, flags, visibilities, antennas, baseline1, baseline2)
+#pragma omp parallel  shared(parameters, flags, visibilities)
    {
 
     double q_for_vis = 0;
@@ -341,18 +287,14 @@ static void flagger_dynamic_threshold(
     double *samples = new double[num_samples];
     double *transit_score = new double[num_channels];
     double *transit_samples = new double[num_samples];
-    int *my_ids = new int[num_antennas];
 
     filler(samples, 0, num_samples);
     filler(transit_score, 0, num_channels);
     filler(transit_samples, 0, num_samples);
-    filler(my_ids, 0, num_antennas);
+
 
         #pragma omp for
-        for (int a = 0; a < num_antennas; a++){
-            int current_antenna = antennas[a];
-            int b = my_baseline_ids(current_antenna, baseline1, baseline2, my_ids, num_baselines);
-                  
+        for (int b = 0; b < num_baselines; b++){                
             for (int p = 0; p < num_pols; p++){
                 for (int t = 0; t < num_timesamples; t++){
                     int time_block = num_baselines * num_channels * num_pols;
@@ -374,29 +316,22 @@ static void flagger_dynamic_threshold(
                         double vis1 = abs(visibilities[pos]);
                         
                         if (vis1 > q_for_vis){      
-                            for (int bb = 0; bb < num_antennas; bb++) {
-                                    int bs = my_ids[bb]; 
-                                    int baseline_pos_for_bs = time_pos + bs * baseline_block;
-                                    pos = baseline_pos_for_bs + c * num_pols + p;
-                                    flags[pos] = 1;
-                       
-                                    if (window > 0) {
-                                        for (int w = 0; w < window; w++) {
-                                            if (c - w - 1 > 0){                           
-                                                int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
-                                                flags[pos] = 1;
-                                            } 
-                                            if (c + w + 1 < num_channels) {
-                                                int pos = baseline_pos_for_bs + (c + w + 1) * num_pols + p;          
-                                                flags[pos] = 1;
-                                            }
+                            flags[pos] = 1;
+                            if (window > 0) {
+                               for (int w = 0; w < window; w++) {
+                                   if (c - w - 1 > 0){                           
+                                      pos = baseline_pos + (c - w - 1) * num_pols + p;
+                                      flags[pos] = 1;
+                                   } 
+                                   if (c + w + 1 < num_channels) {
+                                        pos = baseline_pos + (c + w + 1) * num_pols + p;          
+                                       flags[pos] = 1;
+                                   }
 
-                                        }
-                                    }
+                                }
+                             }
 
-                             }  
-
-                         }
+                         }  
 
                     }
 
@@ -430,24 +365,20 @@ static void flagger_dynamic_threshold(
                             double ts = abs(transit_score[c]);
                       
                             if (ts > q_for_ts ) {
-                                for (int bb = 0; bb < num_antennas; bb++) {
-                                    int bs = my_ids[bb];                                    
-                                    int baseline_pos_for_bs = time_pos + bs * baseline_block;
-                                    pos = baseline_pos_for_bs + c * num_pols + p;
-                                    flags[pos] = 1;
-                                    if (window > 0) {
-                                        for (int w = 0; w < window; w++) {
-                                            if (c - w - 1 > 0) {
-                                                int pos = baseline_pos_for_bs + (c - w - 1) * num_pols + p;
-                                                flags[pos] = 1;
-                                            }
-                                            if (c + w + 1 < num_channels) {
-                                                int pos = baseline_pos_for_bs + (c + w + 1) * num_pols + p;
-                                                flags[pos] = 1;
-                                            }
-                                        }
-                                    }
-                                }
+                               flags[pos] = 1;
+                               if (window > 0) {
+                                  for (int w = 0; w < window; w++) {
+                                      if (c - w - 1 > 0) {
+                                         pos = baseline_pos + (c - w - 1) * num_pols + p;
+                                         flags[pos] = 1;
+                                      }
+                                      if (c + w + 1 < num_channels) {
+                                          pos = baseline_pos + (c + w + 1) * num_pols + p;
+                                          flags[pos] = 1;
+                                      }
+                                   }
+                               }
+                        
                             } 
                         }
 
@@ -458,7 +389,7 @@ static void flagger_dynamic_threshold(
     delete transit_score;
     delete samples;
     delete transit_samples;
-    delete my_ids;
+
     }
 end = omp_get_wtime(); 
 printf("Work took %f seconds\n", end - start);
@@ -482,61 +413,43 @@ void sdp_flagger_fixed_threshold(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
-        const sdp_Mem* antennas,
-        const sdp_Mem* baseline1,
-        const sdp_Mem* baseline2,
         sdp_Error* status){
-    check_params(vis, parameters, flags, antennas, baseline1, baseline2, status);
+    check_params(vis, parameters, flags, status);
     if (*status) return;
 
     const uint64_t num_timesamples   = (uint64_t) sdp_mem_shape_dim(vis, 0);
     const uint64_t num_baselines   = (uint64_t) sdp_mem_shape_dim(vis, 1);
     const uint64_t num_channels      = (uint64_t) sdp_mem_shape_dim(vis, 2);
     const uint64_t num_pols   = (uint64_t) sdp_mem_shape_dim(vis, 3);
-    const uint64_t num_antennas = (uint64_t) sdp_mem_shape_dim(antennas, 0);
 
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
         if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT &&
             sdp_mem_type(parameters) == SDP_MEM_FLOAT &&
-            sdp_mem_type(flags) == SDP_MEM_INT &&
-            sdp_mem_type(antennas) == SDP_MEM_INT &&
-            sdp_mem_type(baseline1) == SDP_MEM_INT &&
-            sdp_mem_type(baseline2) == SDP_MEM_INT)
+            sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_fixed_threshold(
                     (const std::complex<float>*) sdp_mem_data_const(vis),
                     (const float*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
-                    (const int*) sdp_mem_data_const(antennas),
-                    (const int*) sdp_mem_data_const(baseline1),
-                    (const int*) sdp_mem_data_const(baseline2),
                     num_timesamples,
                     num_baselines,
                     num_channels,
-                    num_pols,
-                    num_antennas
+                    num_pols
             );
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
                  sdp_mem_type(parameters) == SDP_MEM_DOUBLE &&
-                 sdp_mem_type(flags) == SDP_MEM_INT &&
-                 sdp_mem_type(antennas) == SDP_MEM_INT &&
-                 sdp_mem_type(baseline1) == SDP_MEM_INT &&
-                 sdp_mem_type(baseline1) == SDP_MEM_INT)
+                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_fixed_threshold(
                     (const std::complex<double>*) sdp_mem_data_const(vis),
                     (const double*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
-                    (const int*) sdp_mem_data_const(antennas),
-                    (const int*) sdp_mem_data_const(baseline1),
-                    (const int*) sdp_mem_data_const(baseline2),
                     num_timesamples,
                     num_baselines,
                     num_channels,
-                    num_pols,
-                    num_antennas
+                    num_pols
             );
         }
         else
@@ -553,70 +466,49 @@ void sdp_flagger_fixed_threshold(
         return;
     }
 }
-
-
-
 
 
 void sdp_flagger_dynamic_threshold(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
-        const sdp_Mem* antennas,
-        const sdp_Mem* baseline1,
-        const sdp_Mem* baseline2,
         sdp_Error* status){
-    check_params(vis, parameters, flags, antennas, baseline1, baseline2, status);
+    check_params(vis, parameters, flags, status);
     if (*status) return;
 
     const uint64_t num_timesamples   = (uint64_t) sdp_mem_shape_dim(vis, 0);
     const uint64_t num_baselines   = (uint64_t) sdp_mem_shape_dim(vis, 1);
     const uint64_t num_channels      = (uint64_t) sdp_mem_shape_dim(vis, 2);
     const uint64_t num_pols   = (uint64_t) sdp_mem_shape_dim(vis, 3);
-    const uint64_t num_antennas = (uint64_t) sdp_mem_shape_dim(antennas, 0);
 
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
         if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT &&
             sdp_mem_type(parameters) == SDP_MEM_FLOAT &&
-            sdp_mem_type(flags) == SDP_MEM_INT &&
-            sdp_mem_type(antennas) == SDP_MEM_INT &&
-            sdp_mem_type(baseline1) == SDP_MEM_INT &&
-            sdp_mem_type(baseline2) == SDP_MEM_INT)
+            sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_dynamic_threshold(
                     (const std::complex<float>*) sdp_mem_data_const(vis),
                     (const float*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
-                    (const int*) sdp_mem_data_const(antennas),
-                    (const int*) sdp_mem_data_const(baseline1),
-                    (const int*) sdp_mem_data_const(baseline2),
                     num_timesamples,
                     num_baselines,
                     num_channels,
-                    num_pols,
-                    num_antennas
+                    num_pols
             );
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
                  sdp_mem_type(parameters) == SDP_MEM_DOUBLE &&
-                 sdp_mem_type(flags) == SDP_MEM_INT &&
-                 sdp_mem_type(antennas) == SDP_MEM_INT &&
-                 sdp_mem_type(baseline1) == SDP_MEM_INT &&
-                 sdp_mem_type(baseline1) == SDP_MEM_INT)
+                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_dynamic_threshold(
                     (const std::complex<double>*) sdp_mem_data_const(vis),
                     (const double*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
-                    (const int*) sdp_mem_data_const(antennas),
-                    (const int*) sdp_mem_data_const(baseline1),
-                    (const int*) sdp_mem_data_const(baseline2),
                     num_timesamples,
                     num_baselines,
                     num_channels,
-                    num_pols,
-                    num_antennas
+                    num_pols
             );
         }
         else
@@ -633,4 +525,8 @@ void sdp_flagger_dynamic_threshold(
         return;
     }
 }
+
+
+
+
 

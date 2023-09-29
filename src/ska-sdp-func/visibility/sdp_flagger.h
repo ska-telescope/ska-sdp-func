@@ -40,9 +40,6 @@ void sdp_flagger_fixed_threshold(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
-        const sdp_Mem* antennas,
-        const sdp_Mem* baselines1,
-        const sdp_Mem* baselines2,
         sdp_Error* status);
 
 /**
@@ -72,9 +69,6 @@ void sdp_flagger_dynamic_threshold(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
-        const sdp_Mem* antennas,
-        const sdp_Mem* baselines1,
-        const sdp_Mem* baselines2,
         sdp_Error* status);
 
 /** @} */ /* End group flag_func. */

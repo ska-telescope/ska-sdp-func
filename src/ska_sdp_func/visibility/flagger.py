@@ -11,9 +11,6 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
     ],
     check_errcode=True,
 )
@@ -25,15 +22,12 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
     ],
     check_errcode=True,
 )
 
 
-def flagger_fixed_threshold(vis, parameters, flags, antennas, baselines1, baselines2):
+def flagger_fixed_threshold(vis, parameters, flags):
     """
     Basic RFI flagger based on sum-threshold algorithm.
 
@@ -45,17 +39,10 @@ def flagger_fixed_threshold(vis, parameters, flags, antennas, baselines1, baseli
 
     * ``parameters`` is 1D and real-valued.
 
-      * The size of the array is 2``.
-
-    * ``antennas`` is 1D and integer.
-
-      * The size of the array is 2``.
+      * The size of the array is 5``.
 
     * ``flags`` is 4D and integer-valued, with the same shape as ``vis``.
 
-    :param baselines2:
-    :param baselines1:
-    :param antennas:
     :param parameters:
     :param vis: Complex valued visibilities. Dimensions as above.
     :type vis: numpy.ndarray
@@ -71,13 +58,10 @@ def flagger_fixed_threshold(vis, parameters, flags, antennas, baselines1, baseli
         Mem(vis),
         Mem(parameters),
         Mem(flags),
-        Mem(antennas),
-        Mem(baselines1),
-        Mem(baselines2),
     )
 
 
-def flagger_dynamic_threshold(vis, parameters, flags, antennas, baselines1, baselines2):
+def flagger_dynamic_threshold(vis, parameters, flags):
     """
     Basic RFI flagger based on sum-threshold algorithm.
 
@@ -89,17 +73,10 @@ def flagger_dynamic_threshold(vis, parameters, flags, antennas, baselines1, base
 
     * ``parameters`` is 1D and real-valued.
 
-      * The size of the array is 2``.
-
-    * ``antennas`` is 1D and integer.
-
-      * The size of the array is 2``.
+      * The size of the array is 5``.
 
     * ``flags`` is 4D and integer-valued, with the same shape as ``vis``.
 
-    :param baselines2:
-    :param baselines1:
-    :param antennas:
     :param parameters:
     :param vis: Complex valued visibilities. Dimensions as above.
     :type vis: numpy.ndarray
@@ -115,7 +92,4 @@ def flagger_dynamic_threshold(vis, parameters, flags, antennas, baselines1, base
         Mem(vis),
         Mem(parameters),
         Mem(flags),
-        Mem(antennas),
-        Mem(baselines1),
-        Mem(baselines2),
     )
