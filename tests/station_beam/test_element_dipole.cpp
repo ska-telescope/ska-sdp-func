@@ -17,6 +17,7 @@
 
 #define C_0 299792458.0
 
+using std::abs;
 using std::complex;
 
 
@@ -76,8 +77,8 @@ static void check_results_pol(
                 e_theta_tmp,
                 e_phi_tmp
         );
-        assert(fabs(e_theta[i * stride + e_theta_offset] - e_theta_tmp) < 1e-5);
-        assert(fabs(e_phi[i * stride + e_phi_offset] - e_phi_tmp) < 1e-5);
+        assert(abs(e_theta[i * stride + e_theta_offset] - e_theta_tmp) < 1e-5);
+        assert(abs(e_phi[i * stride + e_phi_offset] - e_phi_tmp) < 1e-5);
     }
     SDP_LOG_INFO("%s: Test passed", test_name);
 }
@@ -116,7 +117,7 @@ static void check_results_scalar(
                 y_theta.real() * y_theta.real() + y_phi.real() * y_phi.real();
         amp /= (FP)2;
         amp = sqrt(amp);
-        assert(fabs(pattern[i * stride + offset] - complex<FP>(amp, 0)) < 1e-5);
+        assert(abs(pattern[i * stride + offset] - complex<FP>(amp, 0)) < 1e-5);
     }
     SDP_LOG_INFO("%s: Test passed", test_name);
 }
