@@ -99,7 +99,7 @@ def test_station_beam_aperture_array():
         point_y_gpu = cupy.asarray(point_y)
         point_z_gpu = cupy.asarray(point_z)
         print("Testing aperture array beam on GPU from ska-sdp-func...")
-        beam_gpu_scalar = cupy.zeros_like(point_x_gpu, dtype=cupy.complex128)
+        beam_gpu_scalar = cupy.zeros((point_x_gpu.size), dtype=cupy.complex128)
         aperture_array(
             wavenumber,
             element_weights_gpu,
@@ -114,10 +114,12 @@ def test_station_beam_aperture_array():
             beam_gpu_scalar,
         )
         beam_gpu_copy = cupy.asnumpy(beam_gpu_scalar)
-        numpy.testing.assert_array_almost_equal(beam_gpu_copy, beam_scalar)
+        numpy.testing.assert_allclose(
+            beam_gpu_copy, beam_scalar, equal_nan=True
+        )
         print("aperture array beam on GPU: Test passed")
         if plt:
             plt.figure()
             plt.scatter(point_x, point_y, c=numpy.abs(beam_gpu_copy))
             plt.colorbar()
-            plt.savefig("test_array_factor_gpu.png")
+            plt.savefig("test_aperture_array_gpu.png")
