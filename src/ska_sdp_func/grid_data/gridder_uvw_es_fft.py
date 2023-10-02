@@ -160,7 +160,7 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,  # 10
-        ctypes.c_bool,
+        ctypes.c_int,
     ],
     check_errcode=True,
 )

@@ -284,7 +284,7 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         const double epsilon,
         const double min_abs_w,
         const double max_abs_w,
-        bool do_wstacking,
+        const int do_wstacking,
         sdp_Error* status
 )
 {
