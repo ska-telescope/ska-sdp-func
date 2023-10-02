@@ -177,7 +177,7 @@ python-test:
     - *cuda_key
     - apt-get -y update
     - apt-get -y install build-essential cmake python3 python3-pip
-    - pip3 install numpy pytest cupy-cuda122
+    - pip3 install numpy pytest cupy-cuda12x
     - CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}" pip3 install .
   script:
     - pytest --junitxml=build/reports/unit-tests.xml tests/
