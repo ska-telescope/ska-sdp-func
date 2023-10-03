@@ -304,6 +304,22 @@ int32_t sdp_mem_is_floating_point(const sdp_Mem* mem);
 int32_t sdp_mem_is_complex(const sdp_Mem* mem);
 
 /**
+ * @brief Returns true if data are complex 4-vectors, or 2-by-2 matrices.
+ *
+ * @param mem Handle to memory block.
+ * @return True if data type is complex-4.
+ */
+int32_t sdp_mem_is_complex4(const sdp_Mem* mem);
+
+/**
+ * @brief Returns true if data elements are double precision.
+ *
+ * @param mem Handle to memory block.
+ * @return True if data elements are double precision.
+ */
+int32_t sdp_mem_is_double(const sdp_Mem* mem);
+
+/**
  * @brief Returns true if the metadata between two objects is consistent.
  *
  * Checks are done on the data type, number of dimensions,
