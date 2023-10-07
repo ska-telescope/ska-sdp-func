@@ -18,9 +18,6 @@
 #include <assert.h>
 #include <complex>
 
-typedef int integer;
-typedef double doublereal;
-
 
 static double cipow(double base, int exp)
 {
@@ -38,13 +35,13 @@ static double cipow(double base, int exp)
 }
 
 
-inline static double pow_dd(doublereal* a, doublereal* b)
+inline static double pow_dd(double* a, double* b)
 {
     return pow(*a, *b);
 }
 
 
-inline static double pow_di(double* a, integer* b)
+inline static double pow_di(double* a, int* b)
 {
     return cipow(*a, *b);
 }
@@ -53,28 +50,28 @@ inline static double pow_di(double* a, integer* b)
 
 /*       ********************************** */
 /* Subroutine */ static inline int sdmn_(
-        integer* m,
-        integer* n,
-        doublereal* c__,
-        doublereal* cv,
-        integer* kd,
-        doublereal* df
+        int* m,
+        int* n,
+        double* c__,
+        double* cv,
+        int* kd,
+        double* df
 )
 {
     /* System generated locals */
-    integer i__1, i__2;
-    doublereal d__1;
+    int i__1, i__2;
+    double d__1;
 
     /* Local variables */
-    static doublereal a[200], d__[200], f, g[200];
-    static integer i__, j, k;
-    static doublereal f0, f1, f2;
-    static integer k1;
-    static doublereal r1, s0, r3, r4;
-    static integer kb;
-    static doublereal fl, cs;
-    static integer ip, nm;
-    static doublereal fs, sw, dk0, dk1, dk2, d2k, su1, su2;
+    double a[200], d__[200], f, g[200];
+    int i__, j, k;
+    double f0, f1, f2;
+    int k1;
+    double r1, s0, r3, r4;
+    int kb;
+    double fl, cs;
+    int ip, nm;
+    double fs, sw, dk0, dk1, dk2, d2k, su1, su2;
 
 /*       ===================================================== */
 /*       Purpose: Compute the expansion coefficients of the */
@@ -92,7 +89,7 @@ inline static double pow_di(double* a, integer* b)
 /*       ===================================================== */
 
     /* Function Body */
-    nm = (integer) ((*n - *m) * .5f + *c__) + 25;
+    nm = (int) ((*n - *m) * .5f + *c__) + 25;
     if (*c__ < 1e-10)
     {
         i__1 = nm;
@@ -122,10 +119,10 @@ inline static double pow_di(double* a, integer* b)
         {
             k = (i__ << 1) - 1;
         }
-        dk0 = (doublereal) (*m + k);
-        dk1 = (doublereal) (*m + k + 1);
-        dk2 = (doublereal) ((*m + k) << 1);
-        d2k = (doublereal) ((*m << 1) + k);
+        dk0 = (double) (*m + k);
+        dk1 = (double) (*m + k + 1);
+        dk2 = (double) ((*m + k) << 1);
+        d2k = (double) ((*m << 1) + k);
         a[i__ - 1] = (d2k + 2.f) * (d2k + 1.f) / ((dk2 + 3.f) * (dk2 + 5.f)) *
                 cs;
         d__[i__ - 1] = dk0 * dk1 + (dk0 * 2.f * dk1 - *m * 2.f * *m - 1.f) / (
@@ -272,32 +269,27 @@ L55:
     return 0;
 } /* sdmn_ */
 
-static doublereal c_b56 = .5;
-
 
 /*       ********************************** */
 /* Subroutine */ static inline int sckb_(
-        integer* m,
-        integer* n,
-        doublereal* c__,
-        doublereal* df,
-        doublereal* ck
+        int* m,
+        int* n,
+        double* c__,
+        double* df,
+        double* ck
 )
 {
     /* System generated locals */
-    integer i__1, i__2;
-    doublereal d__1;
-
-    /* Builtin functions */
-    double pow_di(doublereal*, integer*);
+    int i__1, i__2;
+    double d__1;
 
     /* Local variables */
-    static integer i__, k;
-    static doublereal r__, d1, d2, d3;
-    static integer i1, i2;
-    static doublereal r1;
-    static integer ip, nm;
-    static doublereal sw, fac, reg, sum;
+    int i__, k;
+    double r__, d1, d2, d3;
+    int i1, i2;
+    double r1;
+    int ip, nm;
+    double sw, fac, reg, sum;
 
 /*       ====================================================== */
 /*       Purpose: Compute the expansion coefficients of the */
@@ -319,7 +311,7 @@ static doublereal c_b56 = .5;
     {
         *c__ = 1e-10;
     }
-    nm = (integer) ((*n - *m) * .5f + *c__) + 25;
+    nm = (int) ((*n - *m) * .5f + *c__) + 25;
     ip = 1;
     if (*n - *m == (*n - *m) / 2 << 1)
     {
@@ -330,6 +322,7 @@ static doublereal c_b56 = .5;
     {
         reg = 1e-200;
     }
+    double c_b56 = .5;
     fac = -pow_di(&c_b56, m);
     sw = 0.;
     i__1 = nm - 1;
@@ -384,30 +377,23 @@ L25:
 
 
 /*       ********************************** */
-/* Subroutine */ static inline int aswfa_(
-        integer* m,
-        integer* n,
-        doublereal* c__,
-        doublereal* x,
-        integer* kd,
-        doublereal* cv,
-        doublereal* s1f,
-        doublereal* s1d
+/* Subroutine */ static inline double aswfa_(
+        int m,
+        int n,
+        double c__,
+        double* ck,
+        double x
 )
 {
-    /* System generated locals */
-    integer i__1;
-    doublereal d__1;
-
-    /* Builtin functions */
-    double pow_dd(doublereal*, doublereal*), pow_di(doublereal*, integer*)
-    ;
+    // This function has been (heavily) specialised, as it is basically the
+    // inner loop of PSWF generation.
+    assert(x >= 0);
 
     /* Local variables */
-    static integer k;
-    static doublereal r__, a0, d0, d1, x0, x1, df[200], ck[200];
-    static integer ip, nm, nm2;
-    static doublereal su1, su2, eps;
+    int k;
+    double a0, x1;
+    int nm, nm2;
+    const double eps = 1e-14;
 
 /*       =========================================================== */
 /*       Purpose: Compute the prolate and oblate spheroidal angular */
@@ -415,135 +401,67 @@ L25:
 /*       Input :  m  --- Mode parameter,  m = 0,1,2,... */
 /*                n  --- Mode parameter,  n = m,m+1,... */
 /*                c  --- Spheroidal parameter */
+/*                CK(k) --- Expansion coefficients ck; */
+/*                          CK(1), CK(2), ... correspond to */
+/*                          c0, c2, ... */
 /*                x  --- Argument of angular function, |x| < 1.0 */
-/*                KD --- Function code */
-/*                       KD=1 for prolate;  KD=-1 for oblate */
-/*                cv --- Characteristic value */
 /*       Output:  S1F --- Angular function of the first kind */
-/*                S1D --- Derivative of the angular function of */
-/*                        the first kind */
-/*       Routine called: */
-/*                SCKB for computing expansion coefficients ck */
 /*       =========================================================== */
 
-    eps = 1e-14;
-    x0 = *x;
-    *x = abs(*x);
-    ip = 1;
-    if (*n - *m == (*n - *m) / 2 << 1)
-    {
-        ip = 0;
-    }
-    nm = (integer) ((*n - *m) / 2 + *c__) + 40;
+    nm = (int) ((n - m) / 2 + c__) + 40;
     nm2 = nm / 2 - 2;
-    sdmn_(m, n, c__, cv, kd, df);
-    sckb_(m, n, c__, df, ck);
-    x1 = 1. - *x * *x;
-    if (*m == 0 && x1 == 0.)
+    x1 = 1. - x * x;
+    if (m == 0 && x1 == 0.)
     {
         a0 = 1.;
     }
     else
     {
-        d__1 = *m * .5;
-        a0 = pow_dd(&x1, &d__1);
+        a0 = pow(x1, m * .5);
     }
-    su1 = ck[0];
-    i__1 = nm2;
-    for (k = 1; k <= i__1; ++k)
+    double su1 = ck[0];
+    for (k = 1; k <= nm2; ++k)
     {
-        r__ = ck[k] * pow_di(&x1, &k);
+        double r__ = ck[k] * cipow(x1, k);
         su1 += r__;
-        if (k >= 10 && (d__1 = r__ / su1, abs(d__1)) < eps)
-        {
-            goto L15;
-        }
-/* L10: */
+        if (k >= 10 && abs(r__ / su1) < eps)
+            break;
     }
-L15:
-    *s1f = a0 * pow_di(x, &ip) * su1;
-    if (*x == 1.)
+    if ((n - m) % 2 == 0)
     {
-        if (*m == 0)
-        {
-            *s1d = ip * ck[0] - ck[1] * 2.;
-        }
-        if (*m == 1)
-        {
-            *s1d = -1e100;
-        }
-        if (*m == 2)
-        {
-            *s1d = ck[0] * -2.;
-        }
-        if (*m >= 3)
-        {
-            *s1d = 0.;
-        }
+        return a0 * su1;
     }
     else
     {
-        d__1 = ip + 1.;
-        d0 = ip - *m / x1 * pow_dd(x, &d__1);
-        d__1 = ip + 1.;
-        d1 = a0 * -2. * pow_dd(x, &d__1);
-        su2 = ck[1];
-        i__1 = nm2;
-        for (k = 2; k <= i__1; ++k)
-        {
-            d__1 = k - 1.;
-            r__ = k * ck[k] * pow_dd(&x1, &d__1);
-            su2 += r__;
-            if (k >= 10 && (d__1 = r__ / su2, abs(d__1)) < eps)
-            {
-                goto L25;
-            }
-/* L20: */
-        }
-L25:
-        *s1d = d0 * a0 * su1 + d1 * su2;
+        return a0 * x * su1;
     }
-    if (x0 < 0. && ip == 0)
-    {
-        *s1d = -(*s1d);
-    }
-    if (x0 < 0. && ip == 1)
-    {
-        *s1f = -(*s1f);
-    }
-    *x = x0;
-    return 0;
 } /* aswfa_ */
 
 
 /*       ********************************** */
 /* Subroutine */ static inline int segv_(
-        integer* m,
-        integer* n,
-        doublereal* c__,
-        integer*
-        kd,
-        doublereal* cv,
-        doublereal* eg
+        int* m,
+        int* n,
+        double* c__,
+        int* kd,
+        double* cv,
+        double* eg
 )
 {
     /* System generated locals */
-    integer i__1, i__2;
-    doublereal d__1, d__2;
-
-    /* Builtin functions */
-    double sqrt(doublereal);
+    int i__1, i__2;
+    double d__1, d__2;
 
     /* Local variables */
-    static doublereal a[300], b[100], d__[300], e[300], f[300], g[300], h__[
+    double a[300], b[100], d__[300], e[300], f[300], g[300], h__[
         100];
-    static integer i__, j, k, l;
-    static doublereal s, t;
-    static integer k1;
-    static doublereal t1, x1, cs, xa;
-    static integer nm;
-    static doublereal xb, dk0, dk1, dk2, d2k, cv0[100];
-    static integer nm1, icm;
+    int i__, j, k, l;
+    double s, t;
+    int k1;
+    double t1, x1, cs, xa;
+    int nm;
+    double xb, dk0, dk1, dk2, d2k, cv0[100];
+    int nm1, icm;
 
 /*       ========================================================= */
 /*       Purpose: Compute the characteristic values of spheroidal */
@@ -573,7 +491,7 @@ L25:
         goto L70;
     }
     icm = (*n - *m + 2) / 2;
-    nm = (integer) ((*n - *m) * .5f + *c__) + 10;
+    nm = (int) ((*n - *m) * .5f + *c__) + 10;
     cs = *c__ * *c__ * *kd;
     k = 0;
     for (l = 0; l <= 1; ++l)
@@ -589,10 +507,10 @@ L25:
             {
                 k = (i__ << 1) - 1;
             }
-            dk0 = (doublereal) (*m + k);
-            dk1 = (doublereal) (*m + k + 1);
-            dk2 = (doublereal) ((*m + k) << 1);
-            d2k = (doublereal) ((*m << 1) + k);
+            dk0 = (double) (*m + k);
+            dk1 = (double) (*m + k + 1);
+            dk2 = (double) ((*m + k) << 1);
+            d2k = (double) ((*m << 1) + k);
             a[i__ - 1] = (d2k + 2.f) * (d2k + 1.f) / ((dk2 + 3.f) * (dk2 +
                     5.f)) * cs;
             d__[i__ - 1] = dk0 * dk1 + (dk0 * 2.f * dk1 - *m * 2.f * *m - 1.f)
@@ -733,30 +651,27 @@ static inline void _generate_pswf(
         int stride
 )
 {
-    // Note: This calculation method is not efficient at all - we do
-    // not require derivatives, and aswfa_ keeps calling sdmn_ and
-    // sckb_ even though they will return the same results given
-    // constant m, n and c.
-
-    // Calculate Characteristic values of spheroidal wave functions
+    // Calculate characteristic values of spheroidal wave functions
     int n = m;
     int kd = 1; // prolate
     double cv, eg[2];
     segv_(&m,&n,&c,&kd,&cv,eg);
 
+    // Calculate expansion coefficients
+    double df[200], ck[200];
+    sdmn_(&m, &n, &c, &cv, &kd, df);
+    sckb_(&m, &n, &c, df, ck);
+
     // Get value at 0
-    double x = 0;
-    double s1f, s1d;
-    aswfa_(&m,&n,&c,&x,&kd,&cv,&s1f,&s1d);
     pswf[0] = 0.0;
-    pswf[stride * (size / 2)] = s1f;
+    pswf[stride * (size / 2)] = aswfa_(m,n,c,ck,0);
 
     // Get remaining values
     for (int i = 1; i < size / 2; i++)
     {
         // Get value (plus derivative)
-        double x = 2 * ((double)i) / size;
-        aswfa_(&m,&n,&c,&x,&kd,&cv,&s1f,&s1d);
+        const double x = 2 * ((double)i) / size;
+        const double s1f = aswfa_(m,n,c,ck,x);
         pswf[stride * (size / 2 + i)] = s1f;
         pswf[stride * (size / 2 - i)] = s1f;
     }
