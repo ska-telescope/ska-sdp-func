@@ -30,14 +30,6 @@ if (NOT SDP_FUNC_BIN_INSTALL_DIR)
     set(SDP_FUNC_BIN_INSTALL_DIR "bin")
 endif()
 
-# Set compiler include directories.
-include_directories(
-    ${PROJECT_BINARY_DIR}
-    ${PROJECT_BINARY_DIR}/src
-    ${PROJECT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/src
-)
-
 # Automatically set the build type if not specified.
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     # Use debug mode if building in dbg or debug directory.
@@ -84,31 +76,39 @@ add_subdirectory(src)
 # Build library using list of source files.
 if (CUDA_FOUND)
     # Add CUDA kernel sources.
-    list(APPEND ${CMAKE_PROJECT_NAME}_SRC ${${CMAKE_PROJECT_NAME}_CUDA_SRC})
+    list(APPEND ${PROJECT_NAME}_SRC ${${PROJECT_NAME}_CUDA_SRC})
     set(CUDA_GENERATED_OUTPUT_DIR
-        ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${CMAKE_PROJECT_NAME}.dir/src)
-    cuda_add_library(${CMAKE_PROJECT_NAME} ${${CMAKE_PROJECT_NAME}_SRC})
-    target_link_libraries(${CMAKE_PROJECT_NAME} ${CUDA_CUFFT_LIBRARIES})
+        ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${PROJECT_NAME}.dir/src)
+    cuda_add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+    target_link_libraries(${PROJECT_NAME} ${CUDA_CUFFT_LIBRARIES})
 else()
-    add_library(${CMAKE_PROJECT_NAME} ${${CMAKE_PROJECT_NAME}_SRC})
+    add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 endif()
 if (NOT DEFINED PYTHON_EXECUTABLE)
-    set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
+    set_target_properties(${PROJECT_NAME} PROPERTIES
         SOVERSION ${SDP_FUNC_VERSION}
         VERSION ${SDP_FUNC_VERSION})
 else()
     message(STATUS "Building for Python: ${PYTHON_EXECUTABLE}")
 endif()
 
+# Set target include directories at build time.
+target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+)
+
 # Add OpenMP compiler flags if found.
 if (OpenMP_CXX_FOUND)
-    target_link_libraries(${CMAKE_PROJECT_NAME} OpenMP::OpenMP_CXX)
+    target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX)
 endif()
 
 # Build tests.
 add_subdirectory(tests)
 
-install(TARGETS "${CMAKE_PROJECT_NAME}"
+install(TARGETS "${PROJECT_NAME}"
     EXPORT ska_sdp_funcTargets
     ARCHIVE DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
     LIBRARY DESTINATION ${SDP_FUNC_LIB_INSTALL_DIR} COMPONENT libraries
