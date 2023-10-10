@@ -576,7 +576,7 @@ void sdp_swiftly_finish_subgrid(
     if (*status) return;
     sdp_MemViewCpu<std::complex<double>, 2> buf;
     sdp_mem_check_and_view(buf_mem, &buf, status);
-    assert(*status);
+    assert(!*status);
 
     // Perform FFT shift to temporary memory
     const int64_t bc0_size = sg.shape[0];
