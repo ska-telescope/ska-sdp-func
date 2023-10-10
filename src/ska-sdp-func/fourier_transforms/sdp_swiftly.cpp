@@ -1,10 +1,10 @@
+#include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
-#include "ska-sdp-func/utility/sdp_logging.h"
 
-#include "sdp_swiftly.h"
-#include "sdp_pswf.h"
 #include "pocketfft_hdronly.h"
+#include "sdp_pswf.h"
+#include "sdp_swiftly.h"
 
 struct sdp_SwiFTly
 {
@@ -364,9 +364,11 @@ void sdp_swiftly_add_to_subgrid(
     if (*status) return;
 
     // Calculate facet offsets (in xM_size resolution).
-    const int64_t fct_offs = mod_p(facet_offset, image_size) / (image_size / xM_size);
+    const int64_t fct_offs =
+            mod_p(facet_offset, image_size) / (image_size / xM_size);
     const int64_t offs = mod_p(-xM_yN_size / 2 + xM_size / 2 + fct_offs,
-                               xM_size);
+            xM_size
+    );
 
     // Broadcast along first axis
     const int64_t bc0_size = out.shape[0]; int64_t i0;
@@ -604,7 +606,7 @@ void sdp_swiftly_finish_subgrid(
             int64_t j = mod_p(i - xA_size / 2 + subgrid_offset + xM_size,
                     xM_size
             );
-            sg(i0,i) = buf(i0, j);
+            sg(i0, i) = buf(i0, j);
         }
     }
 
