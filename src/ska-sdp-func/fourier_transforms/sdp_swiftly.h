@@ -178,13 +178,33 @@ void sdp_swiftly_add_to_subgrid_2d(
  * from the subgrid image sum.
  *
  * @param swiftly        SwiFTly plan.
- * @param subgrid_inout  `[*,xM_size]` Subgrid / subgrid image for accumulation.
+ * @param subgrid_inout  `[*,xM_size]` Accumulated subgrid image / subgrid
  * @param subgrid_offset Offset of subgrid mid-point relative to grid mid-point
  * @param status         Error status
  */
 void sdp_swiftly_finish_subgrid_inplace(
         sdp_SwiFTly* swiftly,
         sdp_Mem* subgrid_inout,
+        int64_t subgrid_offset,
+        sdp_Error* status
+);
+
+/**
+ * @brief Finish subgrid after contribution accumulation
+ *
+ * Performs the final Fourier Transformation to obtain the subgrid
+ * from the subgrid image sum.
+ *
+ * @param swiftly        SwiFTly plan.
+ * @param subgrid_image  `[*,xM_size]` Subgrid image with accumulated contributions
+ * @param subgrid_out    `[*,<xM_size]` Finished subgrid
+ * @param subgrid_offset Offset of subgrid mid-point relative to grid mid-point
+ * @param status         Error status
+ */
+void sdp_swiftly_finish_subgrid(
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_image,
+        sdp_Mem* subgrid_out,
         int64_t subgrid_offset,
         sdp_Error* status
 );

@@ -63,6 +63,12 @@ void test_facet_to_subgrid_basic()
             subgrid_size,
             &status
     );
+    sdp_Mem* subgrid = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE,
+            SDP_MEM_CPU,
+            2,
+            subgrid_size,
+            &status
+    );
     sdp_MemViewCpu<std::complex<double>, 2> fct;
     sdp_mem_check_and_view(facet, &fct, &status);
     assert(!status);
@@ -109,13 +115,14 @@ void test_facet_to_subgrid_basic()
                     facet_off,
                     &status
             );
-            sdp_swiftly_finish_subgrid_inplace(swiftly,
+            sdp_swiftly_finish_subgrid(swiftly,
                     subgrid_image,
+                    subgrid,
                     sg_off,
                     &status
             );
             sdp_MemViewCpu<std::complex<double>, 2> out;
-            sdp_mem_check_and_view(subgrid_image, &out, &status);
+            sdp_mem_check_and_view(subgrid, &out, &status);
             assert(!status);
 
             // Result should be precisely ones

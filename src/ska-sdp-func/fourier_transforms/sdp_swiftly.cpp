@@ -358,19 +358,20 @@ void sdp_swiftly_add_to_subgrid(
     sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(subgrid_image_inout, &out, status);
     sdp_mem_check_shape(subgrid_image_inout, 1, xM_size, status);
+    sdp_mem_check_same_shape(contribution, 0, subgrid_image_inout, 0, status);
     sdp_MemViewCpu<double, 1> Fn;
     sdp_mem_check_and_view(swiftly->Fn, &Fn, status);
     if (*status) return;
+
+    // Calculate facet offsets (in xM_size resolution).
+    const int64_t fct_offs = mod_p(facet_offset, image_size) / (image_size / xM_size);
+    const int64_t offs = mod_p(-xM_yN_size / 2 + xM_size / 2 + fct_offs,
+                               xM_size);
 
     // Broadcast along first axis
     const int64_t bc0_size = out.shape[0]; int64_t i0;
     for (i0 = 0; i0 < bc0_size; i0++)
     {
-        // Calculate facet offsets (in xM_size resolution).
-        const int64_t fct_offs = facet_offset / (image_size / xM_size);
-        const int64_t offs = mod_p(-xM_yN_size / 2 + xM_size / 2 + fct_offs,
-                xM_size
-        );
         int64_t i = 0;
         int64_t stop1 = xM_size - offs;
         if (stop1 > xM_yN_size) stop1 = xM_yN_size;
@@ -528,6 +529,86 @@ void sdp_swiftly_finish_subgrid_inplace(
                             mod_p(i + subgrid_offset + xM_size / 2, xM_size)];
         }
     }
+}
+
+
+void sdp_swiftly_finish_subgrid(
+        sdp_SwiFTly* swiftly,
+        sdp_Mem* subgrid_image,
+        sdp_Mem* subgrid_out,
+        int64_t subgrid_offset,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+
+    // Parameter checks
+    const int64_t xM_size = swiftly->xM_size;
+    sdp_MemViewCpu<const std::complex<double>, 2> sg_img;
+    sdp_mem_check_and_view(subgrid_image, &sg_img, status);
+    sdp_mem_check_shape(subgrid_image, 1, xM_size, status);
+    sdp_MemViewCpu<std::complex<double>, 2> sg;
+    sdp_mem_check_and_view(subgrid_out, &sg, status);
+    if (sdp_mem_num_dims(subgrid_out) > 1 &&
+            sdp_mem_shape_dim(subgrid_out, 1) > xM_size)
+    {
+        SDP_LOG_ERROR("Subgrid data too large (%d>%d)!",
+                sdp_mem_shape_dim(subgrid_out, 1), xM_size
+        );
+        *status = SDP_ERR_INVALID_ARGUMENT;
+    }
+    sdp_mem_check_same_shape(subgrid_image, 0, subgrid_out, 0, status);
+    if (*status) return;
+
+    // Allocate temporary memory
+    sdp_Mem* buf_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
+            2, sg_img.shape, status
+    );
+    if (*status) return;
+    sdp_MemViewCpu<std::complex<double>, 2> buf;
+    sdp_mem_check_and_view(buf_mem, &buf, status);
+    assert(*status);
+
+    // Perform FFT shift to temporary memory
+    const int64_t bc0_size = sg.shape[0];
+    int i, i0;
+    for (i0 = 0; i0 < bc0_size; i0++)
+    {
+        for (i = 0; i < xM_size / 2; i++)
+        {
+            buf(i0, i) = sg_img(i0, i + xM_size / 2);
+            buf(i0, i + xM_size / 2) = sg_img(i0, i);
+        }
+    }
+
+    // Perform in-place FFT
+    const pocketfft::shape_t shape = {
+        static_cast<size_t>(bc0_size),
+        static_cast<size_t>(xM_size)
+    };
+    const ptrdiff_t cpx_size = sizeof(std::complex<double>);
+    const pocketfft::stride_t stride = {
+        buf.stride[0] * cpx_size,
+        buf.stride[1] * cpx_size
+    };
+    pocketfft::c2c(shape, stride, stride, { 1 }, pocketfft::BACKWARD,
+            buf.ptr, buf.ptr, 1. / xM_size
+    );
+
+    // Move back portion we are interested in, applying the subgrid offset
+    const int64_t xA_size = sdp_mem_shape_dim(subgrid_out, 1);
+    for (i0 = 0; i0 < bc0_size; i0++)
+    {
+        for (i = 0; i < xA_size; i++)
+        {
+            int64_t j = mod_p(i - xA_size / 2 + subgrid_offset + xM_size,
+                    xM_size
+            );
+            sg(i0,i) = buf(i0, j);
+        }
+    }
+
+    sdp_mem_free(buf_mem);
 }
 
 
@@ -768,6 +849,7 @@ void sdp_swiftly_extract_from_subgrid(
     sdp_MemViewCpu<std::complex<double>, 2> contrib;
     sdp_mem_check_and_view(contribution_out, &contrib, status);
     sdp_mem_check_shape(contribution_out, 1, xM_yN_size, status);
+    sdp_mem_check_same_shape(subgrid_image, 0, contribution_out, 0, status);
     sdp_MemViewCpu<double, 1> Fn;
     sdp_mem_check_and_view(swiftly->Fn, &Fn, status);
     if (*status) return;

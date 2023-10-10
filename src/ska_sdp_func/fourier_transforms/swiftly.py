@@ -8,7 +8,8 @@ import inspect
 
 import numpy
 
-from .utility import Error, Lib, Mem
+from ska_sdp_func.utility.error_checking import error_checking, ERROR_CODE_ARGTYPE
+from ska_sdp_func.utility import CError, Lib, Mem
 
 WRAPPER_FNS = {
     int: (ctypes.c_int64, lambda v: v),
@@ -27,7 +28,7 @@ def auto_wrap_method(c_fn_name, add_handle=True, add_error_status=True):
       first parameter. The containing class must define the class
       method ``handle_type`` (returning the handle's ctype) and the
       method ``handle`` for this to work.
-    :param add_error_status: Append a handle to an :py:class:`Error`
+    :param add_error_status: Append a handle to an :py:class:`CError`
       object to the parameter list, and check it after the call
     :returns: Wrapped function
     """
@@ -41,17 +42,17 @@ def auto_wrap_method(c_fn_name, add_handle=True, add_error_status=True):
         # Add remaining parameters
         try:
             anns = inspect.get_annotations(orig_fn)
-        except AttributeError:
+        except AttributeCError:
             # Fallback for Python older than 3.10
             anns = orig_fn.__annotations__
         argtypes = []
         for par in list(sig.parameters)[1:]:
             if par not in anns:
-                raise ValueError(
+                raise ValueCError(
                     f"Parameter {par} lacks type annotation! Cannot auto-wrap!"
                 )
             if anns[par] not in WRAPPER_FNS:
-                raise ValueError(
+                raise ValueCError(
                     f"Parameter {par} has unknown type annotation {anns[par]}!"
                     " Cannot auto-wrap!"
                 )
@@ -85,11 +86,9 @@ def auto_wrap_method(c_fn_name, add_handle=True, add_error_status=True):
 
             # Call, passing an additional error status if requested
             if add_error_status:
-                error_status = Error()
-                function(*args, error_status.handle())
-                error_status.check()
+                error_checking(function)(*args)
             else:
-                function(*args, error_status.handle())
+                function(*args)
 
             # Finally call original function, in case there's any
             # additional action to take.
@@ -128,7 +127,6 @@ class Swiftly:
         self._W = W
 
         self._handle = None
-        error_status = Error()
         function_create = Lib.handle().sdp_swiftly_create
         function_create.restype = Swiftly.handle_type()
         function_create.argtypes = [
@@ -136,12 +134,11 @@ class Swiftly:
             ctypes.c_int64,
             ctypes.c_int64,
             ctypes.c_double,
-            Error.handle_type(),
+            ERROR_CODE_ARGTYPE,
         ]
-        self._handle = function_create(
-            image_size, yN_size, xM_size, W, error_status.handle()
+        self._handle = error_checking(function_create)(
+            image_size, yN_size, xM_size, W
         )
-        error_status.check()
 
     def __del__(self):
         """Releases handle to the processing function."""
@@ -301,6 +298,22 @@ class Swiftly:
 
         :subgrid_inout: ``[*, subgrid_size]``
            Subgrid / subgrid image for transform.
+        :subgrid_offset: Subgrid mid-point offset relative to grid mid-point
+        """
+
+    @auto_wrap_method("sdp_swiftly_finish_subgrid")
+    def finish_subgrid(
+        self, subgrid_image: numpy.ndarray, subgrid_out: numpy.ndarray, subgrid_offset: int
+    ):
+        """
+        Finish subgrid after contribution accumulation
+
+        Performs the final Fourier Transformation to obtain the subgrid
+        from the subgrid image sum.
+
+        :subgrid_image: ``[*, subgrid_size]`` Subgrid image with accumulated
+           contributions
+        :subgrid_out: ``[*, <subgrid_size]`` Finished subgrid
         :subgrid_offset: Subgrid mid-point offset relative to grid mid-point
         """
 
