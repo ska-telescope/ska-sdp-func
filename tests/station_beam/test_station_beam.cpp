@@ -21,7 +21,7 @@ using std::complex;
 
 
 template<typename FP, int NUM_POL>
-void check_results(
+static void check_results(
         const char* test_name,
         const FP wavenumber,
         const int num_in,

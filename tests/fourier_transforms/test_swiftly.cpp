@@ -15,7 +15,7 @@
 #include <vector>
 
 
-void test_facet_to_subgrid_basic()
+static void test_facet_to_subgrid_basic()
 {
     // Basic 1D test: Source in the middle of the image should result
     // in subgrid filled with ones.
@@ -74,22 +74,19 @@ void test_facet_to_subgrid_basic()
     assert(!status);
 
     // Test different facet offsets
-    int64_t facet_off;
-    for (facet_off = -5 * facet_off_step;
+    for (int64_t facet_off = -5 * facet_off_step;
             facet_off <= 5 * facet_off_step;
             facet_off += facet_off_step)
     {
         // Initialise facet with a single 1 in the overall image centre
-        int64_t i;
-        for (i = 0; i < yB_size; i++)
+        for (int64_t i = 0; i < yB_size; i++)
         {
             fct(0, i) = 0.0;
         }
         fct(0, yB_size / 2 - facet_off) = image_size;
 
         // Check different subgrid offsets
-        int64_t sg_off;
-        for (sg_off = 0;
+        for (int64_t sg_off = 0;
                 sg_off < image_size;
                 sg_off += sg_off_step)
         {
@@ -126,7 +123,7 @@ void test_facet_to_subgrid_basic()
             assert(!status);
 
             // Result should be precisely ones
-            for (i = 0; i < out.shape[1]; i++)
+            for (int64_t i = 0; i < out.shape[1]; i++)
             {
                 assert(std::abs(out(0, i) - std::complex<double>(1)) < 1e-13);
             }
@@ -143,7 +140,7 @@ void test_facet_to_subgrid_basic()
 }
 
 
-void test_facet_to_subgrid_dft()
+static void test_facet_to_subgrid_dft()
 {
     // General 1D test: Check that sources at arbitrary locations
     // produce result that matches direct Fourier transform evaluation
@@ -207,29 +204,32 @@ void test_facet_to_subgrid_dft()
     {
         // Test different facet offsets
         double ssum = 0; int64_t count = 0;
-        int64_t facet_off;
-        for (facet_off = -50 * facet_off_step;
+        for (int64_t facet_off = -50 * facet_off_step;
                 facet_off <= 50 * facet_off_step;
                 facet_off += 10 * facet_off_step)
         {
             // Initialise facet with zeroes
-            int64_t i;
-            for (i = 0; i < yB_size; i++)
+            for (int64_t i = 0; i < yB_size; i++)
             {
                 fct(0, i) = 0.0;
             }
 
             // Determine (clamped) source position, add to facet
-            std::vector<int64_t>::size_type isrc;
             std::vector<int64_t> new_sources(sources.size());
-            for (isrc = 0; isrc < sources.size(); isrc++)
+            for (std::vector<int64_t>::size_type isrc = 0;
+                    isrc < sources.size();
+                    isrc++)
             {
                 int64_t source_y = sources[isrc];
                 int64_t min_y = facet_off - yB_size / 2;
                 if (source_y < min_y)
+                {
                     source_y = min_y;
+                }
                 if (source_y >= min_y + yB_size)
+                {
                     source_y = min_y + yB_size - 1;
+                }
 
                 // Add + write back. We divide by number of sources
                 // here to normalise the error a bit.
@@ -239,8 +239,7 @@ void test_facet_to_subgrid_dft()
             }
 
             // Check different subgrid offsets
-            int64_t sg_off;
-            for (sg_off = -sg_off_step * 10;
+            for (int64_t sg_off = -sg_off_step * 10;
                     sg_off < sg_off_step * 10;
                     sg_off += sg_off_step)
             {
@@ -276,14 +275,16 @@ void test_facet_to_subgrid_dft()
                 assert(!status);
 
                 // Result should match DFT to good precision
-                for (i = 0; i < xA_size; i++)
+                for (int64_t i = 0; i < xA_size; i++)
                 {
                     int64_t pos = i + sg_off - xA_size / 2;
                     int64_t iM = i - xA_size / 2 + xM_size / 2;
 
                     // Sum up DFT over sources
                     std::complex<double> expected = { 0, 0 };
-                    for (isrc = 0; isrc < sources.size(); isrc++)
+                    for (std::vector<int64_t>::size_type isrc = 0;
+                            isrc < sources.size();
+                            isrc++)
                     {
                         int64_t source_y = new_sources[isrc];
                         double phase = (2 * M_PI / image_size) * source_y * pos;
@@ -348,8 +349,7 @@ static sdp_Mem* sdp_mem_transpose(
 
     // Create new shape + strides
     std::vector<int64_t> shape(ndims), stride(ndims);
-    int64_t i;
-    for (i = 0; i < sdp_mem_num_dims(mem); i++)
+    for (int64_t i = 0; i < sdp_mem_num_dims(mem); i++)
     {
         if (i == dim0)
         {
@@ -380,7 +380,7 @@ static sdp_Mem* sdp_mem_transpose(
 }
 
 
-void check_facet_to_subgrid_dft_2d(
+static void check_facet_to_subgrid_dft_2d(
         sdp_SwiFTly* swiftly,
         sdp_Mem* facet,
         const std::vector<std::pair<int64_t, int64_t> > &sources,
@@ -506,13 +506,12 @@ void check_facet_to_subgrid_dft_2d(
     );
 
     // Check that both arrived at the same result
-    int64_t i0, i1;
     sdp_MemViewCpu<std::complex<double>, 2> out, out_cp;
     sdp_mem_check_and_view(subgrid_image, &out, &status);
     sdp_mem_check_and_view(subgrid_image_copy, &out_cp, &status);
-    for (i0 = 0; i0 < xM_size; i0++)
+    for (int64_t i0 = 0; i0 < xM_size; i0++)
     {
-        for (i1 = 0; i1 < xM_size; i1++)
+        for (int64_t i1 = 0; i1 < xM_size; i1++)
         {
             double scale = abs(out(i0, i1));
             if (scale <= 1e-10) scale = 1e-10;
@@ -541,18 +540,18 @@ void check_facet_to_subgrid_dft_2d(
     assert(!status);
 
     // Again, check that both arrived at the same result
-    for (i0 = 0; i0 < xM_size; i0++)
+    for (int64_t i0 = 0; i0 < xM_size; i0++)
     {
-        for (i1 = 0; i1 < xM_size; i1++)
+        for (int64_t i1 = 0; i1 < xM_size; i1++)
         {
             assert(abs(out(i0, i1) - out_cp(i0, i1)) / abs(out(i0, i1)) < 1e-7);
         }
     }
 
     // Result should match DFT to good precision
-    for (i0 = 0; i0 < xA_size; i0++)
+    for (int64_t i0 = 0; i0 < xA_size; i0++)
     {
-        for (i1 = 0; i1 < xA_size; i1++)
+        for (int64_t i1 = 0; i1 < xA_size; i1++)
         {
             int64_t pos0 = i0 + sg_off0 - xA_size / 2;
             int64_t pos1 = i1 + sg_off1 - xA_size / 2;
@@ -561,8 +560,9 @@ void check_facet_to_subgrid_dft_2d(
 
             // Sum up DFT over sources
             std::complex<double> expected = { 0, 0 };
-            std::vector<int64_t>::size_type isrc;
-            for (isrc = 0; isrc < sources.size(); isrc++)
+            for (std::vector<int64_t>::size_type isrc = 0;
+                    isrc < sources.size();
+                    isrc++)
             {
                 auto source = sources[isrc];
                 double phase = (2 * M_PI / image_size) *
@@ -590,7 +590,7 @@ void check_facet_to_subgrid_dft_2d(
 }
 
 
-void test_facet_to_subgrid_dft_2d()
+static void test_facet_to_subgrid_dft_2d()
 {
     // General 2D test: Check that sources at arbitrary locations
     // produce result that matches direct Fourier transform evaluation
@@ -639,41 +639,48 @@ void test_facet_to_subgrid_dft_2d()
     {
         // Test different facet offsets
         double ssum = 0; int64_t count = 0;
-        int64_t facet_off1;
-        for (facet_off1 = -20 * facet_off_step;
+        for (int64_t facet_off1 = -20 * facet_off_step;
                 facet_off1 <= 20 * facet_off_step;
                 facet_off1 += 10 * facet_off_step)
         {
             int64_t facet_off0 = facet_off1 * 2;
 
             // Initialise facet with zeroes
-            int64_t i, j;
-            for (i = 0; i < yB_size; i++)
+            for (int64_t i = 0; i < yB_size; i++)
             {
-                for (j = 0; j < yB_size; j++)
+                for (int64_t j = 0; j < yB_size; j++)
                 {
                     fct(i, j) = 0.0;
                 }
             }
 
             // Determine (clamped) source position, add to facet
-            std::vector<std::pair<int64_t, int64_t> >::size_type isrc;
             std::vector<std::pair<int64_t,
                     int64_t> > new_sources(sources.size());
-            for (isrc = 0; isrc < sources.size(); isrc++)
+            for (std::vector<std::pair<int64_t, int64_t> >::size_type isrc = 0;
+                    isrc < sources.size();
+                    isrc++)
             {
                 int64_t source0 = sources[isrc].first;
                 int64_t source1 = sources[isrc].second;
                 int64_t min0 = facet_off0 - yB_size / 2;
                 if (source0 < min0)
+                {
                     source0 = min0;
+                }
                 if (source0 >= min0 + yB_size)
+                {
                     source0 = min0 + yB_size - 1;
+                }
                 int64_t min1 = facet_off1 - yB_size / 2;
                 if (source1 < min1)
+                {
                     source1 = min1;
+                }
                 if (source1 >= min1 + yB_size)
+                {
                     source1 = min1 + yB_size - 1;
+                }
 
                 // Add + write back. We divide by number of sources
                 // here to normalise the error a bit.
@@ -686,8 +693,7 @@ void test_facet_to_subgrid_dft_2d()
             }
 
             // Check different subgrid offsets
-            int64_t sg_off1;
-            for (sg_off1 = -sg_off_step * 2;
+            for (int64_t sg_off1 = -sg_off_step * 2;
                     sg_off1 <= sg_off_step * 2;
                     sg_off1 += sg_off_step)
             {

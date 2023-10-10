@@ -62,11 +62,9 @@ struct sdp_MemView
      */
     inline num_t &operator ()()
     {
-#ifndef NDEBUG
         static_assert(num_dims == 0,
                 "Wrong number of indices passed to operator ()!"
         );
-#endif
         return *ptr;
     }
 
@@ -76,10 +74,10 @@ struct sdp_MemView
      */
     inline num_t &operator ()(int64_t i0)
     {
-#ifndef NDEBUG
         static_assert(num_dims == 1,
                 "Wrong number of indices passed to operator ()!"
         );
+#ifndef NDEBUG
         assert(i0 >= 0 && i0 < shape[0]);
 #endif
         return ptr[stride[0] * i0];
@@ -91,10 +89,10 @@ struct sdp_MemView
      */
     inline num_t &operator ()(int64_t i0, int64_t i1)
     {
-#ifndef NDEBUG
         static_assert(num_dims == 2,
                 "Wrong number of indices passed to operator ()!"
         );
+#ifndef NDEBUG
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
 #endif
@@ -107,10 +105,10 @@ struct sdp_MemView
      */
     inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2)
     {
-#ifndef NDEBUG
         static_assert(num_dims == 3,
                 "Wrong number of indices passed to operator ()!"
         );
+#ifndef NDEBUG
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
         assert(i2 >= 0 && i2 < shape[2]);
@@ -124,10 +122,10 @@ struct sdp_MemView
      */
     inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2, int64_t i3)
     {
-#ifndef NDEBUG
         static_assert(num_dims == 4,
                 "Wrong number of indices passed to operator ()!"
         );
+#ifndef NDEBUG
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
         assert(i2 >= 0 && i2 < shape[2]);
@@ -149,10 +147,10 @@ struct sdp_MemView
             int64_t i4
 )
     {
-#ifndef NDEBUG
         static_assert(num_dims == 5,
                 "Wrong number of indices passed to operator ()!"
         );
+#ifndef NDEBUG
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
         assert(i2 >= 0 && i2 < shape[2]);
@@ -266,15 +264,14 @@ void sdp_mem_check_and_view_at(
             func, expr, file, line
     );
     sdp_mem_check_writeable_at(mem, status, func, expr, file, line);
-    if (*status) return;
 
     // Set pointer, shape & strides
     view->ptr = static_cast<num_t*>(sdp_mem_data(mem));
     int32_t dim;
     for (dim = 0; dim < num_dims; dim++)
     {
-        view->shape[dim] = sdp_mem_shape_dim(mem, dim);
-        view->stride[dim] = sdp_mem_stride_elements_dim(mem, dim);
+        view->shape[dim] = *status ? 0 : sdp_mem_shape_dim(mem, dim);
+        view->stride[dim] = *status ? 0 : sdp_mem_stride_elements_dim(mem, dim);
     }
 }
 
@@ -320,15 +317,13 @@ void sdp_mem_check_and_view_at(
     sdp_mem_check_location_at(mem, loc, status,
             func, expr, file, line
     );
-    if (*status) return;
 
     // Set pointer, shape & strides
     view->ptr = static_cast<const num_t*>(sdp_mem_data_const(mem));
-    int32_t dim;
-    for (dim = 0; dim < num_dims; dim++)
+    for (int32_t dim = 0; dim < num_dims; dim++)
     {
-        view->shape[dim] = sdp_mem_shape_dim(mem, dim);
-        view->stride[dim] = sdp_mem_stride_elements_dim(mem, dim);
+        view->shape[dim] = *status ? 0 : sdp_mem_shape_dim(mem, dim);
+        view->stride[dim] = *status ? 0 : sdp_mem_stride_elements_dim(mem, dim);
     }
 }
 

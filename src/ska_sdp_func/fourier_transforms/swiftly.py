@@ -44,17 +44,17 @@ def auto_wrap_method(c_fn_name, add_handle=True, add_error_status=True):
         # Add remaining parameters
         try:
             anns = inspect.get_annotations(orig_fn)
-        except AttributeCError:
+        except AttributeError:
             # Fallback for Python older than 3.10
             anns = orig_fn.__annotations__
         argtypes = []
         for par in list(sig.parameters)[1:]:
             if par not in anns:
-                raise ValueCError(
+                raise CError(
                     f"Parameter {par} lacks type annotation! Cannot auto-wrap!"
                 )
             if anns[par] not in WRAPPER_FNS:
-                raise ValueCError(
+                raise CError(
                     f"Parameter {par} has unknown type annotation {anns[par]}!"
                     " Cannot auto-wrap!"
                 )
@@ -388,19 +388,20 @@ class Swiftly:
         Performs subgrid preparation, the starting point of SwiFTly
         subgrid-to-facet transformation.
 
-        Performs the Fourier Transformation to obtain the subgrid image
-        from subgrid data. This performs the transformation on
-        both axes - equivalent to applying
-        :py:meth:`Swiftly.prepare_subgrid_inplace` to a subarray image, then its
-        transposition.
+        Performs the Fourier Transformation to obtain the subgrid image from
+        subgrid data. This performs the transformation on both axes -
+        equivalent to applying :py:meth:`Swiftly.prepare_subgrid_inplace` to a
+        subarray image, then its transposition.
 
         Inverse of :py:meth:`Swiftly.finish_subgrid_inplace_2d`.
 
-        :subgrid_inout: ``[subgrid_size, subgrid_size]`` Finished subgrid (image)
+        :subgrid_inout: ``[subgrid_size, subgrid_size]``
+            Finished subgrid (image)
         :param subgrid_offset0: Subgrid mid-point offset relative to grid
                          mid-point along first axis
         :param subgrid_offset1: Subgrid mid-point offset relative to grid
                          mid-point along second axis
+
         """
 
     @auto_wrap_method("sdp_swiftly_extract_from_subgrid")

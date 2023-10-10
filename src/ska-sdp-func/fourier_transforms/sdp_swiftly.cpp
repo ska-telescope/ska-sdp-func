@@ -154,15 +154,19 @@ void sdp_swiftly_free(sdp_SwiFTly* swiftly)
 }
 
 
-inline int64_t mod_p(int64_t a, int64_t b)
+inline static int64_t mod_p(int64_t a, int64_t b)
 {
     // Modulo that always gives positive result (i.e. remainder of
     // floor(a/b))
     a %= b;
     if (a >= 0)
+    {
         return a;
+    }
     else
+    {
         return a + b;
+    }
 }
 
 
@@ -203,15 +207,15 @@ void sdp_swiftly_prepare_facet(
     const int64_t Fb_off = (yN_size / 2 - fct.shape[1] / 2) - start;
 
     // Broadcast along first axis
-    const int64_t bc0_size = out.shape[0]; int64_t i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    const int64_t bc0_size = out.shape[0];
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
         // Does the facet data alias around the edges?
-        int64_t i;
         if (start < end)
         {
             // Establish something along the lines of "00<data>00000"
-            for (i = 0; i < start; i++)
+            int64_t i = 0;
+            for (; i < start; i++)
             {
                 out(i0, i) = 0;
             }
@@ -227,7 +231,8 @@ void sdp_swiftly_prepare_facet(
         else
         {
             // ... or alternatively "ta>00000<da"
-            for (i = 0; i < end; i++)
+            int64_t i = 0;
+            for (; i < end; i++)
             {
                 out(i0, i) = fct(i0, i + yN_size - start) * Fb(
                         i + yN_size + Fb_off
@@ -295,8 +300,8 @@ void sdp_swiftly_extract_from_facet(
     const int64_t offs2 = mod_p(offs, yN_size);
 
     // Broadcast along first axis
-    const int64_t bc0_size = out.shape[0]; int64_t i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    const int64_t bc0_size = out.shape[0];
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
         int64_t i = 0;
         int64_t stop1 = yN_size - offs1;
@@ -371,8 +376,8 @@ void sdp_swiftly_add_to_subgrid(
     );
 
     // Broadcast along first axis
-    const int64_t bc0_size = out.shape[0]; int64_t i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    const int64_t bc0_size = out.shape[0];
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
         int64_t i = 0;
         int64_t stop1 = xM_size - offs;
@@ -431,11 +436,12 @@ void sdp_swiftly_add_to_subgrid_2d(
     int64_t stop1 = xM_size - offs1;
     if (stop1 > xM_yN_size) stop1 = xM_yN_size;
 
-    int64_t i0, i1;
-    for (i0 = 0; i0 < stop0; i0++)
+    int64_t i0 = 0;
+    for (; i0 < stop0; i0++)
     {
         double fn0 = Fn(i0);
-        for (i1 = 0; i1 < stop0; i1++)
+        int64_t i1 = 0;
+        for (; i1 < stop1; i1++)
         {
             out(i0 + offs0, i1 + offs1) = fn0 * Fn(i1) *
                     contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
@@ -453,7 +459,8 @@ void sdp_swiftly_add_to_subgrid_2d(
     for (; i0 < xM_yN_size; i0++)
     {
         double fn0 = Fn(i0);
-        for (i1 = 0; i1 < stop0; i1++)
+        int64_t i1 = 0;
+        for (; i1 < stop1; i1++)
         {
             out(i0 + offs0 - xM_size, i1 + offs1) = fn0 * Fn(i1) *
                     contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
@@ -487,12 +494,12 @@ void sdp_swiftly_finish_subgrid_inplace(
     sdp_mem_check_shape_dim(subgrid_inout, 1, xM_size, status);
     if (*status) return;
     const int64_t bc0_size = sg.shape[0];
+    if (bc0_size * xM_size == 0) return;
 
     // Perform FFT shift, broadcasting along first axis
-    int i, i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
-        for (i = 0; i < xM_size / 2; i++)
+        for (int64_t i = 0; i < xM_size / 2; i++)
         {
             std::complex<double> tmp = sg(i0, i);
             sg(i0, i) = sg(i0, i + xM_size / 2);
@@ -520,9 +527,9 @@ void sdp_swiftly_finish_subgrid_inplace(
     );
 
     // Move back, applying the subgrid offset
-    for (i0 = 0; i0 < bc0_size; i0++)
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
-        for (i = 0; i < xM_size; i++)
+        for (int64_t i = 0; i < xM_size; i++)
         {
             sg(i0,
                     i
@@ -573,10 +580,9 @@ void sdp_swiftly_finish_subgrid(
 
     // Perform FFT shift to temporary memory
     const int64_t bc0_size = sg.shape[0];
-    int i, i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
-        for (i = 0; i < xM_size / 2; i++)
+        for (int64_t i = 0; i < xM_size / 2; i++)
         {
             buf(i0, i) = sg_img(i0, i + xM_size / 2);
             buf(i0, i + xM_size / 2) = sg_img(i0, i);
@@ -599,9 +605,9 @@ void sdp_swiftly_finish_subgrid(
 
     // Move back portion we are interested in, applying the subgrid offset
     const int64_t xA_size = sdp_mem_shape_dim(subgrid_out, 1);
-    for (i0 = 0; i0 < bc0_size; i0++)
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
-        for (i = 0; i < xA_size; i++)
+        for (int64_t i = 0; i < xA_size; i++)
         {
             int64_t j = mod_p(i - xA_size / 2 + subgrid_offset + xM_size,
                     xM_size
@@ -633,13 +639,12 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
     if (*status) return;
 
     // Perform FFT shift on input
-    int64_t i0, i1;
     if (sg.shape[1] != 1)
     {
-        for (i0 = 0; i0 < xM_size / 2; i0++)
+        for (int64_t i0 = 0; i0 < xM_size / 2; i0++)
         {
 #pragma GCC ivdep
-            for (i1 = 0; i1 < xM_size / 2; i1++)
+            for (int64_t i1 = 0; i1 < xM_size / 2; i1++)
             {
                 std::complex<double> tmp = sg(i0, i1);
                 sg(i0, i1) = sg(i0 + xM_size / 2, i1 + xM_size / 2);
@@ -652,11 +657,11 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
     }
     else
     {
-        for (i0 = 0; i0 < xM_size / 2; i0++)
+        for (int64_t i0 = 0; i0 < xM_size / 2; i0++)
         {
 #pragma GCC ivdep
 #pragma GCC unroll 2
-            for (i1 = 0; i1 < xM_size / 2; i1++)
+            for (int64_t i1 = 0; i1 < xM_size / 2; i1++)
             {
                 std::complex<double> tmp = sg(i0, i1);
                 sg(i0, i1) = sg(i0 + xM_size / 2, i1 + xM_size / 2);
@@ -689,11 +694,12 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
 
     // Add subgrid offset on output
     int64_t off = mod_p(subgrid_offset1 + xM_size / 2, xM_size);
-    for (i0 = 0; i0 < xM_size; i0++)
+    for (int64_t i0 = 0; i0 < xM_size; i0++)
     {
         int64_t _i0 =
                 mod_p(i0 + subgrid_offset0 + xM_size / 2, xM_size) * xM_size;
-        for (i1 = 0; i1 < xM_size - off; i1++)
+        int64_t i1 = 0;
+        for (; i1 < xM_size - off; i1++)
         {
             sg(i0, i1) = tmp[_i0 + i1 + off];
         }
@@ -745,12 +751,10 @@ void sdp_swiftly_prepare_subgrid_inplace(
     std::complex<double> phasor(1.0);
     std::complex<double> step(cos(phase_step), sin(phase_step));
     std::complex<double> step2(cos(phase_step2), sin(phase_step2));
-    int i;
-    for (i = 0; i < xM_size / 2; i++, phasor *= step)
+    for (int64_t i = 0; i < xM_size / 2; i++, phasor *= step)
     {
         // Broadcast along first axis
-        int64_t i0;
-        for (i0 = 0; i0 < bc0_size; i0++)
+        for (int64_t i0 = 0; i0 < bc0_size; i0++)
         {
             std::complex<double> tmp = sg(i0, i);
             sg(i0, i) = phasor * sg(i0, i + xM_size / 2);
@@ -803,14 +807,12 @@ void sdp_swiftly_prepare_subgrid_inplace_2d(
     std::complex<double> phasor0(1.0);
     std::complex<double> step0(cos(phase_step0), sin(phase_step0));
     std::complex<double> step0_2(cos(phase_step0_2), sin(phase_step0_2));
-    int64_t i0;
-    for (i0 = 0; i0 < xM_size / 2; i0++, phasor0 *= step0)
+    for (int64_t i0 = 0; i0 < xM_size / 2; i0++, phasor0 *= step0)
     {
         std::complex<double> phasor1(phasor0);
         std::complex<double> step1(cos(phase_step1), sin(phase_step1));
         std::complex<double> step1_2(cos(phase_step1_2), sin(phase_step1_2));
-        int64_t i1;
-        for (i1 = 0; i1 < xM_size / 2; i1++, phasor1 *= step1)
+        for (int64_t i1 = 0; i1 < xM_size / 2; i1++, phasor1 *= step1)
         {
             std::complex<double> tmp = sg(i0, i1);
             sg(i0, i1) =
@@ -857,18 +859,18 @@ void sdp_swiftly_extract_from_subgrid(
     if (*status) return;
 
     // Broadcast along first axis
-    const int64_t bc0_size = sg_img.shape[0]; int64_t i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    const int64_t bc0_size = sg_img.shape[0];
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
         // Calculate facet offsets (in xM_size resolution).
         const int64_t fct_offs = facet_offset / (image_size / xM_size);
         const int64_t offs = mod_p(-xM_yN_size / 2 + xM_size / 2 + fct_offs,
                 xM_size
         );
-        int64_t i = 0;
         int64_t stop1 = xM_size - offs;
         if (stop1 > xM_yN_size) stop1 = xM_yN_size;
-        for (i = 0; i < stop1; i++)
+        int64_t i = 0;
+        for (; i < stop1; i++)
         {
             contrib(i0, (i + fct_offs + xM_yN_size / 2) % xM_yN_size) =
                     sg_img(i0, i + offs) * Fn(i);
@@ -939,11 +941,12 @@ void sdp_swiftly_extract_from_subgrid_2d(
     int64_t stop1 = xM_size - offs1;
     if (stop1 > xM_yN_size) stop1 = xM_yN_size;
 
-    int64_t i0, i1;
-    for (i0 = 0; i0 < stop0; i0++)
+    int64_t i0 = 0;
+    for (; i0 < stop0; i0++)
     {
         double fn0 = Fn(i0);
-        for (i1 = 0; i1 < stop0; i1++)
+        int64_t i1 = 0;
+        for (; i1 < stop1; i1++)
         {
             contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
                     (i1 + fct_offs1 + xM_yN_size / 2) % xM_yN_size
@@ -961,7 +964,8 @@ void sdp_swiftly_extract_from_subgrid_2d(
     for (; i0 < xM_yN_size; i0++)
     {
         double fn0 = Fn(i0);
-        for (i1 = 0; i1 < stop0; i1++)
+        int64_t i1 = 0;
+        for (; i1 < stop1; i1++)
         {
             contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
                     (i1 + fct_offs1 + xM_yN_size / 2) % xM_yN_size
@@ -1031,8 +1035,8 @@ void sdp_swiftly_add_to_facet(
     const int64_t offs2 = mod_p(offs, yN_size);
 
     // Broadcast along first axis
-    const int64_t bc0_size = contrib.shape[0]; int64_t i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    const int64_t bc0_size = contrib.shape[0];
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
         int64_t i = 0;
         int64_t stop1 = yN_size - offs1;
@@ -1113,21 +1117,20 @@ void sdp_swiftly_finish_facet(
     const int64_t Fb_off = (yN_size / 2 - fct.shape[1] / 2) - start;
 
     // Broadcast along first axis
-    int64_t i0;
-    for (i0 = 0; i0 < bc0_size; i0++)
+    for (int64_t i0 = 0; i0 < bc0_size; i0++)
     {
         // Does the facet data alias around the edges?
-        int64_t i;
         if (start < end)
         {
-            for (i = start; i < end; i++)
+            for (int64_t i = start; i < end; i++)
             {
                 fct(i0, i - start) = pfct(i0, i) * Fb(i + Fb_off);
             }
         }
         else
         {
-            for (i = 0; i < end; i++)
+            int64_t i = 0;
+            for (; i < end; i++)
             {
                 fct(i0, i + yN_size - start) = pfct(i0, i) * Fb(
                         i + yN_size + Fb_off
