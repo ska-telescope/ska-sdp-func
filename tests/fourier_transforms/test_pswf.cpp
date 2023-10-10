@@ -8,11 +8,11 @@
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
-#include <complex>
 #include <assert.h>
+#include <complex>
 #include <string>
 
-template<typename num_t> double val(num_t);
+template<typename num_t> double static val(num_t);
 
 
 template<>
@@ -44,6 +44,7 @@ double val<std::complex<double> >(std::complex<double> x)
 
 
 template<typename num_t>
+static
 void check(
         const char* test_name,
         sdp_MemType typ,
@@ -77,7 +78,7 @@ void check(
 }
 
 
-void check_all(
+static void check_all(
         const char* test_name,
         const int m,
         const double c,

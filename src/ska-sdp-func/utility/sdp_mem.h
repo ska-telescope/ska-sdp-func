@@ -741,7 +741,6 @@ void sdp_mem_check_shape_at(
         __LINE__ \
     )
 
-
 /**
  * @brief Checks that an array has the expected shape for
  * a certain dimension.
@@ -840,9 +839,9 @@ void sdp_mem_check_same_shape_at(
  * @param status Output error status
  */
 #define sdp_mem_check_same_shape(mem, dim, mem2, dim2, status) \
-        sdp_mem_check_same_shape_at(mem, dim, mem2, dim2, status, __func__, \
+    sdp_mem_check_same_shape_at(mem, dim, mem2, dim2, status, __func__, \
         #mem, #mem2, __FILE__, __LINE__ \
-        )
+    )
 
 /**
  * @brief Checks that an array has the expected data type.

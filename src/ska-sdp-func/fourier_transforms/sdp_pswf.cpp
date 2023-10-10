@@ -12,11 +12,11 @@
 
 #include "sdp_pswf.h"
 
-#include <inttypes.h>
-#include <stdlib.h>
-#include <math.h>
 #include <assert.h>
 #include <complex>
+#include <inttypes.h>
+#include <math.h>
+#include <stdlib.h>
 
 
 static double cipow(double base, int exp)
@@ -26,8 +26,10 @@ static double cipow(double base, int exp)
     if (exp == 1) return base;
     while (exp)
     {
-        if (exp & 1)
+        if ((exp & 1) != 0)
+        {
             result *= base;
+        }
         exp >>= 1;
         base *= base;
     }
@@ -35,13 +37,7 @@ static double cipow(double base, int exp)
 }
 
 
-inline static double pow_dd(double* a, double* b)
-{
-    return pow(*a, *b);
-}
-
-
-inline static double pow_di(double* a, int* b)
+inline static double pow_di(const double* a, const int* b)
 {
     return cipow(*a, *b);
 }
@@ -50,11 +46,11 @@ inline static double pow_di(double* a, int* b)
 
 /*       ********************************** */
 /* Subroutine */ static inline int sdmn_(
-        int* m,
-        int* n,
-        double* c__,
-        double* cv,
-        int* kd,
+        const int* m,
+        const int* n,
+        const double* c__,
+        const double* cv,
+        const int* kd,
         double* df
 )
 {
@@ -655,7 +651,7 @@ static inline void _generate_pswf(
     int n = m;
     int kd = 1; // prolate
     double cv, eg[2];
-    segv_(&m,&n,&c,&kd,&cv,eg);
+    segv_(&m, &n, &c, &kd, &cv, eg);
 
     // Calculate expansion coefficients
     double df[200], ck[200];
@@ -664,14 +660,14 @@ static inline void _generate_pswf(
 
     // Get value at 0
     pswf[0] = 0.0;
-    pswf[stride * (size / 2)] = aswfa_(m,n,c,ck,0);
+    pswf[stride * (size / 2)] = aswfa_(m, n, c, ck, 0);
 
     // Get remaining values
     for (int i = 1; i < size / 2; i++)
     {
         // Get value (plus derivative)
         const double x = 2 * ((double)i) / size;
-        const double s1f = aswfa_(m,n,c,ck,x);
+        const double s1f = aswfa_(m, n, c, ck, x);
         pswf[stride * (size / 2 + i)] = s1f;
         pswf[stride * (size / 2 - i)] = s1f;
     }

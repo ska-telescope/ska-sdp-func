@@ -727,9 +727,18 @@ void sdp_mem_check_shape_at(
     }
     for (int32_t dim = 0; dim < expected_num_dims; dim++)
     {
-        sdp_mem_check_shape_dim_at(mem, dim, expected_shape[dim], status, expr, func, file, line);
+        sdp_mem_check_shape_dim_at(mem,
+                dim,
+                expected_shape[dim],
+                status,
+                expr,
+                func,
+                file,
+                line
+        );
     }
 }
+
 
 void sdp_mem_check_shape_dim_at(
         const sdp_Mem* mem,

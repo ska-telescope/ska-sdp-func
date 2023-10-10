@@ -5,13 +5,13 @@
 #endif
 
 #include "ska-sdp-func/fourier_transforms/sdp_swiftly.h"
-#include "ska-sdp-func/utility/sdp_mem_view.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 
-#include <complex>
 #include <assert.h>
-#include <string>
+#include <complex>
 #include <cstring>
+#include <string>
 #include <vector>
 
 
@@ -514,9 +514,9 @@ void check_facet_to_subgrid_dft_2d(
     {
         for (i1 = 0; i1 < xM_size; i1++)
         {
-            double scale = abs(out(i0,i1));
+            double scale = abs(out(i0, i1));
             if (scale <= 1e-10) scale = 1e-10;
-            assert (abs(out(i0,i1) - out_cp(i0,i1)) / scale < 1e-13);
+            assert (abs(out(i0, i1) - out_cp(i0, i1)) / scale < 1e-13);
         }
     }
 
@@ -545,7 +545,7 @@ void check_facet_to_subgrid_dft_2d(
     {
         for (i1 = 0; i1 < xM_size; i1++)
         {
-            assert(abs(out(i0,i1) - out_cp(i0,i1)) / abs(out(i0,i1)) < 1e-7);
+            assert(abs(out(i0, i1) - out_cp(i0, i1)) / abs(out(i0, i1)) < 1e-7);
         }
     }
 

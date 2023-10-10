@@ -21,8 +21,8 @@
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
-#include <complex>
 #include <assert.h>
+#include <complex>
 
 /**
  * @brief Utility class for accessing simple strided arrays
@@ -44,13 +44,15 @@
  * Note that sdp_MemView::operator()() will perform bounds checks
  * unless ``NDEBUG`` is defined.
  */
-template <typename num_t, int32_t num_dims, sdp_MemLocation loc>
+template<typename num_t, int32_t num_dims, sdp_MemLocation loc>
 struct sdp_MemView
 {
     /** Default constructor */
-    sdp_MemView() : ptr(NULL) {}
+    sdp_MemView() : ptr(NULL)
+    {
+    }
 
-    num_t *ptr; /**< Pointer to first array element */
+    num_t* ptr; /**< Pointer to first array element */
     int64_t shape[num_dims]; /**< Size of array in every dimension */
     int64_t stride[num_dims]; /**< Memory stride in dimension (in units of element type size) */
 
@@ -61,7 +63,9 @@ struct sdp_MemView
     inline num_t &operator ()()
     {
 #ifndef NDEBUG
-        static_assert(num_dims == 0, "Wrong number of indices passed to operator ()!");
+        static_assert(num_dims == 0,
+                "Wrong number of indices passed to operator ()!"
+        );
 #endif
         return *ptr;
     }
@@ -73,7 +77,9 @@ struct sdp_MemView
     inline num_t &operator ()(int64_t i0)
     {
 #ifndef NDEBUG
-        static_assert(num_dims == 1, "Wrong number of indices passed to operator ()!");
+        static_assert(num_dims == 1,
+                "Wrong number of indices passed to operator ()!"
+        );
         assert(i0 >= 0 && i0 < shape[0]);
 #endif
         return ptr[stride[0] * i0];
@@ -86,7 +92,9 @@ struct sdp_MemView
     inline num_t &operator ()(int64_t i0, int64_t i1)
     {
 #ifndef NDEBUG
-        static_assert(num_dims == 2, "Wrong number of indices passed to operator ()!");
+        static_assert(num_dims == 2,
+                "Wrong number of indices passed to operator ()!"
+        );
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
 #endif
@@ -100,7 +108,9 @@ struct sdp_MemView
     inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2)
     {
 #ifndef NDEBUG
-        static_assert(num_dims == 3, "Wrong number of indices passed to operator ()!");
+        static_assert(num_dims == 3,
+                "Wrong number of indices passed to operator ()!"
+        );
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
         assert(i2 >= 0 && i2 < shape[2]);
@@ -115,71 +125,103 @@ struct sdp_MemView
     inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2, int64_t i3)
     {
 #ifndef NDEBUG
-        static_assert(num_dims == 4, "Wrong number of indices passed to operator ()!");
+        static_assert(num_dims == 4,
+                "Wrong number of indices passed to operator ()!"
+        );
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
         assert(i2 >= 0 && i2 < shape[2]);
         assert(i3 >= 0 && i3 < shape[3]);
 #endif
-        return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 + stride[3] * i3];
+        return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
+                       stride[3] * i3];
     }
 
     /**
      * @brief Operator for accessing data contained in 5-dimensional
      * array views
      */
-    inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2, int64_t i3, int64_t i4)
+    inline num_t &operator ()(
+            int64_t i0,
+            int64_t i1,
+            int64_t i2,
+            int64_t i3,
+            int64_t i4
+)
     {
 #ifndef NDEBUG
-        static_assert(num_dims == 5, "Wrong number of indices passed to operator ()!");
+        static_assert(num_dims == 5,
+                "Wrong number of indices passed to operator ()!"
+        );
         assert(i0 >= 0 && i0 < shape[0]);
         assert(i1 >= 0 && i1 < shape[1]);
         assert(i2 >= 0 && i2 < shape[2]);
         assert(i3 >= 0 && i3 < shape[3]);
         assert(i4 >= 0 && i4 < shape[4]);
 #endif
-        return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 + stride[3] * i3 + stride[4] * i4];
+        return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
+                       stride[3] * i3 + stride[4] * i4];
     }
-
 };
 
-template <typename num_t, int32_t num_dims>
+template<typename num_t, int32_t num_dims>
 using sdp_MemViewCpu = sdp_MemView<num_t, num_dims, SDP_MEM_CPU>;
-template <typename num_t, int32_t num_dims>
+template<typename num_t, int32_t num_dims>
 using sdp_MemViewGpu = sdp_MemView<num_t, num_dims, SDP_MEM_GPU>;
 
 /** @} */
 
-template <typename num_t> sdp_MemType sdp_mem_lift_type();
-template<> sdp_MemType sdp_mem_lift_type<char>()
+template<typename num_t>
+sdp_MemType sdp_mem_lift_type();
+
+
+template<>
+sdp_MemType sdp_mem_lift_type<char>()
 {
     return SDP_MEM_CHAR;
 }
-template<> sdp_MemType sdp_mem_lift_type<int32_t>()
+
+
+template<>
+sdp_MemType sdp_mem_lift_type<int32_t>()
 {
     return SDP_MEM_INT;
 }
-template<> sdp_MemType sdp_mem_lift_type<float>()
+
+
+template<>
+sdp_MemType sdp_mem_lift_type<float>()
 {
     return SDP_MEM_FLOAT;
 }
-template<> sdp_MemType sdp_mem_lift_type<double>()
+
+
+template<>
+sdp_MemType sdp_mem_lift_type<double>()
 {
     return SDP_MEM_DOUBLE;
 }
-template<> sdp_MemType sdp_mem_lift_type<std::complex<float> >()
+
+
+template<>
+sdp_MemType sdp_mem_lift_type<std::complex<float> >()
 {
     return SDP_MEM_COMPLEX_FLOAT;
 }
-template<> sdp_MemType sdp_mem_lift_type<std::complex<double> >()
+
+
+template<>
+sdp_MemType sdp_mem_lift_type<std::complex<double> >()
 {
     return SDP_MEM_COMPLEX_DOUBLE;
 }
+
 
 /**
  * @defgroup Mem_view
  * @{
  */
+
 
 /**
  * @brief Attempts to generate view of memory object
@@ -202,31 +244,40 @@ template<> sdp_MemType sdp_mem_lift_type<std::complex<double> >()
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-template <typename num_t, int32_t num_dims, sdp_MemLocation loc>
+template<typename num_t, int32_t num_dims, sdp_MemLocation loc>
 void sdp_mem_check_and_view_at(
-    sdp_Mem *mem,
-    sdp_MemView<num_t, num_dims, loc> *view,
-    sdp_Error *status, const char *func, const char *expr, const char *file, int line)
+        sdp_Mem* mem,
+        sdp_MemView<num_t, num_dims, loc>* view,
+        sdp_Error* status,
+        const char* func,
+        const char* expr,
+        const char* file,
+        int line
+)
 {
-
     // Do type & shape check
     sdp_mem_check_type_at(mem, sdp_mem_lift_type<num_t>(), status,
-                          func, expr, file, line);
+            func, expr, file, line
+    );
     sdp_mem_check_num_dims_at(mem, num_dims, status,
-                              func, expr, file, line);
+            func, expr, file, line
+    );
     sdp_mem_check_location_at(mem, loc, status,
-                              func, expr, file, line);
+            func, expr, file, line
+    );
     sdp_mem_check_writeable_at(mem, status, func, expr, file, line);
     if (*status) return;
 
     // Set pointer, shape & strides
-    view->ptr = static_cast<num_t *>(sdp_mem_data(mem));
+    view->ptr = static_cast<num_t*>(sdp_mem_data(mem));
     int32_t dim;
-    for (dim = 0; dim < num_dims; dim++) {
+    for (dim = 0; dim < num_dims; dim++)
+    {
         view->shape[dim] = sdp_mem_shape_dim(mem, dim);
         view->stride[dim] = sdp_mem_stride_elements_dim(mem, dim);
     }
 }
+
 
 /**
  * @brief Attempts to generate constant view of memory object
@@ -248,26 +299,34 @@ void sdp_mem_check_and_view_at(
  * @param file File name to report in error message
  * @param line Line to report in error message
  */
-template <typename num_t, int32_t num_dims, sdp_MemLocation loc>
+template<typename num_t, int32_t num_dims, sdp_MemLocation loc>
 void sdp_mem_check_and_view_at(
-    sdp_Mem *mem,
-    sdp_MemView<const num_t, num_dims, loc> *view,
-    sdp_Error *status, const char *func, const char *expr, const char *file, int line)
+        sdp_Mem* mem,
+        sdp_MemView<const num_t, num_dims, loc>* view,
+        sdp_Error* status,
+        const char* func,
+        const char* expr,
+        const char* file,
+        int line
+)
 {
-
     // Do type & shape check
     sdp_mem_check_type_at(mem, sdp_mem_lift_type<num_t>(), status,
-                          func, expr, file, line);
+            func, expr, file, line
+    );
     sdp_mem_check_num_dims_at(mem, num_dims, status,
-                              func, expr, file, line);
+            func, expr, file, line
+    );
     sdp_mem_check_location_at(mem, loc, status,
-                              func, expr, file, line);
+            func, expr, file, line
+    );
     if (*status) return;
 
     // Set pointer, shape & strides
-    view->ptr = static_cast<const num_t *>(sdp_mem_data_const(mem));
+    view->ptr = static_cast<const num_t*>(sdp_mem_data_const(mem));
     int32_t dim;
-    for (dim = 0; dim < num_dims; dim++) {
+    for (dim = 0; dim < num_dims; dim++)
+    {
         view->shape[dim] = sdp_mem_shape_dim(mem, dim);
         view->stride[dim] = sdp_mem_stride_elements_dim(mem, dim);
     }
@@ -288,8 +347,15 @@ void sdp_mem_check_and_view_at(
  * @param view Handle to memory block to view
  * @param status Output error status.
  */
-#define sdp_mem_check_and_view(mem, view, status)                       \
-    sdp_mem_check_and_view_at(mem, view, status, __func__, #mem, __FILE__, __LINE__)
+#define sdp_mem_check_and_view(mem, view, status) \
+    sdp_mem_check_and_view_at(mem, \
+        view, \
+        status, \
+        __func__, \
+        #mem, \
+        __FILE__, \
+        __LINE__ \
+    )
 
 /** @} */ /* End group Mem_view. */
 
