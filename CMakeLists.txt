@@ -105,8 +105,10 @@ if (OpenMP_CXX_FOUND)
     target_link_libraries(${PROJECT_NAME} OpenMP::OpenMP_CXX)
 endif()
 
-# Build tests.
-add_subdirectory(tests)
+# Build tests if this project is not a sub-project.
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    add_subdirectory(tests)
+endif()
 
 install(TARGETS "${PROJECT_NAME}"
     EXPORT ska_sdp_funcTargets
