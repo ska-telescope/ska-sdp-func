@@ -308,7 +308,6 @@ def reference_uniform_weights(
     num_pol,
     num_times,
 ):
-
     grid_size = weights_grid_uv.shape[0]
     c_0 = 299792458.0
 
