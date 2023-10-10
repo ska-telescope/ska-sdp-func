@@ -82,6 +82,8 @@ void filler(AA* arr, VL val, int length){
     }
 }
 
+
+/*
 double golden_ratio(double* arr, double param, int n){
       double where = 0;
       double ratio, res, gr;
@@ -98,6 +100,34 @@ double golden_ratio(double* arr, double param, int n){
       }     
       return where;
 } 
+*/
+
+
+
+double golden_ratio(double* arr, double param, int n){
+      int mid = int(round(0.5 * n));
+      double  where = 0;
+      double mad = 0;
+      double median = arr[mid];
+      double *abs_diff = new double[n];
+      for (int i = 0; i < n; i++){
+          abs_diff[i] = abs(arr[i] - median);
+      }
+      qsort(abs_diff, n, sizeof(double), compare);
+      mad = abs_diff[mid];
+      for (int i = mid; i < n; i++){
+          if (0.6745 *((arr[i] - median)/mad) > param){
+             where = double(i)/double(n);
+             break;
+          }
+      }
+
+delete abs_diff;
+cout << where << endl;
+return where;
+} 
+
+
 
 
 template<typename FP>
