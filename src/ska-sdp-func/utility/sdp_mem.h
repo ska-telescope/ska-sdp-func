@@ -741,6 +741,57 @@ void sdp_mem_check_shape_at(
         __LINE__ \
     )
 
+
+/**
+ * @brief Checks that an array has the expected shape for
+ * a certain dimension.
+ *
+ * Use the ::sdp_mem_check_shape_dim macro to automatically
+ * fill @p expr, @p func, @p file and @p line by call location.
+ * @p status will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check.
+ * @param expected_num_dims Expected number of dimensions.
+ * @param expected_shape Expected size of each dimension.
+ * @param status Output error status.
+ * @param expr Expression string to report in error message.
+ * @param func Function to report in error message.
+ * @param file File name to report in error message.
+ * @param line Line to report in error message.
+ */
+void sdp_mem_check_shape_dim_at(
+        const sdp_Mem* mem,
+        int32_t dim,
+        const int64_t expected_shape,
+        sdp_Error* status,
+        const char* expr,
+        const char* func,
+        const char* file,
+        int line
+);
+
+/**
+ * @brief Checks that an array has the expected shape for
+ * a certain dimension.
+ *
+ * @p status will be set if the check fails.
+ *
+ * @param mem Handle to memory block to check.
+ * @param expected_num_dims Expected number of dimensions.
+ * @param expected_shape Expected size of each dimension.
+ * @param status Output error status.
+ */
+#define sdp_mem_check_shape_dim(mem, expected_num_dims, expected_shape, status) \
+    sdp_mem_check_shape_dim_at(mem, \
+        expected_num_dims, \
+        expected_shape, \
+        status, \
+        #mem, \
+        __func__, \
+        FILENAME, \
+        __LINE__ \
+    )
+
 /**
  * @brief Checks that dimensions of two given memory objects have the
  * same size

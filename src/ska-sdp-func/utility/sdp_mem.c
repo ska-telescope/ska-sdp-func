@@ -727,24 +727,56 @@ void sdp_mem_check_shape_at(
     }
     for (int32_t dim = 0; dim < expected_num_dims; dim++)
     {
-        if (sdp_mem_shape_dim(mem, dim) != expected_shape[dim])
-        {
-            sdp_log_message(
-                    SDP_LOG_LEVEL_ERROR,
-                    stderr,
-                    func,
-                    file,
-                    line,
-                    "%s: Expected '%s' dimension %d to have size %d (found %d)!",
-                    func,
-                    expr,
-                    dim,
-                    expected_shape[dim],
-                    sdp_mem_shape_dim(mem, dim)
-            );
-            *status = SDP_ERR_INVALID_ARGUMENT;
-            break;
-        }
+        sdp_mem_check_shape_dim_at(mem, dim, expected_shape[dim], status, expr, func, file, line);
+    }
+}
+
+void sdp_mem_check_shape_dim_at(
+        const sdp_Mem* mem,
+        int32_t dim,
+        const int64_t expected_shape,
+        sdp_Error* status,
+        const char* expr,
+        const char* func,
+        const char* file,
+        int line
+)
+{
+    if (*status) return;
+    if (sdp_mem_num_dims(mem) <= dim)
+    {
+        sdp_log_message(
+                SDP_LOG_LEVEL_ERROR,
+                stderr,
+                func,
+                file,
+                line,
+                "%s: Expected '%s' to have at least %d dimension%s (found %d)!",
+                func,
+                expr,
+                dim + 1,
+                (dim == 0 ? "" : "s"),
+                sdp_mem_num_dims(mem)
+        );
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (sdp_mem_shape_dim(mem, dim) != expected_shape)
+    {
+        sdp_log_message(
+                SDP_LOG_LEVEL_ERROR,
+                stderr,
+                func,
+                file,
+                line,
+                "%s: Expected '%s' dimension %d to have size %d (found %d)!",
+                func,
+                expr,
+                dim,
+                expected_shape,
+                sdp_mem_shape_dim(mem, dim)
+        );
+        *status = SDP_ERR_INVALID_ARGUMENT;
     }
 }
 

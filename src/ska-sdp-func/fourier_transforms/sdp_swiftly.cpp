@@ -189,7 +189,7 @@ void sdp_swiftly_prepare_facet(
     sdp_mem_check_and_view(facet, &fct, status);
     sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(prep_facet_out, &out, status);
-    sdp_mem_check_shape(prep_facet_out, 1, yN_size, status);
+    sdp_mem_check_shape_dim(prep_facet_out, 1, yN_size, status);
     sdp_mem_check_same_shape(facet, 0, prep_facet_out, 0, status);
     sdp_MemViewCpu<double, 1> Fb;
     sdp_mem_check_and_view(swiftly->Fb, &Fb, status);
@@ -278,10 +278,10 @@ void sdp_swiftly_extract_from_facet(
     const int64_t xM_yN_size = (swiftly->xM_size * yN_size) / image_size;
     sdp_MemViewCpu<const std::complex<double>, 2> fct;
     sdp_mem_check_and_view(prep_facet, &fct, status);
-    sdp_mem_check_shape(prep_facet, 1, yN_size, status);
+    sdp_mem_check_shape_dim(prep_facet, 1, yN_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(contribution_out, &out, status);
-    sdp_mem_check_shape(contribution_out, 1, xM_yN_size, status);
+    sdp_mem_check_shape_dim(contribution_out, 1, xM_yN_size, status);
     sdp_mem_check_same_shape(prep_facet, 0, contribution_out, 0, status);
     if (*status) return;
 
@@ -354,10 +354,10 @@ void sdp_swiftly_add_to_subgrid(
     const int64_t xM_yN_size = (xM_size * swiftly->yN_size) / image_size;
     sdp_MemViewCpu<const std::complex<double>, 2> contrib;
     sdp_mem_check_and_view(contribution, &contrib, status);
-    sdp_mem_check_shape(contribution, 1, xM_yN_size, status);
+    sdp_mem_check_shape_dim(contribution, 1, xM_yN_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(subgrid_image_inout, &out, status);
-    sdp_mem_check_shape(subgrid_image_inout, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_image_inout, 1, xM_size, status);
     sdp_mem_check_same_shape(contribution, 0, subgrid_image_inout, 0, status);
     sdp_MemViewCpu<double, 1> Fn;
     sdp_mem_check_and_view(swiftly->Fn, &Fn, status);
@@ -408,10 +408,10 @@ void sdp_swiftly_add_to_subgrid_2d(
     const int64_t xM_yN_size = (xM_size * swiftly->yN_size) / image_size;
     sdp_MemViewCpu<const std::complex<double>, 2> contrib;
     sdp_mem_check_and_view(contribution, &contrib, status);
-    sdp_mem_check_shape(contribution, 1, xM_yN_size, status);
+    sdp_mem_check_shape_dim(contribution, 1, xM_yN_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> out;
     sdp_mem_check_and_view(subgrid_image_inout, &out, status);
-    sdp_mem_check_shape(subgrid_image_inout, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_image_inout, 1, xM_size, status);
     sdp_MemViewCpu<double, 1> Fn;
     sdp_mem_check_and_view(swiftly->Fn, &Fn, status);
     if (*status) return;
@@ -484,7 +484,7 @@ void sdp_swiftly_finish_subgrid_inplace(
     const int64_t xM_size = swiftly->xM_size;
     sdp_MemViewCpu<std::complex<double>, 2> sg;
     sdp_mem_check_and_view(subgrid_inout, &sg, status);
-    sdp_mem_check_shape(subgrid_inout, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_inout, 1, xM_size, status);
     if (*status) return;
     const int64_t bc0_size = sg.shape[0];
 
@@ -548,7 +548,7 @@ void sdp_swiftly_finish_subgrid(
     const int64_t xM_size = swiftly->xM_size;
     sdp_MemViewCpu<const std::complex<double>, 2> sg_img;
     sdp_mem_check_and_view(subgrid_image, &sg_img, status);
-    sdp_mem_check_shape(subgrid_image, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_image, 1, xM_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> sg;
     sdp_mem_check_and_view(subgrid_out, &sg, status);
     if (sdp_mem_num_dims(subgrid_out) > 1 &&
@@ -628,8 +628,8 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
     const int64_t xM_size = swiftly->xM_size;
     sdp_MemViewCpu<std::complex<double>, 2> sg;
     sdp_mem_check_and_view(subgrid_inout, &sg, status);
-    sdp_mem_check_shape(subgrid_inout, 0, xM_size, status);
-    sdp_mem_check_shape(subgrid_inout, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_inout, 0, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_inout, 1, xM_size, status);
     if (*status) return;
 
     // Perform FFT shift on input
@@ -719,7 +719,7 @@ void sdp_swiftly_prepare_subgrid_inplace(
     const int64_t xM_size = swiftly->xM_size;
     sdp_MemViewCpu<std::complex<double>, 2> sg;
     sdp_mem_check_and_view(subgrid_inout, &sg, status);
-    sdp_mem_check_shape(subgrid_inout, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_inout, 1, xM_size, status);
     if (*status) return;
     const int64_t bc0_size = sg.shape[0];
 
@@ -775,8 +775,8 @@ void sdp_swiftly_prepare_subgrid_inplace_2d(
     const int64_t xM_size = swiftly->xM_size;
     sdp_MemViewCpu<std::complex<double>, 2> sg;
     sdp_mem_check_and_view(subgrid_inout, &sg, status);
-    sdp_mem_check_shape(subgrid_inout, 0, xM_size, status);
-    sdp_mem_check_shape(subgrid_inout, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_inout, 0, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_inout, 1, xM_size, status);
     if (*status) return;
 
     // Perform FFT
@@ -847,10 +847,10 @@ void sdp_swiftly_extract_from_subgrid(
     const int64_t xM_yN_size = (xM_size * swiftly->yN_size) / image_size;
     sdp_MemViewCpu<const std::complex<double>, 2> sg_img;
     sdp_mem_check_and_view(subgrid_image, &sg_img, status);
-    sdp_mem_check_shape(subgrid_image, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_image, 1, xM_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> contrib;
     sdp_mem_check_and_view(contribution_out, &contrib, status);
-    sdp_mem_check_shape(contribution_out, 1, xM_yN_size, status);
+    sdp_mem_check_shape_dim(contribution_out, 1, xM_yN_size, status);
     sdp_mem_check_same_shape(subgrid_image, 0, contribution_out, 0, status);
     sdp_MemViewCpu<double, 1> Fn;
     sdp_mem_check_and_view(swiftly->Fn, &Fn, status);
@@ -916,10 +916,10 @@ void sdp_swiftly_extract_from_subgrid_2d(
     const int64_t xM_yN_size = (xM_size * swiftly->yN_size) / image_size;
     sdp_MemViewCpu<const std::complex<double>, 2> sg_img;
     sdp_mem_check_and_view(subgrid_image, &sg_img, status);
-    sdp_mem_check_shape(subgrid_image, 1, xM_size, status);
+    sdp_mem_check_shape_dim(subgrid_image, 1, xM_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> contrib;
     sdp_mem_check_and_view(contribution_out, &contrib, status);
-    sdp_mem_check_shape(contribution_out, 1, xM_yN_size, status);
+    sdp_mem_check_shape_dim(contribution_out, 1, xM_yN_size, status);
     sdp_MemViewCpu<double, 1> Fn;
     sdp_mem_check_and_view(swiftly->Fn, &Fn, status);
     if (*status) return;
@@ -1014,10 +1014,10 @@ void sdp_swiftly_add_to_facet(
     const int64_t xM_yN_size = (swiftly->xM_size * yN_size) / image_size;
     sdp_MemViewCpu<const std::complex<double>, 2> contrib;
     sdp_mem_check_and_view(contribution, &contrib, status);
-    sdp_mem_check_shape(contribution, 1, xM_yN_size, status);
+    sdp_mem_check_shape_dim(contribution, 1, xM_yN_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> fct;
     sdp_mem_check_and_view(prep_facet_inout, &fct, status);
-    sdp_mem_check_shape(prep_facet_inout, 1, yN_size, status);
+    sdp_mem_check_shape_dim(prep_facet_inout, 1, yN_size, status);
     sdp_mem_check_same_shape(contribution, 0, prep_facet_inout, 0, status);
     if (*status) return;
 
@@ -1082,7 +1082,7 @@ void sdp_swiftly_finish_facet(
     }
     sdp_MemViewCpu<std::complex<double>, 2> pfct;
     sdp_mem_check_and_view(prep_facet_inout, &pfct, status);
-    sdp_mem_check_shape(prep_facet_inout, 1, yN_size, status);
+    sdp_mem_check_shape_dim(prep_facet_inout, 1, yN_size, status);
     sdp_MemViewCpu<std::complex<double>, 2> fct;
     sdp_mem_check_and_view(facet_out, &fct, status);
     sdp_mem_check_same_shape(facet_out, 0, prep_facet_inout, 0, status);
