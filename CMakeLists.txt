@@ -106,7 +106,9 @@ if (OpenMP_CXX_FOUND)
 endif()
 
 # Build tests.
-add_subdirectory(tests)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(tests)
+endif()
 
 install(TARGETS "${PROJECT_NAME}"
     EXPORT ska_sdp_funcTargets
