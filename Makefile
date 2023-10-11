@@ -3,7 +3,6 @@
 -include .make/base.mk
 -include .make/conan.mk
 -include .make/python.mk
--include .make/release.mk
 
 # include your own private variables for custom deployment configuration
 -include PrivateRules.mak
