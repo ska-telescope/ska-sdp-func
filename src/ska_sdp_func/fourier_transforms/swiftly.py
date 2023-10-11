@@ -5,6 +5,7 @@
 import ctypes
 import functools
 import inspect
+import warnings
 
 import numpy
 
@@ -62,10 +63,20 @@ def auto_wrap_method(c_fn_name, add_handle=True, add_error_status=True):
 
         # Make actual implementation
         # pylint: disable=unsubscriptable-object
-        function = Lib.handle()[c_fn_name]
+        try:
+            function = Lib.handle()[c_fn_name]
+            error = None
+        except AttributeError as exc:
+            warnings.warn(f"Could not load function {c_fn_name}: {exc}")
+            function = None
+            error = exc
 
         @functools.wraps(orig_fn)
         def wrapped_fn(self, *args, **kwargs):
+            # Delayed raising of exception
+            if function is None:
+                raise error
+
             # Construct function handle. We can only meaningfully do
             # this on the first call, as we cannot easily get to
             # handle_type() otherwise.
