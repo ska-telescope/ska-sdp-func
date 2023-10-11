@@ -531,11 +531,8 @@ void sdp_swiftly_finish_subgrid_inplace(
     {
         for (int64_t i = 0; i < xM_size; i++)
         {
-            sg(i0,
-                    i
-            ) =
-                    tmp[i0 * xM_size +
-                            mod_p(i + subgrid_offset + xM_size / 2, xM_size)];
+            int64_t j = mod_p(i + subgrid_offset + xM_size / 2, xM_size);
+            sg(i0, i) = tmp[i0 * xM_size + j];
         }
     }
 }
