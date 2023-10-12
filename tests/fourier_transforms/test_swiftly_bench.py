@@ -4,15 +4,12 @@ Benchmarks for swiftly.py functions.
 Adapted from ska-sdp-distributed-fourier-transform
 """
 
-import itertools
-
 import numpy
 import pytest
 from helpers import (
     extract_mid,
     make_facet_from_sources,
     make_subgrid_from_sources,
-    pad_mid,
 )
 
 from ska_sdp_func.fourier_transforms.swiftly import Swiftly

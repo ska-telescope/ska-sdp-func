@@ -76,6 +76,21 @@ def extract_mid(a, n, axis):
     return a[create_slice(slice(None), slc, len(a.shape), axis)]
 
 
+def broadcast(a, dims, axis):
+    """
+    Stretch input array to shape determined by the dims and axis values.
+    See tests for examples of how the shape of the input array will change
+    depending on what dims-axis combination is given
+
+    :param a: input numpy ndarray
+    :param dims: dimensions to broadcast ("stretch") input array to; int
+    :param axis: axis along which the new dimension(s) should be added; int
+
+    :return: array with new shape
+    """
+    return a[create_slice(numpy.newaxis, slice(None), dims, axis)]
+
+
 def make_facet_from_sources(
     sources: list[tuple[float, int]],
     image_size: int,
