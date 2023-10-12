@@ -81,7 +81,6 @@ def auto_wrap_method(c_fn_name, add_handle=True, add_error_status=True):
             # this on the first call, as we cannot easily get to
             # handle_type() otherwise.
             if function.argtypes is None:
-                print("Set argtypes")
                 if add_handle:
                     function.argtypes = [self.handle_type()] + argtypes
                 else:
