@@ -508,8 +508,13 @@ void sdp_swiftly_finish_subgrid_inplace(
     }
 
     // Perform FFT to temporary memory
-    std::complex<double>* tmp = static_cast<std::complex<double>*>(
-        alloca(bc0_size * xM_size * sizeof(std::complex<double>)));
+    sdp_Mem* tmp_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
+            2, sg.shape, status
+    );
+    if (*status) return;
+    sdp_MemViewCpu<std::complex<double>, 2> tmp;
+    sdp_mem_check_and_view(tmp_mem, &tmp, status);
+    assert(!*status);
     const pocketfft::shape_t shape = {
         static_cast<size_t>(bc0_size),
         static_cast<size_t>(xM_size)
@@ -523,7 +528,7 @@ void sdp_swiftly_finish_subgrid_inplace(
         xM_size* cpx_size, cpx_size
     };
     pocketfft::c2c(shape, stride, stride2, { 1 }, pocketfft::BACKWARD,
-            sg.ptr, tmp, 1. / xM_size
+            sg.ptr, tmp.ptr, 1. / xM_size
     );
 
     // Move back, applying the subgrid offset
@@ -532,9 +537,11 @@ void sdp_swiftly_finish_subgrid_inplace(
         for (int64_t i = 0; i < xM_size; i++)
         {
             int64_t j = mod_p(i + subgrid_offset + xM_size / 2, xM_size);
-            sg(i0, i) = tmp[i0 * xM_size + j];
+            sg(i0, i) = tmp(i0, j);
         }
     }
+
+    sdp_mem_free(tmp_mem);
 }
 
 
@@ -671,8 +678,13 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
     }
 
     // Perform FFT to temporary memory
-    std::complex<double>* tmp = static_cast<std::complex<double>*>(
-        alloca(xM_size * xM_size * sizeof(std::complex<double>)));
+    sdp_Mem* tmp_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU,
+            2, sg.shape, status
+    );
+    if (*status) return;
+    sdp_MemViewCpu<std::complex<double>, 2> tmp;
+    sdp_mem_check_and_view(tmp_mem, &tmp, status);
+    assert(!*status);
     const pocketfft::shape_t shape = {
         static_cast<size_t>(xM_size),
         static_cast<size_t>(xM_size)
@@ -686,25 +698,26 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
         xM_size* cpx_size, cpx_size
     };
     pocketfft::c2c(shape, stride, stride, { 0, 1 }, pocketfft::BACKWARD,
-            sg.ptr, tmp, 1. / xM_size / xM_size
+            sg.ptr, tmp.ptr, 1. / xM_size / xM_size
     );
 
     // Add subgrid offset on output
     int64_t off = mod_p(subgrid_offset1 + xM_size / 2, xM_size);
     for (int64_t i0 = 0; i0 < xM_size; i0++)
     {
-        int64_t _i0 =
-                mod_p(i0 + subgrid_offset0 + xM_size / 2, xM_size) * xM_size;
+        int64_t _i0 = mod_p(i0 + subgrid_offset0 + xM_size / 2, xM_size);
         int64_t i1 = 0;
         for (; i1 < xM_size - off; i1++)
         {
-            sg(i0, i1) = tmp[_i0 + i1 + off];
+            sg(i0, i1) = tmp(_i0, i1 + off);
         }
         for (; i1 < xM_size; i1++)
         {
-            sg(i0, i1) = tmp[_i0 + i1 + off - xM_size];
+            sg(i0, i1) = tmp(_i0, i1 + off - xM_size);
         }
     }
+
+    sdp_mem_free(tmp_mem);
 }
 
 
