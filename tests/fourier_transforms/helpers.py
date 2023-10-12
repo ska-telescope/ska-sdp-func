@@ -2,6 +2,10 @@
 Helper routines, stolen from ska-sdp-distributed-fourier-transform
 """
 
+from __future__ import annotations
+
+from typing import List, Tuple
+
 import numpy
 
 
@@ -92,11 +96,11 @@ def broadcast(a, dims, axis):
 
 
 def make_facet_from_sources(
-    sources: list[tuple[float, int]],
+    sources: List[Tuple[float, int]],
     image_size: int,
     facet_size: int,
-    facet_offsets: list[int],
-    facet_masks: list[numpy.ndarray] = None,
+    facet_offsets: List[int],
+    facet_masks: List[numpy.ndarray] = None,
 ):
     """
     Generates a facet from a source list
@@ -140,11 +144,11 @@ def make_facet_from_sources(
 
 
 def make_subgrid_from_sources(
-    sources: list[tuple[float, int]],
+    sources: List[tuple[float, int]],
     image_size: int,
     subgrid_size: int,
-    subgrid_offsets: list[int],
-    subgrid_masks: list[numpy.ndarray] = None,
+    subgrid_offsets: List[int],
+    subgrid_masks: List[numpy.ndarray] = None,
 ):
     """
     Generates a subgrid from a source list
