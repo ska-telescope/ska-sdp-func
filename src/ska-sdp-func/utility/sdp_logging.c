@@ -64,12 +64,16 @@ void sdp_log_message(
     const time_t unix_time = time(0);
     struct tm* timeinfo = gmtime(&unix_time);
     gettimeofday(&tv, 0);
-    snprintf(time_str, sizeof(time_str),
+    if (snprintf(time_str, sizeof(time_str),
             "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
             timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
             timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec,
             (int)(tv.tv_usec) / 1000
-    );
+            ) >= (int) sizeof(time_str))
+    {
+        (void) fprintf(stream, "Failed to generate time stamp!");
+        return;
+    }
 
     // Convert level to string.
     const char* level_str = 0;
@@ -101,10 +105,10 @@ void sdp_log_message(
     // Print message to stream using SKA log formatting.
     va_list args;
     va_start(args, message);
-    fprintf(stream, "1|%s|%s||%s|%s#%i|| ",
+    (void) fprintf(stream, "1|%s|%s||%s|%s#%i|| ",
             time_str, level_str, func, file, line
     );
-    vfprintf(stream, message, args);
-    fprintf(stream, "\n");
+    (void) vfprintf(stream, message, args);
+    (void) fprintf(stream, "\n");
     va_end(args);
 }

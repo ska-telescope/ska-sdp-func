@@ -75,7 +75,6 @@ def reference_degrid_uvw_custom(
     channel_step_hz,
     conjugate,
 ):
-
     """Generate reference data for degridding comparison."""
     vis = numpy.zeros(
         [num_times, num_baselines, num_channels, num_pols],
@@ -115,7 +114,6 @@ def reference_degrid_uvw_custom(
                     and grid_coord_y > half_uv_kernel_size
                     and grid_coord_y < y_size - half_uv_kernel_size
                 ):
-
                     continue
 
                 for i_pol in range(num_pols):

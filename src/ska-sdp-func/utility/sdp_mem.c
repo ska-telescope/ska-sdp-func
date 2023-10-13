@@ -727,7 +727,90 @@ void sdp_mem_check_shape_at(
     }
     for (int32_t dim = 0; dim < expected_num_dims; dim++)
     {
-        if (sdp_mem_shape_dim(mem, dim) != expected_shape[dim])
+        sdp_mem_check_shape_dim_at(mem,
+                dim,
+                expected_shape[dim],
+                status,
+                expr,
+                func,
+                file,
+                line
+        );
+    }
+}
+
+
+void sdp_mem_check_shape_dim_at(
+        const sdp_Mem* mem,
+        int32_t dim,
+        const int64_t expected_shape,
+        sdp_Error* status,
+        const char* expr,
+        const char* func,
+        const char* file,
+        int line
+)
+{
+    if (*status) return;
+    if (sdp_mem_num_dims(mem) <= dim)
+    {
+        sdp_log_message(
+                SDP_LOG_LEVEL_ERROR,
+                stderr,
+                func,
+                file,
+                line,
+                "%s: Expected '%s' to have at least %d dimension%s (found %d)!",
+                func,
+                expr,
+                dim + 1,
+                (dim == 0 ? "" : "s"),
+                sdp_mem_num_dims(mem)
+        );
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (sdp_mem_shape_dim(mem, dim) != expected_shape)
+    {
+        sdp_log_message(
+                SDP_LOG_LEVEL_ERROR,
+                stderr,
+                func,
+                file,
+                line,
+                "%s: Expected '%s' dimension %d to have size %d (found %d)!",
+                func,
+                expr,
+                dim,
+                expected_shape,
+                sdp_mem_shape_dim(mem, dim)
+        );
+        *status = SDP_ERR_INVALID_ARGUMENT;
+    }
+}
+
+
+void sdp_mem_check_same_shape_at(
+        sdp_Mem* mem,
+        int32_t dim,
+        sdp_Mem* mem2,
+        int32_t dim2,
+        sdp_Error* status,
+        const char* func,
+        const char* expr,
+        const char* expr2,
+        const char* file,
+        int line
+)
+{
+    // Skip the check if the memory object has fewer dimension - we
+    // assume there will be an sdp_mem_check_num_dims that will
+    // already have objected to the wrong dimensionality.
+    if (dim < sdp_mem_num_dims(mem) && dim2 < sdp_mem_num_dims(mem2) &&
+            sdp_mem_shape_dim(mem, dim) != sdp_mem_shape_dim(mem2, dim2))
+    {
+        // Same memory object? Reflect in error message
+        if (mem == mem2)
         {
             sdp_log_message(
                     SDP_LOG_LEVEL_ERROR,
@@ -735,16 +818,27 @@ void sdp_mem_check_shape_at(
                     func,
                     file,
                     line,
-                    "%s: Expected '%s' dimension %d to have size %d (found %d)!",
+                    "%s: '%s' dimensions %d and %d do not have same size (%d != %d)!",
                     func,
                     expr,
                     dim,
-                    expected_shape[dim],
-                    sdp_mem_shape_dim(mem, dim)
+                    dim2,
+                    sdp_mem_shape_dim(mem, dim),
+                    sdp_mem_shape_dim(mem2, dim2)
             );
-            *status = SDP_ERR_INVALID_ARGUMENT;
-            break;
         }
+        else
+        {
+            sdp_log_message(
+                    SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+                    "%s: '%s' dimension %d and '%s' dimension %d do not"
+                    " have the same size (%d != %d)!",
+                    func, expr, dim, expr2, dim2,
+                    sdp_mem_shape_dim(mem, dim),
+                    sdp_mem_shape_dim(mem2, dim2)
+            );
+        }
+        *status = SDP_ERR_INVALID_ARGUMENT;
     }
 }
 
