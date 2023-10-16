@@ -8,6 +8,11 @@ endmacro()
 set(BUILD_SHARED_LIBS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# PocketFFT requires C++11.
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 if (NOT WIN32)
     if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang.*")
         append_flags(CMAKE_CXX_FLAGS -stdlib=libc++)
