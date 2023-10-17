@@ -186,7 +186,7 @@ __global__ void sdp_cuda_nifty_grid_3d
     );
 
     // Cache the kernel in v and w directions.
-    VFP kernel_v[KERNEL_SUPPORT_BOUND];
+    VFP kernel_vw[KERNEL_SUPPORT_BOUND];
     for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
     {
         kernel_vw[grid_v - grid_v_min] = kernel_w * exp_semicircle(beta,
@@ -281,7 +281,7 @@ __global__ void sdp_cuda_nifty_degrid_3d
     );
 
     // Cache the kernel in v and w directions.
-    VFP kernel_v[KERNEL_SUPPORT_BOUND];
+    VFP kernel_vw[KERNEL_SUPPORT_BOUND];
     for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
     {
         kernel_vw[grid_v - grid_v_min] = kernel_w * exp_semicircle(beta,
