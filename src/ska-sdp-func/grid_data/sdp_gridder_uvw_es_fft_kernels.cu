@@ -124,57 +124,38 @@ __device__ FP2 phase_shift(const FP w, const FP l, const FP m, const FP signage)
 
 
 template<typename VFP, typename VFP2, typename FP, typename FP2, typename FP3>
-__global__ void sdp_cuda_nifty_gridder_gridding_3d
+__global__ void sdp_cuda_nifty_grid_3d
 (
         const int num_vis_rows,
         const int num_vis_chan,
-
-        VFP2* __restrict__ visibilities, // INPUT(gridding) OR OUTPUT(degridding): complex visibilities
-        const VFP* const __restrict__ vis_weights, // INPUT: weight for each visibility
-        const FP3* const __restrict__ uvw_coords, // INPUT: (u, v, w) coordinates for each visibility
-        const FP* const __restrict__ freq_hz, // INPUT: array of frequencies per channel
-        VFP2* __restrict__ w_grid_stack, // OUTPUT: flat array containing 2D computed w grids, presumed initially clear
-
+        const VFP2* const __restrict__ visibilities, // Input visibilities
+        const VFP* const __restrict__ vis_weights, // Input visibility weights
+        const FP3* const __restrict__ uvw_coords, // (u, v, w) coordinates
+        const FP* const __restrict__ freq_hz, // Frequency per channel
+        VFP2* __restrict__ w_grid_stack, // Output grid
         const int grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
-        const int grid_start_w, // signed index of first w grid in current subset stack
-        const uint32_t num_w_grids_subset, // number of w grids bound in current subset stack
-
+        const int grid_start_w, // Index of w grid
         const uint32_t support, // full support for gridding kernel
-        const VFP beta, // beta constant used in exponential of semicircle kernel
-        const FP uv_scale, // scaling factor for conversion of uv coords to grid coordinates (grid_size * cell_size)
-        const FP w_scale, // scaling factor for converting w coord to signed w grid index
-        const FP min_plane_w, // w coordinate of smallest w plane
-        const bool solving // flag to enable degridding operations instead of gridding
+        const VFP beta, // beta value used in exponential of semicircle kernel
+        const FP uv_scale, // factor to convert uv coords to grid coordinates (grid_size * cell_size)
+        const FP w_scale, // factor to convert w coord to signed w grid index
+        const FP min_plane_w // w coordinate of w plane
 )
 {
     const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
     const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
     const int i_vis = i_chan + num_vis_chan * i_row;
-
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
         return;
 
-    // Determine whether to flip visibility coordinates, so w is usually positive
-    const FP flip = (uvw_coords[i_row].z < 0.0) ? -1.0 : 1.0;
-    const FP inv_wavelength = flip * freq_hz[i_chan] / (FP)299792458.0;
-
-    // Get the weighted visibility.
-    VFP2 vis_weighted;
-    if (solving)
-    {
-        vis_weighted.x = visibilities[i_vis].x * vis_weights[i_vis];
-        vis_weighted.y = visibilities[i_vis].y * vis_weights[i_vis];
-        vis_weighted.y *= flip; // complex conjugate for negative w coords
-    }
-    else
-    {
-        vis_weighted.x = vis_weighted.y = (VFP)0.0;
-    }
-
     // Calculate bounds of where gridding kernel will be applied for this visibility
+    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
     const FP half_support = FP(support) / FP(2.0); // NOTE confirm everyone's understanding of what support means eg when even/odd
+    const FP inv_half_support = (VFP)1.0 / (VFP)half_support;
     const int grid_min_uv = -grid_size / 2; // minimum coordinate on grid along u or v axes
     const int grid_max_uv = (grid_size - 1) / 2; // maximum coordinate on grid along u or v axes
+    const FP flip = (uvw_coords[i_row].z < 0.0) ? -1.0 : 1.0;
+    const FP inv_wavelength = flip * freq_hz[i_chan] / (FP)299792458.0;
     const FP pos_u = uvw_coords[i_row].x * inv_wavelength * uv_scale;
     const FP pos_v = uvw_coords[i_row].y * inv_wavelength * uv_scale;
     const FP pos_w = (uvw_coords[i_row].z * inv_wavelength - min_plane_w) *
@@ -184,241 +165,304 @@ __global__ void sdp_cuda_nifty_gridder_gridding_3d
     const int grid_v_min = max((int)ceil(pos_v - half_support), grid_min_uv);
     const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv);
     const int grid_w_min = max((int)ceil(pos_w - half_support), grid_start_w);
-    const int grid_w_max = min((int)floor(pos_w + half_support),
-            grid_start_w + num_w_grids_subset - 1
-    );
+    const int grid_w_max = min((int)floor(pos_w + half_support), grid_start_w);
     if (grid_w_min > grid_w_max ||
             grid_u_min > grid_u_max ||
             grid_v_min > grid_v_max)
     {
-        // this visibility has no overlap with the current subset stack
+        // This visibility does not intersect the current grid.
         return;
     }
 
-    // Calculate kernel values along u and v directions for this uvw
-    VFP inv_half_support = (VFP)1.0 / (VFP)half_support;
-    // bound above the maximum possible support when precalculating kernel values
-    VFP kernel_u[KERNEL_SUPPORT_BOUND], kernel_v[KERNEL_SUPPORT_BOUND];
-    for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
-    {
-        kernel_u[grid_u - grid_u_min] = exp_semicircle(beta,
-                (VFP)(grid_u - pos_u) * inv_half_support
-        );
-    }
-    for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
-    {
-        kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
-                (VFP)(grid_v - pos_v) * inv_half_support
-        );
-    }
+    // Get the weighted visibility.
+    VFP2 vis_weighted;
+    vis_weighted.x = visibilities[i_vis].x * vis_weights[i_vis];
+    vis_weighted.y = visibilities[i_vis].y * vis_weights[i_vis];
+    vis_weighted.y *= flip; // complex conjugate for negative w coords
 
-    // Iterate through each w-grid
-    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
+    // There is only one w-grid active at any time.
+    // grid_w should equal grid_start_w
     for (int grid_w = grid_w_min; grid_w <= grid_w_max; grid_w++)
     {
         const VFP kernel_w = exp_semicircle(beta,
                 (VFP)(grid_w - pos_w) * inv_half_support
         );
-        const size_t grid_offset_w = (grid_w - grid_start_w) *
-                size_t(grid_size * grid_size);
 
         // Swapped u and v for consistency with original nifty gridder.
         for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
         {
+            const VFP kernel_u = exp_semicircle(beta,
+                    (VFP)(grid_u - pos_u) * inv_half_support
+            );
             for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
             {
-                // Apply the separable kernel to the weighted visibility.
-                VFP kernel_value = kernel_u[grid_u - grid_u_min] *
-                        kernel_v[grid_v - grid_v_min] * kernel_w;
-                bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
+                // Update the grid, applying the separable kernel.
+                const VFP kernel_v = exp_semicircle(beta,
+                        (VFP)(grid_v - pos_v) * inv_half_support
+                );
+                VFP kernel_value = kernel_u * kernel_v * kernel_w;
+                const bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
                 kernel_value =
                         odd_grid_coordinate ? -kernel_value : kernel_value;
-
-                // Update or access the grid.
-                const size_t grid_offset_uvw = grid_offset_w +
+                const size_t i_grid =
                         size_t(grid_u + origin_offset_uv) * grid_size +
                         size_t(grid_v + origin_offset_uv);
-
-                if (solving) // accumulation of visibility onto w-grid plane
-                {
-                    // accumulation of visibility onto w-grid plane
-                    my_atomic_add<VFP>(
-                            &w_grid_stack[grid_offset_uvw].x,
-                            vis_weighted.x * kernel_value
-                    );
-                    my_atomic_add<VFP>(
-                            &w_grid_stack[grid_offset_uvw].y,
-                            vis_weighted.y * kernel_value
-                    );
-                }
-                else // extraction of visibility from w-grid plane
-                {
-                    vis_weighted.x += w_grid_stack[grid_offset_uvw].x *
-                            kernel_value;
-                    vis_weighted.y += w_grid_stack[grid_offset_uvw].y *
-                            kernel_value;
-                }
+                my_atomic_add<VFP>(
+                        &w_grid_stack[i_grid].x, vis_weighted.x * kernel_value
+                );
+                my_atomic_add<VFP>(
+                        &w_grid_stack[i_grid].y, vis_weighted.y * kernel_value
+                );
             }
         }
-    }
-
-    if (!solving) // degridding
-    {
-        visibilities[i_vis].x += vis_weighted.x;
-        visibilities[i_vis].y += vis_weighted.y * flip;
     }
 }
 
 
-/**********************************************************************
- * Performs the gridding (or degridding) of visibilities across a subset of w planes
- * Parallelised so each CUDA thread processes a single visibility
- **********************************************************************/
 template<typename VFP, typename VFP2, typename FP, typename FP2, typename FP3>
-__global__ void sdp_cuda_nifty_gridder_gridding_2d
+__global__ void sdp_cuda_nifty_degrid_3d
 (
         const int num_vis_rows,
         const int num_vis_chan,
-
-        VFP2* __restrict__ visibilities, // INPUT(gridding) OR OUTPUT(degridding): complex visibilities
-        const VFP* const __restrict__ vis_weights, // INPUT: weight for each visibility
-        const FP3* const __restrict__ uvw_coords, // INPUT: (u, v, w) coordinates for each visibility
-        const FP* const __restrict__ freq_hz, // INPUT: array of frequencies per channel
-        VFP2* __restrict__ w_grid_stack, // OUTPUT: flat array containing 2D computed w grids, presumed initially clear
-
+        VFP2* __restrict__ visibilities, // Output visibilities
+        const VFP* const __restrict__ vis_weights, // Input visibility weights
+        const FP3* const __restrict__ uvw_coords, // (u, v, w) coordinates
+        const FP* const __restrict__ freq_hz, // Frequency per channel
+        const VFP2* const __restrict__ w_grid_stack, // Input grid
         const int grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
-        const int grid_start_w, // signed index of first w grid in current subset stack
-        const uint32_t num_w_grids_subset, // number of w grids bound in current subset stack
-
+        const int grid_start_w, // Index of w grid
         const uint32_t support, // full support for gridding kernel
-        const VFP beta, // beta constant used in exponential of semicircle kernel
+        const VFP beta, // beta value used in exponential of semicircle kernel
         const FP uv_scale, // scaling factor for conversion of uv coords to grid coordinates (grid_size * cell_size)
         const FP w_scale, // scaling factor for converting w coord to signed w grid index
-        const FP min_plane_w, // w coordinate of smallest w plane
-        const bool solving // flag to enable degridding operations instead of gridding
+        const FP min_plane_w // w coordinate of smallest w plane
 )
 {
     const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
     const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
     const int i_vis = i_chan + num_vis_chan * i_row;
-
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
         return;
 
-    // Determine whether to flip visibility coordinates, so w is usually positive
-    const FP flip = 1.0;  // (uvw_coords[i_row].z < 0.0) ? -1.0 : 1.0;  // ignoring w
-    const FP inv_wavelength = flip * freq_hz[i_chan] / (FP)299792458.0;
-
-    // Get the weighted visibility.
-    VFP2 vis_weighted;
-    if (solving)
-    {
-        vis_weighted.x = visibilities[i_vis].x * vis_weights[i_vis];
-        vis_weighted.y = visibilities[i_vis].y * vis_weights[i_vis];
-        vis_weighted.y *= flip; // complex conjugate for negative w coords
-    }
-    else
-    {
-        vis_weighted.x = vis_weighted.y = (VFP)0.0;
-    }
-
     // Calculate bounds of where gridding kernel will be applied for this visibility
+    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
     const FP half_support = FP(support) / FP(2.0); // NOTE confirm everyone's understanding of what support means eg when even/odd
+    const VFP inv_half_support = (VFP)1.0 / (VFP)half_support;
     const int grid_min_uv = -grid_size / 2; // minimum coordinate on grid along u or v axes
     const int grid_max_uv = (grid_size - 1) / 2; // maximum coordinate on grid along u or v axes
+    const FP flip = (uvw_coords[i_row].z < 0.0) ? -1.0 : 1.0;
+    const FP inv_wavelength = flip * freq_hz[i_chan] / (FP)299792458.0;
     const FP pos_u = uvw_coords[i_row].x * inv_wavelength * uv_scale;
     const FP pos_v = uvw_coords[i_row].y * inv_wavelength * uv_scale;
-    const FP pos_w = 0.0; // ignoring w // (uvw_coords[i_row].z * inv_wavelength - min_plane_w) * w_scale;
+    const FP pos_w = (uvw_coords[i_row].z * inv_wavelength - min_plane_w) *
+            w_scale;
     const int grid_u_min = max((int)ceil(pos_u - half_support), grid_min_uv);
     const int grid_u_max = min((int)floor(pos_u + half_support), grid_max_uv);
     const int grid_v_min = max((int)ceil(pos_v - half_support), grid_min_uv);
     const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv);
     const int grid_w_min = max((int)ceil(pos_w - half_support), grid_start_w);
-    const int grid_w_max = min((int)floor(pos_w + half_support),
-            grid_start_w + num_w_grids_subset - 1
-    );
-
+    const int grid_w_max = min((int)floor(pos_w + half_support), grid_start_w);
     if (grid_w_min > grid_w_max ||
             grid_u_min > grid_u_max ||
             grid_v_min > grid_v_max)
     {
-        // this visibility has no overlap with the current subset stack
+        // This visibility does not intersect the current grid.
         return;
     }
 
-    // Calculate kernel values along u and v directions for this uvw
-    VFP inv_half_support = (VFP)1.0 / (VFP)half_support;
+    // Zero the visibility.
+    VFP2 vis_tmp;
+    vis_tmp.x = vis_tmp.y = (VFP)0;
 
-    // bound above the maximum possible support when precalculating kernel values
-    VFP kernel_u[KERNEL_SUPPORT_BOUND], kernel_v[KERNEL_SUPPORT_BOUND];
-    for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
-    {
-        kernel_u[grid_u - grid_u_min] = exp_semicircle(beta,
-                (VFP)(grid_u - pos_u) * inv_half_support
-        );
-    }
-    for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
-    {
-        kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
-                (VFP)(grid_v - pos_v) * inv_half_support
-        );
-    }
-
-    // Iterate through each w-grid
-    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
+    // There is only one w-grid active at any time.
+    // grid_w should equal grid_start_w
     for (int grid_w = grid_w_min; grid_w <= grid_w_max; grid_w++)
     {
         const VFP kernel_w = exp_semicircle(beta,
                 (VFP)(grid_w - pos_w) * inv_half_support
         );
-        const size_t grid_offset_w = (grid_w - grid_start_w) *
-                size_t(grid_size * grid_size);
 
         // Swapped u and v for consistency with original nifty gridder.
         for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
         {
+            const VFP kernel_u = exp_semicircle(beta,
+                    (VFP)(grid_u - pos_u) * inv_half_support
+            );
             for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
             {
-                // Apply the separable kernel to the weighted visibility.
-                VFP kernel_value = kernel_u[grid_u - grid_u_min] *
-                        kernel_v[grid_v - grid_v_min] * kernel_w;
-                bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
+                // Read from the grid, applying the separable kernel.
+                const VFP kernel_v = exp_semicircle(beta,
+                        (VFP)(grid_v - pos_v) * inv_half_support
+                );
+                VFP kernel_value = kernel_u * kernel_v * kernel_w;
+                const bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
                 kernel_value =
                         odd_grid_coordinate ? -kernel_value : kernel_value;
-
-                // Update or access the grid.
-                const size_t grid_offset_uvw = grid_offset_w +
+                const size_t i_grid =
                         size_t(grid_u + origin_offset_uv) * grid_size +
                         size_t(grid_v + origin_offset_uv);
-
-                if (solving) // accumulation of visibility onto w-grid plane
-                {
-                    // accumulation of visibility onto w-grid plane
-                    my_atomic_add<VFP>(
-                            &w_grid_stack[grid_offset_uvw].x,
-                            vis_weighted.x * kernel_value
-                    );
-                    my_atomic_add<VFP>(
-                            &w_grid_stack[grid_offset_uvw].y,
-                            vis_weighted.y * kernel_value
-                    );
-                }
-                else // extraction of visibility from w-grid plane
-                {
-                    vis_weighted.x += w_grid_stack[grid_offset_uvw].x *
-                            kernel_value;
-                    vis_weighted.y += w_grid_stack[grid_offset_uvw].y *
-                            kernel_value;
-                }
+                vis_tmp.x += w_grid_stack[i_grid].x * kernel_value;
+                vis_tmp.y += w_grid_stack[i_grid].y * kernel_value;
             }
         }
     }
+    visibilities[i_vis].x += vis_tmp.x * vis_weights[i_vis];
+    visibilities[i_vis].y += vis_tmp.y * vis_weights[i_vis] * flip;
+}
 
-    if (!solving) // degridding
+
+template<typename VFP, typename VFP2, typename FP, typename FP2, typename FP3>
+__global__ void sdp_cuda_nifty_grid_2d
+(
+        const int num_vis_rows,
+        const int num_vis_chan,
+        const VFP2* const __restrict__ visibilities, // Input visibilities
+        const VFP* const __restrict__ vis_weights, // Input visibility weights
+        const FP3* const __restrict__ uvw_coords, // (u, v, w) coordinates
+        const FP* const __restrict__ freq_hz, // Frequency per channel
+        VFP2* __restrict__ w_grid_stack, // Output grid
+        const int grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
+        const int /*grid_start_w*/, // Index of w grid (always 0, for 2D)
+        const uint32_t support, // full support for gridding kernel
+        const VFP beta, // beta value used in exponential of semicircle kernel
+        const FP uv_scale, // scaling factor for conversion of uv coords to grid coordinates (grid_size * cell_size)
+        const FP w_scale, // scaling factor for converting w coord to signed w grid index
+        const FP min_plane_w // w coordinate of smallest w plane
+)
+{
+    const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
+    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_vis = i_chan + num_vis_chan * i_row;
+    if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
+        return;
+
+    // Calculate bounds of where gridding kernel will be applied for this visibility
+    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
+    const FP half_support = FP(support) / FP(2.0); // NOTE confirm everyone's understanding of what support means eg when even/odd
+    const VFP inv_half_support = (VFP)1.0 / (VFP)half_support;
+    const int grid_min_uv = -grid_size / 2; // minimum coordinate on grid along u or v axes
+    const int grid_max_uv = (grid_size - 1) / 2; // maximum coordinate on grid along u or v axes
+    const FP inv_wavelength = freq_hz[i_chan] / (FP)299792458.0;
+    const FP pos_u = uvw_coords[i_row].x * inv_wavelength * uv_scale;
+    const FP pos_v = uvw_coords[i_row].y * inv_wavelength * uv_scale;
+    const int grid_u_min = max((int)ceil(pos_u - half_support), grid_min_uv);
+    const int grid_u_max = min((int)floor(pos_u + half_support), grid_max_uv);
+    const int grid_v_min = max((int)ceil(pos_v - half_support), grid_min_uv);
+    const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv);
+    if (grid_u_min > grid_u_max || grid_v_min > grid_v_max)
     {
-        visibilities[i_vis].x += vis_weighted.x;
-        visibilities[i_vis].y += vis_weighted.y * flip;
+        // This visibility does not intersect the current grid.
+        return;
     }
+
+    // Get the weighted visibility.
+    VFP2 vis_weighted;
+    vis_weighted.x = visibilities[i_vis].x * vis_weights[i_vis];
+    vis_weighted.y = visibilities[i_vis].y * vis_weights[i_vis];
+
+    // Swapped u and v for consistency with original nifty gridder.
+    for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
+    {
+        const VFP kernel_u = exp_semicircle(beta,
+                (VFP)(grid_u - pos_u) * inv_half_support
+        );
+        for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
+        {
+            // Update the grid, applying the separable kernel.
+            const VFP kernel_v = exp_semicircle(beta,
+                    (VFP)(grid_v - pos_v) * inv_half_support
+            );
+            VFP kernel_value = kernel_u * kernel_v;
+            bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
+            kernel_value =
+                    odd_grid_coordinate ? -kernel_value : kernel_value;
+            const size_t i_grid =
+                    size_t(grid_u + origin_offset_uv) * grid_size +
+                    size_t(grid_v + origin_offset_uv);
+            my_atomic_add<VFP>(
+                    &w_grid_stack[i_grid].x, vis_weighted.x * kernel_value
+            );
+            my_atomic_add<VFP>(
+                    &w_grid_stack[i_grid].y, vis_weighted.y * kernel_value
+            );
+        }
+    }
+}
+
+
+template<typename VFP, typename VFP2, typename FP, typename FP2, typename FP3>
+__global__ void sdp_cuda_nifty_degrid_2d
+(
+        const int num_vis_rows,
+        const int num_vis_chan,
+        VFP2* __restrict__ visibilities, // Output visibilities
+        const VFP* const __restrict__ vis_weights, // Input visibility weights
+        const FP3* const __restrict__ uvw_coords, // (u, v, w) coordinates
+        const FP* const __restrict__ freq_hz, // Frequency per channel
+        const VFP2* const __restrict__ w_grid_stack, // Input grid
+        const int grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
+        const int /*grid_start_w*/, // Index of w grid (always 0, for 2D)
+        const uint32_t support, // full support for gridding kernel
+        const VFP beta, // beta value used in exponential of semicircle kernel
+        const FP uv_scale, // scaling factor for conversion of uv coords to grid coordinates (grid_size * cell_size)
+        const FP w_scale, // scaling factor for converting w coord to signed w grid index
+        const FP min_plane_w // w coordinate of smallest w plane
+)
+{
+    const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
+    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_vis = i_chan + num_vis_chan * i_row;
+    if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
+        return;
+
+    // Calculate bounds of where gridding kernel will be applied for this visibility
+    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
+    const FP half_support = FP(support) / FP(2.0); // NOTE confirm everyone's understanding of what support means eg when even/odd
+    const VFP inv_half_support = (VFP)1.0 / (VFP)half_support;
+    const int grid_min_uv = -grid_size / 2; // minimum coordinate on grid along u or v axes
+    const int grid_max_uv = (grid_size - 1) / 2; // maximum coordinate on grid along u or v axes
+    const FP inv_wavelength = freq_hz[i_chan] / (FP)299792458.0;
+    const FP pos_u = uvw_coords[i_row].x * inv_wavelength * uv_scale;
+    const FP pos_v = uvw_coords[i_row].y * inv_wavelength * uv_scale;
+    const int grid_u_min = max((int)ceil(pos_u - half_support), grid_min_uv);
+    const int grid_u_max = min((int)floor(pos_u + half_support), grid_max_uv);
+    const int grid_v_min = max((int)ceil(pos_v - half_support), grid_min_uv);
+    const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv);
+    if (grid_u_min > grid_u_max || grid_v_min > grid_v_max)
+    {
+        // This visibility does not intersect the current grid.
+        return;
+    }
+
+    // Zero the visibility.
+    VFP2 vis_tmp;
+    vis_tmp.x = vis_tmp.y = (VFP)0;
+
+    // Swapped u and v for consistency with original nifty gridder.
+    for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
+    {
+        const VFP kernel_u = exp_semicircle(beta,
+                (VFP)(grid_u - pos_u) * inv_half_support
+        );
+        for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
+        {
+            // Update the grid, applying the separable kernel.
+            const VFP kernel_v = exp_semicircle(beta,
+                    (VFP)(grid_v - pos_v) * inv_half_support
+            );
+            VFP kernel_value = kernel_u * kernel_v;
+            bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
+            kernel_value =
+                    odd_grid_coordinate ? -kernel_value : kernel_value;
+            const size_t i_grid =
+                    size_t(grid_u + origin_offset_uv) * grid_size +
+                    size_t(grid_v + origin_offset_uv);
+            vis_tmp.x += w_grid_stack[i_grid].x * kernel_value;
+            vis_tmp.y += w_grid_stack[i_grid].y * kernel_value;
+        }
+    }
+    visibilities[i_vis].x += vis_tmp.x * vis_weights[i_vis];
+    visibilities[i_vis].y += vis_tmp.y * vis_weights[i_vis];
 }
 
 
@@ -700,7 +744,7 @@ __global__ void conv_corr_and_scaling(
         const FP* const __restrict__ quadrature_kernel,
         const FP* const __restrict__ quadrature_nodes,
         const FP* const __restrict__ quadrature_weights,
-        const bool solving,
+        const bool gridding,
         const bool do_wstacking
 )
 {
@@ -729,7 +773,7 @@ __global__ void conv_corr_and_scaling(
                     conv_corr_norm_factor * conv_corr_norm_factor);
         // correction /= ((n + FP(1.0)) * inv_w_range); // see above note
 
-        if (solving)
+        if (gridding)
         {
             // correction = FP(1.0)/(correction*weight_channel_product);
             correction = FP(1.0) / (correction);
@@ -770,13 +814,17 @@ __global__ void conv_corr_and_scaling(
 
 // *INDENT-OFF*
 // register kernels
-SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_3d<double, double2, double, double2, double3>)
-SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_3d<float,  float2,  double, double2, double3>)
-SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_3d<float,  float2,  float,  float2,  float3>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_3d<double, double2, double, double2, double3>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_3d<float,  float2,  float,  float2,  float3>)
 
-SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<double, double2, double, double2, double3>)
-SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  double, double2, double3>)
-SDP_CUDA_KERNEL(sdp_cuda_nifty_gridder_gridding_2d<float,  float2,  float,  float2,  float3>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_2d<double, double2, double, double2, double3>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_2d<float,  float2,  float,  float2,  float3>)
+
+SDP_CUDA_KERNEL(sdp_cuda_nifty_degrid_3d<double, double2, double, double2, double3>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_degrid_3d<float,  float2,  float,  float2,  float3>)
+
+SDP_CUDA_KERNEL(sdp_cuda_nifty_degrid_2d<double, double2, double, double2, double3>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_degrid_2d<float,  float2,  float,  float2,  float3>)
 
 SDP_CUDA_KERNEL(apply_w_screen_and_sum<double, double2>)
 SDP_CUDA_KERNEL(apply_w_screen_and_sum<float, float2>)

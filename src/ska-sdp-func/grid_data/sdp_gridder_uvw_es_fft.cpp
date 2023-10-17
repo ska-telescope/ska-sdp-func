@@ -558,7 +558,6 @@ void sdp_grid_uvw_es_fft(
     const sdp_MemType vis_type = sdp_mem_type(vis);
 
     const int chunk_size = plan->num_rows;
-    const int num_w_grids_batched = 1; // fixed, don't change this!!
     const int coord_type = sdp_mem_type(uvw);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
     const int dbl_coord = (coord_type & SDP_MEM_DOUBLE);
@@ -567,38 +566,26 @@ void sdp_grid_uvw_es_fft(
     sdp_Fft* fft = sdp_fft_create(
             plan->w_grid_stack, plan->w_grid_stack, 2, 0, status
     );
-
     if (*status) return;
 
-    // Determine how many w grid subset batches to process in total
-    const int total_w_grid_batches =
-            (plan->num_total_w_grids + num_w_grids_batched - 1) /
-            num_w_grids_batched;
-
-    for (int batch = 0; batch < total_w_grid_batches; batch++)
+    for (int grid_w = 0; grid_w < plan->num_total_w_grids; grid_w++)
     {
-        const int num_w_grids_subset = std::min(
-                num_w_grids_batched,
-                plan->num_total_w_grids - ((batch * num_w_grids_batched) %
-                plan->num_total_w_grids)
-        );
-        const int grid_start_w = batch * num_w_grids_batched;
         sdp_mem_clear_contents(plan->w_grid_stack, status);
         if (*status) break;
 
-        // Perform gridding on a "chunk" of w grids
+        // Perform gridding
         {
             const char* kernel_name = 0;
             if (plan->do_wstacking)
             {
                 if (dbl_vis && dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_3d"
+                    kernel_name = "sdp_cuda_nifty_grid_3d"
                             "<double, double2, double, double2, double3>";
                 }
                 else if (!dbl_vis && !dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_3d"
+                    kernel_name = "sdp_cuda_nifty_grid_3d"
                             "<float, float2, float, float2, float3>";
                 }
             }
@@ -606,12 +593,12 @@ void sdp_grid_uvw_es_fft(
             {
                 if (dbl_vis && dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_2d"
+                    kernel_name = "sdp_cuda_nifty_grid_2d"
                             "<double, double2, double, double2, double3>";
                 }
                 else if (!dbl_vis && !dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_2d"
+                    kernel_name = "sdp_cuda_nifty_grid_2d"
                             "<float, float2, float, float2, float3>";
                 }
             }
@@ -623,7 +610,6 @@ void sdp_grid_uvw_es_fft(
                         (plan->num_chan + num_threads[0] - 1) / num_threads[0];
                 num_blocks[1] =
                         (chunk_size + num_threads[1] - 1) / num_threads[1];
-                const bool solving = 1;
                 const void* args[] = {
                     &chunk_size,
                     &plan->num_chan,
@@ -633,8 +619,7 @@ void sdp_grid_uvw_es_fft(
                     sdp_mem_gpu_buffer_const(freq_hz, status),
                     sdp_mem_gpu_buffer(plan->w_grid_stack, status),
                     &plan->grid_size,
-                    &grid_start_w,
-                    &num_w_grids_subset,
+                    &grid_w,
                     &plan->support,
                     dbl_vis ?
                         (const void*)&plan->beta :
@@ -647,8 +632,7 @@ void sdp_grid_uvw_es_fft(
                         (const void*)&plan->w_scale_f,
                     dbl_coord ?
                         (const void*)&plan->min_plane_w :
-                        (const void*)&plan->min_plane_w_f,
-                    &solving
+                        (const void*)&plan->min_plane_w_f
                 };
                 sdp_launch_cuda_kernel(kernel_name,
                         num_blocks, num_threads, 0, 0, args, status
@@ -656,10 +640,10 @@ void sdp_grid_uvw_es_fft(
             }
         }
 
-        // Perform 2D FFT on each bound w grid
+        // Perform 2D FFT
         sdp_fft_exec(fft, plan->w_grid_stack, plan->w_grid_stack, status);
 
-        // Perform phase shift on a "chunk" of planes and sum into single real plane
+        // Perform phase shift and sum into single real plane
         {
             const char* kernel_name = dbl_vis ?
                         "apply_w_screen_and_sum<double, double2>" :
@@ -671,6 +655,7 @@ void sdp_grid_uvw_es_fft(
                     (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
             num_blocks[1] =
                     (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
+            const int num_w_grids_subset = 1;
             const bool do_FFT_shift = true;
             const void* args[] = {
                 sdp_mem_gpu_buffer(dirty_image, status),
@@ -680,7 +665,7 @@ void sdp_grid_uvw_es_fft(
                     (const void*)&plan->pixel_size_f,
                 sdp_mem_gpu_buffer_const(plan->w_grid_stack, status),
                 &plan->grid_size,
-                &grid_start_w,
+                &grid_w,
                 &num_w_grids_subset,
                 dbl_vis ?
                     (const void*)&plan->inv_w_scale :
@@ -769,10 +754,8 @@ void sdp_ifft_degrid_uvw_es(
     uint64_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
-    // SDP_LOG_DEBUG("vis_type is %#06x", vis_type);
 
     const int chunk_size = plan->num_rows;
-    const int num_w_grids_batched = 1; // fixed, don't change this!!
     const int coord_type = sdp_mem_type(uvw);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
     const int dbl_coord = (coord_type & SDP_MEM_DOUBLE);
@@ -781,7 +764,6 @@ void sdp_ifft_degrid_uvw_es(
     sdp_Fft* fft = sdp_fft_create(
             plan->w_grid_stack, plan->w_grid_stack, 2, true, status
     );
-
     if (*status) return;
 
     // Perform convolution correction and final scaling on single real plane
@@ -824,19 +806,8 @@ void sdp_ifft_degrid_uvw_es(
         );
     }
 
-    // Determine how many w grid subset batches to process in total
-    const int total_w_grid_batches =
-            (plan->num_total_w_grids + num_w_grids_batched - 1) /
-            num_w_grids_batched;
-
-    for (int batch = 0; batch < total_w_grid_batches; batch++)
+    for (int grid_w = 0; grid_w < plan->num_total_w_grids; grid_w++)
     {
-        const int num_w_grids_subset = std::min(
-                num_w_grids_batched,
-                plan->num_total_w_grids - ((batch * num_w_grids_batched) %
-                plan->num_total_w_grids)
-        );
-        const int grid_start_w = batch * num_w_grids_batched;
         sdp_mem_clear_contents(plan->w_grid_stack, status);
         if (*status) break;
 
@@ -852,6 +823,7 @@ void sdp_ifft_degrid_uvw_es(
                     (npix_x / 2 + 1 + num_threads[0] - 1) / num_threads[0];
             num_blocks[1] =
                     (npix_y / 2 + 1 + num_threads[1] - 1) / num_threads[1];
+            const int num_w_grids_subset = 1;
             const bool do_FFT_shift = true;
             const void* args[] = {
                 sdp_mem_gpu_buffer_const(dirty_image, status),
@@ -861,7 +833,7 @@ void sdp_ifft_degrid_uvw_es(
                     (const void*)&plan->pixel_size_f,
                 sdp_mem_gpu_buffer(plan->w_grid_stack, status),
                 &plan->grid_size,
-                &grid_start_w,
+                &grid_w,
                 &num_w_grids_subset,
                 dbl_vis ?
                     (const void*)&plan->inv_w_scale :
@@ -877,22 +849,22 @@ void sdp_ifft_degrid_uvw_es(
             );
         }
 
-        // Perform 2D FFT on each bound w grid
+        // Perform 2D FFT
         sdp_fft_exec(fft, plan->w_grid_stack, plan->w_grid_stack, status);
 
-        // Perform degridding on a "chunk" of w grids
+        // Perform degridding
         {
             const char* kernel_name = 0;
             if (plan->do_wstacking)
             {
                 if (dbl_vis && dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_3d"
+                    kernel_name = "sdp_cuda_nifty_degrid_3d"
                             "<double, double2, double, double2, double3>";
                 }
                 else if (!dbl_vis && !dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_3d"
+                    kernel_name = "sdp_cuda_nifty_degrid_3d"
                             "<float, float2, float, float2, float3>";
                 }
             }
@@ -900,12 +872,12 @@ void sdp_ifft_degrid_uvw_es(
             {
                 if (dbl_vis && dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_2d"
+                    kernel_name = "sdp_cuda_nifty_degrid_2d"
                             "<double, double2, double, double2, double3>";
                 }
                 else if (!dbl_vis && !dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_gridder_gridding_2d"
+                    kernel_name = "sdp_cuda_nifty_degrid_2d"
                             "<float, float2, float, float2, float3>";
                 }
             }
@@ -917,18 +889,16 @@ void sdp_ifft_degrid_uvw_es(
                         (plan->num_chan + num_threads[0] - 1) / num_threads[0];
                 num_blocks[1] =
                         (chunk_size + num_threads[1] - 1) / num_threads[1];
-                const bool solving = 0; // degridding
                 const void* args[] = {
                     &chunk_size,
                     &plan->num_chan,
-                    sdp_mem_gpu_buffer_const(vis, status),
+                    sdp_mem_gpu_buffer(vis, status),
                     sdp_mem_gpu_buffer_const(weight, status),
                     sdp_mem_gpu_buffer_const(uvw, status),
                     sdp_mem_gpu_buffer_const(freq_hz, status),
-                    sdp_mem_gpu_buffer(plan->w_grid_stack, status),
+                    sdp_mem_gpu_buffer_const(plan->w_grid_stack, status),
                     &plan->grid_size,
-                    &grid_start_w,
-                    &num_w_grids_subset,
+                    &grid_w,
                     &plan->support,
                     dbl_vis ?
                         (const void*)&plan->beta :
@@ -941,15 +911,14 @@ void sdp_ifft_degrid_uvw_es(
                         (const void*)&plan->w_scale_f,
                     dbl_coord ?
                         (const void*)&plan->min_plane_w :
-                        (const void*)&plan->min_plane_w_f,
-                    &solving
+                        (const void*)&plan->min_plane_w_f
                 };
                 sdp_launch_cuda_kernel(kernel_name,
                         num_blocks, num_threads, 0, 0, args, status
                 );
             }
         }
-    } // for (int batch = 0; batch < total_w_grid_batches; batch++)
+    } // loop over w-planes
 
     // Free FFT plan and data.
     sdp_fft_free(fft);
