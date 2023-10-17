@@ -185,6 +185,15 @@ __global__ void sdp_cuda_nifty_grid_3d
             (VFP)(grid_start_w - pos_w) * inv_half_support
     );
 
+    // Cache the kernel in v and w directions.
+    VFP kernel_v[KERNEL_SUPPORT_BOUND];
+    for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
+    {
+        kernel_vw[grid_v - grid_v_min] = kernel_w * exp_semicircle(beta,
+                (VFP)(grid_v - pos_v) * inv_half_support
+        );
+    }
+
     // Swapped u and v for consistency with original nifty gridder.
     for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
     {
@@ -194,10 +203,7 @@ __global__ void sdp_cuda_nifty_grid_3d
         for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
         {
             // Update the grid, applying the separable kernel.
-            const VFP kernel_v = exp_semicircle(beta,
-                    (VFP)(grid_v - pos_v) * inv_half_support
-            );
-            VFP kernel_value = kernel_u * kernel_v * kernel_w;
+            VFP kernel_value = kernel_u * kernel_vw[grid_v - grid_v_min];
             const bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
             kernel_value = odd_grid_coordinate ? -kernel_value : kernel_value;
             const size_t i_grid =
@@ -274,6 +280,15 @@ __global__ void sdp_cuda_nifty_degrid_3d
             (VFP)(grid_start_w - pos_w) * inv_half_support
     );
 
+    // Cache the kernel in v and w directions.
+    VFP kernel_v[KERNEL_SUPPORT_BOUND];
+    for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
+    {
+        kernel_vw[grid_v - grid_v_min] = kernel_w * exp_semicircle(beta,
+                (VFP)(grid_v - pos_v) * inv_half_support
+        );
+    }
+
     // Swapped u and v for consistency with original nifty gridder.
     for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
     {
@@ -283,10 +298,7 @@ __global__ void sdp_cuda_nifty_degrid_3d
         for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
         {
             // Read from the grid, applying the separable kernel.
-            const VFP kernel_v = exp_semicircle(beta,
-                    (VFP)(grid_v - pos_v) * inv_half_support
-            );
-            VFP kernel_value = kernel_u * kernel_v * kernel_w;
+            VFP kernel_value = kernel_u * kernel_vw[grid_v - grid_v_min];
             const bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
             kernel_value = odd_grid_coordinate ? -kernel_value : kernel_value;
             const size_t i_grid =
@@ -350,6 +362,15 @@ __global__ void sdp_cuda_nifty_grid_2d
     vis_weighted.x = visibilities[i_vis].x * vis_weights[i_vis];
     vis_weighted.y = visibilities[i_vis].y * vis_weights[i_vis];
 
+    // Cache the kernel in v direction.
+    VFP kernel_v[KERNEL_SUPPORT_BOUND];
+    for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
+    {
+        kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
+                (VFP)(grid_v - pos_v) * inv_half_support
+        );
+    }
+
     // Swapped u and v for consistency with original nifty gridder.
     for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
     {
@@ -359,10 +380,7 @@ __global__ void sdp_cuda_nifty_grid_2d
         for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
         {
             // Update the grid, applying the separable kernel.
-            const VFP kernel_v = exp_semicircle(beta,
-                    (VFP)(grid_v - pos_v) * inv_half_support
-            );
-            VFP kernel_value = kernel_u * kernel_v;
+            VFP kernel_value = kernel_u * kernel_v[grid_v - grid_v_min];
             bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
             kernel_value = odd_grid_coordinate ? -kernel_value : kernel_value;
             const size_t i_grid =
@@ -427,6 +445,15 @@ __global__ void sdp_cuda_nifty_degrid_2d
     VFP2 vis_tmp;
     vis_tmp.x = vis_tmp.y = (VFP)0;
 
+    // Cache the kernel in v direction.
+    VFP kernel_v[KERNEL_SUPPORT_BOUND];
+    for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
+    {
+        kernel_v[grid_v - grid_v_min] = exp_semicircle(beta,
+                (VFP)(grid_v - pos_v) * inv_half_support
+        );
+    }
+
     // Swapped u and v for consistency with original nifty gridder.
     for (int grid_u = grid_u_min; grid_u <= grid_u_max; grid_u++)
     {
@@ -436,10 +463,7 @@ __global__ void sdp_cuda_nifty_degrid_2d
         for (int grid_v = grid_v_min; grid_v <= grid_v_max; grid_v++)
         {
             // Update the grid, applying the separable kernel.
-            const VFP kernel_v = exp_semicircle(beta,
-                    (VFP)(grid_v - pos_v) * inv_half_support
-            );
-            VFP kernel_value = kernel_u * kernel_v;
+            VFP kernel_value = kernel_u * kernel_v[grid_v - grid_v_min];
             bool odd_grid_coordinate = ((grid_u + grid_v) & 1) != 0;
             kernel_value = odd_grid_coordinate ? -kernel_value : kernel_value;
             const size_t i_grid =
