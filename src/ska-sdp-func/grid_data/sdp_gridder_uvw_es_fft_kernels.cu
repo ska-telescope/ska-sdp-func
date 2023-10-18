@@ -139,7 +139,8 @@ __global__ void sdp_cuda_nifty_grid_3d
         const VFP beta, // beta value used in exponential of semicircle kernel
         const FP uv_scale, // factor to convert uv coords to grid coordinates (grid_size * cell_size)
         const FP w_scale, // factor to convert w coord to signed w grid index
-        const FP min_plane_w // w coordinate of w plane
+        const FP min_plane_w, // w coordinate of w plane
+        int* vis_count // If not NULL, maintain count of visibilities gridded
 )
 {
     const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
@@ -217,6 +218,7 @@ __global__ void sdp_cuda_nifty_grid_3d
             );
         }
     }
+    if (vis_count) atomicAdd(vis_count, 1);
 }
 
 
@@ -329,7 +331,8 @@ __global__ void sdp_cuda_nifty_grid_2d
         const VFP beta, // beta value used in exponential of semicircle kernel
         const FP uv_scale, // scaling factor for conversion of uv coords to grid coordinates (grid_size * cell_size)
         const FP w_scale, // scaling factor for converting w coord to signed w grid index
-        const FP min_plane_w // w coordinate of smallest w plane
+        const FP min_plane_w, // w coordinate of smallest w plane
+        int* vis_count // If not NULL, maintain count of visibilities gridded
 )
 {
     const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
@@ -394,6 +397,7 @@ __global__ void sdp_cuda_nifty_grid_2d
             );
         }
     }
+    if (vis_count) atomicAdd(vis_count, 1);
 }
 
 

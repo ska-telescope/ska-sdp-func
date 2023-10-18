@@ -2,12 +2,14 @@
 
 #include <complex>
 #include <cstdlib>
+#include <cstring>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_timer.h"
 
 struct sdp_GridderUvwEsFft
 {
@@ -15,6 +17,7 @@ struct sdp_GridderUvwEsFft
     double pixsize_y_rad;
     double epsilon;
     bool do_wstacking;
+    bool do_vis_count;
     int num_rows;
     int num_chan;
     int image_size;
@@ -54,7 +57,52 @@ struct sdp_GridderUvwEsFft
     sdp_Mem* quadrature_nodes;
     sdp_Mem* quadrature_weights;
     sdp_Mem* conv_corr_kernel;
+    sdp_Mem* vis_count;
+
+    sdp_Timer* timer_overall;
+    sdp_Timer* timer_fft;
+    sdp_Timer* timer_grid;
 };
+
+
+static void report_info(
+        sdp_GridderUvwEsFft* plan, const char* function_name
+)
+{
+    sdp_log_message(
+            SDP_LOG_LEVEL_INFO, stdout, function_name, FILENAME, __LINE__,
+            " Sizes: image=(%d x %d), grid=(%d x %d x %d w-planes)",
+            plan->image_size, plan->image_size,
+            plan->grid_size, plan->grid_size, plan->num_total_w_grids
+    );
+    sdp_log_message(
+            SDP_LOG_LEVEL_INFO, stdout, function_name, FILENAME, __LINE__,
+            "Params: epsilon=%.2e, support=%d, beta=%.3f",
+            plan->epsilon, plan->support, plan->beta
+    );
+    sdp_log_message(
+            SDP_LOG_LEVEL_INFO, stdout, function_name, FILENAME, __LINE__,
+            "Scales: uv_scale=%.3e, w_scale=%.3e, min_plane_w=%.3e",
+            plan->uv_scale, plan->w_scale, plan->min_plane_w
+    );
+}
+
+
+static void report_timings(
+        sdp_GridderUvwEsFft* plan, const char* function_name
+)
+{
+    const double tm_overall = sdp_timer_elapsed(plan->timer_overall);
+    const double tm_fft = sdp_timer_elapsed(plan->timer_fft);
+    const double tm_grid = sdp_timer_elapsed(plan->timer_grid);
+    const double pc_fft = 100.0 * tm_fft / tm_overall;
+    const double pc_grid = 100.0 * tm_grid / tm_overall;
+    sdp_log_message(
+            SDP_LOG_LEVEL_INFO, stdout, function_name, FILENAME, __LINE__,
+            "In '%s' for %.3f s (%.1f%% gridding/degridding, %.1f%% FFT)",
+            function_name, tm_overall, pc_grid, pc_fft
+    );
+}
 
 
 void sdp_gridder_uvw_es_fft_free_plan(sdp_GridderUvwEsFft* plan)
@@ -65,13 +113,17 @@ void sdp_gridder_uvw_es_fft_free_plan(sdp_GridderUvwEsFft* plan)
     sdp_mem_free(plan->quadrature_nodes);
     sdp_mem_free(plan->quadrature_weights);
     sdp_mem_free(plan->conv_corr_kernel);
+    sdp_mem_free(plan->vis_count);
+    sdp_timer_free(plan->timer_overall);
+    sdp_timer_free(plan->timer_fft);
+    sdp_timer_free(plan->timer_grid);
     free(plan);
 }
 
 
 void sdp_gridder_check_buffers(
         const sdp_Mem* uvw,
-        const sdp_Mem* freq_hz,  // in Hz
+        const sdp_Mem* freq_hz,
         const sdp_Mem* vis,
         const sdp_Mem* weight,
         const sdp_Mem* dirty_image,
@@ -275,7 +327,7 @@ void sdp_gridder_check_plan(
 
 sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         const sdp_Mem* uvw,
-        const sdp_Mem* freq_hz,  // in Hz
+        const sdp_Mem* freq_hz,
         const sdp_Mem* vis,
         const sdp_Mem* weight,
         const sdp_Mem* dirty_image,
@@ -302,21 +354,19 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
             sizeof(sdp_GridderUvwEsFft)
     );
 
+    plan->timer_overall = sdp_timer_create(SDP_TIMER_CUDA);
+    plan->timer_fft = sdp_timer_create(SDP_TIMER_CUDA);
+    plan->timer_grid = sdp_timer_create(SDP_TIMER_CUDA);
     plan->pixsize_x_rad = pixsize_x_rad;
     plan->pixsize_y_rad = pixsize_y_rad;
     plan->pixel_size = pixsize_x_rad;  // only square pixels supported
+    plan->pixel_size_f = (float) plan->pixel_size;
     plan->epsilon = epsilon;
     plan->do_wstacking = do_wstacking;
     plan->num_rows = sdp_mem_shape_dim(vis, 0);
     plan->num_chan = sdp_mem_shape_dim(vis, 1);
-
     plan->image_size = sdp_mem_shape_dim(dirty_image, 0);
-
-    plan->pixel_size_f = (float) plan->pixel_size;
-
-    int grid_size = 0;
-    int support = 0;
-    double beta = NAN;
+    plan->beta = NAN;
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
@@ -324,7 +374,7 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
                 SDP_MEM_DOUBLE : SDP_MEM_FLOAT;
 
     sdp_calculate_params_from_epsilon(plan->epsilon, plan->image_size,
-            vis_precision, grid_size, support, beta, status
+            vis_precision, plan->grid_size, plan->support, plan->beta, status
     );
     if (*status)
     {
@@ -332,13 +382,8 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
         return NULL;
     }
 
-    beta *= support;
-
-    plan->grid_size = grid_size;
-    plan->support = support;
-    plan->beta = beta;
-    plan->beta_f = (float) beta;
-
+    plan->beta *= plan->support;
+    plan->beta_f = (float) plan->beta;
     plan->uv_scale = plan->grid_size * plan->pixel_size;
     plan->uv_scale_f = (float) plan->uv_scale;
 
@@ -506,6 +551,19 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
     sdp_mem_free(m_quadrature_weights);
     sdp_mem_free(m_conv_corr_kernel);
 
+    // Visibility counter.
+    const char* env_counter = getenv("SDP_GRIDDER_COUNT");
+    plan->do_vis_count = false;
+    if (env_counter)
+    {
+        plan->do_vis_count = !strncmp(env_counter, "1", 1) ||
+                !strncmp(env_counter, "t", 1) || !strncmp(env_counter, "T", 1);
+    }
+    int64_t vis_count_size[] = {1};
+    plan->vis_count = sdp_mem_create(
+            SDP_MEM_INT, SDP_MEM_GPU, 1, vis_count_size, status
+    );
+
     // allocate memory
     int64_t w_grid_stack_shape[] = {plan->grid_size, plan->grid_size};
     plan->w_grid_stack = sdp_mem_create(
@@ -539,9 +597,15 @@ void sdp_grid_uvw_es_fft(
         sdp_Error* status
 )
 {
-    SDP_LOG_DEBUG("Executing sdp_GridderUvwEsFft...");
+    SDP_LOG_DEBUG("Executing %s...", __func__);
     if (*status || !plan) return;
 
+    // Report plan info.
+    report_info(plan, __func__);
+
+    sdp_timer_start(plan->timer_overall);
+    sdp_timer_reset(plan->timer_fft);
+    sdp_timer_reset(plan->timer_grid);
     sdp_gridder_check_plan(plan, status);
     if (*status) return;
 
@@ -568,12 +632,14 @@ void sdp_grid_uvw_es_fft(
     );
     if (*status) return;
 
+    sdp_mem_clear_contents(plan->vis_count, status);
     for (int grid_w = 0; grid_w < plan->num_total_w_grids; grid_w++)
     {
         sdp_mem_clear_contents(plan->w_grid_stack, status);
         if (*status) break;
 
         // Perform gridding
+        sdp_timer_resume(plan->timer_grid);
         {
             const char* kernel_name = 0;
             if (plan->do_wstacking)
@@ -604,6 +670,7 @@ void sdp_grid_uvw_es_fft(
             }
             if (kernel_name)
             {
+                void* null = 0;
                 num_threads[0] = 1;
                 num_threads[1] = 256;
                 num_blocks[0] =
@@ -632,16 +699,21 @@ void sdp_grid_uvw_es_fft(
                         (const void*)&plan->w_scale_f,
                     dbl_coord ?
                         (const void*)&plan->min_plane_w :
-                        (const void*)&plan->min_plane_w_f
+                        (const void*)&plan->min_plane_w_f,
+                    plan->do_vis_count ?
+                        sdp_mem_gpu_buffer(plan->vis_count, status) : &null
                 };
                 sdp_launch_cuda_kernel(kernel_name,
                         num_blocks, num_threads, 0, 0, args, status
                 );
             }
         }
+        sdp_timer_pause(plan->timer_grid);
 
         // Perform 2D FFT
+        sdp_timer_resume(plan->timer_fft);
         sdp_fft_exec(fft, plan->w_grid_stack, plan->w_grid_stack, status);
+        sdp_timer_pause(plan->timer_fft);
 
         // Perform phase shift and sum into single real plane
         {
@@ -680,7 +752,7 @@ void sdp_grid_uvw_es_fft(
                     kernel_name, num_blocks, num_threads, 0, 0, args, status
             );
         }
-    }
+    } // loop over w-planes.
 
     // Free FFT plan and data.
     sdp_fft_free(fft);
@@ -724,6 +796,25 @@ void sdp_grid_uvw_es_fft(
                 kernel_name, num_blocks, num_threads, 0, 0, args, status
         );
     }
+    sdp_timer_pause(plan->timer_overall);
+
+    // Report visibility count.
+    sdp_Mem* vis_count_cpu = sdp_mem_create_copy(
+            plan->vis_count, SDP_MEM_CPU, status
+    );
+    const int count_original = plan->num_rows * plan->num_chan;
+    const int count_gridded = *(int*)sdp_mem_data(vis_count_cpu);
+    const double ratio = (double)count_gridded / (double)count_original;
+    sdp_mem_free(vis_count_cpu);
+    if (count_gridded)
+    {
+        SDP_LOG_INFO("Count: original=%d, gridded=%d, ratio=%.2f",
+                count_original, count_gridded, ratio
+        );
+    }
+
+    // Report timings.
+    report_timings(plan, __func__);
 }
 
 
@@ -737,9 +828,15 @@ void sdp_ifft_degrid_uvw_es(
         sdp_Error* status
 )
 {
-    SDP_LOG_DEBUG("Executing sdp_GridderUvwEsFft...");
+    SDP_LOG_DEBUG("Executing %s...", __func__);
     if (*status || !plan) return;
 
+    // Report plan info.
+    report_info(plan, __func__);
+
+    sdp_timer_start(plan->timer_overall);
+    sdp_timer_reset(plan->timer_fft);
+    sdp_timer_reset(plan->timer_grid);
     sdp_gridder_check_plan(plan, status);
     if (*status) return;
 
@@ -850,9 +947,12 @@ void sdp_ifft_degrid_uvw_es(
         }
 
         // Perform 2D FFT
+        sdp_timer_resume(plan->timer_fft);
         sdp_fft_exec(fft, plan->w_grid_stack, plan->w_grid_stack, status);
+        sdp_timer_pause(plan->timer_fft);
 
         // Perform degridding
+        sdp_timer_resume(plan->timer_grid);
         {
             const char* kernel_name = 0;
             if (plan->do_wstacking)
@@ -918,8 +1018,13 @@ void sdp_ifft_degrid_uvw_es(
                 );
             }
         }
+        sdp_timer_pause(plan->timer_grid);
     } // loop over w-planes
 
     // Free FFT plan and data.
     sdp_fft_free(fft);
+
+    // Report timings.
+    sdp_timer_pause(plan->timer_overall);
+    report_timings(plan, __func__);
 }
