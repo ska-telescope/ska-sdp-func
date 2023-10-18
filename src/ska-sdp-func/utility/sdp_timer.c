@@ -1,9 +1,9 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include "ska-sdp-func/utility/sdp_timer.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
+#include "ska-sdp-func/utility/sdp_timer.h"
 
 #ifndef SDP_OS_WIN
 #include <sys/time.h>
@@ -34,6 +34,7 @@ struct sdp_Timer
     int paused;
 };
 
+
 static double sdp_get_wtime(sdp_Timer* timer)
 {
 #if defined(SDP_OS_WIN)
@@ -55,6 +56,7 @@ static double sdp_get_wtime(sdp_Timer* timer)
     return tv.tv_sec + tv.tv_usec / 1e6;
 #endif
 }
+
 
 sdp_Timer* sdp_timer_create(sdp_TimerType type)
 {
@@ -79,6 +81,7 @@ sdp_Timer* sdp_timer_create(sdp_TimerType type)
     return timer;
 }
 
+
 void sdp_timer_free(sdp_Timer* timer)
 {
     if (!timer) return;
@@ -91,6 +94,7 @@ void sdp_timer_free(sdp_Timer* timer)
 #endif
     free(timer);
 }
+
 
 double sdp_timer_elapsed(sdp_Timer* timer)
 {
@@ -124,12 +128,14 @@ double sdp_timer_elapsed(sdp_Timer* timer)
     return timer->elapsed;
 }
 
+
 void sdp_timer_pause(sdp_Timer* timer)
 {
     if (timer->paused) return;
     (void)sdp_timer_elapsed(timer);
     timer->paused = 1;
 }
+
 
 void sdp_timer_reset(sdp_Timer* timer)
 {
@@ -138,11 +144,13 @@ void sdp_timer_reset(sdp_Timer* timer)
     timer->elapsed = 0.0;
 }
 
+
 void sdp_timer_resume(sdp_Timer* timer)
 {
     if (!timer->paused) return;
     sdp_timer_restart(timer);
 }
+
 
 void sdp_timer_restart(sdp_Timer* timer)
 {
@@ -156,6 +164,7 @@ void sdp_timer_restart(sdp_Timer* timer)
 #endif
     timer->start = sdp_get_wtime(timer);
 }
+
 
 void sdp_timer_start(sdp_Timer* timer)
 {

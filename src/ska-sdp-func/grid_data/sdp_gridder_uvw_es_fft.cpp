@@ -66,7 +66,8 @@ struct sdp_GridderUvwEsFft
 
 
 static void report_info(
-        sdp_GridderUvwEsFft* plan, const char* function_name
+        sdp_GridderUvwEsFft* plan,
+        const char* function_name
 )
 {
     sdp_log_message(
@@ -89,7 +90,8 @@ static void report_info(
 
 
 static void report_timings(
-        sdp_GridderUvwEsFft* plan, const char* function_name
+        sdp_GridderUvwEsFft* plan,
+        const char* function_name
 )
 {
     const double tm_overall = sdp_timer_elapsed(plan->timer_overall);
