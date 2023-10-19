@@ -175,6 +175,42 @@ sdp_Mem* sdp_mem_create_wrapper(
 );
 
 /**
+ * @brief Wrap a pointer to a multi-dimensional array while reusing a handle.
+ *
+ * Similarly to sdp_mem_create_wrapper, this function wraps a pointer an array
+ * which is owned elsewhere. The memory will not be deallocated
+ * when the handle is freed.
+ *
+ * Instead of creating a new handle, this function updates an existing handle.
+ * The existing handle must have a reference count of one.
+ * If the handle previously owned memory, that memory is freed.
+ *
+ * The shape of the memory block is given by the @p shape parameter, which is
+ * an array of length @p num_dims elements. The stride (in bytes) for each
+ * dimension can also be optionally specified using the @p stride parameter -
+ * if NULL, then this will be computed from the shape.
+ *
+ * @param mem Existing handle to wrapped memory. May not be NULL.
+ * @param data Raw pointer to wrap.
+ * @param type Enumerated element data type of memory at @p data.
+ * @param location Enumerated memory location of memory at @p data.
+ * @param num_dims Number of dimensions.
+ * @param shape Size of each dimenion, in elements.
+ * @param stride Stride of each dimension, in bytes. May be NULL.
+ * @param status Error status.
+ */
+void sdp_mem_reuse_wrapper(
+        sdp_Mem* mem,
+        void* data,
+        sdp_MemType type,
+        sdp_MemLocation location,
+        int32_t num_dims,
+        const int64_t* shape,
+        const int64_t* stride,
+        sdp_Error* status
+);
+
+/**
  * @brief Create a shallow copy, or an alias, of a block's metadata.
  *
  * @param src Handle to source memory block.

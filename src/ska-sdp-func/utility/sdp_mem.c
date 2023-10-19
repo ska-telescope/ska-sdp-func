@@ -94,8 +94,9 @@ sdp_Mem* sdp_mem_create(
     return mem;
 }
 
-
-sdp_Mem* sdp_mem_create_wrapper(
+/// Fills a wrapper handle, once all memory is allocated for it.
+static void fill_wrapper(
+        sdp_Mem* mem,
         void* data,
         sdp_MemType type,
         sdp_MemLocation location,
@@ -105,28 +106,25 @@ sdp_Mem* sdp_mem_create_wrapper(
         sdp_Error* status
 )
 {
-    sdp_Mem* mem = (sdp_Mem*) calloc(1, sizeof(sdp_Mem));
     mem->data = data;
     mem->ref_count = 1;
     mem->type = type;
     mem->location = location;
     mem->num_dims = num_dims;
-    if (type == SDP_MEM_VOID) return mem;
+    if (type == SDP_MEM_VOID) return;
     const int64_t element_size = sdp_mem_type_size(type);
     if (element_size <= 0)
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_CRITICAL("Unsupported data type");
-        return mem;
+        return;
     }
 
     // For Python compatibility, a zero-dimensional tensor is a scalar.
     mem->num_elements = 1;
-    if (num_dims == 0) return mem;
+    if (num_dims == 0) return;
 
     // Store shape (and strides, if given; otherwise compute them).
-    mem->shape = (int64_t*) calloc(mem->num_dims, sizeof(int64_t));
-    mem->stride = (int64_t*) calloc(mem->num_dims, sizeof(int64_t));
     for (int32_t i = num_dims - 1; i >= 0; --i)
     {
         mem->shape[i] = shape[i];
@@ -145,7 +143,69 @@ sdp_Mem* sdp_mem_create_wrapper(
         }
         num_elements *= shape[i];
     }
+}
+
+/// Frees mem->data, if it's the owner.
+static void free_data(sdp_Mem* mem) {
+    if (mem->is_owner && mem->data)
+    {
+        if (mem->location == SDP_MEM_CPU)
+        {
+            free(mem->data);
+        }
+        else if (mem->location == SDP_MEM_GPU)
+        {
+#ifdef SDP_HAVE_CUDA
+            cudaFree(mem->data);
+#endif
+        }
+    }
+}
+
+sdp_Mem* sdp_mem_create_wrapper(
+        void* data,
+        sdp_MemType type,
+        sdp_MemLocation location,
+        int32_t num_dims,
+        const int64_t* shape,
+        const int64_t* stride,
+        sdp_Error* status
+)
+{
+    sdp_Mem* mem = (sdp_Mem*) calloc(1, sizeof(sdp_Mem));
+    mem->shape = (int64_t*) calloc(num_dims, sizeof(int64_t));
+    mem->stride = (int64_t*) calloc(num_dims, sizeof(int64_t));
+    fill_wrapper(mem, data, type, location, num_dims, shape, stride, status);
     return mem;
+}
+
+void sdp_mem_reuse_wrapper(
+        sdp_Mem* mem,
+        void* data,
+        sdp_MemType type,
+        sdp_MemLocation location,
+        int32_t num_dims,
+        const int64_t* shape,
+        const int64_t* stride,
+        sdp_Error* status
+)
+{
+    if (!mem || mem->ref_count != 1)\
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+
+    free_data(mem);
+
+    // Enlarge memory for shape and stride if needed.
+    if (mem->num_dims < num_dims)
+    {
+        mem->shape = realloc(mem->shape, num_dims * sizeof(int64_t));
+        mem->stride = realloc(mem->stride, num_dims * sizeof(int64_t));
+    }
+
+    fill_wrapper(mem, data, type, location, num_dims, shape, stride, status);
 }
 
 
@@ -300,20 +360,9 @@ const void* sdp_mem_gpu_buffer_const(const sdp_Mem* mem, sdp_Error* status)
 void sdp_mem_free(sdp_Mem* mem)
 {
     if (!mem) return;
-    if (--mem->ref_count > 0) return;
-    if (mem->is_owner && mem->data)
-    {
-        if (mem->location == SDP_MEM_CPU)
-        {
-            free(mem->data);
-        }
-        else if (mem->location == SDP_MEM_GPU)
-        {
-#ifdef SDP_HAVE_CUDA
-            cudaFree(mem->data);
-#endif
-        }
-    }
+    --mem->ref_count;
+    if (mem->ref_count > 0) return;
+    free_data(mem);
     free(mem->shape);
     free(mem->stride);
     free(mem);

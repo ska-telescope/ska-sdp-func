@@ -135,6 +135,20 @@ Lib.wrap_func(
     check_errcode=True,
 )
 
+Lib.wrap_func(
+    "sdp_mem_reuse_wrapper",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        ctypes.c_void_p,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int32,
+        ctypes.POINTER(ctypes.c_int64),
+        ctypes.POINTER(ctypes.c_int64),
+    ],
+    check_errcode=True,
+)
 
 Lib.wrap_func(
     "sdp_mem_set_read_only",
