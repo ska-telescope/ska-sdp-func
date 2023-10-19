@@ -94,6 +94,7 @@ sdp_Mem* sdp_mem_create(
     return mem;
 }
 
+
 /// Fills a wrapper handle, once all memory is allocated for it.
 static void fill_wrapper(
         sdp_Mem* mem,
@@ -145,8 +146,10 @@ static void fill_wrapper(
     }
 }
 
+
 /// Frees mem->data, if it's the owner.
-static void free_data(sdp_Mem* mem) {
+static void free_data(sdp_Mem* mem)
+{
     if (mem->is_owner && mem->data)
     {
         if (mem->location == SDP_MEM_CPU)
@@ -161,6 +164,7 @@ static void free_data(sdp_Mem* mem) {
         }
     }
 }
+
 
 sdp_Mem* sdp_mem_create_wrapper(
         void* data,
@@ -179,6 +183,7 @@ sdp_Mem* sdp_mem_create_wrapper(
     return mem;
 }
 
+
 void sdp_mem_reuse_wrapper(
         sdp_Mem* mem,
         void* data,
@@ -190,7 +195,7 @@ void sdp_mem_reuse_wrapper(
         sdp_Error* status
 )
 {
-    if (!mem || mem->ref_count != 1)\
+    if (!mem || mem->ref_count != 1)
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         return;
