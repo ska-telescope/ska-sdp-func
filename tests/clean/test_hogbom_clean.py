@@ -4,23 +4,19 @@
 
 try:
     import cupy
-    print("cupy loaded")
 except ImportError:
     cupy = None
-    print("no cupy")
 
 import time
 import numpy as np
 import scipy.signal as sig
-
-# from scipy.optimize import least_squares
 from ska_sdp_func.visibility import dft_point_v01
 from ska_sdp_func.grid_data import GridderUvwEsFft
 from ska_sdp_func.clean import hogbom_clean
 
 
 def create_test_data(dirty_size, psf_size):
-    """Test DFT function."""
+    """create a test image and corresponding PSF"""
     # Initialise settings
     num_components = 10
     num_pols = 1
@@ -206,24 +202,6 @@ def create_cbeam(coeffs, size):
     return cbeam
 
 
-# error residuals for least squares fit
-# def error_residuals(coeffs, psf):
-
-#     fitting_size = 256
-
-#     half_width = int(fitting_size / 2)
-
-#     c = create_cbeam(coeffs, fitting_size)
-#     c = c.flatten()
-
-#     p = psf[
-#         1024 - half_width : 1024 + half_width, 1024 - half_width : 1024 + half_width
-#     ]
-#     p = p.flatten()
-
-#     return np.subtract(p, c)
-
-
 def reference_hogbom_clean(
     dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit
 ):
@@ -256,9 +234,6 @@ def reference_hogbom_clean(
         max_idx_flat = residual.argmax()
         max_idx = np.unravel_index(max_idx_flat, residual.shape)
 
-        # print("\n")
-        # print(residual[max_idx])
-
         # check maximum value against threshold
         if residual[max_idx] < threshold:
             # Set stop flag if threshold reached
@@ -288,16 +263,16 @@ def reference_hogbom_clean(
     # Add remaining residual
     skymodel = np.add(skymodel, residual)
 
-    return skymodel, cbeam, clean_comp, residual
+    return skymodel
 
 
 def test_hogbom_clean():
     """Test the Hogbom CLEAN function"""
 
     # initalise settings
-    dirty_size = 1024
-    psf_size = 2048
-    cbeam_details = np.ones(3)
+    dirty_size = 256
+    psf_size = 512
+    cbeam_details = np.array([1.0, 1.0, 1.0], dtype=np.float64)
     loop_gain = 0.1
     threshold = 0.001
     cycle_limit = 10000
@@ -310,17 +285,9 @@ def test_hogbom_clean():
     print("Creating test data on CPU from ska-sdp-func...")
     dirty_img, psf = create_test_data(dirty_size, psf_size)
 
-    # print("Fitting CLEAN beam to PSF ...")
-    # fit = least_squares(
-    #     error_residuals, cbeam_details, args=([psf]), verbose=0
-    # )
-
-    cbeam_details = np.array([10.0, 10.0, 1.0], dtype=np.float64)
-    # cbeam_details = fit.x
-
     ref_start_time = time.time()
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference, cbeam, clean_comp, residual = reference_hogbom_clean(
+    skymodel_reference = reference_hogbom_clean(
         dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit
     )
     ref_end_time = time.time() - ref_start_time
@@ -344,7 +311,7 @@ def test_hogbom_clean():
     np.testing.assert_array_almost_equal(skymodel, skymodel_reference)
     print("Hogbom CLEAN on CPU: Test passed")
 
-    print(f"CPU test in C at double precision completed in {cpu_test_end_time:.3f} sec")
+    # print(f"CPU test in C at double precision completed in {cpu_test_end_time:.3f} sec")
 
     dirty_img_float = dirty_img.astype(np.float32)
     psf_float = psf.astype(np.float32)
@@ -367,9 +334,9 @@ def test_hogbom_clean():
     cpu_float_test_end_time = time.time() - cpu_float_test_start_time
     np.testing.assert_array_almost_equal(skymodel_float, skymodel_reference, decimal=4)
 
-    print(
-        f"CPU test in C at float precision completed in {cpu_float_test_end_time:.3f} sec"
-    )
+    # print(
+    #     f"CPU test in C at float precision completed in {cpu_float_test_end_time:.3f} sec"
+    # )
 
     if cupy:
         dirty_img_gpu = cupy.asarray(dirty_img)

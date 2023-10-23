@@ -6,21 +6,17 @@ try:
     import cupy
 except ImportError:
     cupy = None
-    print("no cupy")
 
 import numpy as np
 import scipy.signal as sig
-from scipy.optimize import least_squares
 from scipy.ndimage import gaussian_filter
-import matplotlib.pyplot as plt
 from ska_sdp_func.visibility import dft_point_v01
 from ska_sdp_func.grid_data import GridderUvwEsFft
+from ska_sdp_func.clean import ms_clean_ws_clean
 
-# from ska_sdp_func.clean import ms_clean
 
-
-def create_test_data():
-    """Test DFT function."""
+def create_test_data(nxydirty, nxydirty_psf):
+    """create a test image and corresponding PSF"""
     # Initialise settings
     num_components = 10
     num_pols = 1
@@ -98,8 +94,8 @@ def create_test_data():
     )
 
     # initialise settings for gridder
-    nxydirty = 1024
-    nxydirty_psf = 2048
+    # nxydirty = 512
+    # nxydirty_psf = 1024
     fov = 2  # degrees
     pixel_size_rad = fov * np.pi / 180 / nxydirty
     pixel_size_rad_psf = fov * np.pi / 180 / nxydirty_psf
@@ -172,10 +168,10 @@ def create_test_data():
 
 
 def create_cbeam(coeffs, size):
-    # create clean beam
+    """create clean beam with Bmaj, Bmin and Bpa"""
 
     # size = 512
-    center = size / 2 - 1
+    center = size / 2
 
     cbeam = np.zeros([size, size])
 
@@ -206,24 +202,8 @@ def create_cbeam(coeffs, size):
     return cbeam
 
 
-def error_residuals(coeffs, psf):
-
-    fitting_size = 256
-
-    half_width = int(fitting_size / 2)
-
-    c = create_cbeam(coeffs, fitting_size)
-    c = c.flatten()
-
-    p = psf[
-        1024 - half_width : 1024 + half_width, 1024 - half_width : 1024 + half_width
-    ]
-    p = p.flatten()
-
-    return np.subtract(p, c)
-
-
-def SubMinorLoop(residual, psf, loop_gain, threshold, cycle_limit):
+def sub_minor_loop(residual, psf, loop_gain, threshold, cycle_limit):
+    """perform the sub-minor loop of WSCLEAN msCLEAN - essentially a standard Hogbom"""
 
     stop = False
     maximum = np.zeros((cycle_limit, 3))
@@ -233,14 +213,15 @@ def SubMinorLoop(residual, psf, loop_gain, threshold, cycle_limit):
 
     while cur_cycle_sub_minor < cycle_limit and stop is False:
 
-        print(
-            f"Current Minor Cycle: {cur_cycle_sub_minor} of {cycle_limit} Cycles Limit",
-            end="\r",
-        )
-
         # Find index of the maximum value in residual
         max_idx_flat = residual.argmax()
         max_idx = np.unravel_index(max_idx_flat, residual.shape)
+
+        # print(
+        #     f"Current Sub-Minor Cycle: {cur_cycle_sub_minor} of {cycle_limit} Cycles Limit\n"
+        #     f"Current Max = {residual[max_idx]}\n"
+        #     f"Current position = {max_idx}\n",
+        #     end="\n")
 
         # check maximum value against threshold
         if residual[max_idx] < threshold:
@@ -267,10 +248,11 @@ def SubMinorLoop(residual, psf, loop_gain, threshold, cycle_limit):
 
         cur_cycle_sub_minor += 1
 
-    return clean_comp, residual
+    return clean_comp
 
 
-def ScaleBiasCalc(scales):
+def create_scale_bias(scales):
+    """calculate a set of biases for each scale"""
 
     scale_bias = np.zeros(len(scales))
     first_scale = 0
@@ -286,11 +268,15 @@ def ScaleBiasCalc(scales):
         else:
             scale_bias[i] = 0.6 ** (-1 - np.log2(scale / first_scale))
 
+    # scale_bias = np.array([1, 0.6**-1, 0.6**-2, 0.6**-3, 0.6**-4])
+
     return scale_bias
 
 
-def ScaleKernCalc(scales, length):
+def create_scale_kern(scales, length, scale_kern_list):
+    """created a set of 2D gaussians at a specifed scales"""
 
+    # calculate sigma
     sigma_list = []
     for scale in scales:
         if scale == 0:
@@ -298,18 +284,18 @@ def ScaleKernCalc(scales, length):
         else:
             sigma_list.append((3 / 16) * scale)
 
-    scale_kern_list = []
-    for sigma in sigma_list:
+    # calculate gaussians
+    for i, sigma in enumerate(sigma_list):
 
         if sigma == 0:
             kernel = np.zeros((length, length))
             kernel[length // 2, length // 2] = 1
-            scale_kern_list.append(kernel)
+            scale_kern_list[i, :, :] = kernel
         else:
             kernel = np.zeros((length, length))
             kernel[length // 2, length // 2] = 1
             kernel = gaussian_filter(kernel, sigma)
-            scale_kern_list.append(kernel)
+            scale_kern_list[i, :, :] = kernel
 
     return scale_kern_list
 
@@ -325,6 +311,7 @@ def reference_ms_clean_ws_clean(
     cycle_limit_minor,
     scales,
 ):
+    """python implementation of msCLEAN from WSCLEAN"""
 
     # set up some loop variables
     cur_cycle = 0
@@ -338,22 +325,23 @@ def reference_ms_clean_ws_clean(
     model = np.zeros(dirty_img.shape)
     residual = np.copy(dirty_img)
     scaled_residuals = np.zeros([len(scales), dirty_size, dirty_size])
+    scale_kern_list = np.zeros([len(scales), dirty_size, dirty_size])
 
     # create CLEAN beam
-    cbeam = create_cbeam(cbeam_details, psf_size)
+    cbeam = create_cbeam(cbeam_details, dirty_size)
 
     # calculate scale kernels
-    scale_kern_list = ScaleKernCalc(scales, dirty_size)
+    scale_kern_list = create_scale_kern(scales, dirty_size, scale_kern_list)
 
     # scale psf with scale kernel twice
     scaled_psf = np.zeros([len(scales), psf_size, psf_size])
 
     for i, scale_kern in enumerate(scale_kern_list):
         scaled_psf[i] = sig.convolve(psf, scale_kern, mode="same")
-        scaled_psf[i] = sig.convolve(scaled_psf[i], scale_kern, mode="same")
+        scaled_psf[i] = sig.convolve(scaled_psf[i], scale_kern, mode="same")        
 
     # calculate scale bias
-    scale_bias = ScaleBiasCalc(scales)
+    scale_bias = create_scale_bias(scales)
 
     # begin cycle
     while cur_cycle < cycle_limit and stop is False:
@@ -364,32 +352,32 @@ def reference_ms_clean_ws_clean(
 
         # Find index of the maximum value at each scale and then use scale bias to find overall maximum
         max_val = np.zeros(len(scaled_residuals))
+        max_val_scaled = np.zeros(len(scaled_residuals))
+
         for i, scaled in enumerate(scaled_residuals):
-            max_val[i] = np.amax(scaled) * scale_bias[i]
+            max_val[i] = np.max(scaled)
+            max_val_scaled[i] = max_val[i] * scale_bias[i]
 
-        max_scale = max_val.argmax()
+        # find max scale after scaling
+        max_scale = max_val_scaled.argmax()
 
-        print(
-            f"Current Major Cycle: {cur_cycle} of {cycle_limit} Cycles Limit. Current Scale = {max_scale}",
-            end="\n",
-        )
+        # find value for sub-minor to clean to
+        stop_val = max_val[max_scale] * ms_gain
 
-        max_idx_flat = scaled_residuals[max_scale, :, :].argmax()
-        max_idx = np.unravel_index(
-            max_idx_flat, scaled_residuals[max_scale, :, :].shape
-        )
+        # print(
+        #     f"Current Minor Cycle: {cur_cycle} of {cycle_limit} Cycles Limit.\n"
+        #     f"Current Scale = {max_scale} \n"
+        #     f"Current max value = {max_val[max_scale]} \n"
+        #     f"Target value = {stop_val} \n",
+        #     end="\n",
+        # )
 
-        stop_val = scaled_residuals[max_scale]
-        stop_val = stop_val[max_idx]
-        stop_val = stop_val * ms_gain
-        print(stop_val)
-
-        if stop_val < threshold:
+        if max_val[max_scale] < threshold:
             stop = True
             break
 
         # call subminor loop
-        clean_comp_ret, residuals_ret = SubMinorLoop(
+        clean_comp_ret = sub_minor_loop(
             scaled_residuals[max_scale, :, :],
             scaled_psf[max_scale, :, :],
             clean_gain,
@@ -399,7 +387,7 @@ def reference_ms_clean_ws_clean(
 
         # convolve the returned model with the scale kernel for the used scale
         clean_comp_ret = sig.convolve(
-            clean_comp_ret, scale_kern_list[int(max_scale)], mode="same"
+            clean_comp_ret, scale_kern_list[max_scale, :, :], mode="same"
         )
 
         # add the convolved returned model to the overall model
@@ -409,7 +397,7 @@ def reference_ms_clean_ws_clean(
         clean_ret_psf = sig.convolve(clean_comp_ret, psf, mode="same")
 
         # subtract the above from the residual
-        residual = np.subtract(residual, clean_ret_psf)
+        residual = residual - clean_ret_psf
 
         cur_cycle += 1
 
@@ -422,30 +410,34 @@ def reference_ms_clean_ws_clean(
     # # Add remaining residual
     # skymodel = np.add(skymodel, residual)
 
-    return skymodel, cbeam, residual
+    return skymodel
 
 
 def test_ms_clean_ws_clean():
     """Test the ms CLEAN from wsclean function"""
 
     # initalise settings
-    cbeam_details = np.ones(3) * 5
-    scales = np.array([0, 8, 16, 32, 64])
+    cbeam_details = np.array([10.0, 10.0, 1.0], dtype=np.float64)
+    scales = np.array([0, 8, 16, 32, 64], dtype=np.float64)
     clean_gain = 0.1
     ms_gain = 0.8
-    threshold = 0.1
-    cycle_limit_minor = 10000
-    cycle_limit_major = 500
+    threshold = 0.01
+    cycle_limit_minor = 100
+    cycle_limit_major = 100
+    # size of dirty image
+    nxydirty = 256
+    # size of psf
+    nxydirty_psf = 512
 
     # create empty array for result
-    skymodel = np.zeros([1024, 1024])
+    skymodel = np.zeros([nxydirty, nxydirty])
 
     # create test data
     print("Creating test data on CPU from ska-sdp-func...")
-    dirty_img, psf = create_test_data()
+    dirty_img, psf = create_test_data(nxydirty, nxydirty_psf)
 
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference, cbeam, residual = reference_ms_clean_ws_clean(
+    skymodel_reference = reference_ms_clean_ws_clean(
         dirty_img,
         psf,
         cbeam_details,
@@ -457,10 +449,19 @@ def test_ms_clean_ws_clean():
         scales,
     )
 
-#     plt.figure()
-#     plt.imshow(skymodel_reference)
+    print("Testing msCLEAN WSCLEAN version on CPU from ska-sdp-func...")
+    ms_clean_ws_clean(
+        dirty_img,
+        psf,
+        cbeam_details,
+        scales,
+        clean_gain,
+        threshold,
+        cycle_limit_major,
+        cycle_limit_minor,
+        ms_gain,
+        skymodel
+    )
 
-#     plt.show()
-
-
-# test_ms_clean_ws_clean()
+    np.testing.assert_almost_equal(skymodel_reference, skymodel, decimal=2)
+    print("msCLEAN WSCLEAN version on CPU: Test passed")

@@ -111,20 +111,6 @@ inline void create_scale_kern(
     }
 }
 
-// static void ms_clean_cornwell(
-//         const double* dirty_img,
-//         const double* psf,
-//         const double* cbeam_details,
-//         const double* scale_list,
-//         const double loop_gain,
-//         const double threshold,
-//         const double cycle_limit,
-//         const int64_t dirty_img_dim,
-//         const int64_t psf_dim,
-//         const int64_t scale_dim,
-//         double* skymodel,
-//         sdp_Error* status
-// ){
 
 static void ms_clean_cornwell(
         const sdp_Mem* dirty_img,
@@ -186,11 +172,7 @@ static void ms_clean_cornwell(
         complex<double>* cur_scaled_psf_ptr = (complex<double>*)sdp_mem_data(cur_scaled_psf_mem);
         sdp_mem_clear_contents(cur_scaled_psf_mem, status);
         sdp_Mem* cur_scaled_psf_pre_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, psf_shape, status);
-        complex<double>* cur_scaled_psf_pre_ptr = (complex<double>*)sdp_mem_data(cur_scaled_psf_pre_mem);
         sdp_mem_clear_contents(cur_scaled_psf_pre_mem, status);
-        // sdp_Mem* coupling_matrix_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, scaled_residuals_shape, status);
-        // complex<double>* coupling_matrix_ptr = (complex<double>*)sdp_mem_data(coupling_matrix_mem);
-        // sdp_mem_clear_contents(coupling_matrix_mem, status);
         sdp_Mem* scale_kern_list_mem = sdp_mem_create(SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 3, scale_kern_list_shape, status);
         complex<double>* scale_kern_list_ptr = (complex<double>*)sdp_mem_data(scale_kern_list_mem);
         sdp_mem_clear_contents(scale_kern_list_mem, status);
@@ -310,41 +292,6 @@ static void ms_clean_cornwell(
             }
         }
 
-        // // print to skymodel
-        // int s = 4;
-        // int p = 4;
-        // for (int x = 0; x < dirty_img_dim; x++){
-        //     for (int y = 0; y < dirty_img_dim; y++){
-                    
-        //         const unsigned int i_list = INDEX_3D(scale_dim,dirty_img_dim,dirty_img_dim,s,x,y);
-        //         const unsigned int i_cur = INDEX_2D(dirty_img_dim,dirty_img_dim,x,y);
-        //         const unsigned int i_scaled_psf_list = INDEX_4D(scale_dim,scale_dim,psf_dim,psf_dim,s,p,x,y);
-                
-        //         skymodel_ptr[i_cur] = std::real(scaled_residuals_ptr[i_list]);
-                
-        //         // const unsigned int i_cur = INDEX_2D(dirty_img_dim,dirty_img_dim,x,y);
-        //         // const unsigned int i_cur_coup = INDEX_2D(scale_dim,scale_dim,x,y);
-
-
-        //         // skymodel_ptr[i_cur] = std::real(scaled_psf_ptr[i_scaled_psf_list]);
-        //     }
-        // }
-
-
-        // // print to skymodel
-        // int s = 4;
-        // int p = 4;
-        // for (int x = 0; x < scale_dim; x++){
-        //     for (int y = 0; y < scale_dim; y++){
-                    
-        //         const unsigned int i_cur = INDEX_2D(dirty_img_dim,dirty_img_dim,x,y);
-        //         const unsigned int i_cur_coup = INDEX_2D(scale_dim,scale_dim,x,y);
-
-        //         skymodel_ptr[i_cur] = std::real(coupling_matrix_ptr[i_cur_coup]);
-        //     }
-        // }
-
-
 
         // set up some loop variables
         int cur_cycle = 0;
@@ -463,14 +410,6 @@ static void ms_clean_cornwell(
 }
 
 
-
-
-
-
-
-
-
-
 void sdp_ms_clean_cornwell(
         const sdp_Mem* dirty_img,
         const sdp_Mem* psf,
@@ -494,7 +433,7 @@ void sdp_ms_clean_cornwell(
         return;
     }
 
-    if (sdp_mem_location(dirty_img) != sdp_mem_location(psf)){
+    if (sdp_mem_location(dirty_img) != sdp_mem_location(skymodel)){
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Memory location mismatch");
         return;
@@ -506,22 +445,14 @@ void sdp_ms_clean_cornwell(
         return;
     }
 
+    if (sdp_mem_type(dirty_img) != sdp_mem_type(skymodel)){
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("The input and output must be of the same data type");
+        return;
+    }
+
     if (sdp_mem_location(dirty_img) == SDP_MEM_CPU)
     {
-        // ms_clean_cornwell(
-        //     (const double*)sdp_mem_data_const(dirty_img),
-        //     (const double*)sdp_mem_data_const(psf),
-        //     (const double*)sdp_mem_data_const(cbeam_details),
-        //     (const double*)sdp_mem_data_const(scale_list),
-        //     loop_gain,
-        //     threshold,
-        //     cycle_limit,
-        //     dirty_img_dim,
-        //     psf_dim,
-        //     scale_dim,
-        //     (double*)sdp_mem_data(skymodel),
-        //     status
-        // );
         ms_clean_cornwell(
             dirty_img,
             psf,

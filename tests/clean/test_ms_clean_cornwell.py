@@ -4,20 +4,15 @@ try:
     import cupy
 except ImportError:
     cupy = None
-    print("no cupy")
 
 import numpy as np
 import scipy.signal as sig
-from scipy.optimize import least_squares
 from scipy.ndimage import gaussian_filter
-import matplotlib.pyplot as plt
 from ska_sdp_func.visibility import dft_point_v01
 from ska_sdp_func.grid_data import GridderUvwEsFft
+from ska_sdp_func.clean import ms_clean_cornwell
 
-# from ska_sdp_func.clean import ms_clean
-
-
-def create_test_data():
+def create_test_data(dirty_size, psf_size):
     """Test DFT function."""
     # Initialise settings
     num_components = 10
@@ -96,8 +91,8 @@ def create_test_data():
     )
 
     # initialise settings for gridder
-    nxydirty = 1024
-    nxydirty_psf = 2048
+    nxydirty = dirty_size
+    nxydirty_psf = psf_size
     fov = 2  # degrees
     pixel_size_rad = fov * np.pi / 180 / nxydirty
     pixel_size_rad_psf = fov * np.pi / 180 / nxydirty_psf
@@ -166,40 +161,6 @@ def create_test_data():
     psf = psf / num_baselines
     dirty_image = dirty_image / num_baselines
 
-    # plt.figure()
-    # plt.title("UV positions")
-    # plt.xlabel("U")
-    # plt.ylabel("V")
-    # plt.scatter(uvw[:,0], uvw[:,1])
-
-    # plt.figure()
-    # plt.title("Dirty Image")
-    # # plt.xlabel("U")
-    # # plt.ylabel("V")
-    # plt.imshow(dirty_image, vmin=0, vmax=10)
-    # plt.colorbar(label="Jy", ticks=[0,1,2,3,4,5,6,7,8,9,10])
-
-    # plt.figure()
-    # plt.title("PSF")
-    # # plt.xlabel("U")
-    # # plt.ylabel("V")
-    # plt.imshow(psf, vmin=0, vmax=1)
-    # plt.colorbar(label="Jy", ticks=[0,0.25, 0.5,0.75,1])
-
-    # plt.figure()
-    # plt.title("lm positions")
-    # # plt.xlabel("l")
-    # # plt.ylabel("m")
-    # # plt.gca().invert_xaxis()
-    # plt.xlim([-0.015,0.015])
-    # plt.ylim([-0.015,0.015])
-    # plt.gca().invert_yaxis()
-    # plt.scatter(directions[:,1],directions[:,0])
-
-    # print(fluxes)
-
-    # plt.show()
-
     return dirty_image, psf
 
 
@@ -207,7 +168,7 @@ def create_cbeam(coeffs, size):
     # create clean beam
 
     # size = 512
-    center = size / 2 - 1
+    center = size / 2
 
     cbeam = np.zeros([size, size])
 
@@ -407,28 +368,30 @@ def reference_ms_clean_cornwell(
     # # Add remaining residual
     # skymodel = np.add(skymodel, residual)
 
-    return skymodel, cbeam, scaled_residuals[0,:,:]
+    return skymodel
 
 
 def test_ms_clean_cornwell():
-    """Test the ms CLEAN from Cornwell function"""
+    """Test the msCLEAN from Cornwell function"""
 
     # initalise settings
-    cbeam_details = np.ones(3) * 5
-    scales = np.array([0, 8, 16, 32, 64])
+    dirty_size = 1024
+    psf_size = 2048
+    cbeam_details = np.array([1.0, 1.0, 1.0], dtype=np.float64)
+    scales = np.array([0, 8, 16, 32, 64], dtype=np.float64)
     loop_gain = 0.1
     threshold = 0.001
     cycle_limit = 10000
 
     # create empty array for result
-    skymodel = np.zeros([1024, 1024])
+    skymodel = np.zeros([dirty_size, dirty_size])
 
     # create test data
     print("Creating test data on CPU from ska-sdp-func...")
-    dirty_img, psf = create_test_data()
+    dirty_img, psf = create_test_data(dirty_size, psf_size)
 
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference, cbeam, residual = reference_ms_clean_cornwell(
+    skymodel_reference = reference_ms_clean_cornwell(
         dirty_img,
         psf,
         cbeam_details,
@@ -438,10 +401,11 @@ def test_ms_clean_cornwell():
         scales,
     )
 
-    plt.figure()
-    plt.imshow(skymodel_reference)
+    print("Testing msCLEAN from Cornwell on CPU from ska-sdp-func...")
 
-    plt.show()
+    ms_clean_cornwell(
+        dirty_img, psf, cbeam_details, scales, loop_gain, threshold, cycle_limit, skymodel
+    )
 
-
-test_ms_clean_cornwell()
+    np.testing.assert_array_almost_equal(skymodel, skymodel_reference, decimal=4)
+    print("msCLEAN from Cornwell on CPU: Test passed")

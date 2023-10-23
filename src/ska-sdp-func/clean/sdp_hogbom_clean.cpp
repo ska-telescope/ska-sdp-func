@@ -21,6 +21,7 @@ https://www.researchgate.net/publication/2336887_Deconvolution_Tutorial
 #include <cmath>
 #include <complex>
 #include <stdlib.h>
+#include <time.h>
 
 using std::complex;
 
@@ -134,7 +135,7 @@ static void hogbom_clean(
         bool stop = 0;
 
         // create CLEAN Beam
-        sdp_mem_clear_contents(cbeam_mem, status);
+        sdp_mem_clear_contents(cbeam_mem, status);   
         create_cbeam<T>(cbeam_details, psf_dim, cbeam_ptr);
 
         // CLEAN loop executes while the stop conditions (threashold and cycle limit) are not met
@@ -150,7 +151,10 @@ static void hogbom_clean(
                     max_idx_flat = i;
                 }
             }
-            
+
+            // SDP_LOG_DEBUG("peak %f", std::real(residual_ptr[max_idx_flat]));
+            // SDP_LOG_DEBUG("cycle %d", cur_cycle);
+
             // check maximum value against threshold
             if (std::real(residual_ptr[max_idx_flat]) < threshold) {
                 stop = 1;
@@ -184,9 +188,9 @@ static void hogbom_clean(
                 }
             }
 
-             cur_cycle += 1;
+            cur_cycle += 1;
         }
-
+           
         // convolve clean components with clean beam
         sdp_Mem* convolution_result_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
         complex<T>* convolution_result_ptr = (complex<T>*)sdp_mem_data(convolution_result_mem);
@@ -203,6 +207,7 @@ static void hogbom_clean(
             skymodel[i] = skymodel[i] + residual_real_ptr[i];
         }
 
+        // free memory
         sdp_mem_ref_dec(cbeam_mem);
         sdp_mem_ref_dec(clean_comp_mem);
         sdp_mem_ref_dec(residual_mem);
@@ -492,6 +497,7 @@ void hogbom_clean_gpu(
         sdp_Mem* max_val_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, max_shape, status);
         sdp_Mem* max_idx_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1, max_shape, status);
 
+        bool thresh_reached = false;
 
         // CLEAN loop executes while the stop conditions (threshold and cycle limit) are not met
         while (cur_cycle < cycle_limit && !stop) {
@@ -507,7 +513,8 @@ void hogbom_clean_gpu(
                 sdp_mem_gpu_buffer(max_idx_mem, status),
                 sdp_mem_gpu_buffer(max_val_mem, status),
                 sdp_mem_gpu_buffer(max_idx_mem, status),
-                &init_idx
+                &init_idx,
+                &thresh_reached
             };
 
             // find the maximum value in the residual
@@ -572,11 +579,19 @@ void hogbom_clean_gpu(
                 sdp_mem_gpu_buffer(loop_gain_mem, status),
                 sdp_mem_gpu_buffer(max_val_mem, status),
                 sdp_mem_gpu_buffer(threshold_mem, status),
+                &thresh_reached
             };
 
             sdp_launch_cuda_kernel(kernel_name,
                     num_blocks_clean_comp, num_threads_clean_comp, 0, 0, args_clean_comp, status
             );
+            
+            // SDP_LOG_DEBUG("cycle %d", cur_cycle);
+
+            // sdp_Mem* checker = sdp_mem_create_copy(max_val_mem, SDP_MEM_CPU, status);
+            // double* checker_ptr = (double*)sdp_mem_data(checker);
+            // SDP_LOG_DEBUG("peak %f", checker_ptr[0]);
+            // // return;
 
             // subtract psf            
             if (use_bfloat){
@@ -606,9 +621,18 @@ void hogbom_clean_gpu(
                 sdp_mem_gpu_buffer(threshold_mem, status),
             };
 
+            // clock_t start, end;
+            // double cpu_time_used;
+            // start = clock();  
+
             sdp_launch_cuda_kernel(kernel_name,
                     num_blocks, num_threads, 0, 0, args_subtract_psf, status
             );
+
+            // end = clock();
+            // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+            // SDP_LOG_INFO("psfsub %f", cpu_time_used);
 
             cur_cycle += 1;
         }

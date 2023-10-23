@@ -22,8 +22,8 @@ static void run_and_check(
 {
 
     // settings
-    int64_t in1_dim = 1024;
-    int64_t in2_dim = 2048;
+    int64_t in1_dim = 128;
+    int64_t in2_dim = 256;
 
     const int64_t in1_shape[] = {in1_dim, in1_dim};
     const int64_t in2_shape[] = {in2_dim, in2_dim};

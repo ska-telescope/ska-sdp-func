@@ -4,3 +4,4 @@
 
 from .hogbom_clean import hogbom_clean
 from .ms_clean_cornwell import ms_clean_cornwell
+from .ms_clean_ws_clean import ms_clean_ws_clean

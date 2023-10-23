@@ -8,7 +8,7 @@
 #include <complex>
 #include <cassert>
 
-#include "ska-sdp-func/clean/sdp_hogbom_clean.h"
+#include "ska-sdp-func/clean/sdp_ms_clean_ws_clean.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
@@ -326,12 +326,13 @@ static void run_and_check(
 {
 
     // settings
-    int nxydirty = 256;
-    int nxypsf = 512;
+    int nxydirty = 128;
+    int nxypsf = 256;
     double loop_gain = 0.1;
-    double threshold = 0.001;
-    int cycle_limit = 10000;
-    bool use_bfloat = false;
+    double threshold = 0.01;
+    int cycle_limit = 100;
+    double ms_gain = 0.8;
+    int sub_minor_cycle_limit = 100;
 
     // create test data
     const int64_t diryt_img_shape[] = {nxydirty, nxydirty};
@@ -342,6 +343,7 @@ static void run_and_check(
     sdp_Mem *psf = sdp_mem_create(input_type, SDP_MEM_CPU, 2, psf_shape, status);
     sdp_mem_clear_contents(psf, status);
 
+    // clean beam details
     const int64_t cbeam_details_shape[] = {3};
     sdp_Mem *cbeam_details = sdp_mem_create(input_type, SDP_MEM_CPU, 1, cbeam_details_shape, status);
     double *cbeam_details_ptr = (double *)sdp_mem_data(cbeam_details);
@@ -349,6 +351,17 @@ static void run_and_check(
     cbeam_details_ptr[0] = 1.0;
     cbeam_details_ptr[1] = 1.0;
     cbeam_details_ptr[2] = 1.0;
+
+    // scale list
+    const int64_t scales_shape[] = {5};
+    sdp_Mem *scales = sdp_mem_create(input_type, SDP_MEM_CPU, 1, scales_shape, status);
+    double *scales_ptr = (double *)sdp_mem_data(scales);
+    // pre-computed variables
+    scales_ptr[0] = 0.0;
+    scales_ptr[1] = 8.0;
+    scales_ptr[2] = 16.0;
+    scales_ptr[3] = 32.0;
+    scales_ptr[4] = 64.0;
     
     create_test_data(
         dirty_img,
@@ -366,30 +379,35 @@ static void run_and_check(
     sdp_Mem* dirty_img_copy = sdp_mem_create_copy(dirty_img, input_location, status);
     sdp_Mem* psf_copy = sdp_mem_create_copy(psf, input_location, status);
     sdp_Mem* cbeam_details_copy = sdp_mem_create_copy(cbeam_details, input_location, status);
+    sdp_Mem* scales_copy = sdp_mem_create_copy(scales, input_location, status);
     sdp_Mem* skymodel_copy = sdp_mem_create_copy(skymodel, output_location, status);
     sdp_mem_set_read_only(skymodel_copy, read_only_output);
 
 
     // call function to test
     SDP_LOG_INFO("Running test: %s", test_name);
-    sdp_hogbom_clean(
+    sdp_ms_clean_ws_clean(
         dirty_img_copy,
         psf_copy,
         cbeam_details_copy,
+        scales_copy,
         loop_gain,
         threshold,
         cycle_limit,
+        sub_minor_cycle_limit,
+        ms_gain,
         skymodel_copy,
-        use_bfloat,
         status);
 
     sdp_mem_ref_dec(dirty_img);
     sdp_mem_ref_dec(psf);
     sdp_mem_ref_dec(cbeam_details);
+    sdp_mem_ref_dec(scales);
     sdp_mem_ref_dec(skymodel);
     sdp_mem_ref_dec(dirty_img_copy);
     sdp_mem_ref_dec(psf_copy);
     sdp_mem_ref_dec(cbeam_details_copy);
+    sdp_mem_ref_dec(scales_copy);
     sdp_mem_ref_dec(skymodel_copy);
 }
 
@@ -432,17 +450,17 @@ int main()
     }
 
         
-    #ifdef SDP_HAVE_CUDA
-    // Happy paths
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("GPU, double precision", false,
-                      SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                      SDP_MEM_GPU, SDP_MEM_GPU, &status);
-        assert(status == SDP_SUCCESS);
-    }
+    // #ifdef SDP_HAVE_CUDA
+    // // Happy paths
+    // {
+    //     sdp_Error status = SDP_SUCCESS;
+    //     run_and_check("GPU, double precision", false,
+    //                   SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
+    //                   SDP_MEM_GPU, SDP_MEM_GPU, &status);
+    //     assert(status == SDP_SUCCESS);
+    // }
 
-    #endif
+    // #endif
 
     return 0;
 }

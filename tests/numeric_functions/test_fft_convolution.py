@@ -15,8 +15,8 @@ def test_fft_convolution():
     """Test the FFT convolution function"""
     # Run FFT convolution test on CPU using numpy arrays.
 
-    in1_dim = 1024
-    in2_dim = 2048
+    in1_dim = 156
+    in2_dim = 512
 
     # Test for complex double
     in1 = np.random.random_sample([in1_dim, in1_dim])

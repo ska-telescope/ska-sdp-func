@@ -131,45 +131,49 @@ __global__ void find_maximum_value(
             int *index_in,
             T *output,
             int *index_out,
-            bool init_idx)
+            bool init_idx,
+            bool thresh_reached)
 {
-    __shared__ T max_values[256];
-    __shared__ int max_indices[256];
+    // check if flux threshold has been reached
+    if (thresh_reached == false){
+        __shared__ T max_values[256];
+        __shared__ int max_indices[256];
 
-    int64_t tid = threadIdx.x;
-    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
+        int64_t tid = threadIdx.x;
+        int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
-    // Load input elements into shared memory
-    max_values[tid] = input[i];
-    // if index array has already been initialised then load it
-    if(init_idx == true){
-        max_indices[tid] = index_in[i];
+        // Load input elements into shared memory
+        max_values[tid] = input[i];
+        // if index array has already been initialised then load it
+        if(init_idx == true){
+            max_indices[tid] = index_in[i];
 
-    }
-    // if it hasn't, initialise it.
-    else{
+        }
+        // if it hasn't, initialise it.
+        else{
 
-        max_indices[tid] = i;
+            max_indices[tid] = i;
 
-    }
-    __syncthreads();
-
-
-    // Perform reduction in shared memory
-    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (tid < stride) {
-            if (max_values[tid] < max_values[tid + stride]) {
-                max_values[tid] = max_values[tid + stride];
-                max_indices[tid] = max_indices[tid + stride];
-            }
         }
         __syncthreads();
-    }
 
-    // Write the final result to output
-    if (tid == 0) {
-        output[blockIdx.x] = max_values[0];
-        index_out[blockIdx.x] = max_indices[0];
+
+        // Perform reduction in shared memory
+        for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+            if (tid < stride) {
+                if (max_values[tid] < max_values[tid + stride]) {
+                    max_values[tid] = max_values[tid + stride];
+                    max_indices[tid] = max_indices[tid + stride];
+                }
+            }
+            __syncthreads();
+        }
+
+        // Write the final result to output
+        if (tid == 0) {
+            output[blockIdx.x] = max_values[0];
+            index_out[blockIdx.x] = max_indices[0];
+        }
     }
 
 }
@@ -186,13 +190,19 @@ __global__ void add_clean_comp(
             int* max_idx_flat,
             T* loop_gain,
             T* highest_value,
-            T* threshold
+            T* threshold,
+            bool thresh_reached
 ){
     // check threshold
-    if (highest_value[0] > threshold[0]){
+    if (highest_value[0] > threshold[0] && thresh_reached == false){
         
         // Add fraction of maximum to clean components list
         clean_comp[max_idx_flat[0]] = clean_comp[max_idx_flat[0]] + (loop_gain[0] * highest_value[0]);
+
+    }
+    // if threshold reached, set flag
+    else{
+        thresh_reached = true;
     }
 
 }
@@ -214,7 +224,23 @@ __global__ void subtract_psf(
             T* residual,
             T* clean_comp,
             T* skymodel,
-            T* threshold) {
+            T* threshold
+) {
+            
+}
+
+template<>
+__global__ void subtract_psf(
+            int64_t dirty_img_dim, 
+            int64_t psf_dim, 
+            double* loop_gain, 
+            int* max_idx_flat, 
+            double* highest_value, 
+            const double* psf, 
+            double* residual,
+            double* clean_comp,
+            double* skymodel,
+            double* threshold) {
 
     // check threshold
     if (highest_value[0] > threshold[0]){
@@ -232,6 +258,7 @@ __global__ void subtract_psf(
 
         int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
+        // check thread is in bounds
         if (i < dirty_img_size){
 
             // Compute the x and y coordinates in the dirty image
@@ -249,9 +276,130 @@ __global__ void subtract_psf(
             int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
             // Subtract the PSF contribution from the residual
+            double inter = __dmul_rn(loop_gain[0], highest_value[0]);
+            inter = __dmul_rn(inter, psf[psf_flat_idx]);
+            residual[i] =  __dsub_rn(residual[i],inter);
+           
+            // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
+        }
+    }
+    else{
+        return;
+    }
+}
+
+template<>
+__global__ void subtract_psf(
+            int64_t dirty_img_dim, 
+            int64_t psf_dim, 
+            float* loop_gain, 
+            int* max_idx_flat, 
+            float* highest_value, 
+            const float* psf, 
+            float* residual,
+            float* clean_comp,
+            float* skymodel,
+            float* threshold) {
+
+    // check threshold
+    if (highest_value[0] > threshold[0]){
+
+        int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
+        // int64_t psf_size = psf_dim * psf_dim;
+
+        // get x and y from flat index
+        int max_idx_x = max_idx_flat[0] / dirty_img_dim;
+        int max_idx_y = max_idx_flat[0] % dirty_img_dim;
+
+        // Identify start position of PSF window to subtract from residual
+        int64_t psf_x_start = dirty_img_dim - max_idx_x;
+        int64_t psf_y_start = dirty_img_dim - max_idx_y;
+
+        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+        // check thread is in bounds
+        if (i < dirty_img_size){
+
+            // Compute the x and y coordinates in the dirty image
+            int64_t x_dirty = i / dirty_img_dim;
+            int64_t y_dirty = i % dirty_img_dim;
+
+            // Compute the x and y coordinates in the psf
+            int64_t x_psf = x_dirty + psf_x_start;
+            int64_t y_psf = y_dirty + psf_y_start;
+
+            // // get flat index for dirty image
+            // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
+
+            // get flat index for psf
+            int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+
+            // Subtract the PSF contribution from the residual
+            float inter = __fmul_rn(loop_gain[0], highest_value[0]);
+            inter = __fmul_rn(inter, psf[psf_flat_idx]);
+            residual[i] =  __fsub_rn(residual[i],inter);
+           
+            // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
+        }
+    }
+}
+
+template<>
+__global__ void subtract_psf(
+            int64_t dirty_img_dim, 
+            int64_t psf_dim, 
+            __nv_bfloat16* loop_gain, 
+            int* max_idx_flat, 
+            __nv_bfloat16* highest_value, 
+            const __nv_bfloat16* psf, 
+            __nv_bfloat16* residual,
+            __nv_bfloat16* clean_comp,
+            __nv_bfloat16* skymodel,
+            __nv_bfloat16* threshold) {
+
+    // check threshold
+    if (highest_value[0] > threshold[0]){
+
+        int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
+        // int64_t psf_size = psf_dim * psf_dim;
+
+        // get x and y from flat index
+        int max_idx_x = max_idx_flat[0] / dirty_img_dim;
+        int max_idx_y = max_idx_flat[0] % dirty_img_dim;
+
+        // Identify start position of PSF window to subtract from residual
+        int64_t psf_x_start = dirty_img_dim - max_idx_x;
+        int64_t psf_y_start = dirty_img_dim - max_idx_y;
+
+        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+        // check thread is in bounds
+        if (i < dirty_img_size){
+
+            // Compute the x and y coordinates in the dirty image
+            int64_t x_dirty = i / dirty_img_dim;
+            int64_t y_dirty = i % dirty_img_dim;
+
+            // Compute the x and y coordinates in the psf
+            int64_t x_psf = x_dirty + psf_x_start;
+            int64_t y_psf = y_dirty + psf_y_start;
+
+            // // get flat index for dirty image
+            // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
+
+            // get flat index for psf
+            int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+
+            // Subtract the PSF contribution from the residual
+            // __nv_bfloat16 inter = __hmul_rn(loop_gain[0], highest_value[0]);
+            // inter = __hmul_rn(inter, psf[psf_flat_idx]);
+            // residual[i] =  __hsub_rn(residual[i],inter);
+           
             residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
         }
-
+    }
+    else{
+        return;
     }
 }
 
