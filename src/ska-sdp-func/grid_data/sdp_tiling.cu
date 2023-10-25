@@ -153,7 +153,7 @@ __global__ void sdp_bucket_sort_wproj_gpu(
         {
             for (int pu = tile_u_min; pu < tile_u_max; pu++)
             {
-                int off = atomicAdd(&tile_offsets[pu + pv], 1);
+                int off = atomicAdd(&tile_offsets[pu + pv * num_tiles_u], 1);
                 sorted_uu[off] = pos_u;
                 sorted_vv[off] = pos_v;
                 sorted_grid_w[off] = grid_w;
@@ -163,7 +163,7 @@ __global__ void sdp_bucket_sort_wproj_gpu(
                     sorted_vis[off] = vis[i_vis + i];
                     sorted_weight[off] = weight[i_vis + i];
                 }
-                sorted_tile[off] = pv * 32768 * pu;
+                sorted_tile[off] = pv * 32768 + pu;
             }
         }
     }
@@ -289,7 +289,7 @@ __global__ void sdp_bucket_sort_simple_gpu(
                     sorted_vis[off] = vis[i_vis + i];
                     sorted_weight[off] = weight[i_vis + i];
                 }
-                sorted_tile[off] = pv * 32768 * pu;
+                sorted_tile[off] = pv * 32768 + pu;
             }
         }
     }
