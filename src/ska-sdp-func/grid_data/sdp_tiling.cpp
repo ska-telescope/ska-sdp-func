@@ -163,15 +163,15 @@ void sdp_bucket_sort_simple(
                     {
                         for (int pu = tile_u_min; pu < tile_u_max; pu++)
                         {
-                            int off = tile_offsets[pu + pv] += 1;
+                            int off = tile_offsets[pu + pv * num_tiles_u] += 1;
                             sorted_uu[off] = pos_u;
                             sorted_vv[off] = pos_v;
                             for (int i = 0; i < NUM_POL; i++)
                             {
                                 sorted_vis[off] = vis[i_vis + i];
-                                sorted_weight[off] = vis[i_vis + i];
+                                sorted_weight[off] = weight[i_vis + i];
                             }
-                            sorted_tile[off] = pv * 32768 * pu;
+                            sorted_tile[off] = pv * 32768 + pu;
                         }
                     }
                 }
@@ -193,14 +193,14 @@ void sdp_tile_and_bucket_sort_simple(
         const int64_t num_tiles_u,
         const int64_t top_left_u,
         const int64_t top_left_v,
-        int* tile_offsets,
+        sdp_Mem* tile_offsets,
         sdp_Mem* sorted_vis,
-        float* sorted_uu,
-        float* sorted_vv,
+        sdp_Mem* sorted_uu,
+        sdp_Mem* sorted_vv,
         sdp_Mem* sorted_weight,
         sdp_Mem* num_points_in_tiles,
         sdp_Mem* num_skipped,
-        float* sorted_tile,
+        sdp_Mem* sorted_tile,
         sdp_Error* status
 )
 {
@@ -290,12 +290,12 @@ void sdp_tile_and_bucket_sort_simple(
                     num_tiles_u,
                     top_left_u,
                     top_left_v,
-                    tile_offsets,
-                    sorted_uu,
-                    sorted_vv,
+                    (int*)sdp_mem_data(tile_offsets),
+                    (float*)sdp_mem_data(sorted_uu),
+                    (float*)sdp_mem_data(sorted_vv),
                     (double*)sdp_mem_data(sorted_vis),
                     (double*)sdp_mem_data(sorted_weight),
-                    sorted_tile
+                    (float*)sdp_mem_data(sorted_tile)
             );
         }
         else
@@ -322,7 +322,7 @@ void sdp_tile_and_bucket_sort_simple(
                 weight_type == SDP_MEM_DOUBLE &&
                 freq_type == SDP_MEM_DOUBLE)
         {
-            kernel_name = "sdp_tile_count_simple_gpu<double,double>";
+            kernel_name = "sdp_tile_count_simple_gpu<double, double>";
         }
         else
         {
@@ -340,11 +340,11 @@ void sdp_tile_and_bucket_sort_simple(
             (const void*)&inv_tile_size_v,
             sdp_mem_gpu_buffer_const(uvw, status),
             sdp_mem_gpu_buffer_const(freqs, status),
-            (const void*) num_tiles_u,
-            (const void*) top_left_u,
-            (const void*) top_left_v,
-            (void*) num_points_in_tiles,
-            (void*) num_skipped,
+            (const void*)&num_tiles_u,
+            (const void*)&top_left_u,
+            (const void*)&top_left_v,
+            sdp_mem_gpu_buffer(num_points_in_tiles, status),
+            sdp_mem_gpu_buffer(num_skipped, status)
         };
 
         sdp_launch_cuda_kernel(kernel_name,
@@ -384,15 +384,15 @@ void sdp_tile_and_bucket_sort_simple(
             sdp_mem_gpu_buffer_const(freqs, status),
             sdp_mem_gpu_buffer_const(vis, status),
             sdp_mem_gpu_buffer_const(weights, status),
-            (const void*) num_tiles_u,
-            (const void*) top_left_u,
-            (const void*) top_left_v,
-            (void*) tile_offsets,
-            (void*) sorted_uu,
-            (void*) sorted_vv,
+            (const void*)&num_tiles_u,
+            (const void*)&top_left_u,
+            (const void*)&top_left_v,
+            sdp_mem_gpu_buffer(tile_offsets, status),
+            sdp_mem_gpu_buffer(sorted_uu, status),
+            sdp_mem_gpu_buffer(sorted_vv, status),
             sdp_mem_gpu_buffer(sorted_vis, status),
             sdp_mem_gpu_buffer(sorted_weight, status),
-            (void*) sorted_tile,
+            sdp_mem_gpu_buffer(sorted_tile, status)
         };
 
         sdp_launch_cuda_kernel(kernel_name2,
