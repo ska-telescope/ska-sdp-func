@@ -84,12 +84,12 @@ def tile_and_bucket_sort_simple(
 
     :param num_points_in_tiles: A real valued 1D array, returns the number
                 of visibilties in each tile. Dimensions are
-                [num_vis]
+                [num_tiles]
     :type num_points_in_tiles: numpy.ndarray
 
     :param num_skipped: A real valued 1D array, returns the number of
                 visibilities that are skipped for each tile. Dimensions are
-                [num_vis]
+                [num_tiles]
     :type num_skipped: numpy.ndarray
     """
 

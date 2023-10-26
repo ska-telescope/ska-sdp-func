@@ -34,8 +34,6 @@ def create_test_data_for_bucket_sort():
         num_times, num_baselines, num_channels, num_pols
     )
     vis = vis_rand_r + 1j * vis_rand_i
-    print("First visibilities")
-    print(vis)
     weights = np.ones_like(vis, dtype=np.float64)
 
     # Defining parameters for tile and bucket sort
@@ -138,10 +136,6 @@ def test_tile_and_bucket_sort():
         num_skipped,
         sorted_tile,
     )
-
-    # assert np.allclose(
-    #     num_points_in_tiles, expected_num_points_in_tiles
-    #     ), "Number of visibilities in tiles are not as expected"
 
     # Same tests for the GPU
     if cp:
