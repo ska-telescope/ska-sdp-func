@@ -52,13 +52,13 @@ extern "C" {
  * - @param sorted_weights is 3D and real-valued, with shape:
  *   - [ num_times, num_baselines, num_channels ]
  *
- * - @param num_points_in_tiles is 2D and real-valued, with shape:
+ * - @param num_points_in_tiles is 1D and real-valued, with shape:
  *
- *   -[ num_points, num_tiles ]
+ *   -[ num_tiles ]
  *
- * - @param num_skipped is 2D and real-valued, with shape:
+ * - @param num_skipped is 1D and real-valued, with shape:
  *
- *   -[ num_points, num_tiles ]
+ *   -[ num_tiles ]
  */
 
 void sdp_tile_and_bucket_sort_simple(
