@@ -62,8 +62,8 @@ __global__ void sdp_tile_count_wproj_gpu(
     const UVW_TYPE pos_v = uvw[i_uvw + 1] * inv_wavelength;
     const UVW_TYPE pos_w = uvw[i_uvw + 2] * inv_wavelength * w_scale;
 
-    const int grid_u = (int)(floor(pos_u / grid_centre) + grid_centre);
-    const int grid_v = (int)(floor(pos_v / grid_centre) + grid_centre);
+    const int grid_u = (int)round(pos_u) + grid_centre;
+    const int grid_v = (int)round(pos_v) + grid_centre;
     const int grid_w = (int) sqrt(fabs(pos_w));
 
     if (grid_w > num_w_planes) grid_w = num_w_planes - 1;
@@ -136,8 +136,8 @@ __global__ void sdp_bucket_sort_wproj_gpu(
     const UVW_TYPE pos_v = uvw[i_uvw + 1] * inv_wavelength;
     const UVW_TYPE pos_w = uvw[i_uvw + 2] * inv_wavelength * w_scale;
 
-    const int grid_u = (int)(floor(pos_u / grid_centre) + grid_centre);
-    const int grid_v = (int)(floor(pos_v / grid_centre) + grid_centre);
+    const int grid_u = (int)round(pos_u) + grid_centre;
+    const int grid_v = (int)round(pos_v) + grid_centre;
     const int grid_w = (int) sqrt(fabs(pos_w));
 
     if (grid_w > num_w_planes) grid_w = num_w_planes - 1;
@@ -202,8 +202,8 @@ __global__ void sdp_tile_count_simple_gpu(
     const UVW_TYPE pos_u = uvw[i_uvw + 0] * inv_wavelength;
     const UVW_TYPE pos_v = uvw[i_uvw + 1] * inv_wavelength;
 
-    const int grid_u = (int)(floor(pos_u / grid_centre) + grid_centre);
-    const int grid_v = (int)(floor(pos_v / grid_centre) + grid_centre);
+    const int grid_u = (int)round(pos_u) + grid_centre;
+    const int grid_v = (int)round(pos_v) + grid_centre;
 
     if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
             (grid_v + support < grid_size) && (grid_v - support) >= 0)
@@ -268,8 +268,8 @@ __global__ void sdp_bucket_sort_simple_gpu(
     const UVW_TYPE pos_u = uvw[i_uvw + 0] * inv_wavelength;
     const UVW_TYPE pos_v = uvw[i_uvw + 1] * inv_wavelength;
 
-    const int grid_u = (int)(floor(pos_u / grid_centre) + grid_centre);
-    const int grid_v = (int)(floor(pos_v / grid_centre) + grid_centre);
+    const int grid_u = (int)round(pos_u) + grid_centre;
+    const int grid_v = (int)round(pos_v) + grid_centre;
 
     if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
             (grid_v + support < grid_size) && (grid_v - support) >= 0)
