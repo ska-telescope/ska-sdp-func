@@ -66,9 +66,9 @@ void sdp_tile_count_simple(
                 const UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength;
 
                 const int grid_u =
-                        (int)(floor(pos_u / grid_centre) + grid_centre);
+                        (int)round(pos_u) + grid_centre;
                 const int grid_v =
-                        (int)(floor(pos_v / grid_centre) + grid_centre);
+                        (int)round(pos_v) + grid_centre;
 
                 if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
                         (grid_v + support < grid_size) &&
@@ -144,9 +144,9 @@ void sdp_bucket_sort_simple(
                 const UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength;
 
                 const int grid_u =
-                        (int)(floor(pos_u / grid_centre) + grid_centre);
+                        (int)round(pos_u) + grid_centre;
                 const int grid_v =
-                        (int)(floor(pos_v / grid_centre) + grid_centre);
+                        (int)round(pos_v) + grid_centre;
 
                 if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
                         (grid_v + support < grid_size) &&
