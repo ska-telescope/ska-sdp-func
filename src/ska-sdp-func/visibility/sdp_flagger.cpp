@@ -99,9 +99,26 @@ double golden_ratio(double* arr, double param, int n){
          }
       }     
       return where;
-} 
-*/
+}
+*/ 
 
+void median_calc(double* arr, int n, double* median, double* mediandev){
+    int mid = int(round(0.5 * n));
+    double medi  = arr[mid];
+    *median = medi;
+    double *devs = new double[n];
+    for (int i = 0; i < n; i++){
+        devs[i] = abs(arr[i] - medi);
+    }
+    qsort(devs, n, sizeof(double), compare);
+    double medidev = devs[mid];
+    *mediandev = medidev;
+}
+
+double modified_zscore(double median, double mediandev, double val){
+    double zscore = val - median/ mediandev;
+    return zscore;
+}
 
 
 double golden_ratio(double* arr, double param, int n){
@@ -123,7 +140,6 @@ double golden_ratio(double* arr, double param, int n){
       }
 
 delete abs_diff;
-cout << where << endl;
 return where;
 } 
 
@@ -156,11 +172,12 @@ static void flagger_fixed_threshold(
 
       double q_for_vis = 0;
       double q_for_ts = 0;
-   
+      
       int num_samples = num_channels / sampling_step;
       double *samples = new double[num_samples];
       double *transit_score = new double[num_channels];
       double *transit_samples = new double[num_samples];
+      
 
       filler(samples, 0, num_samples);
       filler(transit_score, 0, num_channels);
@@ -181,6 +198,8 @@ static void flagger_fixed_threshold(
                                          
                     
                     // method 1 only operating on absolute values:
+                    
+                    
 
                     //calculating the threshold by sorting the sampled channels and find the value of the given percentile
                     int sum_pos = 0;
@@ -189,11 +208,12 @@ static void flagger_fixed_threshold(
                         int pos = baseline_pos + (s * sampling_step) * num_pols + p; 
                         samples[s] = abs(visibilities[pos]);
                     }
-                    
-                  
+                          
                     qsort(samples, num_samples, sizeof(double), compare);
-                    q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))];                   
-                                     
+                    q_for_vis = samples[int(round(num_samples * what_quantile_for_vis))]; 
+                    
+                    
+                                                      
                     for (int c = 0; c < num_channels; c++){
                         int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
@@ -215,10 +235,12 @@ static void flagger_fixed_threshold(
   
                          }               
                     }
+                    
 
                  
                  
                     // method 2 operating on rate of changes (fluctuations):
+                    
                     if (t > 0){
                         for (uint64_t c = 0; c < num_channels; c++) {
                             int pos0 = baseline_pos + c * num_pols + p;
@@ -264,6 +286,7 @@ static void flagger_fixed_threshold(
                       }
 
                   }
+                  
                }
             }
         }
@@ -298,40 +321,42 @@ static void flagger_dynamic_threshold(
     double end;
     start = omp_get_wtime(); 
     double alpha = parameters[0];
-    double gparam_vis = parameters[1];
-    double gparam_ts = parameters[2];
-    int sampling_step = parameters[3];
-    int window = parameters[4];
+    double threshold_magnitudes = parameters[1];
+    double threshold_variations = parameters[2];
+    double threshold_broadband = parameters[3]
+    int sampling_step = parameters[4];
+    int window = parameters[5];
+    int window_median_history = parameters[6]
  
     int my_thread;
 
 #pragma omp parallel  shared(parameters, flags, visibilities)
    {
-
-    double q_for_vis = 0;
-    double q_for_ts = 0;
-    double median_for_vis = 0;
-    double median_for_ts = 0;
-
     int num_samples = num_channels / sampling_step;
     double *samples = new double[num_samples];
     double *transit_score = new double[num_channels];
     double *transit_samples = new double[num_samples];
+    double *median_history = new double[num_timesamples]
 
     filler(samples, 0, num_samples);
     filler(transit_score, 0, num_channels);
     filler(transit_samples, 0, num_samples);
-
+    filler(median_history, 0, num_timesamples);
 
         #pragma omp for
         for (int b = 0; b < num_baselines; b++){                
             for (int p = 0; p < num_pols; p++){
+                double median, mediandev; 
                 for (int t = 0; t < num_timesamples; t++){
+                    int situation = 0; 
                     int time_block = num_baselines * num_channels * num_pols;
                     int baseline_block = num_channels * num_pols;
                     int time_pos = t * time_block;
                     int baseline_pos = t * time_block + b * baseline_block;
+                    
+                    double *median_hist_so_far = new double[t];
                     // method 1 only operating on absolute values:
+                    
                    
                     //calculating the threshold by sorting the sampled channels and find the value of the given percentile
                     for (int s = 0; s < num_samples; s++) {
@@ -339,13 +364,29 @@ static void flagger_dynamic_threshold(
                         samples[s] = abs(visibilities[pos]);
                     }
                     qsort(samples, num_samples, sizeof(double), compare);
-                    q_for_vis = samples[int(round(num_samples * golden_ratio(samples, gparam_vis, num_samples)))];
+                 //   q_for_vis = samples[int(round(num_samples * golden_ratio(samples, gparam_vis, num_samples)))];
+                    median_calc(samples, num_channels, median, mediandev);
+
+                    median_history[t] = ;
+                    for (int tt = 0; tt < t; tt++){
+                        median_hist_so_far[t] = median_history[t];
+                    }
+                    qsort(median_hist_so_far, t, sizeof(double), compare);
+                    double medmed, medmeddev;
+                    median_calc(median_hist_so_far, t, medmed, medmeddev);
+                    double zscore_meds = modified_zscore(medmed, medmeddev, median);
+                    if (zscore_meds > threshold_broadband){
+                        situation = 1;
+                    }
+
                                
                     for (int c = 0; c < num_channels; c++){
                         int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
+                        double zscore_mags = modified_zscore(median, mediandev, vis1);
                         
-                        if (vis1 > q_for_vis){      
+                        
+                        if (zscore_mags > threshold_magnitudes || zscore_mags < -threshold_magnitudes || situation == 1){      
                             flags[pos] = 1;
                             if (window > 0) {
                                for (int w = 0; w < window; w++) {
@@ -364,9 +405,11 @@ static void flagger_dynamic_threshold(
                          }  
 
                     }
+                    
 
 
                     // method 2 operating on rate of changes (fluctuations):
+                    
 
                     if (t > 0){
                         for (int c = 0; c < num_channels; c++) {
@@ -412,7 +455,8 @@ static void flagger_dynamic_threshold(
                             } 
                         }
 
-                    }    
+                    }
+                       
                 }
             }
         }
@@ -555,6 +599,7 @@ void sdp_flagger_dynamic_threshold(
         return;
     }
 }
+
 
 
 
