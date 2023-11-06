@@ -102,17 +102,17 @@ double golden_ratio(double* arr, double param, int n){
 }
 */ 
 
-void median_calc(double* arr, int n, double* median, double* mediandev){
+void median_calc(double* arr, int n, double median, double mediandev){
     int mid = int(round(0.5 * n));
     double medi  = arr[mid];
-    *median = medi;
+    median = medi;
     double *devs = new double[n];
     for (int i = 0; i < n; i++){
         devs[i] = abs(arr[i] - medi);
     }
     qsort(devs, n, sizeof(double), compare);
     double medidev = devs[mid];
-    *mediandev = medidev;
+    mediandev = medidev;
 }
 
 double modified_zscore(double median, double mediandev, double val){
@@ -323,11 +323,12 @@ static void flagger_dynamic_threshold(
     double alpha = parameters[0];
     double threshold_magnitudes = parameters[1];
     double threshold_variations = parameters[2];
-    double threshold_broadband = parameters[3]
+    double threshold_broadband = parameters[3];
     int sampling_step = parameters[4];
     int window = parameters[5];
-    int window_median_history = parameters[6]
- 
+    int window_median_history = parameters[6];
+    
+   
     int my_thread;
 
 #pragma omp parallel  shared(parameters, flags, visibilities)
@@ -336,7 +337,7 @@ static void flagger_dynamic_threshold(
     double *samples = new double[num_samples];
     double *transit_score = new double[num_channels];
     double *transit_samples = new double[num_samples];
-    double *median_history = new double[num_timesamples]
+    double *median_history = new double[num_timesamples];
 
     filler(samples, 0, num_samples);
     filler(transit_score, 0, num_channels);
@@ -354,7 +355,8 @@ static void flagger_dynamic_threshold(
                     int time_pos = t * time_block;
                     int baseline_pos = t * time_block + b * baseline_block;
                     
-                    double *median_hist_so_far = new double[t];
+                    
+                    double *median_hist_so_far = new double[std::min(t, window_median_history)];
                     // method 1 only operating on absolute values:
                     
                    
@@ -366,10 +368,12 @@ static void flagger_dynamic_threshold(
                     qsort(samples, num_samples, sizeof(double), compare);
                  //   q_for_vis = samples[int(round(num_samples * golden_ratio(samples, gparam_vis, num_samples)))];
                     median_calc(samples, num_channels, median, mediandev);
-
-                    median_history[t] = ;
-                    for (int tt = 0; tt < t; tt++){
-                        median_hist_so_far[t] = median_history[t];
+                    
+                    median_history[t] = median;
+                    int first_point = std::max(0, t - window_median_history);
+                    
+                    for (int tt = first_point; tt < t; tt++){
+                        median_hist_so_far[tt - first_point] = median_history[t];
                     }
                     qsort(median_hist_so_far, t, sizeof(double), compare);
                     double medmed, medmeddev;
@@ -412,6 +416,7 @@ static void flagger_dynamic_threshold(
                     
 
                     if (t > 0){
+                        int baseline_pos_minus_one = (t - 1) * time_block + b * baseline_block;
                         for (int c = 0; c < num_channels; c++) {
                             int pos0 = baseline_pos + c * num_pols + p;
                             int pos1 = (t - 1) * time_block + b * baseline_block + c * num_pols + p;
@@ -431,23 +436,32 @@ static void flagger_dynamic_threshold(
                         }
 
                         qsort(transit_samples, num_samples, sizeof(double), compare);
-                        q_for_ts = transit_samples[int(round(num_samples * golden_ratio(samples, gparam_ts, num_samples)))];
+                  //      q_for_ts = transit_samples[int(round(num_samples * golden_ratio(samples, gparam_ts, num_samples)))];
+                        median_calc(samples, num_channels, median, mediandev);
+                        
                         
                         for (int c = 0; c < num_channels; c++){
                             int pos = baseline_pos + c * num_pols + p;
+                            int pos_minus_one = baseline_pos_minus_one + c * num_pols + p;
                             double ts = abs(transit_score[c]);
+                            double zscore_vars = modified_zscore(median, mediandev, ts);
                       
-                            if (ts > q_for_ts ) {
+                            if (zscore_vars > threshold_variations || zscore_vars < -threshold_variations) {
                                flags[pos] = 1;
+                               flags[pos_minus_one] = 1;
                                if (window > 0) {
                                   for (int w = 0; w < window; w++) {
                                       if (c - w - 1 > 0) {
                                          pos = baseline_pos + (c - w - 1) * num_pols + p;
+                                         pos_minus_one = baseline_pos_minus_one + (c - w - 1) * num_pols + p;
                                          flags[pos] = 1;
+                                         flags[pos_minus_one] = 1;
                                       }
                                       if (c + w + 1 < num_channels) {
                                           pos = baseline_pos + (c + w + 1) * num_pols + p;
+                                          pos_minus_one = baseline_pos_minus_one + (c + w + 1) * num_pols + p;
                                           flags[pos] = 1;
+                                          flags[pos_minus_one] = 1;
                                       }
                                    }
                                }
@@ -463,6 +477,7 @@ static void flagger_dynamic_threshold(
     delete transit_score;
     delete samples;
     delete transit_samples;
+    delete median_history;
 
     }
 end = omp_get_wtime(); 
