@@ -102,21 +102,27 @@ double golden_ratio(double* arr, double param, int n){
 }
 */ 
 
-void median_calc(double* arr, int n, double median, double mediandev){
+double median_calc(double* arr, int n){
     int mid = int(round(0.5 * n));
-    double medi  = arr[mid];
-    median = medi;
+    double median = arr[mid];
+    return median;
+}
+
+double median_dev_calc(double* arr, int n, double median){
+    int mid = int(round(0.5 * n));
     double *devs = new double[n];
     for (int i = 0; i < n; i++){
-        devs[i] = abs(arr[i] - medi);
+        devs[i] = abs(arr[i] - median);
     }
     qsort(devs, n, sizeof(double), compare);
     double medidev = devs[mid];
-    mediandev = medidev;
+    delete devs;
+    return medidev;
+    
 }
 
 double modified_zscore(double median, double mediandev, double val){
-    double zscore = val - median/ mediandev;
+    double zscore = 0.6795 * (val - median)/ mediandev;
     return zscore;
 }
 
@@ -195,6 +201,7 @@ static void flagger_fixed_threshold(
                 for (int t = 0; t < num_timesamples; t++){
                     int time_pos = t * time_block;
                     int baseline_pos = t * time_block + b * baseline_block;
+                
                                          
                     
                     // method 1 only operating on absolute values:
@@ -347,16 +354,16 @@ static void flagger_dynamic_threshold(
         #pragma omp for
         for (int b = 0; b < num_baselines; b++){                
             for (int p = 0; p < num_pols; p++){
-                double median, mediandev; 
                 for (int t = 0; t < num_timesamples; t++){
                     int situation = 0; 
                     int time_block = num_baselines * num_channels * num_pols;
                     int baseline_block = num_channels * num_pols;
                     int time_pos = t * time_block;
                     int baseline_pos = t * time_block + b * baseline_block;
+
+                    int medwindow = std::min(t + 1, window_median_history);
+                    double *medarray = new double[medwindow];
                     
-                    
-                    double *median_hist_so_far = new double[std::min(t, window_median_history)];
                     // method 1 only operating on absolute values:
                     
                    
@@ -367,29 +374,36 @@ static void flagger_dynamic_threshold(
                     }
                     qsort(samples, num_samples, sizeof(double), compare);
                  //   q_for_vis = samples[int(round(num_samples * golden_ratio(samples, gparam_vis, num_samples)))];
-                    median_calc(samples, num_channels, median, mediandev);
+                    
+                    
+                    double median = median_calc(samples, num_samples);
+                    double mediandev = median_dev_calc(samples, num_samples, median);
                     
                     median_history[t] = median;
-                    int first_point = std::max(0, t - window_median_history);
                     
-                    for (int tt = first_point; tt < t; tt++){
-                        median_hist_so_far[tt - first_point] = median_history[t];
+                    for (int tt = 0; tt < medwindow; tt++){
+                        medarray[tt] = median_history[t - tt];
                     }
-                    qsort(median_hist_so_far, t, sizeof(double), compare);
-                    double medmed, medmeddev;
-                    median_calc(median_hist_so_far, t, medmed, medmeddev);
-                    double zscore_meds = modified_zscore(medmed, medmeddev, median);
-                    if (zscore_meds > threshold_broadband){
+                    
+                    qsort(medarray, medwindow, sizeof(double), compare);
+                    
+                    double medmed = median_calc(medarray, medwindow); 
+                                  
+                    double medmeddev = median_dev_calc(medarray, medwindow, medmed);
+                    double zscore_med = modified_zscore(medmed, medmeddev, median);
+                    
+                    if (zscore_med > threshold_broadband || zscore_med < -threshold_broadband){
                         situation = 1;
                     }
+                    
+                    
 
                                
                     for (int c = 0; c < num_channels; c++){
                         int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
                         double zscore_mags = modified_zscore(median, mediandev, vis1);
-                        
-                        
+
                         if (zscore_mags > threshold_magnitudes || zscore_mags < -threshold_magnitudes || situation == 1){      
                             flags[pos] = 1;
                             if (window > 0) {
@@ -409,8 +423,10 @@ static void flagger_dynamic_threshold(
                          }  
 
                     }
-                    
 
+                    delete medarray;
+                    
+                   
 
                     // method 2 operating on rate of changes (fluctuations):
                     
@@ -437,14 +453,15 @@ static void flagger_dynamic_threshold(
 
                         qsort(transit_samples, num_samples, sizeof(double), compare);
                   //      q_for_ts = transit_samples[int(round(num_samples * golden_ratio(samples, gparam_ts, num_samples)))];
-                        median_calc(samples, num_channels, median, mediandev);
+                        double medianvar = median_calc(transit_samples, num_samples);
+                        double mediandevvar = median_dev_calc(transit_samples, num_samples, median);
                         
                         
                         for (int c = 0; c < num_channels; c++){
                             int pos = baseline_pos + c * num_pols + p;
                             int pos_minus_one = baseline_pos_minus_one + c * num_pols + p;
                             double ts = abs(transit_score[c]);
-                            double zscore_vars = modified_zscore(median, mediandev, ts);
+                            double zscore_vars = modified_zscore(medianvar, mediandevvar, ts);
                       
                             if (zscore_vars > threshold_variations || zscore_vars < -threshold_variations) {
                                flags[pos] = 1;
@@ -470,6 +487,7 @@ static void flagger_dynamic_threshold(
                         }
 
                     }
+                
                        
                 }
             }
