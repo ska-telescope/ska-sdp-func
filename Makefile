@@ -33,3 +33,7 @@ test:
 
 build:
 	mkdir -p build && cd build && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../ && $(MAKE) -j 4
+
+# Add further places where version needs to be propagated to
+post-set-release:
+	@. .make-support; setSetupPyRelease; setCMakeRelease; setConanRelease
