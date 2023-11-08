@@ -27,7 +27,8 @@ def setup(app):
 project = 'SKA SDP Processing Function Library'
 copyright = '2022, The SKA SDP Processing Function Library Developers'
 author = 'The SKA SDP Processing Function Library Developers'
-
+version = '1.0.0'
+release = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 
