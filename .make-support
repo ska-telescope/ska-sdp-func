@@ -1,0 +1,40 @@
+#!/bin/bash
+
+function setSetupPyRelease() {
+
+    # Get release, adjust in setup.py
+    version=$(awk -F= '$1=="release" {print $2}' .release 2>/dev/null)
+    echo Bumping setup.py to version $version
+    sed -i.x -e "s/version=\".*\"/version=\"$version\"/g" setup.py
+    rm setup.py.x
+}
+
+
+function setCMakeRelease() {
+
+    # Get release
+    version=$(awk -F= '$1=="release" {print $2}' .release 2>/dev/null)
+    major=$(echo $version | cut -d. -f1)
+    minor=$(echo $version | cut -d. -f2)
+    patch=$(echo $version | cut -d. -f3)
+
+    # Convert to hex
+    id=$(printf 0x%02x%02x%02x $major $minor $patch)
+
+    # Add to CMakeLists.txt
+    echo Bumping CMakeList.txt to version $id \($major.$minor.$patch\)
+    sed -i.x -e "s/^set(SDP_FUNC_VERSION_ID \".*\")/set(SDP_FUNC_VERSION_ID \"$id\")/g" CMakeLists.txt
+    sed -i.x -e "s/^set(SDP_FUNC_VERSION_MAJOR .*)/set(SDP_FUNC_VERSION_MAJOR $major)/g" CMakeLists.txt
+    sed -i.x -e "s/^set(SDP_FUNC_VERSION_MINOR .*)/set(SDP_FUNC_VERSION_MINOR $minor)/g" CMakeLists.txt
+    sed -i.x -e "s/^set(SDP_FUNC_VERSION_PATCH .*)/set(SDP_FUNC_VERSION_PATCH $patch)/g" CMakeLists.txt
+    rm CMakeLists.txt.x
+}
+
+function setConanRelease() {
+
+    # Get release, adjust in setup.py
+    version=$(awk -F= '$1=="release" {print $2}' .release 2>/dev/null)
+    echo Bumping conanfile.py to version $version
+    sed -i.x -e "s/version = \".*\"/version = \"$version\"/g" conan/ska-sdp-func/conanfile.py
+    rm conan/ska-sdp-func/conanfile.py.x
+}
