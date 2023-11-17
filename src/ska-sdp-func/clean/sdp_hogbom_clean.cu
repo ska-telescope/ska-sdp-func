@@ -417,7 +417,7 @@ __global__ void add_residual(
 ){
     int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i < (1024*1024)){
+    if (i < (size)){
         out[i] = out[i] + in[i];
     }
 }
