@@ -384,12 +384,12 @@ void sdp_swiftly_add_to_subgrid(
         if (stop1 > xM_yN_size) stop1 = xM_yN_size;
         for (i = 0; i < stop1; i++)
         {
-            out(i0, i + offs) = Fn(i) *
+            out(i0, i + offs) += Fn(i) *
                     contrib(i0, (i + fct_offs + xM_yN_size / 2) % xM_yN_size);
         }
         for (; i < xM_yN_size; i++)
         {
-            out(i0, i + offs - xM_size) = Fn(i) *
+            out(i0, i + offs - xM_size) += Fn(i) *
                     contrib(i0, (i + fct_offs + xM_yN_size / 2) % xM_yN_size);
         }
     }
@@ -443,14 +443,14 @@ void sdp_swiftly_add_to_subgrid_2d(
         int64_t i1 = 0;
         for (; i1 < stop1; i1++)
         {
-            out(i0 + offs0, i1 + offs1) = fn0 * Fn(i1) *
+            out(i0 + offs0, i1 + offs1) += fn0 * Fn(i1) *
                     contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
                     (i1 + fct_offs1 + xM_yN_size / 2) % xM_yN_size
                     );
         }
         for (; i1 < xM_yN_size; i1++)
         {
-            out(i0 + offs0, i1 + offs1 - xM_size) = fn0 * Fn(i1) *
+            out(i0 + offs0, i1 + offs1 - xM_size) += fn0 * Fn(i1) *
                     contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
                     (i1 + fct_offs1 + xM_yN_size / 2) % xM_yN_size
                     );
@@ -462,14 +462,14 @@ void sdp_swiftly_add_to_subgrid_2d(
         int64_t i1 = 0;
         for (; i1 < stop1; i1++)
         {
-            out(i0 + offs0 - xM_size, i1 + offs1) = fn0 * Fn(i1) *
+            out(i0 + offs0 - xM_size, i1 + offs1) += fn0 * Fn(i1) *
                     contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
                     (i1 + fct_offs1 + xM_yN_size / 2) % xM_yN_size
                     );
         }
         for (; i1 < xM_yN_size; i1++)
         {
-            out(i0 + offs0 - xM_size, i1 + offs1 - xM_size) = fn0 * Fn(i1) *
+            out(i0 + offs0 - xM_size, i1 + offs1 - xM_size) += fn0 * Fn(i1) *
                     contrib((i0 + fct_offs0 + xM_yN_size / 2) % xM_yN_size,
                     (i1 + fct_offs1 + xM_yN_size / 2) % xM_yN_size
                     );
@@ -1053,22 +1053,22 @@ void sdp_swiftly_add_to_facet(
         if (stop1 > aliased_sg_offs) stop1 = aliased_sg_offs;
         for ( ; i < stop1; i++)
         {
-            fct(i0, i + offs1) = contrib(i0, i);
+            fct(i0, i + offs1) += contrib(i0, i);
         }
         for ( ; i < aliased_sg_offs; i++)
         {
-            fct(i0, i + offs1 - yN_size) = contrib(i0, i);
+            fct(i0, i + offs1 - yN_size) += contrib(i0, i);
         }
 
         int64_t stop2 = yN_size - offs2;
         if (stop2 > xM_yN_size) stop2 = xM_yN_size;
         for ( ; i < stop2; i++)
         {
-            fct(i0, i + offs2) = contrib(i0, i);
+            fct(i0, i + offs2) += contrib(i0, i);
         }
         for ( ; i < xM_yN_size; i++)
         {
-            fct(i0, i + offs2 - yN_size) = contrib(i0, i);
+            fct(i0, i + offs2 - yN_size) += contrib(i0, i);
         }
     }
 }
