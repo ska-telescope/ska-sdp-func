@@ -26,8 +26,15 @@ typedef struct sdp_SwiFTly sdp_SwiFTly;
  * widefield Fourier transform for large-scale interferometry)
  *
  * Image, facet and subgrid sizes must be compatible. Facets and
- * subgrids must be appropriately padded for algorithm to work at any
- * level of precision, this is the responsibility of the user.
+ * subgrids must be appropriately padded for algorithm to work.
+ * The most important rule is:
+ *
+ *   xA_size <= xM_size - W / yN_size * N
+ *
+ * I.e. the usable subgrid region has a strict upper bound given by
+ * the size of the convolution function. Furthermore precision
+ * will degrade the more facet space gets used, proportional to the
+ * value of the PSWF.
  *
  * @param image_size Size of entire (virtual) image in pixels
  * @param xM_size Internal padded subgrid size
@@ -74,9 +81,9 @@ int64_t sdp_swiftly_get_subgrid_size(sdp_SwiFTly* swiftly);
 void sdp_swiftly_free(sdp_SwiFTly* swiftly);
 
 /**
- * @brief Performs SwiFTly facet preparation
+ * @brief Performs facet preparation
  *
- * This multiplies by Fb and does Fourier transformation. Common work
+ * This multiplies by `Fb` and does Fourier transformation. Common work
  * to be done for each facet (and axis) before calling
  * sdp_swiftly_extract_from_facet()
  *
@@ -97,12 +104,12 @@ void sdp_swiftly_prepare_facet(
 /**
  * @brief Extract facet contribution to a subgrid
  *
- * Copies out all data from prepared facet that relates to a
- * subgrid at a particular offset. The returned representation is
- * optimised for representing this data in a compact way, and should
- * be used for distribution. Use sdp_swiftly_add_to_subgrid() or
- * sdp_swiftly_add_to_subgrid_2d() in order to accumulate such
- * contributions from multiple facets.
+ * Copies out all data from facet prepared using `sdp_swiftly_prepare_facet()
+ * that relates to a subgrid at a particular offset. The returned
+ * representation is optimised for representing this data in a compact way, and
+ * should be used for distribution. Use sdp_swiftly_add_to_subgrid() or
+ * sdp_swiftly_add_to_subgrid_2d() in order to accumulate such contributions
+ * from multiple facets.
  *
  * @param swiftly        SwiFTly plan.
  * @param prep_facet     `[*,yN_size]` Prepared facet output
@@ -121,11 +128,11 @@ void sdp_swiftly_extract_from_facet(
 /**
  * @brief Add facet contribution to a subgrid image
  *
- * Accumulates a facet contribution in subgrid image passed. Subgrid
- * image should be filled with zeros when passed to function
- * initially. Use sdp_swiftly_finish_subgrid_inplace() or
- * sdp_swiftly_finish_subgrid_inplace_2d() to obtain subgrid
- * data.
+ * Accumulates a facet contribution generated using
+ * sdp_swiftly_extract_from_facet() in subgrid image passed. Subgrid image
+ * should be filled with zeros when passed to function initially. Use
+ * sdp_swiftly_finish_subgrid_inplace() or
+ * sdp_swiftly_finish_subgrid_inplace_2d() to obtain subgrid data.
  *
  * @param swiftly        SwiFTly plan.
  * @param contribution   `[*,xM_yN_size]` Facet contribution to subgrid
@@ -144,14 +151,15 @@ void sdp_swiftly_add_to_subgrid(
 /**
  * @brief Add facet contribution to a subgrid image (both axes)
  *
- * Accumulates a facet contribution in subgrid image passed. Subgrid
+ * Accumulates a facet contribution generated using
+ * sdp_swiftly_extract_from_facet() in subgrid image passed. Subgrid
  * image should be filled with zeros when passed to function
  * initially. Use sdp_swiftly_finish_subgrid_inplace() or
  * sdp_swiftly_finish_subgrid_inplace_2d() to obtain subgrid
  * data.
  *
  * This is equivalent to applying sdp_swiftly_add_to_subgrid() to a
- * contribution and subarray image, then adding their transposition.
+ * contribution and subgrid image, then adding their transposition.
  *
  * @param swiftly        SwiFTly plan.
  * @param contribution   `[xM_yN_size,xM_yN_size]` Facet contribution to subgrid
@@ -174,8 +182,9 @@ void sdp_swiftly_add_to_subgrid_2d(
 /**
  * @brief Finish subgrid after contribution accumulation
  *
- * Performs the final Fourier Transformation to obtain the subgrid
- * from the subgrid image sum.
+ * Performs the final Fourier Transformation to obtain the subgrid from the
+ * subgrid image sum generated using sdp_swiftly_add_to_subgrid() and/or
+ * sdp_swiftly_add_to_subgrid_2d().
  *
  * @param swiftly        SwiFTly plan.
  * @param subgrid_inout  `[*,xM_size]` Accumulated subgrid image / subgrid
@@ -192,8 +201,9 @@ void sdp_swiftly_finish_subgrid_inplace(
 /**
  * @brief Finish subgrid after contribution accumulation
  *
- * Performs the final Fourier Transformation to obtain the subgrid
- * from the subgrid image sum.
+ * Performs the final Fourier Transformation to obtain the subgrid from the
+ * subgrid image sum generated using sdp_swiftly_add_to_subgrid() and/or
+ * sdp_swiftly_add_to_subgrid_2d().
  *
  * @param swiftly        SwiFTly plan.
  * @param subgrid_image  `[*,xM_size]` Subgrid image with accumulated contributions
@@ -215,7 +225,7 @@ void sdp_swiftly_finish_subgrid(
  * Performs the final Fourier Transformation to obtain the subgrid
  * from the subgrid image sum. This performs the transformation on
  * both axes - equivalent to applying
- * sdp_swiftly_finish_subgrid_inplace to a subarray image, then its
+ * sdp_swiftly_finish_subgrid_inplace() to a subgrid image, then its
  * transposition.
  *
  * @param swiftly        SwiFTly plan.
@@ -234,6 +244,21 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
         sdp_Error* status
 );
 
+/**
+ * @brief Performs subgrid preparation
+ *
+ * Performs the Fourier Transformation to obtain the subgrid image and applies
+ * appropriate offsets to allow extracting subgrid contributions using
+ * sdp_swiftly_extract_from_subgrid() and/or
+ * sdp_swiftly_extract_from_subgrid_2d().  See
+ * sdp_swiftly_prepare_subgrid_inplace_2d() for two-dimensional version.
+ *
+ * @param swiftly        SwiFTly plan.
+ * @param subgrid_inout  `[*,xM_size]` Subgrid / subgrid image.
+ * @param subgrid_offset Subgrid mid-point offset relative to grid
+ *                       mid-point along second axis
+ * @param status         Error status
+ */
 void sdp_swiftly_prepare_subgrid_inplace(
         sdp_SwiFTly* swiftly,
         sdp_Mem* subgrid_inout,
@@ -241,6 +266,24 @@ void sdp_swiftly_prepare_subgrid_inplace(
         sdp_Error* status
 );
 
+/**
+ * @brief Performs subgrid preparation
+ *
+ * Performs the Fourier Transformation to obtain the subgrid image and applies
+ * appropriate offsets to allow extracting subgrid contributions using
+ * sdp_swiftly_extract_from_subgrid() and/or
+ * sdp_swiftly_extract_from_subgrid_2d(). This performs the transformation on
+ * both axes - equivalent to applying sdp_swiftly_prepare_subgrid_inplace() to
+ * a subgrid, then its transposition.
+ *
+ * @param swiftly        SwiFTly plan.
+ * @param subgrid_inout  `[xM_size,xM_size]` Subgrid / subgrid image.
+ * @param subgrid_offset0 Subgrid mid-point offset relative to grid
+ *                       mid-point along first axis
+ * @param subgrid_offset1 Subgrid mid-point offset relative to grid
+ *                       mid-point along second axis
+ * @param status         Error status
+ */
 void sdp_swiftly_prepare_subgrid_inplace_2d(
         sdp_SwiFTly* swiftly,
         sdp_Mem* subgrid_inout,
@@ -249,6 +292,22 @@ void sdp_swiftly_prepare_subgrid_inplace_2d(
         sdp_Error* status
 );
 
+/**
+ * @brief Extract subgrid contribution to a facet
+ *
+ * Copies out all data from subgrid prepared with sdp_swiftly_prepare_subgrid()
+ * that relates to a facet at a particular offset. The returned representation
+ * is optimised for representing this data in a compact way, and should be used
+ * for distribution. Use sdp_swiftly_add_to_facet() in order to accumulate such
+ * contributions from multiple facets. See
+ * sdp_swiftly_extract_from_subgrid_2d() for two-dimensional version.
+ *
+ * @param swiftly        SwiFTly plan.
+ * @param subgrid_image  `[*,xM_size]` Prepared subgrid image
+ * @param contribution_out `[*,xM_yN_size]` Subgrid contribution to facet
+ * @param facet_offset   Offset of facet mid-point relative to image mid-point
+ * @param status         Error status
+ */
 void sdp_swiftly_extract_from_subgrid(
         sdp_SwiFTly* swiftly,
         sdp_Mem* subgrid_image,
@@ -257,6 +316,26 @@ void sdp_swiftly_extract_from_subgrid(
         sdp_Error* status
 );
 
+/**
+ * @brief Extract subgrid contribution to a facet
+ *
+ * Copies out all data from subgrid prepared with sdp_swiftly_prepare_subgrid()
+ * that relates to a facet at a particular offset. The returned representation
+ * is optimised for representing this data in a compact way, and should be used
+ * for distribution. Use sdp_swiftly_add_to_facet() in order to accumulate such
+ * contributions from multiple facets. This performs the transformation on both
+ * axes - equivalent to applying sdp_swiftly_extract_from_subgrid() to a
+ * subgrid image, then its transposition.
+ *
+ * @param swiftly        SwiFTly plan.
+ * @param subgrid_image  `[xM_size,xM_size]` Prepared subgrid image
+ * @param contribution_out `[xM_yN_size,xM_yN_size]` Subgrid contribution to facet
+ * @param facet_offset0   Offset of facet mid-point relative to image mid-point
+ *                       along first axis
+ * @param facet_offset1   Offset of facet mid-point relative to image mid-point
+ *                       along second axis
+ * @param status         Error status
+ */
 void sdp_swiftly_extract_from_subgrid_2d(
         sdp_SwiFTly* swiftly,
         sdp_Mem* subgrid_image,
@@ -266,6 +345,21 @@ void sdp_swiftly_extract_from_subgrid_2d(
         sdp_Error* status
 );
 
+/**
+ * @brief Add subgrid contribution to a facet
+ *
+ * Accumulates facet data from subgrid contributions generated by
+ * sdp_swiftly_extract_from_subgrid() or
+ * sdp_swiftly_extract_from_subgrid_2d(). Facet data should be filled with
+ * zeros when passed to function initially. Use sdp_swiftly_finish_facet() to
+ * obtain facet.
+ *
+ * @param swiftly        SwiFTly plan.
+ * @param contribution   `[*,xM_yN_size]` Facet contribution to subgrid
+ * @param prep_facet_inout `[*,yN_size]` Facet data for accumulation
+ * @param subgrid_offset   Offset of subgrid mid-point relative to grid mid-point
+ * @param status         Error status
+ */
 void sdp_swiftly_add_to_facet(
         sdp_SwiFTly* swiftly,
         sdp_Mem* contribution,
@@ -274,6 +368,21 @@ void sdp_swiftly_add_to_facet(
         sdp_Error* status
 );
 
+/**
+ * @brief Generate finished facet after accumulation
+ *
+ * Performs final Fourier transformation on facet data accumulated using
+ * sdp_swiftly_add_to_facet() and multiplies by Fb to obtain finished facet
+ * along an axis
+ *
+ * Note that this function overwrites the contents of `prep_facet_inout`!
+ *
+ * @param swiftly        SwiFTly plan.
+ * @param prep_facet_inout `[*,yN_size]` Accumulated facet data
+ * @param facet_out      `[*,yN_size]` Accumulated facet data
+ * @param subgrid_offset Offset of subgrid mid-point relative to grid mid-point
+ * @param status         Error status
+ */
 void sdp_swiftly_finish_facet(
         sdp_SwiFTly* swiftly,
         sdp_Mem* prep_facet_inout,
