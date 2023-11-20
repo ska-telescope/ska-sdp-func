@@ -7,6 +7,7 @@
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.h"
+#include "ska-sdp-func/math/sdp_prefix_sum.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_timer.h"
@@ -58,6 +59,7 @@ struct sdp_GridderUvwEsFft
     sdp_Mem* quadrature_weights;
     sdp_Mem* conv_corr_kernel;
     sdp_Mem* vis_count;
+    sdp_Mem* vis_counter;
 
     sdp_Timer* timer_overall;
     sdp_Timer* timer_fft;
@@ -116,6 +118,7 @@ void sdp_gridder_uvw_es_fft_free_plan(sdp_GridderUvwEsFft* plan)
     sdp_mem_free(plan->quadrature_weights);
     sdp_mem_free(plan->conv_corr_kernel);
     sdp_mem_free(plan->vis_count);
+    sdp_mem_free(plan->vis_counter);
     sdp_timer_free(plan->timer_overall);
     sdp_timer_free(plan->timer_fft);
     sdp_timer_free(plan->timer_grid);
@@ -565,6 +568,9 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
     plan->vis_count = sdp_mem_create(
             SDP_MEM_INT, SDP_MEM_GPU, 1, vis_count_size, status
     );
+    plan->vis_counter = sdp_mem_create(
+            SDP_MEM_INT, SDP_MEM_GPU, 1, vis_count_size, status
+    );
 
     // allocate memory
     int64_t w_grid_stack_shape[] = {plan->grid_size, plan->grid_size};
@@ -619,14 +625,16 @@ void sdp_grid_uvw_es_fft(
     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
     const int npix_y = (int)sdp_mem_shape_dim(dirty_image, 1);  // this should be the same as checked by check_params()
 
-    uint64_t num_threads[] = {1, 1, 1}, num_blocks[] = {1, 1, 1};
+    uint64_t num_threads[] = {2, 128, 1}, num_blocks[] = {1, 1, 1};
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
 
     const int chunk_size = plan->num_rows;
-    const int coord_type = sdp_mem_type(uvw);
+    const sdp_MemType coord_type = sdp_mem_type(uvw);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
     const int dbl_coord = (coord_type & SDP_MEM_DOUBLE);
+    num_blocks[0] = (plan->num_chan + num_threads[0] - 1) / num_threads[0];
+    num_blocks[1] = (chunk_size + num_threads[1] - 1) / num_threads[1];
 
     // Create the FFT plan.
     sdp_Fft* fft = sdp_fft_create(
@@ -634,6 +642,159 @@ void sdp_grid_uvw_es_fft(
     );
     if (*status) return;
 
+    // Define the tile size and number of tiles in each direction.
+    // A tile consists of SHMSZ grid cells per thread in shared memory
+    // and REGSZ grid cells per thread in registers.
+    const int SHMSZ = 8;
+    const int REGSZ = 8;
+    const int grid_centre = plan->grid_size / 2;
+    const int tile_size_u = 32;
+    const int tile_size_v = (SHMSZ + REGSZ);
+    const int num_tiles_u = (plan->grid_size + tile_size_u - 1) / tile_size_u;
+    const int num_tiles_v = (plan->grid_size + tile_size_v - 1) / tile_size_v;
+    const int num_tiles = num_tiles_u * num_tiles_v;
+
+    // Which tile contains the grid centre?
+    const int c_tile_u = grid_centre / tile_size_u;
+    const int c_tile_v = grid_centre / tile_size_v;
+
+    // Compute difference between centre of centre tile and grid centre
+    // to ensure the centre of the grid is in the centre of a tile.
+    const int top_left_u = grid_centre -
+            c_tile_u * tile_size_u - tile_size_u / 2;
+    const int top_left_v = grid_centre -
+            c_tile_v * tile_size_v - tile_size_v / 2;
+
+    // Set up scratch memory.
+    const int64_t shape_num_points_in_tiles[] = {num_tiles + 1};
+    const int64_t shape_num_vis[] = {1};
+    sdp_Mem* num_points_in_tiles = sdp_mem_create(
+            SDP_MEM_INT, SDP_MEM_GPU, 1, shape_num_points_in_tiles, status
+    );
+    sdp_Mem* tile_offsets = sdp_mem_create(
+            SDP_MEM_INT, SDP_MEM_GPU, 1, shape_num_points_in_tiles, status
+    );
+    sdp_Mem* num_vis_mem = sdp_mem_create(
+            SDP_MEM_INT, SDP_MEM_CPU, 1, shape_num_vis, status
+    );
+    sdp_mem_clear_contents(num_points_in_tiles, status);
+    sdp_mem_clear_contents(tile_offsets, status);
+    sdp_mem_clear_contents(num_vis_mem, status);
+
+    // Count points in tiles.
+    {
+        const char* kernel_name = 0;
+        if (dbl_coord)
+        {
+            kernel_name = "sdp_cuda_tile_count<double, double2, double3>";
+        }
+        else if (!dbl_coord)
+        {
+            kernel_name = "sdp_cuda_tile_count<float, float2, float3>";
+        }
+        if (kernel_name)
+        {
+            const void* args[] = {
+                &plan->support,
+                &chunk_size,
+                &plan->num_chan,
+                sdp_mem_gpu_buffer_const(freq_hz, status),
+                sdp_mem_gpu_buffer_const(uvw, status),
+                &plan->grid_size,
+                dbl_coord ?
+                    (const void*)&plan->uv_scale :
+                    (const void*)&plan->uv_scale_f,
+                &tile_size_u,
+                &tile_size_v,
+                &num_tiles_u,
+                &top_left_u,
+                &top_left_v,
+                sdp_mem_gpu_buffer(num_points_in_tiles, status)
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, args, status
+            );
+        }
+    }
+
+    sdp_Mem* cpu_num_pts_in_tiles = sdp_mem_create_copy(
+            num_points_in_tiles, SDP_MEM_CPU, status
+    );
+    for (int i = 0; i < num_tiles; ++i)
+    {
+        int* p = (int*)sdp_mem_data(cpu_num_pts_in_tiles);
+        printf("%d, ", p[i]);
+    }
+    printf("\n");
+
+    // Get the offsets for each tile using prefix sum.
+    sdp_prefix_sum(num_tiles, num_points_in_tiles, tile_offsets, status);
+
+    // Get the total number of visibilities to process.
+    sdp_mem_copy_contents(num_vis_mem, tile_offsets, 0, num_tiles, 1, status);
+    int num_total = *((int*)sdp_mem_data(num_vis_mem));
+    SDP_LOG_DEBUG("Number of visibilities to process: %d", num_total);
+
+    // Bucket sort the data into tiles.
+    const int64_t sorted_shape[] = {num_total};
+    sdp_Mem* sorted_uu = sdp_mem_create(
+            coord_type, SDP_MEM_GPU, 1, sorted_shape, status
+    );
+    sdp_Mem* sorted_vv = sdp_mem_create(
+            coord_type, SDP_MEM_GPU, 1, sorted_shape, status
+    );
+    sdp_Mem* sorted_ww = sdp_mem_create(
+            coord_type, SDP_MEM_GPU, 1, sorted_shape, status
+    );
+    sdp_Mem* sorted_vis = sdp_mem_create(
+            vis_type, SDP_MEM_GPU, 1, sorted_shape, status
+    );
+    sdp_Mem* sorted_tile = sdp_mem_create(
+            SDP_MEM_INT, SDP_MEM_GPU, 1, sorted_shape, status
+    );
+    {
+        const char* kernel_name = 0;
+        if (dbl_coord)
+        {
+            kernel_name = "sdp_cuda_tile_bucket_sort<double, double2, double3>";
+        }
+        else
+        {
+            kernel_name = "sdp_cuda_tile_bucket_sort<float, float2, float3>";
+        }
+        if (kernel_name)
+        {
+            const void* args[] = {
+                &plan->support,
+                &chunk_size,
+                &plan->num_chan,
+                sdp_mem_gpu_buffer_const(freq_hz, status),
+                sdp_mem_gpu_buffer_const(uvw, status),
+                sdp_mem_gpu_buffer_const(vis, status),
+                sdp_mem_gpu_buffer_const(weight, status),
+                &plan->grid_size,
+                dbl_coord ?
+                    (const void*)&plan->uv_scale :
+                    (const void*)&plan->uv_scale_f,
+                &tile_size_u,
+                &tile_size_v,
+                &num_tiles_u,
+                &top_left_u,
+                &top_left_v,
+                sdp_mem_gpu_buffer(tile_offsets, status),
+                sdp_mem_gpu_buffer(sorted_uu, status),
+                sdp_mem_gpu_buffer(sorted_vv, status),
+                sdp_mem_gpu_buffer(sorted_ww, status),
+                sdp_mem_gpu_buffer(sorted_vis, status),
+                sdp_mem_gpu_buffer(sorted_tile, status)
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, args, status
+            );
+        }
+    }
+
+    // Grid using w-stacking.
     sdp_mem_clear_contents(plan->vis_count, status);
     for (int grid_w = 0; grid_w < plan->num_total_w_grids; grid_w++)
     {
@@ -641,6 +802,7 @@ void sdp_grid_uvw_es_fft(
         if (*status) break;
 
         // Perform gridding
+        sdp_mem_clear_contents(plan->vis_counter, status);
         sdp_timer_resume(plan->timer_grid);
         {
             const char* kernel_name = 0;
@@ -648,14 +810,54 @@ void sdp_grid_uvw_es_fft(
             {
                 if (dbl_vis && dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_grid_3d"
-                            "<double, double2, double, double2, double3>";
+                    kernel_name = "sdp_cuda_nifty_grid_tiled_3d"
+                            "<double, double2, 8, 8>";
                 }
                 else if (!dbl_vis && !dbl_coord)
                 {
-                    kernel_name = "sdp_cuda_nifty_grid_3d"
-                            "<float, float2, float, float2, float3>";
+                    kernel_name = "sdp_cuda_nifty_grid_tiled_3d"
+                            "<float, float2, 8, 8>";
                 }
+                void* null = 0;
+                num_threads[0] = tile_size_u;
+                num_threads[1] = 1;
+                num_blocks[0] = (num_total + num_threads[0] - 1) / num_threads[0];
+                num_blocks[1] = 1;
+                if (num_blocks[0] > 10000) num_blocks[0] = 10000;
+                const uint64_t sh_mem_size = sdp_mem_type_size(vis_type) *
+                        SHMSZ * num_threads[0];
+
+                const void* args[] = {
+                    &plan->support,
+                    &num_total,
+                    sdp_mem_gpu_buffer(sorted_uu, status),
+                    sdp_mem_gpu_buffer(sorted_vv, status),
+                    sdp_mem_gpu_buffer(sorted_ww, status),
+                    sdp_mem_gpu_buffer(sorted_vis, status),
+                    sdp_mem_gpu_buffer(sorted_tile, status),
+                    &plan->grid_size,
+                    &grid_w,
+                    &tile_size_u,
+                    &tile_size_v,
+                    &top_left_u,
+                    &top_left_v,
+                    dbl_vis ?
+                        (const void*)&plan->beta :
+                        (const void*)&plan->beta_f,
+                    dbl_coord ?
+                        (const void*)&plan->w_scale :
+                        (const void*)&plan->w_scale_f,
+                    dbl_coord ?
+                        (const void*)&plan->min_plane_w :
+                        (const void*)&plan->min_plane_w_f,
+                    sdp_mem_gpu_buffer(plan->vis_counter, status),
+                    sdp_mem_gpu_buffer(plan->w_grid_stack, status),
+                    plan->do_vis_count ?
+                        sdp_mem_gpu_buffer(plan->vis_count, status) : &null
+                };
+                sdp_launch_cuda_kernel(kernel_name,
+                        num_blocks, num_threads, sh_mem_size, 0, args, status
+                );
             }
             else
             {
@@ -669,9 +871,6 @@ void sdp_grid_uvw_es_fft(
                     kernel_name = "sdp_cuda_nifty_grid_2d"
                             "<float, float2, float, float2, float3>";
                 }
-            }
-            if (kernel_name)
-            {
                 void* null = 0;
                 num_threads[0] = 1;
                 num_threads[1] = 256;
@@ -799,6 +998,16 @@ void sdp_grid_uvw_es_fft(
         );
     }
     sdp_timer_pause(plan->timer_overall);
+
+    // Free scratch arrays.
+    sdp_mem_free(num_points_in_tiles);
+    sdp_mem_free(tile_offsets);
+    sdp_mem_free(num_vis_mem);
+    sdp_mem_free(sorted_tile);
+    sdp_mem_free(sorted_vis);
+    sdp_mem_free(sorted_uu);
+    sdp_mem_free(sorted_vv);
+    sdp_mem_free(sorted_ww);
 
     // Report visibility count.
     sdp_Mem* vis_count_cpu = sdp_mem_create_copy(

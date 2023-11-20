@@ -10,6 +10,8 @@
 #define PI 3.1415926535897931
 #endif
 
+#define C_0 299792458.0
+
 template<typename FP>
 __device__ __forceinline__ void my_atomic_add(FP* addr, FP value);
 
@@ -120,6 +122,301 @@ __device__ FP2 phase_shift(const FP w, const FP l, const FP m, const FP signage)
     phasor.x *= xn;
     phasor.y *= xn;
     return phasor;
+}
+
+
+/*
+ * Runs through all the visibilities and counts how many fall into each tile.
+ * Grid updates for each visibility will intersect one or more tiles.
+ */
+template<typename FP, typename FP2, typename FP3>
+__global__ void sdp_cuda_tile_count (
+        const int support,
+        const int num_vis_rows,
+        const int num_vis_chan,
+        const FP* const __restrict__ freq_hz,
+        const FP3* const __restrict__ uvw,
+        const int grid_size,
+        const FP grid_scale,
+        const int tile_size_u,
+        const int tile_size_v,
+        const int num_tiles_u,
+        const int top_left_u,
+        const int top_left_v,
+        int* num_points_in_tiles
+)
+{
+    const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
+    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
+    if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
+        return;
+
+    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
+    const FP half_support = FP(support) / FP(2.0); // NOTE confirm everyone's understanding of what support means eg when even/odd
+    const int grid_min_uv = -grid_size / 2; // minimum coordinate on grid along u or v axes
+    const int grid_max_uv = (grid_size - 1) / 2; // maximum coordinate on grid along u or v axes
+    const FP flip = (uvw[i_row].z < 0.0) ? -1.0 : 1.0;
+    const FP inv_wavelength = flip * freq_hz[i_chan] / (FP) C_0;
+    const FP pos_u = uvw[i_row].x * inv_wavelength * grid_scale;
+    const FP pos_v = uvw[i_row].y * inv_wavelength * grid_scale;
+    const int grid_u_min = max((int)ceil(pos_u - half_support), grid_min_uv) + top_left_u + origin_offset_uv;
+    const int grid_u_max = min((int)floor(pos_u + half_support), grid_max_uv) + top_left_u + origin_offset_uv;
+    const int grid_v_min = max((int)ceil(pos_v - half_support), grid_min_uv) + top_left_v + origin_offset_uv;
+    const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv) + top_left_v + origin_offset_uv;
+    if (grid_u_min > grid_u_max || grid_v_min > grid_v_max)
+    {
+        // This visibility does not intersect the grid.
+        return;
+    }
+    const int tile_u_min = grid_u_min / tile_size_u;
+    const int tile_u_max = grid_u_max / tile_size_u;
+    const int tile_v_min = grid_v_min / tile_size_v;
+    const int tile_v_max = grid_v_max / tile_size_v;
+    for (int pv = tile_v_min; pv <= tile_v_max; pv++)
+    {
+        for (int pu = tile_u_min; pu <= tile_u_max; pu++)
+        {
+            atomicAdd(&num_points_in_tiles[pu + pv * num_tiles_u], 1);
+        }
+    }
+}
+
+/*
+ * Does a bucket sort on the input visibilities. Each tile is a bucket.
+ * Note that tile_offsets gives the start of visibility data for each tile,
+ * and it will be modified by this kernel.
+ */
+template<typename FP, typename FP2, typename FP3>
+__global__ void sdp_cuda_tile_bucket_sort (
+        const int support,
+        const int num_vis_rows,
+        const int num_vis_chan,
+        const FP* const __restrict__ freq_hz,
+        const FP3* const __restrict__ uvw,
+        const FP2* const __restrict__ vis,
+        const FP* const __restrict__ weight,
+        const int grid_size,
+        const FP grid_scale,
+        const int tile_size_u,
+        const int tile_size_v,
+        const int num_tiles_u,
+        const int top_left_u,
+        const int top_left_v,
+        int* tile_offsets,
+        FP* sorted_uu,
+        FP* sorted_vv,
+        FP* sorted_ww,
+        FP2* sorted_vis,
+        int* sorted_tile
+)
+{
+    const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
+    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_vis = i_chan + num_vis_chan * i_row;
+    if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
+        return;
+
+    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
+    const FP half_support = FP(support) / FP(2.0); // NOTE confirm everyone's understanding of what support means eg when even/odd
+    const int grid_min_uv = -grid_size / 2; // minimum coordinate on grid along u or v axes
+    const int grid_max_uv = (grid_size - 1) / 2; // maximum coordinate on grid along u or v axes
+    const FP flip = (uvw[i_row].z < 0.0) ? -1.0 : 1.0;
+    const FP inv_wavelength = flip * freq_hz[i_chan] / (FP) C_0;
+    FP2 vis_i = vis[i_vis];
+    vis_i.x *= weight[i_vis];
+    vis_i.y *= (weight[i_vis] * flip); // Conjugate for negative w coords
+    const FP pos_u = uvw[i_row].x * inv_wavelength * grid_scale;
+    const FP pos_v = uvw[i_row].y * inv_wavelength * grid_scale;
+    const FP pos_w = uvw[i_row].z * inv_wavelength;
+    const int grid_u_min = max((int)ceil(pos_u - half_support), grid_min_uv) + top_left_u + origin_offset_uv;
+    const int grid_u_max = min((int)floor(pos_u + half_support), grid_max_uv) + top_left_u + origin_offset_uv;
+    const int grid_v_min = max((int)ceil(pos_v - half_support), grid_min_uv) + top_left_v + origin_offset_uv;
+    const int grid_v_max = min((int)floor(pos_v + half_support), grid_max_uv) + top_left_v + origin_offset_uv;
+    if (grid_u_min > grid_u_max || grid_v_min > grid_v_max)
+    {
+        // This visibility does not intersect the grid.
+        return;
+    }
+    const int tile_u_min = grid_u_min / tile_size_u;
+    const int tile_u_max = grid_u_max / tile_size_u;
+    const int tile_v_min = grid_v_min / tile_size_v;
+    const int tile_v_max = grid_v_max / tile_size_v;
+    for (int pv = tile_v_min; pv <= tile_v_max; pv++)
+    {
+        for (int pu = tile_u_min; pu <= tile_u_max; pu++)
+        {
+            int off = atomicAdd(&tile_offsets[pu + pv * num_tiles_u], 1);
+            sorted_uu[off] = pos_u;
+            sorted_vv[off] = pos_v;
+            sorted_ww[off] = pos_w;
+            sorted_vis[off] = vis_i; // Store weighted visibility.
+            sorted_tile[off] = pv * 32768 + pu;
+        }
+    }
+}
+
+#define NUM_VIS_LOCAL 32
+
+#define WRITE_ACTIVE_TILE_TO_GRID(FP, FP2) {\
+    for (int r = 0; r < REGSZ; r++) {\
+        const int64_t p = int64_t(my_grid_v_start + r) * int64_t(grid_size) + my_grid_u;\
+        my_atomic_add<FP>(&grid[2 * p],     my_grid[r].x);\
+        my_atomic_add<FP>(&grid[2 * p + 1], my_grid[r].y);\
+    }\
+    for (int s = 0; s < SHMSZ; s++) {\
+        const int64_t p = int64_t(my_grid_v_start + s + REGSZ) * int64_t(grid_size) + my_grid_u;\
+        const FP2 z = smem[threadIdx.x + s * blockDim.x];\
+        my_atomic_add<FP>(&grid[2 * p],     z.x);\
+        my_atomic_add<FP>(&grid[2 * p + 1], z.y);\
+    }\
+    }\
+
+
+// REGSZ = 8, SHMSZ = 8
+template<typename FP, typename FP2, int REGSZ, int SHMSZ>
+__global__ void sdp_cuda_nifty_grid_tiled_3d (
+        const int support, // full support for gridding kernel
+        const int num_vis_total,
+        const FP* const __restrict__ sorted_uu,
+        const FP* const __restrict__ sorted_vv,
+        const FP* const __restrict__ sorted_ww,
+        const FP2* const __restrict__ sorted_vis, // weighted in bucket sort
+        const int* const __restrict__ sorted_tile,
+        const int grid_size, // one dimensional size of w_plane (image_size * upsampling), assumed square
+        const int grid_start_w, // Index of w grid
+        const int tile_size_u,
+        const int tile_size_v,
+        const int top_left_u,
+        const int top_left_v,
+        const FP beta, // beta value used in exponential of semicircle kernel
+        const FP w_scale, // factor to convert w coord to signed w grid index
+        const FP min_plane_w, // w coordinate of w plane
+        int* vis_counter,
+        FP* grid,
+        int* vis_gridded // If not NULL, maintain count of visibilities gridded
+        )
+{
+    __shared__ FP s_u[NUM_VIS_LOCAL], s_v[NUM_VIS_LOCAL], s_w[NUM_VIS_LOCAL];
+    __shared__ FP2 s_vis[NUM_VIS_LOCAL];
+    __shared__ int s_tile_coords[NUM_VIS_LOCAL];
+    const int origin_offset_uv = (grid_size / 2); // offset of origin along u or v axes
+    const FP half_support = (FP)support / (FP)2;
+    const FP inv_half_support = (FP)1 / (FP)half_support;
+    const int grid_min_uv = -grid_size / 2; // minimum coordinate on grid along u or v axes
+    const int grid_max_uv = (grid_size - 1) / 2; // maximum coordinate on grid along u or v axes
+    int i_vis = 0;
+    FP2 my_grid[REGSZ + 1];
+    extern __shared__ __align__(64) unsigned char my_smem[];
+    FP2* smem = reinterpret_cast<FP2*>(my_smem);
+    int tile_u = -1, tile_v = -1, my_grid_u = 0, my_grid_v_start = 0;
+    while (true)
+    {
+        if (threadIdx.x == 0)
+        {
+            i_vis = atomicAdd(&vis_counter[0], NUM_VIS_LOCAL);
+        }
+        i_vis = __shfl_sync(0xFFFFFFFF, i_vis, 0);
+        if (i_vis >= num_vis_total)
+        {
+            break;
+        }
+        __syncthreads();
+        const int i_vis_load = i_vis + threadIdx.x;
+        if (threadIdx.x < NUM_VIS_LOCAL && i_vis_load < num_vis_total)
+        {
+            s_u[threadIdx.x] = sorted_uu[i_vis_load];
+            s_v[threadIdx.x] = sorted_vv[i_vis_load];
+            s_w[threadIdx.x] = (sorted_ww[i_vis_load] - min_plane_w) * w_scale;
+            s_vis[threadIdx.x] = sorted_vis[i_vis_load];
+            s_tile_coords[threadIdx.x] = sorted_tile[i_vis_load];
+        }
+        __syncthreads();
+        int grid_points_hit = 0;
+        for (int i_vis_local = 0; i_vis_local < NUM_VIS_LOCAL; i_vis_local++)
+        {
+            if ((i_vis + i_vis_local) >= num_vis_total)
+            {
+                continue;
+            }
+            const int grid_w_min = max((int)ceil(s_w[i_vis_local] - half_support), grid_start_w);
+            const int grid_w_max = min((int)floor(s_w[i_vis_local] + half_support), grid_start_w);
+            if (grid_w_min > grid_w_max)
+            {
+                continue;
+            }
+            const int grid_u_min = max((int)ceil(s_u[i_vis_local] - half_support), grid_min_uv) + origin_offset_uv;
+            const int grid_u_max = min((int)floor(s_u[i_vis_local] + half_support), grid_max_uv) + origin_offset_uv;
+            const int grid_v_min = max((int)ceil(s_v[i_vis_local] - half_support), grid_min_uv) + origin_offset_uv;
+            const int grid_v_max = min((int)floor(s_v[i_vis_local] + half_support), grid_max_uv) + origin_offset_uv;
+            const int tile_coords = s_tile_coords[i_vis_local];
+            const int new_tile_u = tile_coords & 32767;
+            const int new_tile_v = tile_coords >> 15;
+            if (new_tile_u != tile_u || new_tile_v != tile_v)
+            {
+                if (tile_u != -1) WRITE_ACTIVE_TILE_TO_GRID(FP, FP2)
+                tile_u = new_tile_u;
+                tile_v = new_tile_v;
+                my_grid_u = tile_u * tile_size_u + top_left_u + threadIdx.x;
+                my_grid_v_start = tile_v * tile_size_v + top_left_v;
+                FP2 zero;
+                zero.x = (FP)0;
+                zero.y = (FP)0;
+                #pragma unroll
+                for (int r = 0; r < REGSZ; r++)
+                {
+                    my_grid[r] = zero;
+                }
+                #pragma unroll
+                for (int s = 0; s < SHMSZ; s++)
+                {
+                    smem[threadIdx.x + s * blockDim.x] = zero;
+                }
+            }
+            if (my_grid_u >= grid_u_min && my_grid_u <= grid_u_max)
+            {
+                const FP kernel_w = exp_semicircle(beta,
+                        (FP)(grid_start_w - s_w[i_vis_local]) * inv_half_support
+                );
+                const FP kernel_u = exp_semicircle(beta,
+                        (FP)(my_grid_u - origin_offset_uv - s_u[i_vis_local]) * inv_half_support
+                );
+                const FP kernel_uw = kernel_w * kernel_u;
+                const FP2 val = s_vis[i_vis_local];
+                #pragma unroll
+                for (int t = 0; t < (REGSZ + SHMSZ); t++)
+                {
+                    const int my_grid_v = my_grid_v_start + t;
+                    if (my_grid_v >= grid_v_min && my_grid_v <= grid_v_max)
+                    {
+                        const FP kernel_v = exp_semicircle(beta,
+                                (FP)(my_grid_v - origin_offset_uv - s_v[i_vis_local]) * inv_half_support
+                        );
+                        FP c = kernel_v * kernel_uw;
+                        const bool is_odd = ((my_grid_u + my_grid_v) & 1) != 0;
+                        c = is_odd ? -c : c;
+                        if (t < REGSZ)
+                        {
+                            my_grid[t].x += (val.x * c);
+                            my_grid[t].y += (val.y * c);
+                        }
+                        else if (SHMSZ > 0)
+                        {
+                            const int s = t - REGSZ;
+                            FP2 z = smem[threadIdx.x + s * blockDim.x];
+                            z.x += (val.x * c);
+                            z.y += (val.y * c);
+                            smem[threadIdx.x + s * blockDim.x] = z;
+                        }
+                        grid_points_hit++;
+                    }
+                }
+            }
+        }
+        // if (vis_gridded) atomicAdd(vis_gridded, NUM_VIS_LOCAL);
+        if (vis_gridded) atomicAdd(vis_gridded, grid_points_hit);
+        __syncthreads();
+    }
+    if (tile_u != -1) WRITE_ACTIVE_TILE_TO_GRID(FP, FP2)
 }
 
 
@@ -830,6 +1127,13 @@ __global__ void conv_corr_and_scaling(
 
 // *INDENT-OFF*
 // register kernels
+SDP_CUDA_KERNEL(sdp_cuda_tile_count<float, float2, float3>)
+SDP_CUDA_KERNEL(sdp_cuda_tile_count<double, double2, double3>)
+SDP_CUDA_KERNEL(sdp_cuda_tile_bucket_sort<float, float2, float3>)
+SDP_CUDA_KERNEL(sdp_cuda_tile_bucket_sort<double, double2, double3>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_tiled_3d<float, float2, 8, 8>)
+SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_tiled_3d<double, double2, 8, 8>)
+
 SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_3d<double, double2, double, double2, double3>)
 SDP_CUDA_KERNEL(sdp_cuda_nifty_grid_3d<float,  float2,  float,  float2,  float3>)
 

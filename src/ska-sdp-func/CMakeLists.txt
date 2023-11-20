@@ -3,6 +3,7 @@ set(${PROJECT_NAME}_FOLDERS
     examples
     fourier_transforms
     grid_data
+    math
     rfi
     station_beam
     utility
