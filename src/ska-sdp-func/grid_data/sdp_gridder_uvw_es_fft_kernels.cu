@@ -146,8 +146,8 @@ __global__ void sdp_cuda_tile_count (
         int* num_points_in_tiles
 )
 {
-    const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
-    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_row  = blockDim.x * blockIdx.x + threadIdx.x;
+    const int i_chan = blockDim.y * blockIdx.y + threadIdx.y;
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
         return;
 
@@ -210,8 +210,8 @@ __global__ void sdp_cuda_tile_bucket_sort (
         int* sorted_tile
 )
 {
-    const int i_chan = blockDim.x * blockIdx.x + threadIdx.x;
-    const int i_row  = blockDim.y * blockIdx.y + threadIdx.y;
+    const int i_row  = blockDim.x * blockIdx.x + threadIdx.x;
+    const int i_chan = blockDim.y * blockIdx.y + threadIdx.y;
     const int i_vis = i_chan + num_vis_chan * i_row;
     if (i_chan >= num_vis_chan || i_row >= num_vis_rows)
         return;

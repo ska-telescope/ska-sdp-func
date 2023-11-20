@@ -625,7 +625,7 @@ void sdp_grid_uvw_es_fft(
     const int npix_x = (int)sdp_mem_shape_dim(dirty_image, 0);
     const int npix_y = (int)sdp_mem_shape_dim(dirty_image, 1);  // this should be the same as checked by check_params()
 
-    uint64_t num_threads[] = {2, 128, 1}, num_blocks[] = {1, 1, 1};
+    uint64_t num_threads[] = {128, 2, 1}, num_blocks[] = {1, 1, 1};
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
 
@@ -633,8 +633,8 @@ void sdp_grid_uvw_es_fft(
     const sdp_MemType coord_type = sdp_mem_type(uvw);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
     const int dbl_coord = (coord_type & SDP_MEM_DOUBLE);
-    num_blocks[0] = (plan->num_chan + num_threads[0] - 1) / num_threads[0];
-    num_blocks[1] = (chunk_size + num_threads[1] - 1) / num_threads[1];
+    num_blocks[0] = (chunk_size + num_threads[0] - 1) / num_threads[0];
+    num_blocks[1] = (plan->num_chan + num_threads[1] - 1) / num_threads[1];
 
     // Create the FFT plan.
     sdp_Fft* fft = sdp_fft_create(
