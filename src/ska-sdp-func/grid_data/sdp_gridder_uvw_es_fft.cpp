@@ -648,8 +648,8 @@ void sdp_grid_uvw_es_fft(
     const int SHMSZ = 8;
     const int REGSZ = 8;
     const int grid_centre = plan->grid_size / 2;
-    const int tile_size_u = 32;
-    const int tile_size_v = (SHMSZ + REGSZ);
+    const int tile_size_v = 32;
+    const int tile_size_u = (SHMSZ + REGSZ);
     const int num_tiles_u = (plan->grid_size + tile_size_u - 1) / tile_size_u;
     const int num_tiles_v = (plan->grid_size + tile_size_v - 1) / tile_size_v;
     const int num_tiles = num_tiles_u * num_tiles_v;
@@ -706,7 +706,7 @@ void sdp_grid_uvw_es_fft(
                     (const void*)&plan->uv_scale_f,
                 &tile_size_u,
                 &tile_size_v,
-                &num_tiles_u,
+                &num_tiles_v,
                 &top_left_u,
                 &top_left_v,
                 sdp_mem_gpu_buffer(num_points_in_tiles, status)
@@ -717,15 +717,21 @@ void sdp_grid_uvw_es_fft(
         }
     }
 
+#if 0
     sdp_Mem* cpu_num_pts_in_tiles = sdp_mem_create_copy(
             num_points_in_tiles, SDP_MEM_CPU, status
     );
-    for (int i = 0; i < num_tiles; ++i)
+    int* p = (int*)sdp_mem_data(cpu_num_pts_in_tiles);
+    for (int j = 0; j < num_tiles_v; ++j)
     {
-        int* p = (int*)sdp_mem_data(cpu_num_pts_in_tiles);
-        printf("%d, ", p[i]);
+        for (int i = 0; i < num_tiles_u; ++i)
+        {
+            printf("%03d ", p[j * num_tiles_u + i]);
+        }
+        printf("\n");
     }
-    printf("\n");
+    sdp_mem_free(cpu_num_pts_in_tiles);
+#endif
 
     // Get the offsets for each tile using prefix sum.
     sdp_prefix_sum(num_tiles, num_points_in_tiles, tile_offsets, status);
@@ -778,7 +784,7 @@ void sdp_grid_uvw_es_fft(
                     (const void*)&plan->uv_scale_f,
                 &tile_size_u,
                 &tile_size_v,
-                &num_tiles_u,
+                &num_tiles_v,
                 &top_left_u,
                 &top_left_v,
                 sdp_mem_gpu_buffer(tile_offsets, status),
@@ -819,7 +825,7 @@ void sdp_grid_uvw_es_fft(
                             "<float, float2, 8, 8>";
                 }
                 void* null = 0;
-                num_threads[0] = tile_size_u;
+                num_threads[0] = tile_size_v;
                 num_threads[1] = 1;
                 num_blocks[0] = (num_total + num_threads[0] - 1) / num_threads[0];
                 num_blocks[1] = 1;
