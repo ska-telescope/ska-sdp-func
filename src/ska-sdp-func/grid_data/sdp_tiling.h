@@ -1,7 +1,7 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#ifndef SKA_SDP_PROC_FUNC_WEIGHTING_H_
-#define SKA_SDP_PROC_FUNC_WEIGHTING_H_
+#ifndef SKA_SDP_PROC_FUNC_TILING_H_
+#define SKA_SDP_PROC_FUNC_TILING_H_
 
 /**
  * @file sdp_tiling.h
@@ -38,19 +38,7 @@ extern "C" {
  *   - [ num_times, num_baselines, num_channels ]
  *
  * - @param tile_offsets is 1D and real-valued, with shape:
- *   - [ num_tiles ]
- *
- * - @param sorted_vis is 4D and complex valued, with shape:
- *   - [ time_samples, baselines, channels, polarizations ]
- *
- * - @param sorted_uu is 1D and complex valued, with shape:
- *   - [ num_visibilities ]
- *
- * - @param sorted_vv is 1D and complex valued, with shape:
- *   - [ num_visibilities ]
- *
- * - @param sorted_weights is 3D and real-valued, with shape:
- *   - [ num_times, num_baselines, num_channels ]
+ *   - [ num_tiles + 1 ]
  *
  * - @param num_points_in_tiles is 1D and real-valued, with shape:
  *
@@ -73,14 +61,11 @@ void sdp_tile_and_bucket_sort_simple(
         const int64_t num_tiles_u,
         const int64_t top_left_u,
         const int64_t top_left_v,
+        const double cell_size_rad,
+        const int num_tiles,
         sdp_Mem* tile_offsets,
-        sdp_Mem* sorted_vis,
-        sdp_Mem* sorted_uu,
-        sdp_Mem* sorted_vv,
-        sdp_Mem* sorted_weight,
         sdp_Mem* num_points_in_tiles,
         sdp_Mem* num_skipped,
-        sdp_Mem* sorted_tile,
         sdp_Error* status
 );
 

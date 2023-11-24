@@ -159,7 +159,7 @@ __global__ void calc_sum_gpu(
 
         for (int i_pol = 0; i_pol < num_pols; ++i_pol)
         {
-            atomicAdd(&(*sumweight), input_weight[i_pol_start + i_pol]);
+            atomicAdd(&(*sumweight), weights_grid_uv[i_pol_s + i_pol]);
             atomicAdd(&(*sumweight2),
                     weights_grid_uv[i_pol_s + i_pol] *
                     weights_grid_uv[i_pol_s + i_pol]

@@ -126,7 +126,7 @@ static void sum_weights_calc(
                 );
                 for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
                 {
-                    *sumweight += input_weight[i_pol_start + i_pol];
+                    *sumweight += weights_grid_uv[i_pol_s + i_pol];
                     *sumweight2 +=
                             (weights_grid_uv[i_pol_s + i_pol] *
                             weights_grid_uv[i_pol_s + i_pol]);
