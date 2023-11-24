@@ -21,11 +21,8 @@ Lib.wrap_func(
         ctypes.c_int64,
         ctypes.c_int64,
         ctypes.c_int64,
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
+        ctypes.c_double,
+        ctypes.c_int,
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
@@ -46,14 +43,11 @@ def tile_and_bucket_sort_simple(
     num_tiles_u,
     top_left_u,
     top_left_v,
+    cell_size_rad,
+    num_tiles,
     tile_offsets,
-    sorted_vis,
-    sorted_uu,
-    sorted_vv,
-    sorted_weight,
     num_points_in_tiles,
-    num_skipped,
-    sorted_tile,
+    num_skipped
 ):
     """
     Calculate the number of tiles and get the histogram for
@@ -76,11 +70,6 @@ def tile_and_bucket_sort_simple(
                     Dimensions are
                     [num_times, num_baselines, num_channels, num_pols]
     :type weights: numpy.ndarray
-
-    :param sorted_vis: A complex valued 4D array, gets the sorted visibilites.
-                 Dimensions are
-                 [time samples, baselines, channels, polarizations]
-    :type sorted_vis: numpy.ndarray
 
     :param num_points_in_tiles: A real valued 1D array, returns the number
                 of visibilties in each tile. Dimensions are
@@ -105,12 +94,9 @@ def tile_and_bucket_sort_simple(
         num_tiles_u,
         top_left_u,
         top_left_v,
+        cell_size_rad,
+        num_tiles,
         Mem(tile_offsets),
-        Mem(sorted_vis),
-        Mem(sorted_uu),
-        Mem(sorted_vv),
-        Mem(sorted_weight),
         Mem(num_points_in_tiles),
         Mem(num_skipped),
-        Mem(sorted_tile),
     )

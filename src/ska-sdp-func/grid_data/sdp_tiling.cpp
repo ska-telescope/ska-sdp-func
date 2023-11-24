@@ -44,11 +44,13 @@ void sdp_tile_count_simple(
         const int64_t num_tiles_u,
         const int64_t top_left_u,
         const int64_t top_left_v,
+        const double cell_size_rad,
         int* num_points_in_tiles,
         int* num_skipped
 )
 {
     const int64_t grid_centre = grid_size / 2;
+    const double grid_scale =  grid_size * cell_size_rad;
 
     for (int i_time = 0; i_time < num_times; i_time++)
     {
@@ -62,25 +64,28 @@ void sdp_tile_count_simple(
             for (int i_channel = 0; i_channel < num_channels; i_channel++)
             {
                 const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
-                const UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength;
-                const UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength;
+                const UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength * grid_scale;
+                const UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength * grid_scale;
 
-                const int grid_u =
-                        (int)round(pos_u) + grid_centre;
-                const int grid_v =
-                        (int)round(pos_v) + grid_centre;
+                const int64_t grid_u =
+                        (int64_t)(round(pos_u) + grid_centre);
+                const int64_t grid_v =
+                        (int64_t)(round(pos_v) + grid_centre);
 
-                if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
+                    if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
                         (grid_v + support < grid_size) &&
-                        (grid_v - support) >= 0)
-                {
+                        (grid_v - support >= 0))
+                    {
                     int tile_u_min, tile_u_max, tile_v_min, tile_v_max;
-                    TILE_RANGES(support,
-                            tile_v_min,
-                            tile_u_max,
-                            tile_v_min,
-                            tile_v_max
-                    );
+                    const int rel_u = grid_u - top_left_u;
+                    const int rel_v = grid_v - top_left_v;
+                    const float u1 = (float)(rel_u - support) * inv_tile_size_u;
+                    const float u2 = (float)(rel_u + support + 1) * inv_tile_size_u;
+                    const float v1 = (float)(rel_v - support) * inv_tile_size_v;
+                    const float v2 = (float)(rel_v + support + 1) * inv_tile_size_v;
+                    tile_u_min = (int)(floor(u1)); tile_u_max = (int)(ceil(u2));
+                    tile_v_min = (int)(floor(v1)); tile_v_max = (int)(ceil(v2));
+
                     for (int pv = tile_v_min; pv < tile_v_max; pv++)
                     {
                         for (int pu = tile_u_min; pu < tile_u_max; pu++)
@@ -93,6 +98,24 @@ void sdp_tile_count_simple(
             }
         }
     }
+}
+
+void sdp_prefix_sum_for_bucket_sort(
+    const int num_tiles, 
+    const int* num_points_in_tiles, 
+    int* tile_offsets
+)
+{
+    int sum = 0;
+    int i = 0;
+    for(i = 0; i < num_tiles; i++)
+    {
+        int x = num_points_in_tiles[i];
+        tile_offsets[i] = sum;
+        sum += x;
+    }
+
+    tile_offsets[i] = sum;
 }
 
 
@@ -114,15 +137,16 @@ void sdp_bucket_sort_simple(
         const int64_t top_left_u,
         const int64_t top_left_v,
         int* tile_offsets,
-        float* sorted_uu,
-        float* sorted_vv,
+        UVW_TYPE* sorted_uu,
+        UVW_TYPE* sorted_vv,
         VIS_TYPE* sorted_vis,
         WEIGHT_TYPE* sorted_weight,
-        float* sorted_tile
+        int* sorted_tile,
+        const double cell_size_rad
 )
 {
     const int64_t grid_centre = grid_size / 2;
-
+    const double grid_scale =  grid_size * cell_size_rad;
     for (int i_time = 0; i_time < num_times; i_time++)
     {
         for (int i_baseline = 0; i_baseline < num_baselines; i_baseline++)
@@ -140,8 +164,8 @@ void sdp_bucket_sort_simple(
                 );
 
                 const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
-                const UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength;
-                const UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength;
+                const UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength * grid_scale;
+                const UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength * grid_scale;
 
                 const int grid_u =
                         (int)round(pos_u) + grid_centre;
@@ -163,7 +187,8 @@ void sdp_bucket_sort_simple(
                     {
                         for (int pu = tile_u_min; pu < tile_u_max; pu++)
                         {
-                            int off = tile_offsets[pu + pv * num_tiles_u] += 1;
+                            int off = tile_offsets[pu + pv * num_tiles_u];
+                            tile_offsets[pu + pv * num_tiles_u] += 1;
                             sorted_uu[off] = pos_u;
                             sorted_vv[off] = pos_v;
                             for (int i = 0; i < NUM_POL; i++)
@@ -193,19 +218,16 @@ void sdp_tile_and_bucket_sort_simple(
         const int64_t num_tiles_u,
         const int64_t top_left_u,
         const int64_t top_left_v,
+        const double cell_size_rad,
+        const int num_tiles,
         sdp_Mem* tile_offsets,
-        sdp_Mem* sorted_vis,
-        sdp_Mem* sorted_uu,
-        sdp_Mem* sorted_vv,
-        sdp_Mem* sorted_weight,
         sdp_Mem* num_points_in_tiles,
         sdp_Mem* num_skipped,
-        sdp_Mem* sorted_tile,
         sdp_Error* status
 )
 {
     if (*status) return;
-    sdp_MemLocation vis_location = sdp_mem_location(sorted_vis);
+    sdp_MemLocation vis_location = sdp_mem_location(vis);
     sdp_MemType vis_type = sdp_mem_type(vis);
     sdp_MemType uvw_type = sdp_mem_type(uvw);
     sdp_MemType freq_type = sdp_mem_type(freqs);
@@ -214,6 +236,7 @@ void sdp_tile_and_bucket_sort_simple(
     int64_t num_baselines = 0;
     int64_t num_channels = 0;
     int64_t num_pols = 0;
+    int64_t num_total = 0;
 
     // Check parameters
     sdp_data_model_get_vis_metadata(
@@ -247,10 +270,7 @@ void sdp_tile_and_bucket_sort_simple(
             status
     );
 
-    sdp_mem_check_writeable(sorted_vis, status);
-    sdp_mem_check_writeable(sorted_weight, status);
-
-    constexpr int NUM_POL = 4;
+    constexpr int NUM_POL = 1;
 
     if (vis_location == SDP_MEM_CPU)
     {
@@ -271,9 +291,24 @@ void sdp_tile_and_bucket_sort_simple(
                     num_tiles_u,
                     top_left_u,
                     top_left_v,
+                    cell_size_rad,
                     (int*)sdp_mem_data(num_points_in_tiles),
                     (int*)sdp_mem_data(num_skipped)
             );
+
+            sdp_prefix_sum_for_bucket_sort(
+                num_tiles, 
+                (const int*)sdp_mem_data_const(num_points_in_tiles), 
+                (int*)sdp_mem_data(tile_offsets)
+            );
+            
+            const int64_t num_visibilites = *((int*)sdp_mem_data(tile_offsets) + num_tiles); 
+
+            sdp_Mem* sorted_vis = sdp_mem_create(vis_type, vis_location, 1, &num_visibilites, status);
+            sdp_Mem* sorted_uu = sdp_mem_create(vis_type, vis_location, 1, &num_visibilites, status);
+            sdp_Mem* sorted_vv = sdp_mem_create(vis_type, vis_location, 1, &num_visibilites, status);
+            sdp_Mem* sorted_weight = sdp_mem_create(weight_type, vis_location, 1 , &num_visibilites, status);
+            sdp_Mem* sorted_tile = sdp_mem_create(SDP_MEM_INT, vis_location, 1 , &num_visibilites, status);
 
             sdp_bucket_sort_simple<double, double, double, double, NUM_POL>(
                     support,
@@ -291,12 +326,14 @@ void sdp_tile_and_bucket_sort_simple(
                     top_left_u,
                     top_left_v,
                     (int*)sdp_mem_data(tile_offsets),
-                    (float*)sdp_mem_data(sorted_uu),
-                    (float*)sdp_mem_data(sorted_vv),
+                    (double*)sdp_mem_data(sorted_uu),
+                    (double*)sdp_mem_data(sorted_vv),
                     (double*)sdp_mem_data(sorted_vis),
                     (double*)sdp_mem_data(sorted_weight),
-                    (float*)sdp_mem_data(sorted_tile)
+                    (int*)sdp_mem_data(sorted_tile),
+                    cell_size_rad
             );
+
         }
         else
         {
@@ -343,6 +380,7 @@ void sdp_tile_and_bucket_sort_simple(
             (const void*)&num_tiles_u,
             (const void*)&top_left_u,
             (const void*)&top_left_v,
+            (const void*)&cell_size_rad,
             sdp_mem_gpu_buffer(num_points_in_tiles, status),
             sdp_mem_gpu_buffer(num_skipped, status)
         };
@@ -356,6 +394,39 @@ void sdp_tile_and_bucket_sort_simple(
                 status
         );
 
+
+        //Launch prefix sum / scan kernel
+        
+        const char* kernel_name_prefix = 0;
+        kernel_name_prefix = "sdp_preifx_sum_for_bucket_sort<int>";
+
+        const void* args_prefix[]{
+            (const void*)&num_tiles, 
+            sdp_mem_gpu_buffer(num_points_in_tiles, status),
+            sdp_mem_gpu_buffer(tile_offsets, status)
+        };
+
+        sdp_launch_cuda_kernel(kernel_name_prefix, 
+            num_blocks, 
+            num_threads, 
+            0, 
+            0, 
+            args_prefix, 
+            status
+        );
+
+        // Copy back tile offsets and get number of visiibilites
+        sdp_Mem* tile_offsets_cpy = sdp_mem_create_copy(tile_offsets, SDP_MEM_CPU, status);
+        const int64_t num_visibilites = *((int*)sdp_mem_data(tile_offsets_cpy) + num_tiles); 
+
+        //Allocate Memory for Bucket Sort
+        
+        sdp_Mem* sorted_vis_gpu = sdp_mem_create(vis_type, SDP_MEM_GPU, 1, &num_visibilites, status);
+        sdp_Mem* sorted_uu_gpu = sdp_mem_create(vis_type, SDP_MEM_GPU, 1, &num_visibilites, status);
+        sdp_Mem* sorted_vv_gpu = sdp_mem_create(vis_type, SDP_MEM_GPU, 1, &num_visibilites, status);
+        sdp_Mem* sorted_weight_gpu = sdp_mem_create(weight_type, SDP_MEM_GPU, 1 , &num_visibilites, status);
+        sdp_Mem* sorted_tile_gpu = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1 , &num_visibilites, status);
+
         // Launch bucket sort kernel
 
         const char* kernel_name2 = 0;
@@ -364,7 +435,7 @@ void sdp_tile_and_bucket_sort_simple(
                 freq_type == SDP_MEM_DOUBLE)
         {
             kernel_name2 =
-                    "sdp_bucket_sort_simple_gpu<double, double, double, double, 4>";
+                    "sdp_bucket_sort_simple_gpu<double, double, double, double, 1>";
         }
         else
         {
@@ -388,11 +459,12 @@ void sdp_tile_and_bucket_sort_simple(
             (const void*)&top_left_u,
             (const void*)&top_left_v,
             sdp_mem_gpu_buffer(tile_offsets, status),
-            sdp_mem_gpu_buffer(sorted_uu, status),
-            sdp_mem_gpu_buffer(sorted_vv, status),
-            sdp_mem_gpu_buffer(sorted_vis, status),
-            sdp_mem_gpu_buffer(sorted_weight, status),
-            sdp_mem_gpu_buffer(sorted_tile, status)
+            sdp_mem_gpu_buffer(sorted_uu_gpu, status),
+            sdp_mem_gpu_buffer(sorted_vv_gpu, status),
+            sdp_mem_gpu_buffer(sorted_vis_gpu, status),
+            sdp_mem_gpu_buffer(sorted_weight_gpu, status),
+            sdp_mem_gpu_buffer(sorted_tile_gpu, status), 
+            (const void*)&cell_size_rad
         };
 
         sdp_launch_cuda_kernel(kernel_name2,
@@ -403,5 +475,6 @@ void sdp_tile_and_bucket_sort_simple(
                 args2,
                 status
         );
+
     }
 }
