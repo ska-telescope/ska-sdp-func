@@ -18,11 +18,13 @@ extern "C" {
  *
  * @param dirty_img Input dirty image.
  * @param psf Input Point Spread Function.
- * @param cbeam_details Input shape of cbeam [BMAJ, BMINN, THETA]
+ * @param cbeam_details Input shape of CLEAN beam, with the size of the array to be generated [BMAJ, BMINN, THETA, SIZE]
  * @param loop_gain Gain to be used in the CLEAN loop (typically 0.1)
  * @param threshold Minimum intensity of peak to search for, loop terminates if peak is found under this threshold. 
  * @param cycle_limit Maximum nuber of loops to perform, if the stop threshold is not reached first.
- * @param skymodel Output Skymodel (CLEANed image).
+ * @param clean_model Map of CLEAN components, unconvolved pixels.
+ * @param residual Residual image, flux remaining after CLEANing.
+ * @param skymodel Output Skymodel, CLEAN components convolved with CLEAN beam + residuals.
  * @param use_bfloat Use bfloat16 in CLEAN algorithm (only available on GPU)
  * @param status Error status.
  */
@@ -33,6 +35,8 @@ void sdp_hogbom_clean(
         const double loop_gain,
         const double threshold,
         const int cycle_limit,
+        sdp_Mem* clean_model,
+        sdp_Mem* residual,
         sdp_Mem* skymodel,
         const bool use_bfloat,
         sdp_Error* status

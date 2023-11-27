@@ -51,7 +51,9 @@ SDP_CUDA_KERNEL(create_copy_real<cuFloatComplex, float>);
 // create the CLEAN beam
 template<typename T, typename CT>
 __global__ void create_cbeam(
-    const T* cbeam_details,
+    const T sigma_X,
+    const T sigma_Y,
+    const T rotation,
     int16_t psf_dim,
     CT* cbeam
 ) {
@@ -60,29 +62,41 @@ __global__ void create_cbeam(
 
 template<>
 __global__ void create_cbeam<double, cuDoubleComplex>(
-    const double* cbeam_details,
-    int16_t psf_dim,
+    const double sigma_X,
+    const double sigma_Y,
+    const double rotation,
+    int16_t cbeam_dim,
     cuDoubleComplex* cbeam
 ) {
     // Fit a Gaussian to the main lobe of the PSF based on the parameters passed
 
     double A = 1;
-    double x0 = (psf_dim / 2);
-    double y0 = (psf_dim / 2);
-    double sigma_X = cbeam_details[0];
-    double sigma_Y = cbeam_details[1];
-    double theta = (M_PI / 180) * cbeam_details[2];
+    double x0 = 0;
+    double y0 = 0;
+
+    // Check if the number of rows and columns is odd
+    if (cbeam_dim % 2 == 1) {
+        x0 = cbeam_dim / 2;
+        y0 = cbeam_dim / 2;
+    } else {
+        x0 = cbeam_dim / 2 - 1;
+        y0 = cbeam_dim / 2 - 1;
+    }
+
+    // double sigma_X = cbeam_details[0];
+    // double sigma_Y = cbeam_details[1];
+    double theta = (M_PI / 180) * rotation;
 
     double a = pow(cos(theta), 2) / (2 * pow(sigma_X, 2)) + pow(sin(theta), 2) / (2 * pow(sigma_Y, 2));
     double b = sin(2 * theta) / (4 * pow(sigma_X, 2)) - sin(2 * theta) / (4 * pow(sigma_Y, 2));
     double c = pow(sin(theta), 2) / (2 * pow(sigma_X, 2)) + pow(cos(theta), 2) / (2 * pow(sigma_Y, 2));
 
     int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
-    int size = psf_dim * psf_dim;
+    int size = cbeam_dim * cbeam_dim;
 
     if (i < size){ 
-        int x = i / psf_dim;
-        int y = i % psf_dim;
+        int x = i / cbeam_dim;
+        int y = i % cbeam_dim;
 
         double component = A * exp(-(a * pow(x - x0, 2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0, 2)));
         cbeam[i] = make_cuDoubleComplex(component, 0);
@@ -91,29 +105,40 @@ __global__ void create_cbeam<double, cuDoubleComplex>(
 
 template<>
 __global__ void create_cbeam<float, cuFloatComplex>(
-    const float* cbeam_details,
-    int16_t psf_dim,
+    const float sigma_X,
+    const float sigma_Y,
+    const float rotation,
+    int16_t cbeam_dim,
     cuFloatComplex* cbeam
 ) {
     // Fit a Gaussian to the main lobe of the PSF based on the parameters passed
 
     float A = 1;
-    float x0 = (psf_dim / 2);
-    float y0 = (psf_dim / 2);
-    float sigma_X = cbeam_details[0];
-    float sigma_Y = cbeam_details[1];
-    float theta = (M_PI / 180) * cbeam_details[2];
+    float x0 = 0;
+    float y0 = 0;
+
+    // Check if the number of rows and columns is odd
+    if (cbeam_dim % 2 == 1) {
+        x0 = cbeam_dim / 2;
+        y0 = cbeam_dim / 2;
+    } else {
+        x0 = cbeam_dim / 2 - 1;
+        y0 = cbeam_dim / 2 - 1;
+    }
+    // float sigma_X = cbeam_details[0];
+    // float sigma_Y = cbeam_details[1];
+    float theta = (M_PI / 180) * rotation;
 
     float a = pow(cos(theta), 2) / (2 * pow(sigma_X, 2)) + pow(sin(theta), 2) / (2 * pow(sigma_Y, 2));
     float b = sin(2 * theta) / (4 * pow(sigma_X, 2)) - sin(2 * theta) / (4 * pow(sigma_Y, 2));
     float c = pow(sin(theta), 2) / (2 * pow(sigma_X, 2)) + pow(cos(theta), 2) / (2 * pow(sigma_Y, 2));
 
     int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
-    int size = psf_dim * psf_dim;
+    int size = cbeam_dim * cbeam_dim;
 
     if (i < size){ 
-        int x = i / psf_dim;
-        int y = i % psf_dim;
+        int x = i / cbeam_dim;
+        int y = i % cbeam_dim;
 
         float component = A * exp(-(a * pow(x - x0, 2) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0, 2)));
         cbeam[i] = make_cuFloatComplex(component, 0);

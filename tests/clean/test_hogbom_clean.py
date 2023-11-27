@@ -13,6 +13,7 @@ import scipy.signal as sig
 from ska_sdp_func.visibility import dft_point_v01
 from ska_sdp_func.grid_data import GridderUvwEsFft
 from ska_sdp_func.clean import hogbom_clean
+import matplotlib.pyplot as plt
 
 
 def create_test_data(dirty_size, psf_size):
@@ -171,7 +172,12 @@ def create_cbeam(coeffs, size):
     # create clean beam
 
     # size = 512
-    center = size / 2
+    # center = size / 2
+
+    if (size % 2 == 1):
+        center = size / 2
+    else:
+        center = size / 2 - 1
 
     cbeam = np.zeros([size, size])
 
@@ -220,7 +226,7 @@ def reference_hogbom_clean(
     residual = np.copy(dirty_img)
 
     # create CLEAN beam
-    cbeam = create_cbeam(cbeam_details, psf_size)
+    cbeam = create_cbeam(cbeam_details, dirty_size)
 
     # begin CLEAN while thereshold and number of iterations not exceded
     while cur_cycle < cycle_limit and stop is False:
@@ -263,7 +269,7 @@ def reference_hogbom_clean(
     # Add remaining residual
     skymodel = np.add(skymodel, residual)
 
-    return skymodel
+    return skymodel, residual, clean_comp
 
 
 def test_hogbom_clean():
@@ -272,7 +278,7 @@ def test_hogbom_clean():
     # initalise settings
     dirty_size = 256
     psf_size = 512
-    cbeam_details = np.array([1.0, 1.0, 1.0], dtype=np.float64)
+    cbeam_details = np.array([2.0, 2.0, 1.0, 128.0], dtype=np.float64)
     loop_gain = 0.1
     threshold = 0.001
     cycle_limit = 10000
@@ -280,6 +286,8 @@ def test_hogbom_clean():
 
     # create empty array for result
     skymodel = np.zeros((dirty_size, dirty_size))
+    clean_model = np.zeros((dirty_size, dirty_size))
+    residual = np.zeros((dirty_size, dirty_size))
 
     # create test data
     print("Creating test data on CPU from ska-sdp-func...")
@@ -287,7 +295,7 @@ def test_hogbom_clean():
 
     ref_start_time = time.time()
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference = reference_hogbom_clean(
+    skymodel_reference, residual_reference, clean_model_reference = reference_hogbom_clean(
         dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit
     )
     ref_end_time = time.time() - ref_start_time
@@ -303,11 +311,15 @@ def test_hogbom_clean():
         loop_gain,
         threshold,
         cycle_limit,
+        clean_model,
+        residual,
         skymodel,
         use_bfloat,
     )
 
     cpu_test_end_time = time.time() - cpu_test_start_time
+    np.testing.assert_array_almost_equal(clean_model, clean_model_reference)
+    np.testing.assert_array_almost_equal(residual, residual_reference)
     np.testing.assert_array_almost_equal(skymodel, skymodel_reference)
     print("Hogbom CLEAN on CPU: Test passed")
 
@@ -316,6 +328,8 @@ def test_hogbom_clean():
     dirty_img_float = dirty_img.astype(np.float32)
     psf_float = psf.astype(np.float32)
     skymodel_float = skymodel.astype(np.float32)
+    clean_model_float = clean_model.astype(np.float32)
+    residual_float = residual.astype(np.float32)
     cbeam_details_float = cbeam_details.astype(np.float32)
 
     cpu_float_test_start_time = time.time()
@@ -327,11 +341,15 @@ def test_hogbom_clean():
         loop_gain,
         threshold,
         cycle_limit,
+        clean_model_float,
+        residual_float,
         skymodel_float,
         use_bfloat,
     )
 
-    cpu_float_test_end_time = time.time() - cpu_float_test_start_time
+    cpu_float_test_end_time = time.time() - cpu_float_test_start_time 
+    np.testing.assert_array_almost_equal(clean_model_float, clean_model_reference, decimal=4)
+    np.testing.assert_array_almost_equal(residual_float, residual_reference, decimal=4)
     np.testing.assert_array_almost_equal(skymodel_float, skymodel_reference, decimal=4)
 
     # print(
@@ -341,9 +359,10 @@ def test_hogbom_clean():
     if cupy:
         dirty_img_gpu = cupy.asarray(dirty_img)
         psf_gpu = cupy.asarray(psf)
-        cbeam_details_gpu = cupy.asarray(cbeam_details)
+        # cbeam_details_gpu = cupy.asarray(cbeam_details)
+        clean_model_gpu = cupy.zeros_like(dirty_img_gpu)
+        residual_gpu = cupy.zeros_like(dirty_img_gpu)
         skymodel_gpu = cupy.zeros_like(dirty_img_gpu)
-        # skymodel_gpu = cupy.zeros_like(psf_gpu)
         use_bfloat = False
 
         print("Testing Hogbom CLEAN on GPU from ska-sdp-func...")
@@ -352,23 +371,31 @@ def test_hogbom_clean():
         hogbom_clean(
             dirty_img_gpu,
             psf_gpu,
-            cbeam_details_gpu,
+            cbeam_details,
             loop_gain,
             threshold,
             cycle_limit,
+            clean_model_gpu,
+            residual_gpu,
             skymodel_gpu,
             use_bfloat,
         )
 
         gpu_test_end_time = time.time() - gpu_test_start_time
 
+        clean_model_check = cupy.asnumpy(clean_model_gpu)
+        residual_check = cupy.asnumpy(residual_gpu)
         skymodel_check = cupy.asnumpy(skymodel_gpu)
 
+        np.testing.assert_array_almost_equal(clean_model_check, clean_model_reference)
+        np.testing.assert_array_almost_equal(residual_check, residual_reference)
         np.testing.assert_array_almost_equal(skymodel_check, skymodel_reference)
 
         dirty_img_gpu_float = cupy.asarray(dirty_img_float)
         psf_gpu_float = cupy.asarray(psf_float)
-        cbeam_details_gpu_float = cupy.asarray(cbeam_details_float)
+        # cbeam_details_gpu_float = cupy.asarray(cbeam_details_float)
+        clean_comp_gpu_float = cupy.zeros_like(dirty_img_gpu_float)
+        residual_gpu_float = cupy.zeros_like(dirty_img_gpu_float)
         skymodel_gpu_float = cupy.zeros_like(dirty_img_gpu_float)
 
         gpu_float_test_start_time = time.time()
@@ -376,17 +403,27 @@ def test_hogbom_clean():
         hogbom_clean(
             dirty_img_gpu_float,
             psf_gpu_float,
-            cbeam_details_gpu_float,
+            cbeam_details_float,
             loop_gain,
             threshold,
             cycle_limit,
+            clean_comp_gpu_float,
+            residual_gpu_float,
             skymodel_gpu_float,
             use_bfloat,
         )
         gpu_float_test_end_time = time.time() - gpu_float_test_start_time
 
+        clean_model_check_float = cupy.asnumpy(clean_comp_gpu_float)
+        residual_check_float = cupy.asnumpy(residual_gpu_float)
         skymodel_check_float = cupy.asnumpy(skymodel_gpu_float)
 
+        np.testing.assert_array_almost_equal(
+            clean_model_check_float, clean_model_reference, decimal=4
+        )
+        np.testing.assert_array_almost_equal(
+            residual_check_float, residual_reference, decimal=4
+        )
         np.testing.assert_array_almost_equal(
             skymodel_check_float, skymodel_reference, decimal=4
         )

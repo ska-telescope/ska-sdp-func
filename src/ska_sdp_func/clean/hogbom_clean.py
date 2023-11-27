@@ -15,6 +15,8 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_int,
         Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
         ctypes.c_bool,
     ],
     check_errcode=True,
@@ -28,6 +30,8 @@ def hogbom_clean(
     loop_gain,
     threshold,
     cycle_limit,
+    clean_model,
+    residual,
     skymodel,
     use_bfloat,
  ):
@@ -41,7 +45,7 @@ def hogbom_clean(
     :type dirty_img: numpy.ndarray or cupy.ndarray
     :param psf: Input Point Spread Function.
     :type psf: numpy.ndarray or cupy.ndarray
-    :param cbeam_details: Input shape of cbeam [BMAJ, BMINN, THETA]
+    :param cbeam_details: Input shape of cbeam [BMAJ, BMINN, THETA, SIZE]
     :type cbeam_deatils: numpy.ndarray or cupy.ndarray
     :param loop_gain: Gain to be used in the CLEAN loop (typically 0.1)
     :type loop_gain: float
@@ -51,7 +55,11 @@ def hogbom_clean(
     :param cycle_limit: Maximum nuber of loops to perform, if the stop
     threshold is not reached first.
     :type cycle_limit: float
-    :param skymodel: Output Skymodel (CLEANed image).:type
+    :param clean_model: Map of CLEAN components, unconvolved pixels.
+    :type clean_model: numpy.ndarray or cupy.ndarray
+    :param residual: Residual image, flux remaining after CLEANing.
+    :type residual: numpy.ndarray or cupy.ndarray
+    :param skymodel: Output Skymodel, CLEAN components convolved with CLEAN beam + residuals.
     :type skymodel: numpy.ndarray or cupy.ndarray
     :param use_bfloat: Use bfloat16 in CLEAN algorithm (only available on GPU)
     :type use_bfloat: bool
@@ -64,6 +72,8 @@ def hogbom_clean(
         loop_gain,
         threshold,
         cycle_limit,
+        Mem(clean_model),
+        Mem(residual),
         Mem(skymodel),
         use_bfloat,
     )

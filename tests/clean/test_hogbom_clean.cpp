@@ -342,13 +342,14 @@ static void run_and_check(
     sdp_Mem *psf = sdp_mem_create(input_type, SDP_MEM_CPU, 2, psf_shape, status);
     sdp_mem_clear_contents(psf, status);
 
-    const int64_t cbeam_details_shape[] = {3};
+    const int64_t cbeam_details_shape[] = {4};
     sdp_Mem *cbeam_details = sdp_mem_create(input_type, SDP_MEM_CPU, 1, cbeam_details_shape, status);
     double *cbeam_details_ptr = (double *)sdp_mem_data(cbeam_details);
     // pre-computed variables
-    cbeam_details_ptr[0] = 1.0;
-    cbeam_details_ptr[1] = 1.0;
-    cbeam_details_ptr[2] = 1.0;
+    cbeam_details_ptr[0] = 10.0;
+    cbeam_details_ptr[1] = 10.0;
+    cbeam_details_ptr[2] = 10.0;
+    cbeam_details_ptr[3] = 128.0;
     
     create_test_data(
         dirty_img,
@@ -361,13 +362,21 @@ static void run_and_check(
     const int64_t skymodel_shape[] = {nxydirty, nxydirty};
     sdp_Mem *skymodel = sdp_mem_create(output_type, SDP_MEM_CPU, 2, skymodel_shape, status);
     sdp_mem_clear_contents(skymodel, status);
+    sdp_Mem *clean_model = sdp_mem_create(output_type, SDP_MEM_CPU, 2, skymodel_shape, status);
+    sdp_mem_clear_contents(clean_model, status);
+    sdp_Mem *residual = sdp_mem_create(output_type, SDP_MEM_CPU, 2, skymodel_shape, status);
+    sdp_mem_clear_contents(residual, status);
 
     // Copy inputs to specified location.
     sdp_Mem* dirty_img_copy = sdp_mem_create_copy(dirty_img, input_location, status);
     sdp_Mem* psf_copy = sdp_mem_create_copy(psf, input_location, status);
-    sdp_Mem* cbeam_details_copy = sdp_mem_create_copy(cbeam_details, input_location, status);
+    sdp_Mem* clean_model_copy = sdp_mem_create_copy(clean_model, output_location, status);
+    sdp_Mem* residual_copy = sdp_mem_create_copy(residual, output_location, status);
     sdp_Mem* skymodel_copy = sdp_mem_create_copy(skymodel, output_location, status);
+    sdp_mem_set_read_only(clean_model_copy, read_only_output);
+    sdp_mem_set_read_only(residual_copy, read_only_output);
     sdp_mem_set_read_only(skymodel_copy, read_only_output);
+
 
 
     // call function to test
@@ -375,10 +384,12 @@ static void run_and_check(
     sdp_hogbom_clean(
         dirty_img_copy,
         psf_copy,
-        cbeam_details_copy,
+        cbeam_details,
         loop_gain,
         threshold,
         cycle_limit,
+        clean_model_copy,
+        residual_copy,
         skymodel_copy,
         use_bfloat,
         status);
@@ -386,10 +397,13 @@ static void run_and_check(
     sdp_mem_ref_dec(dirty_img);
     sdp_mem_ref_dec(psf);
     sdp_mem_ref_dec(cbeam_details);
+    sdp_mem_ref_dec(clean_model);
+    sdp_mem_ref_dec(residual);
     sdp_mem_ref_dec(skymodel);
     sdp_mem_ref_dec(dirty_img_copy);
     sdp_mem_ref_dec(psf_copy);
-    sdp_mem_ref_dec(cbeam_details_copy);
+    sdp_mem_ref_dec(residual_copy);
+    sdp_mem_ref_dec(clean_model_copy);
     sdp_mem_ref_dec(skymodel_copy);
 }
 
@@ -397,7 +411,7 @@ int main()
 {
     SDP_LOG_INFO("start of test:");
 
-    // happy paths
+    //happy paths
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, double precision", false,
@@ -406,7 +420,7 @@ int main()
         assert(status == SDP_SUCCESS);
     }
 
-    // unhappy paths
+    //unhappy paths
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, Type Mismatch", false,
@@ -427,13 +441,13 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("CPU, location mis-match", false,
                       SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                      SDP_MEM_CPU, SDP_MEM_GPU, &status);
+                      SDP_MEM_GPU, SDP_MEM_CPU, &status);
         assert(status == SDP_ERR_MEM_LOCATION);
     }
 
         
     #ifdef SDP_HAVE_CUDA
-    // Happy paths
+    //Happy paths
     {
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU, double precision", false,
