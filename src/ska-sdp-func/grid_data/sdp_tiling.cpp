@@ -205,8 +205,172 @@ void sdp_bucket_sort_simple(
     }
 }
 
+// Function to bucket sort the visibilities after the scan operation
 
-void sdp_tile_and_bucket_sort_simple(
+void sdp_bucket_simple(
+    const int64_t support, 
+    const int grid_size, 
+    const float inv_tile_size_u,
+    const float inv_tile_size_v,
+    const int64_t top_left_u,
+    const int64_t top_left_v, 
+    const int64_t num_tiles_u, 
+    const double cell_size_rad, 
+    const sdp_Mem* uvw, 
+    const sdp_Mem* vis, 
+    const sdp_Mem* weights, 
+    const sdp_Mem* freqs, 
+    sdp_Mem* tile_offsets, 
+    sdp_Mem* sorted_uu, 
+    sdp_Mem* sorted_vv, 
+    sdp_Mem* sorted_vis, 
+    sdp_Mem* sorted_weight, 
+    sdp_Mem* sorted_tile,
+    sdp_Error* status 
+)
+{
+    if (*status) return;
+    sdp_MemLocation vis_location = sdp_mem_location(vis);
+    sdp_MemType vis_type = sdp_mem_type(vis);
+    sdp_MemType uvw_type = sdp_mem_type(uvw);
+    sdp_MemType freq_type = sdp_mem_type(freqs);
+    sdp_MemType weight_type = sdp_mem_type(weights);
+    int64_t num_times = 0;
+    int64_t num_baselines = 0;
+    int64_t num_channels = 0;
+    int64_t num_pols = 0;
+    int64_t num_total = 0;
+
+    // Check parameters
+    sdp_data_model_get_vis_metadata(
+            vis,
+            &vis_type,
+            &vis_location,
+            &num_times,
+            &num_baselines,
+            &num_channels,
+            &num_pols,
+            status
+    );
+
+    sdp_data_model_check_uvw(
+            uvw,
+            SDP_MEM_VOID,
+            vis_location,
+            num_times,
+            num_baselines,
+            status
+    );
+
+    sdp_data_model_check_weights(
+            weights,
+            SDP_MEM_VOID,
+            vis_location,
+            num_times,
+            num_baselines,
+            num_channels,
+            num_pols,
+            status
+    );
+
+    constexpr int NUM_POL = 1;
+
+    if (vis_location == SDP_MEM_CPU)
+    {
+        if (uvw_type == SDP_MEM_DOUBLE &&
+                weight_type == SDP_MEM_DOUBLE &&
+                freq_type == SDP_MEM_DOUBLE)
+        {
+            sdp_bucket_sort_simple<double, double, double, double, NUM_POL>(
+                support,
+                num_times,
+                num_baselines,
+                num_channels,
+                grid_size,
+                inv_tile_size_u,
+                inv_tile_size_v,
+                (const double*) sdp_mem_data_const(uvw),
+                (const double*)sdp_mem_data_const(freqs),
+                (const double*)sdp_mem_data_const(vis),
+                (const double*)sdp_mem_data_const(weights),
+                num_tiles_u,
+                top_left_u,
+                top_left_v,
+                (int*)sdp_mem_data(tile_offsets),
+                (double*)sdp_mem_data(sorted_uu),
+                (double*)sdp_mem_data(sorted_vv),
+                (double*)sdp_mem_data(sorted_vis),
+                (double*)sdp_mem_data(sorted_weight),
+                (int*)sdp_mem_data(sorted_tile),
+                cell_size_rad
+            );
+        }
+    }
+    else if (vis_location = SDP_MEM_GPU)
+    {
+        // Define hyperparameters
+
+        const uint64_t num_threads[] = {128, 2, 2};
+        const uint64_t num_blocks[] = {
+            (num_baselines + num_threads[0] - 1) / num_threads[0],
+            (num_channels + num_threads[1] - 1) / num_threads[1],
+            (num_times + num_threads[2] - 1) / num_threads[2]
+        };
+
+        // Launch bucket sort kernel
+
+        const char* kernel_name2 = 0;
+        if (uvw_type == SDP_MEM_DOUBLE &&
+                weight_type == SDP_MEM_DOUBLE &&
+                freq_type == SDP_MEM_DOUBLE)
+        {
+            kernel_name2 =
+                    "sdp_bucket_sort_simple_gpu<double, double, double, double, 1>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data type(s)");
+        }
+
+        const void* args2[]{
+            (const void*)&support,
+            (const void*)&num_times,
+            (const void*)&num_baselines,
+            (const void*)&num_channels,
+            (const void*)&grid_size,
+            (const void*)&inv_tile_size_u,
+            (const void*)&inv_tile_size_v,
+            sdp_mem_gpu_buffer_const(uvw, status),
+            sdp_mem_gpu_buffer_const(freqs, status),
+            sdp_mem_gpu_buffer_const(vis, status),
+            sdp_mem_gpu_buffer_const(weights, status),
+            (const void*)&num_tiles_u,
+            (const void*)&top_left_u,
+            (const void*)&top_left_v,
+            sdp_mem_gpu_buffer(tile_offsets, status),
+            sdp_mem_gpu_buffer(sorted_uu, status),
+            sdp_mem_gpu_buffer(sorted_vv, status),
+            sdp_mem_gpu_buffer(sorted_vis, status),
+            sdp_mem_gpu_buffer(sorted_weight, status),
+            sdp_mem_gpu_buffer(sorted_tile, status), 
+            (const void*)&cell_size_rad
+        };
+
+        sdp_launch_cuda_kernel(kernel_name2,
+                num_blocks,
+                num_threads,
+                0,
+                0,
+                args2,
+                status
+        );
+
+    }
+}
+
+// Function to calculate the number of visibilites falling into each tile
+void sdp_tile_simple(
         const sdp_Mem* uvw,
         const sdp_Mem* freqs,
         const sdp_Mem* vis,
@@ -223,6 +387,7 @@ void sdp_tile_and_bucket_sort_simple(
         sdp_Mem* tile_offsets,
         sdp_Mem* num_points_in_tiles,
         sdp_Mem* num_skipped,
+        int* num_visibilites,
         sdp_Error* status
 )
 {
@@ -302,37 +467,7 @@ void sdp_tile_and_bucket_sort_simple(
                 (int*)sdp_mem_data(tile_offsets)
             );
             
-            const int64_t num_visibilites = *((int*)sdp_mem_data(tile_offsets) + num_tiles); 
-
-            sdp_Mem* sorted_vis = sdp_mem_create(vis_type, vis_location, 1, &num_visibilites, status);
-            sdp_Mem* sorted_uu = sdp_mem_create(vis_type, vis_location, 1, &num_visibilites, status);
-            sdp_Mem* sorted_vv = sdp_mem_create(vis_type, vis_location, 1, &num_visibilites, status);
-            sdp_Mem* sorted_weight = sdp_mem_create(weight_type, vis_location, 1 , &num_visibilites, status);
-            sdp_Mem* sorted_tile = sdp_mem_create(SDP_MEM_INT, vis_location, 1 , &num_visibilites, status);
-
-            sdp_bucket_sort_simple<double, double, double, double, NUM_POL>(
-                    support,
-                    num_times,
-                    num_baselines,
-                    num_channels,
-                    grid_size,
-                    inv_tile_size_u,
-                    inv_tile_size_v,
-                    (const double*) sdp_mem_data_const(uvw),
-                    (const double*)sdp_mem_data_const(freqs),
-                    (const double*)sdp_mem_data_const(vis),
-                    (const double*)sdp_mem_data_const(weights),
-                    num_tiles_u,
-                    top_left_u,
-                    top_left_v,
-                    (int*)sdp_mem_data(tile_offsets),
-                    (double*)sdp_mem_data(sorted_uu),
-                    (double*)sdp_mem_data(sorted_vv),
-                    (double*)sdp_mem_data(sorted_vis),
-                    (double*)sdp_mem_data(sorted_weight),
-                    (int*)sdp_mem_data(sorted_tile),
-                    cell_size_rad
-            );
+            *num_visibilites = *((int*)sdp_mem_data(tile_offsets) + num_tiles);
 
         }
         else
@@ -417,64 +552,6 @@ void sdp_tile_and_bucket_sort_simple(
 
         // Copy back tile offsets and get number of visiibilites
         sdp_Mem* tile_offsets_cpy = sdp_mem_create_copy(tile_offsets, SDP_MEM_CPU, status);
-        const int64_t num_visibilites = *((int*)sdp_mem_data(tile_offsets_cpy) + num_tiles); 
-
-        //Allocate Memory for Bucket Sort
-        
-        sdp_Mem* sorted_vis_gpu = sdp_mem_create(vis_type, SDP_MEM_GPU, 1, &num_visibilites, status);
-        sdp_Mem* sorted_uu_gpu = sdp_mem_create(vis_type, SDP_MEM_GPU, 1, &num_visibilites, status);
-        sdp_Mem* sorted_vv_gpu = sdp_mem_create(vis_type, SDP_MEM_GPU, 1, &num_visibilites, status);
-        sdp_Mem* sorted_weight_gpu = sdp_mem_create(weight_type, SDP_MEM_GPU, 1 , &num_visibilites, status);
-        sdp_Mem* sorted_tile_gpu = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1 , &num_visibilites, status);
-
-        // Launch bucket sort kernel
-
-        const char* kernel_name2 = 0;
-        if (uvw_type == SDP_MEM_DOUBLE &&
-                weight_type == SDP_MEM_DOUBLE &&
-                freq_type == SDP_MEM_DOUBLE)
-        {
-            kernel_name2 =
-                    "sdp_bucket_sort_simple_gpu<double, double, double, double, 1>";
-        }
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
-            SDP_LOG_ERROR("Unsupported data type(s)");
-        }
-
-        const void* args2[]{
-            (const void*)&support,
-            (const void*)&num_times,
-            (const void*)&num_baselines,
-            (const void*)&num_channels,
-            (const void*)&grid_size,
-            (const void*)&inv_tile_size_u,
-            (const void*)&inv_tile_size_v,
-            sdp_mem_gpu_buffer_const(uvw, status),
-            sdp_mem_gpu_buffer_const(freqs, status),
-            sdp_mem_gpu_buffer_const(vis, status),
-            sdp_mem_gpu_buffer_const(weights, status),
-            (const void*)&num_tiles_u,
-            (const void*)&top_left_u,
-            (const void*)&top_left_v,
-            sdp_mem_gpu_buffer(tile_offsets, status),
-            sdp_mem_gpu_buffer(sorted_uu_gpu, status),
-            sdp_mem_gpu_buffer(sorted_vv_gpu, status),
-            sdp_mem_gpu_buffer(sorted_vis_gpu, status),
-            sdp_mem_gpu_buffer(sorted_weight_gpu, status),
-            sdp_mem_gpu_buffer(sorted_tile_gpu, status), 
-            (const void*)&cell_size_rad
-        };
-
-        sdp_launch_cuda_kernel(kernel_name2,
-                num_blocks,
-                num_threads,
-                0,
-                0,
-                args2,
-                status
-        );
-
+        *num_visibilites = *((int*)sdp_mem_data(tile_offsets_cpy) + num_tiles); 
     }
 }

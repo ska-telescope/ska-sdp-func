@@ -1,7 +1,7 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
 """Test bucket sort functions."""
-
+import ctypes
 import numpy as np
 
 try:
@@ -10,7 +10,8 @@ except ImportError:
     cp = None
 
 from ska_sdp_func.grid_data.tiling_and_bucket_sort import (
-    tile_and_bucket_sort_simple,
+    tile_simple,
+    bucket_simple
 )
 
 
@@ -106,8 +107,10 @@ def test_tile_and_bucket_sort():
     ) = create_test_data_for_bucket_sort()
 
     cell_size_rad = 4.84814e-6
+    num_visibilites = ctypes.c_int(0)
+    num_visibilites_gpu = ctypes.c_int(0)
 
-        # Same tests for the GPU
+       # Same tests for the GPU
     if cp:
         uvw_gpu = cp.asarray(uvw)
         freqs_gpu = cp.asarray(freqs)
@@ -117,7 +120,7 @@ def test_tile_and_bucket_sort():
         num_points_in_tiles_gpu = cp.zeros_like(num_points_in_tiles)
         num_skipped_gpu = cp.zeros_like(num_skipped)
 
-        tile_and_bucket_sort_simple(
+        tile_simple(
             uvw_gpu,
             freqs_gpu,
             vis_gpu,
@@ -134,9 +137,43 @@ def test_tile_and_bucket_sort():
             tile_offsets_gpu,
             num_points_in_tiles_gpu,
             num_skipped_gpu,
+            num_visibilites_gpu
         )
 
-    tile_and_bucket_sort_simple(
+        sorted_uu = np.zeros(num_visibilites_gpu.value, dtype = np.float64)
+        sorted_vv = np.zeros(num_visibilites_gpu.value, dtype = np.float64)
+        sorted_vis = np.zeros(num_visibilites_gpu.value, dtype = np.float64)
+        sorted_tile = np.zeros(num_visibilites_gpu.value, dtype = np.int32)
+        sorted_weight = np.zeros(num_visibilites_gpu.value, dtype = np.float64)
+
+        sorted_uu_gpu = cp.asarray(sorted_uu)
+        sorted_vv_gpu = cp.asarray(sorted_vv)
+        sorted_vis_gpu = cp.asarray(sorted_vis)
+        sorted_weight_gpu = cp.asarray(sorted_weight)
+        sorted_tile_gpu = cp.asarray(sorted_tile)
+
+        bucket_simple(
+            support, 
+            grid_size, 
+            inv_tile_size_u, 
+            inv_tile_size_v,
+            top_left_u,
+            top_left_v,
+            num_tiles_u,
+            cell_size_rad,
+            uvw_gpu,
+            vis_gpu,
+            weights_gpu,
+            freqs_gpu,
+            tile_offsets_gpu, 
+            sorted_uu_gpu, 
+            sorted_vv_gpu, 
+            sorted_vis_gpu, 
+            sorted_weight_gpu, 
+            sorted_tile_gpu
+        )
+
+    tile_simple(
         uvw,
         freqs,
         vis,
@@ -153,6 +190,34 @@ def test_tile_and_bucket_sort():
         tile_offsets,
         num_points_in_tiles,
         num_skipped,
+        num_visibilites
+    )
+
+    sorted_uu = np.zeros(num_visibilites.value, dtype = np.float64)
+    sorted_vv = np.zeros(num_visibilites.value, dtype = np.float64)
+    sorted_vis = np.zeros(num_visibilites.value, dtype = np.float64)
+    sorted_tile = np.zeros(num_visibilites.value, dtype = np.int32)
+    sorted_weight = np.zeros(num_visibilites.value, dtype = np.float64)
+
+    bucket_simple(
+        support, 
+        grid_size, 
+        inv_tile_size_u, 
+        inv_tile_size_v,
+        top_left_u,
+        top_left_v,
+        num_tiles_u,
+        cell_size_rad,
+        uvw,
+        vis,
+        weights,
+        freqs,
+        tile_offsets, 
+        sorted_uu, 
+        sorted_vv, 
+        sorted_vis, 
+        sorted_weight, 
+        sorted_tile   
     )
 
     assert np.allclose(
