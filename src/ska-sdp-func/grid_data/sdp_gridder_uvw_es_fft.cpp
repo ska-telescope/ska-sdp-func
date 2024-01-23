@@ -51,6 +51,7 @@ struct sdp_GridderUvwEsFft
     float min_plane_w_f;
     float max_plane_w_f;
     float conv_corr_norm_factor_f;
+    int conv_kernel_size;
 
     // allocated memory
     sdp_Mem* w_grid_stack;
@@ -60,6 +61,7 @@ struct sdp_GridderUvwEsFft
     sdp_Mem* conv_corr_kernel;
     sdp_Mem* vis_count;
     sdp_Mem* vis_counter;
+    sdp_Mem* conv_kernel;
 
     sdp_Timer* timer_overall;
     sdp_Timer* timer_fft;
@@ -119,6 +121,7 @@ void sdp_gridder_uvw_es_fft_free_plan(sdp_GridderUvwEsFft* plan)
     sdp_mem_free(plan->conv_corr_kernel);
     sdp_mem_free(plan->vis_count);
     sdp_mem_free(plan->vis_counter);
+    sdp_mem_free(plan->conv_kernel);
     sdp_timer_free(plan->timer_overall);
     sdp_timer_free(plan->timer_fft);
     sdp_timer_free(plan->timer_grid);
@@ -375,7 +378,7 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
 
     const sdp_MemType vis_type = sdp_mem_type(vis);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
-    const int vis_precision = (vis_type & SDP_MEM_DOUBLE) ?
+    const sdp_MemType vis_precision = (vis_type & SDP_MEM_DOUBLE) ?
                 SDP_MEM_DOUBLE : SDP_MEM_FLOAT;
 
     sdp_calculate_params_from_epsilon(plan->epsilon, plan->image_size,
@@ -571,6 +574,43 @@ sdp_GridderUvwEsFft* sdp_gridder_uvw_es_fft_create_plan(
     plan->vis_counter = sdp_mem_create(
             SDP_MEM_INT, SDP_MEM_GPU, 1, vis_count_size, status
     );
+
+    // Convolution kernel look-up-table.
+    const char* env_table_size = getenv("SDP_GRIDDER_CONV_TABLE_SIZE");
+    if (env_table_size)
+    {
+        int conv_kernel_size = (int) strtol(env_table_size, 0, 10);
+        if (conv_kernel_size > 0)
+        {
+            int64_t conv_kernel_shape[] = {conv_kernel_size};
+            plan->conv_kernel_size = conv_kernel_size;
+            sdp_Mem* conv_kernel_cpu = sdp_mem_create(vis_precision,
+                    SDP_MEM_CPU, 1, conv_kernel_shape, status
+            );
+            if (vis_precision == SDP_MEM_FLOAT)
+            {
+                float* kernel = (float*)sdp_mem_data(conv_kernel_cpu);
+                for (int i = 0; i < conv_kernel_size; ++i)
+                {
+                    float xx = (float)i / (float)conv_kernel_size;
+                    kernel[i] = exp(plan->beta * (sqrt(1.0 - xx) - 1.0));
+                }
+            }
+            else
+            {
+                double* kernel = (double*)sdp_mem_data(conv_kernel_cpu);
+                for (int i = 0; i < conv_kernel_size; ++i)
+                {
+                    double xx = (double)i / (double)conv_kernel_size;
+                    kernel[i] = exp(plan->beta * (sqrt(1.0 - xx) - 1.0));
+                }
+            }
+            plan->conv_kernel = sdp_mem_create_copy(
+                    conv_kernel_cpu, SDP_MEM_GPU, status
+            );
+            sdp_mem_free(conv_kernel_cpu);
+        }
+    }
 
     // allocate memory
     int64_t w_grid_stack_shape[] = {plan->grid_size, plan->grid_size};
@@ -814,15 +854,31 @@ void sdp_grid_uvw_es_fft(
             const char* kernel_name = 0;
             if (plan->do_wstacking)
             {
-                if (dbl_vis && dbl_coord)
+                if (plan->conv_kernel_size > 0)
                 {
-                    kernel_name = "sdp_cuda_nifty_grid_tiled_3d"
-                            "<double, double2, 8, 8>";
+                    if (dbl_vis && dbl_coord)
+                    {
+                        kernel_name = "sdp_cuda_nifty_grid_tiled_lookup_3d"
+                                "<double, double2, 8, 8>";
+                    }
+                    else if (!dbl_vis && !dbl_coord)
+                    {
+                        kernel_name = "sdp_cuda_nifty_grid_tiled_lookup_3d"
+                                "<float, float2, 8, 8>";
+                    }
                 }
-                else if (!dbl_vis && !dbl_coord)
+                else
                 {
-                    kernel_name = "sdp_cuda_nifty_grid_tiled_3d"
-                            "<float, float2, 8, 8>";
+                    if (dbl_vis && dbl_coord)
+                    {
+                        kernel_name = "sdp_cuda_nifty_grid_tiled_3d"
+                                "<double, double2, 8, 8>";
+                    }
+                    else if (!dbl_vis && !dbl_coord)
+                    {
+                        kernel_name = "sdp_cuda_nifty_grid_tiled_3d"
+                                "<float, float2, 8, 8>";
+                    }
                 }
                 void* null = 0;
                 num_threads[0] = tile_size_v;
@@ -847,9 +903,12 @@ void sdp_grid_uvw_es_fft(
                     &tile_size_v,
                     &top_left_u,
                     &top_left_v,
-                    dbl_vis ?
-                        (const void*)&plan->beta :
-                        (const void*)&plan->beta_f,
+                    &plan->conv_kernel_size,
+                    plan->conv_kernel_size > 0 ?
+                        sdp_mem_gpu_buffer(plan->conv_kernel, status) :
+                            (dbl_vis ?
+                                (const void*)&plan->beta :
+                                (const void*)&plan->beta_f),
                     dbl_coord ?
                         (const void*)&plan->w_scale :
                         (const void*)&plan->w_scale_f,
