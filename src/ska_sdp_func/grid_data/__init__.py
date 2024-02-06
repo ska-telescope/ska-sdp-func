@@ -4,3 +4,4 @@
 
 from .degrid_uvw_custom import degrid_uvw_custom
 from .gridder_uvw_es_fft import GridderUvwEsFft
+from .grid_uvw_es import grid_uvw_es
