@@ -24,16 +24,17 @@ extern "C" {
  *
  * The function uses cuFFTxT API to perform inverse FFT of
  * the input 2D complex array with gridded visibilities
- * to construct the dirty image. 
+ * to construct the dirty image.
  *
  * @param grid_sim Input grid (2D SDP_MEM_COMPLEX_DOUBLE).
  * @param image_out Output image (2D SDP_MEM_COMPLEX_DOUBLE).
  * @param status Error status.
  */
 void sdp_cuFFTxT(
-		sdp_Mem* grid_sim,
-		sdp_Mem* image_out,
-		sdp_Error* status);
+        sdp_Mem* grid_sim,
+        sdp_Mem* image_out,
+        sdp_Error* status
+);
 
 #ifdef __cplusplus
 }
