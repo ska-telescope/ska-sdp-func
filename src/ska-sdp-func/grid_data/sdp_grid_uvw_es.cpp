@@ -17,7 +17,7 @@ void sdp_grid_uvw_es(
         double epsilon,
         double cell_size_rad,
         double w_scale,
-        double plane_w,
+        double min_plane_w,
         int sub_grid_start_u,
         int sub_grid_start_v,
         int sub_grid_w,
@@ -43,11 +43,11 @@ void sdp_grid_uvw_es(
     const double uv_scale = full_grid_size * cell_size_rad;
     const float uv_scale_f = (float) uv_scale;
     const float w_scale_f = (float) w_scale;
-    const float plane_w_f = (float) plane_w;
+    const float min_plane_w_f = (float) min_plane_w;
 
     // Data dimensions.
     const int num_rows = (int)sdp_mem_shape_dim(vis, 0);
-    const int num_chan = (int)sdp_mem_shape_dim(vis, 1);
+    const int num_chan = (int)sdp_mem_shape_dim(freq_hz, 0);
     const int sub_grid_size = (int)sdp_mem_shape_dim(sub_grid, 0);
 
     // Grid visibilities onto this w-plane.
@@ -79,7 +79,7 @@ void sdp_grid_uvw_es(
             dbl_vis ? (const void*)&beta : (const void*)&beta_f,
             dbl_coord ? (const void*)&uv_scale : (const void*)&uv_scale_f,
             dbl_coord ? (const void*)&w_scale : (const void*)&w_scale_f,
-            dbl_coord ? (const void*)&plane_w : (const void*)&plane_w_f,
+            dbl_coord ? (const void*)&min_plane_w : (const void*)&min_plane_w_f,
             &sub_grid_start_u,
             &sub_grid_start_v,
             &sub_grid_w,
@@ -88,8 +88,8 @@ void sdp_grid_uvw_es(
             sdp_mem_gpu_buffer(sub_grid, status),
             &null
         };
-        sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, args, status
+        sdp_launch_cuda_kernel(
+                kernel_name, num_blocks, num_threads, 0, 0, args, status
         );
     }
 }

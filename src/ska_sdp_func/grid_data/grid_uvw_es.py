@@ -15,7 +15,7 @@ def grid_uvw_es(
     epsilon: float,
     cell_size_rad: float,
     w_scale: float,
-    plane_w: float,
+    min_plane_w: float,
     sub_grid_start_u: int,
     sub_grid_start_v: int,
     sub_grid_w: int,
@@ -35,6 +35,9 @@ def grid_uvw_es(
         Its values are used to multiply the input.
     freq_hz: cupy.ndarray((num_chan,), dtype=numpy.float32 or numpy.float64)
         Channel frequencies.
+    image_size: int
+        The required number of pixels on one side of the whole output image.
+        (This is needed to calculate other kernel parameters.)
     epsilon: float
         Accuracy at which the computation should be done.
         Must be larger than 2e-13.
@@ -43,8 +46,8 @@ def grid_uvw_es(
         Angular pixel size (in radians) of the image.
     w_scale: float
         Factor to convert w-coordinates to w-layer index.
-    plane_w: float
-        The w-coordinate of this w-layer.
+    min_plane_w: float
+        The w-coordinate of the first w-layer.
     sub_grid_start_u: int
         Start index of sub-grid in u dimension.
     sub_grid_start_v: int
@@ -64,7 +67,7 @@ def grid_uvw_es(
         epsilon,
         cell_size_rad,
         w_scale,
-        plane_w,
+        min_plane_w,
         sub_grid_start_u,
         sub_grid_start_v,
         sub_grid_w,

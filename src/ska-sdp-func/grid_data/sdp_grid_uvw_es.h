@@ -23,7 +23,7 @@ extern "C" {
  * @param epsilon Parameter to specify required accuracy of gridding.
  * @param cell_size_rad Cell (pixel) size, in radians.
  * @param w_scale Factor to convert w-coordinates to w-layer index.
- * @param plane_w The w-coordinate of this w-layer.
+ * @param min_plane_w The w-coordinate of the first w-layer.
  * @param sub_grid_start_u Start index of sub-grid in u dimension.
  * @param sub_grid_start_v Start index of sub-grid in v dimension.
  * @param sub_grid_w Index of sub-grid in w-layer stack.
@@ -39,7 +39,7 @@ void sdp_grid_uvw_es(
         double epsilon,
         double cell_size_rad,
         double w_scale,
-        double plane_w,
+        double min_plane_w,
         int sub_grid_start_u,
         int sub_grid_start_v,
         int sub_grid_w,
