@@ -46,7 +46,7 @@ def hogbom_clean(
     :param psf: Input Point Spread Function.
     :type psf: numpy.ndarray or cupy.ndarray
     :param cbeam_details: Input shape of cbeam [BMAJ, BMINN, THETA, SIZE]
-    :type cbeam_deatils: numpy.ndarray or cupy.ndarray
+    :type cbeam_deatils: numpy.ndarray
     :param loop_gain: Gain to be used in the CLEAN loop (typically 0.1)
     :type loop_gain: float
     :param threshold: Minimum intensity of peak to search for,

@@ -1,4 +1,6 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
+#define __CUDA_NO_BFLOAT16_CONVERSIONS__
+#define __CUDA_NO_BFLOAT16_OPERATORS__
 
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/numeric_functions/sdp_fft_convolution.h"
@@ -156,50 +158,158 @@ __global__ void find_maximum_value(
             int *index_in,
             T *output,
             int *index_out,
-            bool init_idx,
-            bool thresh_reached)
+            bool init_idx)
+{    
+
+}
+
+template<>
+__global__ void find_maximum_value(
+            const double *input,
+            int *index_in,
+            double *output,
+            int *index_out,
+            bool init_idx)
 {
-    // check if flux threshold has been reached
-    if (thresh_reached == false){
-        __shared__ T max_values[256];
-        __shared__ int max_indices[256];
+    __shared__ double max_values[256];
+    __shared__ int max_indices[256];
 
-        int64_t tid = threadIdx.x;
-        int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
+    int64_t tid = threadIdx.x;
+    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
-        // Load input elements into shared memory
-        max_values[tid] = input[i];
-        // if index array has already been initialised then load it
-        if(init_idx == true){
-            max_indices[tid] = index_in[i];
+    // Load input elements into shared memory
+    max_values[tid] = input[i];
+    // if index array has already been initialised then load it
+    if(init_idx == true){
+        max_indices[tid] = index_in[i];
 
-        }
-        // if it hasn't, initialise it.
-        else{
+    }
+    // if it hasn't, initialise it.
+    else{
 
-            max_indices[tid] = i;
+        max_indices[tid] = i;
 
+    }
+    __syncthreads();
+
+
+    // Perform reduction in shared memory
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            if (max_values[tid] < max_values[tid + stride]) {
+                max_values[tid] = max_values[tid + stride];
+                max_indices[tid] = max_indices[tid + stride];
+            }
         }
         __syncthreads();
-
-
-        // Perform reduction in shared memory
-        for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-            if (tid < stride) {
-                if (max_values[tid] < max_values[tid + stride]) {
-                    max_values[tid] = max_values[tid + stride];
-                    max_indices[tid] = max_indices[tid + stride];
-                }
-            }
-            __syncthreads();
-        }
-
-        // Write the final result to output
-        if (tid == 0) {
-            output[blockIdx.x] = max_values[0];
-            index_out[blockIdx.x] = max_indices[0];
-        }
     }
+
+    // Write the final result to output
+    if (tid == 0) {
+        output[blockIdx.x] = max_values[0];
+        index_out[blockIdx.x] = max_indices[0];
+    }
+    
+
+}
+
+template<>
+__global__ void find_maximum_value(
+            const float *input,
+            int *index_in,
+            float *output,
+            int *index_out,
+            bool init_idx)
+{
+    __shared__ float max_values[256];
+    __shared__ int max_indices[256];
+
+    int64_t tid = threadIdx.x;
+    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
+
+    // Load input elements into shared memory
+    max_values[tid] = input[i];
+    // if index array has already been initialised then load it
+    if(init_idx == true){
+        max_indices[tid] = index_in[i];
+
+    }
+    // if it hasn't, initialise it.
+    else{
+
+        max_indices[tid] = i;
+
+    }
+    __syncthreads();
+
+
+    // Perform reduction in shared memory
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            if (max_values[tid] < max_values[tid + stride]) {
+                max_values[tid] = max_values[tid + stride];
+                max_indices[tid] = max_indices[tid + stride];
+            }
+        }
+        __syncthreads();
+    }
+
+    // Write the final result to output
+    if (tid == 0) {
+        output[blockIdx.x] = max_values[0];
+        index_out[blockIdx.x] = max_indices[0];
+    }
+    
+
+}
+
+template<>
+__global__ void find_maximum_value(
+            const __nv_bfloat16 *input,
+            int *index_in,
+            __nv_bfloat16 *output,
+            int *index_out,
+            bool init_idx)
+{
+    __shared__ __nv_bfloat16 max_values[256];
+    __shared__ int max_indices[256];
+
+    int64_t tid = threadIdx.x;
+    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
+
+    // Load input elements into shared memory
+    max_values[tid] = input[i];
+    // if index array has already been initialised then load it
+    if(init_idx == true){
+        max_indices[tid] = index_in[i];
+
+    }
+    // if it hasn't, initialise it.
+    else{
+
+        max_indices[tid] = i;
+
+    }
+    __syncthreads();
+
+
+    // Perform reduction in shared memory
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tid < stride) {
+            if (__hlt(max_values[tid], max_values[tid + stride])) {
+                max_values[tid] = max_values[tid + stride];
+                max_indices[tid] = max_indices[tid + stride];
+            }
+        }
+        __syncthreads();
+    }
+
+    // Write the final result to output
+    if (tid == 0) {
+        output[blockIdx.x] = max_values[0];
+        index_out[blockIdx.x] = max_indices[0];
+    }
+    
 
 }
 
@@ -216,18 +326,81 @@ __global__ void add_clean_comp(
             T* loop_gain,
             T* highest_value,
             T* threshold,
-            bool thresh_reached
+            int* thresh_reached
+){
+
+}
+
+template<>
+__global__ void add_clean_comp(
+            double* clean_comp,
+            int* max_idx_flat,
+            double* loop_gain,
+            double* highest_value,
+            double* threshold,
+            int* thresh_reached
 ){
     // check threshold
-    if (highest_value[0] > threshold[0] && thresh_reached == false){
+    if (highest_value[0] > threshold[0] && *thresh_reached == 0){
         
         // Add fraction of maximum to clean components list
-        clean_comp[max_idx_flat[0]] = clean_comp[max_idx_flat[0]] + (loop_gain[0] * highest_value[0]);
+        double inter = __dmul_rn(loop_gain[0], highest_value[0]);
+        clean_comp[max_idx_flat[0]] = __dadd_rn(clean_comp[max_idx_flat[0]], inter);
+        // clean_comp[max_idx_flat[0]] = clean_comp[max_idx_flat[0]] + (loop_gain[0] * highest_value[0]);
 
     }
     // if threshold reached, set flag
     else{
-        thresh_reached = true;
+        *thresh_reached = 1;
+    }
+
+}
+
+template<>
+__global__ void add_clean_comp(
+            float* clean_comp,
+            int* max_idx_flat,
+            float* loop_gain,
+            float* highest_value,
+            float* threshold,
+            int* thresh_reached
+){
+    // check threshold
+    if (highest_value[0] > threshold[0] && *thresh_reached == 0){
+        
+        // Add fraction of maximum to clean components list
+        float inter = __fmul_rn(loop_gain[0], highest_value[0]);
+        clean_comp[max_idx_flat[0]] = __fadd_rn(clean_comp[max_idx_flat[0]], inter);
+        // clean_comp[max_idx_flat[0]] = clean_comp[max_idx_flat[0]] + (loop_gain[0] * highest_value[0]);
+
+    }
+    // if threshold reached, set flag
+    else{
+        *thresh_reached = 1;
+    }
+
+}
+
+template<>
+__global__ void add_clean_comp(
+            __nv_bfloat16* clean_comp,
+            int* max_idx_flat,
+            __nv_bfloat16* loop_gain,
+            __nv_bfloat16* highest_value,
+            __nv_bfloat16* threshold,
+            int* thresh_reached
+){
+    // check threshold
+    if (__hgt(highest_value[0], threshold[0]) && *thresh_reached == 0){
+        
+        // Add fraction of maximum to clean components list
+        __nv_bfloat16 inter = __hmul(loop_gain[0], highest_value[0]);
+        clean_comp[max_idx_flat[0]] = __hadd(clean_comp[max_idx_flat[0]], inter);
+
+    }
+    // if threshold reached, set flag
+    else{
+        *thresh_reached = 1;
     }
 
 }
@@ -383,7 +556,8 @@ __global__ void subtract_psf(
             __nv_bfloat16* threshold) {
 
     // check threshold
-    if (highest_value[0] > threshold[0]){
+    // if (highest_value[0] > threshold[0]){
+    if (__hgt(highest_value[0], threshold[0])){
 
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
         // int64_t psf_size = psf_dim * psf_dim;
@@ -416,11 +590,11 @@ __global__ void subtract_psf(
             int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
             // Subtract the PSF contribution from the residual
-            // __nv_bfloat16 inter = __hmul_rn(loop_gain[0], highest_value[0]);
-            // inter = __hmul_rn(inter, psf[psf_flat_idx]);
-            // residual[i] =  __hsub_rn(residual[i],inter);
+            __nv_bfloat16 inter = __hmul(loop_gain[0], highest_value[0]);
+            inter = __hmul(inter, psf[psf_flat_idx]);
+            residual[i] =  __hsub(residual[i],inter);
            
-            residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
+            // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
         }
     }
     else{
@@ -525,7 +699,7 @@ __global__ void convert_from_bfloat<double>(
         int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i < size){
-        out[i] = in[i];
+        out[i] = (double)__bfloat162float(in[i]);
          
     }
 }

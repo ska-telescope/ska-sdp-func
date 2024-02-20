@@ -22,6 +22,7 @@ https://www.researchgate.net/publication/2336887_Deconvolution_Tutorial
 #include <complex>
 #include <stdlib.h>
 #include <time.h>
+#include <cuda_runtime.h> 
 
 using std::complex;
 
@@ -93,7 +94,6 @@ inline void create_copy_real(
 
 template<typename T>
 static void hogbom_clean(
-        const T* dirty_img,
         const T* psf,
         const T* cbeam_details,
         const T loop_gain,
@@ -115,15 +115,6 @@ static void hogbom_clean(
         // int64_t psf_shape[] = {psf_dim, psf_dim};
 
         int64_t cbeam_dim = (int64_t)cbeam_details[3];
-
-        // // set cbeam size to 20 sigma 
-        // if(cbeam_details[0]>cbeam_details[1]){
-        //     cbeam_dim = cbeam_details[0] * 20;
-        // }   
-        // else{
-        //     cbeam_dim = cbeam_details[1] * 20;
-        // }
-
         int64_t cbeam_shape[] = {cbeam_dim, cbeam_dim};
         
         // choose correct complex data type
@@ -146,11 +137,14 @@ static void hogbom_clean(
         sdp_Mem* clean_comp_complex_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
         complex<T>* clean_comp_complex_ptr = (complex<T>*)sdp_mem_data(clean_comp_complex_mem);
         sdp_mem_clear_contents(clean_comp_complex_mem, status);
-        sdp_Mem* residual_complex_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
-        complex<T>* residual_complex_ptr = (complex<T>*)sdp_mem_data(residual_complex_mem);
+        // sdp_Mem* residual_complex_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
+        // complex<T>* residual_complex_ptr = (complex<T>*)sdp_mem_data(residual_complex_mem);
 
-        // Convolution code only works with complex input, so make residual complex
-        create_copy_complex<T>(dirty_img, dirty_img_size, residual_complex_ptr);
+        // // Convolution code only works with complex input, so make residual complex
+        // create_copy_complex<T>(dirty_img, dirty_img_size, residual_complex_ptr);
+
+        // // copy dirty image to starting residual
+        // sdp_mem_copy_contents(residual, dirty_img, 0, 0, dirty_img_size, status);
         
         // set up some loop variables
         int cur_cycle = 0;
@@ -164,12 +158,12 @@ static void hogbom_clean(
         while (cur_cycle < cycle_limit && stop == 0) {
 
             // Find index and value of the maximum value in residual
-            double highest_value = std::real(residual_complex_ptr[0]);
+            double highest_value = residual[0];
             int max_idx_flat = 0;
 
             for (int i = 0; i < dirty_img_size; i++) {
-                if (std::real(residual_complex_ptr[i]) > highest_value) {
-                    highest_value = std::real(residual_complex_ptr[i]);
+                if (residual[i] > highest_value) {
+                    highest_value = residual[i];
                     max_idx_flat = i;
                 }
             }
@@ -178,7 +172,7 @@ static void hogbom_clean(
             // SDP_LOG_DEBUG("cycle %d", cur_cycle);
 
             // check maximum value against threshold
-            if (std::real(residual_complex_ptr[max_idx_flat]) < threshold) {
+            if (residual[max_idx_flat] < threshold) {
                 stop = 1;
                 break;
             }
@@ -206,7 +200,7 @@ static void hogbom_clean(
 
                     const unsigned int i_psf = INDEX_2D(psf_dim,psf_dim,x,y);
                     const unsigned int i_res = INDEX_2D(dirty_img_dim,dirty_img_dim,i,j);
-                    residual_complex_ptr[i_res] -= complex<T>((loop_gain * highest_value * psf[i_psf]), 0.0);
+                    residual[i_res] -= (loop_gain * highest_value * psf[i_psf]);
                 }
             }
 
@@ -223,8 +217,6 @@ static void hogbom_clean(
         create_copy_real<T>(convolution_result_ptr, dirty_img_size, skymodel);
 
         // add remaining residual
-        create_copy_real<T>(residual_complex_ptr, dirty_img_size, residual);
-
         for (int i = 0; i < dirty_img_size; i++){
             skymodel[i] = skymodel[i] + residual[i];
         }
@@ -235,7 +227,7 @@ static void hogbom_clean(
         // free memory
         sdp_mem_ref_dec(cbeam_mem);
         sdp_mem_ref_dec(clean_comp_complex_mem);
-        sdp_mem_ref_dec(residual_complex_mem);
+        // sdp_mem_ref_dec(residual_complex_mem);
         sdp_mem_ref_dec(convolution_result_mem);
 }
 
@@ -257,6 +249,7 @@ void hogbom_clean_gpu(
         sdp_Error* status
 
 ){
+
         // set cbeam size 
         const T* cbeam_details_ptr = (const T*)sdp_mem_data_const(cbeam_details);
 
@@ -301,9 +294,14 @@ void hogbom_clean_gpu(
         }  
 
         // Create intermediate data arrays
-        // to hold loop gain and threshold in GPU memory, allowing conversion to bfloat16
+        // to hold loop gain, threshold flag and threshold value in GPU memory, allowing conversion to bfloat16
         sdp_Mem* loop_gain_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, variable_shape, status);
         sdp_Mem* threshold_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, variable_shape, status);
+        sdp_Mem* thresh_reached_gpu_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1, variable_shape, status);
+        sdp_mem_clear_contents(thresh_reached_gpu_mem, status);
+        sdp_Mem* thresh_reached_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_CPU, 1, variable_shape, status);
+        int* thresh_reached_ptr = (int*)sdp_mem_data(thresh_reached_mem);
+        sdp_mem_clear_contents(thresh_reached_mem, status);
 
         // for CLEAN beam
         sdp_Mem* cbeam_complex_mem = sdp_mem_create(complex_data_type, SDP_MEM_GPU, 2, cbeam_shape, status);
@@ -327,6 +325,15 @@ void hogbom_clean_gpu(
         sdp_Mem* clean_comp_bfloat_mem = NULL;
         sdp_Mem* residual_bfloat_mem = NULL;
 
+        clock_t start, end;
+        double cpu_time_used;
+
+        cudaEvent_t start_cuda, stop_cuda;
+        float milliseconds = 0;
+
+        cudaEventCreate(&start_cuda);
+        cudaEventCreate(&stop_cuda);
+
         if (use_bfloat){
             clean_comp_bfloat_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
             sdp_mem_clear_contents(clean_comp_bfloat_mem, status);
@@ -334,8 +341,11 @@ void hogbom_clean_gpu(
             sdp_mem_clear_contents(residual_bfloat_mem, status);
         }
 
+
         // if bfloat conversion selected, convert dirty image, psf, loop gain and threshold
         if (data_type == SDP_MEM_DOUBLE && use_bfloat){
+
+            cudaEventRecord(start_cuda);
 
             // convert dirty image
             uint64_t num_threads_dirty_img_to_bfloat[] = {256, 1, 1};
@@ -397,6 +407,13 @@ void hogbom_clean_gpu(
                     num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_threshold_to_gpu, status
             );
 
+            cudaEventRecord(stop_cuda);
+
+            cudaEventSynchronize(stop_cuda);
+
+            cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+            SDP_LOG_INFO("Convert to bfloat: %.9f s", (milliseconds/1000));
+
         }
         // else use double
         else if (data_type == SDP_MEM_DOUBLE && !use_bfloat){
@@ -429,6 +446,8 @@ void hogbom_clean_gpu(
         }
 
         else if (data_type == SDP_MEM_FLOAT && use_bfloat){
+
+            cudaEventRecord(start_cuda);
             // convert dirty image
             uint64_t num_threads_dirty_img_to_bfloat[] = {256, 1, 1};
             uint64_t num_blocks_dirty_img_to_bfloat[] = {
@@ -489,6 +508,13 @@ void hogbom_clean_gpu(
                     num_blocks_copy_gpu, num_threads_copy_gpu, 0, 0, args_threshold_to_gpu, status
             );
 
+            cudaEventRecord(stop_cuda);
+
+            cudaEventSynchronize(stop_cuda);
+
+            cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+            SDP_LOG_INFO("Convert to bfloat: %.9f s", (milliseconds/1000));
+
         }
         // else use use float
         else if (data_type == SDP_MEM_FLOAT && !use_bfloat){
@@ -543,8 +569,6 @@ void hogbom_clean_gpu(
         sdp_Mem* max_val_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, max_shape, status);
         sdp_Mem* max_idx_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1, max_shape, status);
 
-        bool thresh_reached = false;
-
         // CLEAN loop executes while the stop conditions (threshold and cycle limit) are not met
         while (cur_cycle < cycle_limit && !stop) {
             
@@ -559,8 +583,7 @@ void hogbom_clean_gpu(
                 sdp_mem_gpu_buffer(max_idx_mem, status),
                 sdp_mem_gpu_buffer(max_val_mem, status),
                 sdp_mem_gpu_buffer(max_idx_mem, status),
-                &init_idx,
-                &thresh_reached
+                &init_idx
             };
 
             // find the maximum value in the residual
@@ -580,6 +603,9 @@ void hogbom_clean_gpu(
 
             // launch mulitple kernels to perform reduction
             // scale the number of blocks according to the size of the reduction
+
+            cudaEventRecord(start_cuda);
+
             while (num_blocks[0] > 1)
             {
 
@@ -598,6 +624,28 @@ void hogbom_clean_gpu(
             sdp_launch_cuda_kernel(kernel_name,
                         num_blocks, num_threads, 0, 0, args, status
                 );
+
+            cudaEventRecord(stop_cuda);
+
+            cudaEventSynchronize(stop_cuda);
+
+            cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+            SDP_LOG_INFO("max finding gpu timer: %.9f s", (milliseconds/1000));
+
+            // check if threshold has been reached once every 100 iteration
+            if (cur_cycle % 100 == 0) {
+
+                sdp_mem_copy_contents(thresh_reached_mem, thresh_reached_gpu_mem, 0, 0, variable_size, status);
+
+                SDP_LOG_INFO("thresh reached: %d", *thresh_reached_ptr);
+                SDP_LOG_INFO("iteration number: %d", cur_cycle);
+
+                if (*thresh_reached_ptr > 0) {
+                    // break;
+                    stop = true;
+                }
+            }
+
 
             num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);            
 
@@ -625,12 +673,21 @@ void hogbom_clean_gpu(
                 sdp_mem_gpu_buffer(loop_gain_mem, status),
                 sdp_mem_gpu_buffer(max_val_mem, status),
                 sdp_mem_gpu_buffer(threshold_mem, status),
-                &thresh_reached
+                sdp_mem_gpu_buffer(thresh_reached_gpu_mem, status)
             };
+
+            cudaEventRecord(start_cuda);
 
             sdp_launch_cuda_kernel(kernel_name,
                     num_blocks_clean_comp, num_threads_clean_comp, 0, 0, args_clean_comp, status
             );
+
+            cudaEventRecord(stop_cuda);
+
+            cudaEventSynchronize(stop_cuda);
+
+            cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+            SDP_LOG_INFO("Add clean component: %.9f s", (milliseconds/1000));
             
             // SDP_LOG_DEBUG("cycle %d", cur_cycle);
 
@@ -666,19 +723,19 @@ void hogbom_clean_gpu(
                 sdp_mem_gpu_buffer(skymodel, status),
                 sdp_mem_gpu_buffer(threshold_mem, status),
             };
-
-            // clock_t start, end;
-            // double cpu_time_used;
-            // start = clock();  
+ 
+            cudaEventRecord(start_cuda);
 
             sdp_launch_cuda_kernel(kernel_name,
                     num_blocks, num_threads, 0, 0, args_subtract_psf, status
             );
 
-            // end = clock();
-            // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+            cudaEventRecord(stop_cuda);
 
-            // SDP_LOG_INFO("psfsub %f", cpu_time_used);
+            cudaEventSynchronize(stop_cuda);
+
+            cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+            SDP_LOG_INFO("Subtract PSF: %.9f s", (milliseconds/1000));
 
             cur_cycle += 1;
         }
@@ -698,6 +755,8 @@ void hogbom_clean_gpu(
             &dirty_img_size,
             sdp_mem_gpu_buffer(residual_bfloat_mem, status)
         };
+  
+        cudaEventRecord(start_cuda);
 
         if (data_type == SDP_MEM_DOUBLE && use_bfloat){
             kernel_name = "convert_from_bfloat<double>";
@@ -732,6 +791,13 @@ void hogbom_clean_gpu(
 
         }
 
+        cudaEventRecord(stop_cuda);
+
+        cudaEventSynchronize(stop_cuda);
+
+        cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+        SDP_LOG_INFO("Convert back from bfloat: %.9f s", (milliseconds/1000));
+
         // convert to complex representaion for convolution with cbeam
         if (data_type == SDP_MEM_DOUBLE){
             kernel_name = "create_copy_complex<double, cuDoubleComplex>";
@@ -749,10 +815,19 @@ void hogbom_clean_gpu(
             &dirty_img_size,
             sdp_mem_gpu_buffer(clean_comp_complex_mem, status)
         };
+        
+        cudaEventRecord(start_cuda);
 
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, args_create_complex, status
         );
+
+        cudaEventRecord(stop_cuda);
+
+        cudaEventSynchronize(stop_cuda);
+
+        cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+        SDP_LOG_INFO("Create complex copy of clean model: %.9f s", (milliseconds/1000));
 
         // create cbeam
         // SDP_LOG_DEBUG("cbeam dim %d", cbeam_dim);
@@ -773,6 +848,7 @@ void hogbom_clean_gpu(
             SDP_LOG_ERROR("Unsupported data type");
         } 
 
+
         const void* args4[] = {
             &cbeam_details_ptr[0],
             &cbeam_details_ptr[1],
@@ -781,16 +857,40 @@ void hogbom_clean_gpu(
             sdp_mem_gpu_buffer(cbeam_complex_mem, status)
         };
 
+        cudaEventRecord(start_cuda);
+
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks_create_cbeam, num_threads_create_cbeam, 0, 0, args4, status
         );
+
+        cudaEventRecord(stop_cuda);
+
+        cudaEventSynchronize(stop_cuda);
+
+        cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+        SDP_LOG_INFO("Create cbeam: %.9f s", (milliseconds/1000));
 
         // for result of convolution of CLEAN beam and with CLEAN components
         sdp_Mem* convolution_result_mem = sdp_mem_create(complex_data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
         sdp_mem_clear_contents(convolution_result_mem, status);
 
+        start = clock();
+        cudaEventRecord(start_cuda);
+
         // convolve clean components with clean beam
         sdp_fft_convolution(clean_comp_complex_mem, cbeam_complex_mem, convolution_result_mem, status);
+
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+        SDP_LOG_INFO("clean beam convolution cpu %f s", cpu_time_used);
+
+        cudaEventRecord(stop_cuda);
+
+        cudaEventSynchronize(stop_cuda);
+
+        cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+        SDP_LOG_INFO("Clean beam convolution gpu: %.9f s", (milliseconds/1000));
 
         // convert back to real number only representation
         if (data_type == SDP_MEM_DOUBLE){
@@ -810,9 +910,18 @@ void hogbom_clean_gpu(
             sdp_mem_gpu_buffer(skymodel, status)
         };
 
+        cudaEventRecord(start_cuda);
+
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, args_create_real, status
         );
+
+        cudaEventRecord(stop_cuda);
+
+        cudaEventSynchronize(stop_cuda);
+
+        cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+        SDP_LOG_INFO("Convert convolution result back to real: %.9f s", (milliseconds/1000));
 
         // add remaining residual
         if (data_type == SDP_MEM_DOUBLE){
@@ -832,9 +941,18 @@ void hogbom_clean_gpu(
             sdp_mem_gpu_buffer(skymodel, status)
         };
 
+        cudaEventRecord(start_cuda);
+
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, args_add_residual, status
         ); 
+
+        cudaEventRecord(stop_cuda);
+
+        cudaEventSynchronize(stop_cuda);
+
+        cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
+        SDP_LOG_INFO("Adding residuals: %.9f s", (milliseconds/1000));
 
         // clear memory
         sdp_mem_ref_dec(loop_gain_mem);
@@ -850,6 +968,9 @@ void hogbom_clean_gpu(
             sdp_mem_ref_dec(clean_comp_bfloat_mem);
             sdp_mem_ref_dec(residual_bfloat_mem);
         }
+
+        cudaEventDestroy(start_cuda);
+        cudaEventDestroy(stop_cuda);
 }
 
 void sdp_hogbom_clean(
@@ -933,10 +1054,12 @@ void sdp_hogbom_clean(
             return;
         }
 
+        // copy dirty image to starting residual
+        sdp_mem_copy_contents(residual, dirty_img, 0, 0, (dirty_img_dim*dirty_img_dim), status);
+
         if (data_type == SDP_MEM_DOUBLE){
 
             hogbom_clean<double>(
-                (const double*)sdp_mem_data_const(dirty_img),
                 (const double*)sdp_mem_data_const(psf),
                 (const double*)sdp_mem_data_const(cbeam_details),
                 loop_gain,
@@ -954,7 +1077,6 @@ void sdp_hogbom_clean(
 
         else if (data_type == SDP_MEM_FLOAT){
             hogbom_clean<float>(
-                (const float*)sdp_mem_data_const(dirty_img),
                 (const float*)sdp_mem_data_const(psf),
                 (const float*)sdp_mem_data_const(cbeam_details),
                 (float)loop_gain,
@@ -978,6 +1100,19 @@ void sdp_hogbom_clean(
         }
     }
     else if (location == SDP_MEM_GPU){
+        clock_t start, end;
+        double cpu_time_used;
+
+        start = clock();
+
+        cudaEvent_t start_cuda_total, stop_cuda_total;
+        float milliseconds = 0;
+
+        cudaEventCreate(&start_cuda_total);
+        cudaEventCreate(&stop_cuda_total);
+
+        cudaEventRecord(start_cuda_total);
+
 
         if (data_type == SDP_MEM_DOUBLE){
 
@@ -1025,6 +1160,20 @@ void sdp_hogbom_clean(
             SDP_LOG_ERROR("Unsupported data type");
         }
 
+        cudaEventRecord(stop_cuda_total);
+
+        cudaEventSynchronize(stop_cuda_total);
+
+        cudaEventElapsedTime(&milliseconds, start_cuda_total, stop_cuda_total);
+        SDP_LOG_INFO("overall gpu timer: %.9f s", (milliseconds/1000));
+
+        cudaEventDestroy(start_cuda_total);
+        cudaEventDestroy(stop_cuda_total);
+
+        end = clock();
+        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+        SDP_LOG_INFO("overall cpu timer %f s", cpu_time_used);
 
         // // calculate useful shapes and sizes
         // int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
