@@ -2,7 +2,7 @@ from conans import ConanFile, CMake
 
 class RegexConan(ConanFile):
     name = "ska-sdp-func"
-    version = "0.0.6"
+    version = "1.0.1"
     settings = "os", "arch", "compiler", "build_type"
     generators = "cmake"
 

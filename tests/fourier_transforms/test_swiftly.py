@@ -83,7 +83,20 @@ def test_facet_to_subgrid_basic(xA_size, yB_size):
 
             # Now the entire subgrid should have (close to) a
             # constant value
-            numpy.testing.assert_array_almost_equal(subgrid, val / N)
+            numpy.testing.assert_array_almost_equal(
+                subgrid, val / N, decimal=15
+            )
+
+            # Check addition properties
+            subgrid_acc1 = numpy.ones(xM_size, dtype=complex)
+            swiftly.add_to_subgrid(
+                subgrid_contrib[numpy.newaxis],
+                subgrid_acc1[numpy.newaxis],
+                facet_off,
+            )
+            numpy.testing.assert_array_almost_equal(
+                subgrid_acc + 1, subgrid_acc1, decimal=15
+            )
 
 
 @pytest.mark.parametrize(
@@ -116,10 +129,10 @@ def test_facet_to_subgrid_dft_1d(xA_size, yB_size):
             [(2, 1)],
             [(1, -3)],
             [(-0.1, 5)],
-            [(1, 20), (2, 5), (3, -4)],
+            [(1 / 8, 20), (2 / 8, 5), (3 / 8, -4)],
             [(1, -yB_size)],  # border - clamped below
             [(1, yB_size)],  # border - clamped below
-            [(1, i) for i in range(-10, 10)],
+            [(1 / 16, i) for i in range(-10, 10)],
         ],
         numpy.arange(-100 * Ny, 100 * Ny, 10 * Ny),
     ):
@@ -165,7 +178,9 @@ def test_facet_to_subgrid_dft_1d(xA_size, yB_size):
                 numpy.save("subgrid.npy", subgrid)
                 numpy.save("expected.npy", expected)
 
-            numpy.testing.assert_array_almost_equal(subgrid, expected)
+            numpy.testing.assert_array_almost_equal(
+                subgrid, expected, decimal=8
+            )
 
 
 def test_facet_to_subgrid_dft_2d():
@@ -191,7 +206,7 @@ def test_facet_to_subgrid_dft_2d():
     for sources, facet_offs in itertools.product(
         [
             [(1, 0, 0)],
-            [(1, 20, 4), (2, 2, 5), (3, -5, -4)],
+            [(1 / 8, 20, 4), (2 / 8, 2, 5), (3 / 8, -5, -4)],
         ],
         [[0, 0], [Ny, Ny], [-Ny, Ny], [0, -Ny]],
     ):
@@ -225,6 +240,17 @@ def test_facet_to_subgrid_dft_2d():
                 subgrid_contrib, subgrid_acc, facet_offs[0], facet_offs[1]
             )
 
+            # Check addition properties (need to to this right away, as
+            # finish_subgrid_inplace_2d will overwrite the buffer below)
+            subgrid_acc1 = numpy.ones((xM_size, xM_size), dtype=complex)
+            swiftly.add_to_subgrid_2d(
+                subgrid_contrib, subgrid_acc1, facet_offs[0], facet_offs[1]
+            )
+            numpy.testing.assert_array_almost_equal(
+                subgrid_acc + 1, subgrid_acc1, decimal=15
+            )
+
+            # Finish subgrid
             swiftly.finish_subgrid_inplace_2d(
                 subgrid_acc, sg_offs[0], sg_offs[1]
             )
@@ -234,7 +260,9 @@ def test_facet_to_subgrid_dft_2d():
 
             # Now check against DFT
             expected = make_subgrid_from_sources(sources, N, xA_size, sg_offs)
-            numpy.testing.assert_array_almost_equal(subgrid, expected)
+            numpy.testing.assert_array_almost_equal(
+                subgrid, expected, decimal=8
+            )
 
 
 @pytest.mark.parametrize(
@@ -282,6 +310,17 @@ def test_subgrid_to_facet_basic(xA_size, yB_size):
             swiftly.add_to_facet(
                 extracted[numpy.newaxis], accumulated[numpy.newaxis], sg_off
             )
+
+            # Check addition properties (need to do it right away, as otherwise
+            # facet will get overwritten below)
+            accumulated1 = numpy.ones(yN_size, dtype=complex)
+            swiftly.add_to_facet(
+                extracted[numpy.newaxis], accumulated1[numpy.newaxis], sg_off
+            )
+            numpy.testing.assert_array_almost_equal(
+                accumulated + 1, accumulated1, decimal=15
+            )
+
             facet = numpy.empty(yB_size, dtype=complex)
             swiftly.finish_facet(
                 accumulated[numpy.newaxis], facet[numpy.newaxis], facet_off
@@ -289,7 +328,7 @@ def test_subgrid_to_facet_basic(xA_size, yB_size):
 
             # Check that we have value at centre of image
             numpy.testing.assert_array_almost_equal(
-                facet[yB_size // 2 - facet_off], val
+                facet[yB_size // 2 - facet_off], val, decimal=13
             )
 
 
@@ -363,7 +402,7 @@ def test_subgrid_to_facet_dft(xA_size, yB_size):
                 sources, N, yB_size, [facet_off]
             )
             numpy.testing.assert_array_almost_equal(
-                facet[expected != 0], expected[expected != 0]
+                facet[expected != 0], expected[expected != 0], decimal=11
             )
             if sources[0][0] > 0:
                 numpy.testing.assert_array_less(
@@ -441,7 +480,7 @@ def test_subgrid_to_facet_dft_2d():
             # previously.
             expected = make_facet_from_sources(sources, N, yB_size, facet_off)
             numpy.testing.assert_array_almost_equal(
-                facet1[expected != 0], expected[expected != 0]
+                facet1[expected != 0], expected[expected != 0], decimal=11
             )
             numpy.testing.assert_array_less(
                 facet1[expected == 0], numpy.max(expected)
