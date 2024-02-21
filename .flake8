@@ -1,4 +1,6 @@
 [flake8]
+max-line-length = 80
+extend-ignore = E203,E701
 per-file-ignores =
     src/ska_sdp_func/__init__.py:F401
     src/ska_sdp_func/*/__init__.py:F401
