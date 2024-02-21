@@ -21,10 +21,13 @@
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.h"
 
-#include "sdp_cuFFTxT.h"
-#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "sdp_cuFFTxT.h"
+
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 
 #ifndef PI
 #define PI 3.1415926535897931
@@ -315,6 +318,7 @@ void sdp_grid_uvw_es_fft_multiGPU(
     const int coord_type = sdp_mem_type(uvw);
     const int dbl_vis = (vis_type & SDP_MEM_DOUBLE);
     const int dbl_coord = (coord_type & SDP_MEM_DOUBLE);
+    int64_t grid_pixel_number = (int64_t)plan->grid_size*(int64_t)plan->grid_size;
 
     sdp_Mem* w_grid_stack_cpu;
 
@@ -322,6 +326,10 @@ void sdp_grid_uvw_es_fft_multiGPU(
     sdp_Mem* dimage_cuFFTxT =
             sdp_mem_create(vis_type, SDP_MEM_CPU, 2, dimage_shape, status);
     sdp_mem_clear_contents(dimage_cuFFTxT, status);
+
+    cudaSetDevice( 0 );
+
+
     // Create the FFT plan -- removed for cuFFTxT
 
     /*
@@ -329,7 +337,7 @@ void sdp_grid_uvw_es_fft_multiGPU(
             plan->w_grid_stack, plan->w_grid_stack, 2, 0, status
     );
     if (*status) return;
-    */
+	*/
 
     // Determine how many w grid subset batches to process in total
     const int total_w_grid_batches =
@@ -418,20 +426,21 @@ void sdp_grid_uvw_es_fft_multiGPU(
         }
 
         // Create copy of plan->w_grid_stack on the HOST (CPU)
-        w_grid_stack_cpu = sdp_mem_create_copy(plan->w_grid_stack,
-                SDP_MEM_CPU,
-                status
-        );
+        w_grid_stack_cpu = sdp_mem_create_copy(plan->w_grid_stack, SDP_MEM_CPU, status);
+	cudaDeviceSynchronize();
 
         // Perform 2D FFT on each bound w grid using cuFFTxT
         int gpu_start = 1;
         sdp_cuFFTxT(w_grid_stack_cpu, dimage_cuFFTxT, gpu_start, status);
-        // sdp_fft_exec(fft, plan->w_grid_stack, plan->w_grid_stack, status);
+        //sdp_fft_exec(fft, plan->w_grid_stack, plan->w_grid_stack, status);
+
+	// Set CUDA device
+	cudaDeviceSynchronize();
+        cudaSetDevice( 0 );
 
         // Copy ditry image from image_cuFFTxT from the HOST (CPU) to  plan->w_grid_stack on the DEVICE (GPU)
-        sdp_mem_copy_contents(dimage_cuFFTxT, plan->w_grid_stack, 0, 0,
-                (npix_x * npix_y), status
-        );
+	//plan->w_grid_stack = sdp_mem_create_copy(dimage_cuFFTxT, SDP_MEM_GPU, status);
+        sdp_mem_copy_contents(plan->w_grid_stack, dimage_cuFFTxT, 0, 0, grid_pixel_number, status);
         // Perform phase shift on a "chunk" of planes and sum into single real plane
         {
             const char* kernel_name = dbl_vis ?
@@ -471,7 +480,7 @@ void sdp_grid_uvw_es_fft_multiGPU(
     }
 
     // Free FFT plan and data. -- removed for cuFFTxT
-    // sdp_fft_free(fft);
+    //sdp_fft_free(fft);
 
     // Perform convolution correction and final scaling on single real plane
     // note: can recycle same block/thread dims as w correction kernel
@@ -515,4 +524,4 @@ void sdp_grid_uvw_es_fft_multiGPU(
 
     // Free image_cuFFTxT memory
     sdp_mem_free(dimage_cuFFTxT);
-}
+
