@@ -91,7 +91,7 @@ __global__ void sdp_grid_uvw_es_cuda_3d
     const FP pos_u = uvw_coords[i_row].x * inv_wavelength * uv_scale;
     const FP pos_v = uvw_coords[i_row].y * inv_wavelength * uv_scale;
     const FP pos_w = (
-            uvw_coords[i_row].z * inv_wavelength - min_plane_w) * w_scale;
+        uvw_coords[i_row].z * inv_wavelength - min_plane_w) * w_scale;
     const int grid_u_min = max((int)ceil(pos_u - half_support), grid_min_uv);
     const int grid_u_max = min((int)floor(pos_u + half_support), grid_max_uv);
     const int grid_v_min = max((int)ceil(pos_v - half_support), grid_min_uv);
@@ -158,7 +158,7 @@ __global__ void sdp_grid_uvw_es_cuda_3d
             const int sub_grid_u = grid_u + origin_offset_uv - sub_grid_u_min;
             const int sub_grid_v = grid_v + origin_offset_uv - sub_grid_v_min;
             if (sub_grid_u >= 0 && sub_grid_u < sub_grid_size &&
-                    sub_grid_v >=0 && sub_grid_v < sub_grid_size)
+                    sub_grid_v >= 0 && sub_grid_v < sub_grid_size)
             {
                 const size_t i_grid =
                         size_t(sub_grid_u) * sub_grid_size + size_t(sub_grid_v);
