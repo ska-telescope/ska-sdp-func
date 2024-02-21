@@ -3,6 +3,10 @@
 .vscode/
 .venv/
 
+# Test outputs
+*.png
+*.npy
+
 # Build directories
 /release/
 /debug/
