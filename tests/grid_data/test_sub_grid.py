@@ -2,7 +2,7 @@
 
 """Test gridding with a sub-grid."""
 
-from math import pi, sin, cos
+from math import cos, pi, sin
 
 import numpy
 
