@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "sdp_grid_uvw_es_fft_multiGPU.h"
-
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 
 #include "ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.h"
@@ -276,9 +275,10 @@ static void run_and_check(
             }
         }
     }
-    SDP_LOG_INFO("adj1: %e", adj1);
-/*
-    sdp_ifft_degrid_uvw_es(
+
+    SDP_LOG_INFO("Adj1: %e", adj1);
+
+/*    sdp_ifft_degrid_uvw_es(
             gridder,
             uvw_gpu,
             freq_hz_gpu,
@@ -426,7 +426,221 @@ int main(int argc, char** argv)
         );
         assert(status == SDP_SUCCESS);
     }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("2D single", false, 1e-5,
+                SDP_MEM_FLOAT,
+                SDP_MEM_FLOAT,
+                SDP_MEM_COMPLEX_FLOAT,
+                SDP_MEM_FLOAT,
+                SDP_MEM_FLOAT,
+                &status
+        );
+        assert(status == SDP_SUCCESS);
+    }
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("2D double", false, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+
+        assert(status == SDP_SUCCESS);
+    }
 */
 #endif
+
+/*
+    // Sad paths
+
+    // These test bad parameters and buffers.
+    // Even more exhaustive testing is done in the Python tests.
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f0: dirty_image in CPU", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f1: uvw bad rows", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f2: uvw bad cols", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f3: freq_hz bad chans", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f4: bad weight size", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f5: bad dirty_image_gpu size", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("f6: pixels not square", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: uvw complex", true, 1e-12,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: freq_hz complex", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: vis not complex", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: weight complex", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: dirty_image complex", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: inconsistent double precision", true, 1e-12,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_FLOAT,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("fail: inconsistent single precision", true, 1e-12,
+                SDP_MEM_FLOAT,
+                SDP_MEM_FLOAT,
+                SDP_MEM_COMPLEX_FLOAT,
+                SDP_MEM_DOUBLE,
+                SDP_MEM_FLOAT,
+                &status
+        );
+        assert(status != SDP_SUCCESS);
+    }
+*/
     return 0;
 }

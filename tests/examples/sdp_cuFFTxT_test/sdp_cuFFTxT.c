@@ -115,6 +115,10 @@ void sdp_cuFFTxT(
     workSize = (size_t*)malloc(sizeof(size_t) * nGPUs);
     SDP_LOG_INFO("Using nGPUs = %d\n", nGPUs);
     SDP_LOG_INFO("%d x %d FFT test\n", grid_size, grid_size);
+
+    for (int ii; ii < nGPUs; ii++)
+        SDP_LOG_INFO("Using GPU %d, CUDA_DEVICE=%d\n", ii, gpus[ii]);
+
     // Setup the cuFFT Multi-GPU plan
     gpuAssert(cufftCreate(&plan));
     gpuAssert(cufftXtSetGPUs(plan, nGPUs, gpus));

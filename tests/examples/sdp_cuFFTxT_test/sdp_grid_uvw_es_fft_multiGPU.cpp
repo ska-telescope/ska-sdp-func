@@ -436,10 +436,11 @@ void sdp_grid_uvw_es_fft_multiGPU(
         int gpu_start = 1;
         sdp_cuFFTxT(w_grid_stack_cpu, dimage_cuFFTxT, gpu_start, status);
         // sdp_fft_exec(fft, plan->w_grid_stack, plan->w_grid_stack, status);
+        cudaDeviceSynchronize();
 
         // Set CUDA device
-        cudaDeviceSynchronize();
         cudaSetDevice( 0 );
+        cudaDeviceSynchronize();
 
         // Copy ditry image from image_cuFFTxT from the HOST (CPU) to  plan->w_grid_stack on the DEVICE (GPU)
         // plan->w_grid_stack = sdp_mem_create_copy(dimage_cuFFTxT, SDP_MEM_GPU, status);
