@@ -6,4 +6,6 @@ SKA_SDP_FUNC_SRC(
     sdp_weighting.cpp
     sdp_weighting.cu
     sdp_flagger.cpp
+    sdp_opt_weighting.cpp
+    sdp_opt_weighting.cu
 )
