@@ -174,7 +174,7 @@ def create_cbeam(coeffs, size):
     # size = 512
     # center = size / 2
 
-    if (size % 2 == 1):
+    if size % 2 == 1:
         center = size / 2
     else:
         center = size / 2 - 1
@@ -295,7 +295,11 @@ def test_hogbom_clean():
 
     ref_start_time = time.time()
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference, residual_reference, clean_model_reference = reference_hogbom_clean(
+    (
+        skymodel_reference,
+        residual_reference,
+        clean_model_reference,
+    ) = reference_hogbom_clean(
         dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit
     )
     ref_end_time = time.time() - ref_start_time
@@ -347,8 +351,10 @@ def test_hogbom_clean():
         use_bfloat,
     )
 
-    cpu_float_test_end_time = time.time() - cpu_float_test_start_time 
-    np.testing.assert_array_almost_equal(clean_model_float, clean_model_reference, decimal=4)
+    cpu_float_test_end_time = time.time() - cpu_float_test_start_time
+    np.testing.assert_array_almost_equal(
+        clean_model_float, clean_model_reference, decimal=4
+    )
     np.testing.assert_array_almost_equal(residual_float, residual_reference, decimal=4)
     np.testing.assert_array_almost_equal(skymodel_float, skymodel_reference, decimal=4)
 
@@ -387,9 +393,15 @@ def test_hogbom_clean():
         residual_check = cupy.asnumpy(residual_gpu)
         skymodel_check = cupy.asnumpy(skymodel_gpu)
 
-        np.testing.assert_array_almost_equal(clean_model_check, clean_model_reference)
-        np.testing.assert_array_almost_equal(residual_check, residual_reference)
-        np.testing.assert_array_almost_equal(skymodel_check, skymodel_reference)
+        np.testing.assert_array_almost_equal(
+            clean_model_check, clean_model_reference, decimal=6
+        )
+        np.testing.assert_array_almost_equal(
+            residual_check, residual_reference, decimal=6
+        )
+        np.testing.assert_array_almost_equal(
+            skymodel_check, skymodel_reference, decimal=6
+        )
 
         dirty_img_gpu_float = cupy.asarray(dirty_img_float)
         psf_gpu_float = cupy.asarray(psf_float)

@@ -23,6 +23,7 @@ https://www.researchgate.net/publication/2336887_Deconvolution_Tutorial
 #include <stdlib.h>
 #include <time.h>
 #include <cuda_runtime.h> 
+#include <cuda_bf16.h>
 
 using std::complex;
 
@@ -250,21 +251,10 @@ void hogbom_clean_gpu(
 
 ){
 
-        // set cbeam size 
+        // set cbeam shape and size 
         const T* cbeam_details_ptr = (const T*)sdp_mem_data_const(cbeam_details);
 
         int64_t cbeam_dim = (int64_t)cbeam_details_ptr[3];
-
-        // if(cbeam_details_ptr[0]>cbeam_details_ptr[1]){
-        //     cbeam_dim = cbeam_details_ptr[0] * 20;
-        // }   
-        // else{
-        //     cbeam_dim = cbeam_details_ptr[1] * 20;
-        // }
-
-        // SDP_LOG_DEBUG("cbeam_dim %d", cbeam_dim);
-
-
         int64_t cbeam_shape[] = {cbeam_dim, cbeam_dim};
 
         // calculate useful shapes and sizes
@@ -277,6 +267,7 @@ void hogbom_clean_gpu(
         int64_t psf_shape[] = {psf_dim, psf_dim};
         int64_t variable_shape[] = {variable_size};
 
+        // variable to hold name of kernel to be launched
         const char* kernel_name = 0;
 
         // select correct complex variable to use
@@ -322,9 +313,11 @@ void hogbom_clean_gpu(
         // sdp_mem_clear_contents(residual, status);
 
         // if bloat conversion selected, assign memory for the conversion
+        // assign NULL pointers here to keep variables in context
         sdp_Mem* clean_comp_bfloat_mem = NULL;
         sdp_Mem* residual_bfloat_mem = NULL;
 
+        // variables for timing of the code
         clock_t start, end;
         double cpu_time_used;
 
@@ -343,6 +336,7 @@ void hogbom_clean_gpu(
 
 
         // if bfloat conversion selected, convert dirty image, psf, loop gain and threshold
+        // double to bfloat conversion
         if (data_type == SDP_MEM_DOUBLE && use_bfloat){
 
             cudaEventRecord(start_cuda);
@@ -445,6 +439,7 @@ void hogbom_clean_gpu(
             );
         }
 
+        // float to bfloat conversion
         else if (data_type == SDP_MEM_FLOAT && use_bfloat){
 
             cudaEventRecord(start_cuda);
@@ -516,6 +511,7 @@ void hogbom_clean_gpu(
             SDP_LOG_INFO("Convert to bfloat: %.9f s", (milliseconds/1000));
 
         }
+
         // else use use float
         else if (data_type == SDP_MEM_FLOAT && !use_bfloat){
             sdp_mem_copy_contents(residual, dirty_img, 0, 0, dirty_img_size, status);
@@ -547,28 +543,61 @@ void hogbom_clean_gpu(
 
         }
 
+        // catch unsupported data types
         else{
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported data type");
         }  
-
-        // set up some loop variables
-        int cur_cycle = 0;
-        bool stop = 0;
-
 
         uint64_t num_threads[] = {256, 1, 1};
         uint64_t num_blocks[] = {
             ((dirty_img_size + num_threads[0] - 1) / num_threads[0]), 1, 1
         };
 
+        // size and shape for array of maximums used in the reduction
         int64_t max_size = (int64_t)num_blocks[0];
         int64_t max_shape[] = {max_size};
 
-        // to store image maximum value and index
-        sdp_Mem* max_val_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, max_shape, status);
-        sdp_Mem* max_idx_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1, max_shape, status);
+        // assign NULL pointers here to keep variables in context
+        sdp_Mem* max_val_mem = NULL;
+        sdp_Mem* max_idx_mem = NULL;
 
+        // save original image size
+        int64_t original_img_size = dirty_img_size;
+
+        // if bloat conversion selected, assign memory for bfloat loop variables
+        if (use_bfloat){
+            
+            // // calculate how long the length of the bfloat162 list of dirty image elements is 
+            // dirty_img_size = (int64_t) dirty_img_size / 2;
+
+            // if (original_img_size % 2 != 0){
+            //     dirty_img_size ++;
+            // }
+            
+            // // set correct number of blocks for bfloat162 array. (approx half of a double or float array)
+            // num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);
+            
+            // // size and shape for array of maximums used in the reduction
+            // max_size = (int64_t)num_blocks[0];
+            // max_shape[0] = max_size;
+            
+            // to store image maximum value and index
+            // 32 bits to hold bfloat162
+            max_val_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 1, max_shape, status);
+            // 64 bits for int2
+            max_idx_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 1, max_shape, status);
+        } 
+        else{
+            // to store image maximum value and index
+            max_val_mem = sdp_mem_create(data_type, SDP_MEM_GPU, 1, max_shape, status);
+            max_idx_mem = sdp_mem_create(SDP_MEM_INT, SDP_MEM_GPU, 1, max_shape, status);
+        }
+
+        // set up some loop variables
+        int cur_cycle = 0;
+        bool stop = 0;
+        
         // CLEAN loop executes while the stop conditions (threshold and cycle limit) are not met
         while (cur_cycle < cycle_limit && !stop) {
             
@@ -588,24 +617,23 @@ void hogbom_clean_gpu(
 
             // find the maximum value in the residual
             if (use_bfloat){
-                kernel_name = "find_maximum_value<__nv_bfloat16>";
+                kernel_name = "find_maximum_value<__nv_bfloat162, int2>";
             }
             else if (data_type == SDP_MEM_DOUBLE){
-                kernel_name = "find_maximum_value<double>";
+                kernel_name = "find_maximum_value<double, int>";
             }
             else if (data_type == SDP_MEM_FLOAT){
-                kernel_name = "find_maximum_value<float>";
+                kernel_name = "find_maximum_value<float, int>";
             }
             else{
                 *status = SDP_ERR_DATA_TYPE;
                 SDP_LOG_ERROR("Unsupported data type");
             }     
 
-            // launch mulitple kernels to perform reduction
-            // scale the number of blocks according to the size of the reduction
-
             cudaEventRecord(start_cuda);
 
+            // launch mulitple kernels to perform reduction
+            // scale the number of blocks according to the size of the reduction
             while (num_blocks[0] > 1)
             {
 
@@ -624,6 +652,69 @@ void hogbom_clean_gpu(
             sdp_launch_cuda_kernel(kernel_name,
                         num_blocks, num_threads, 0, 0, args, status
                 );
+
+            // if bfloat used final answer above will be a bfloat162 and an int2, get final answer from these 2
+            if (use_bfloat){
+                kernel_name = "overall_maximum_value_bfloat";
+
+                uint64_t num_threads_final_bfloat[] = {1, 1, 1};
+                uint64_t num_blocks_final_bfloat[] = {1, 1, 1};
+
+                const void* args_final_bfloat[] = {
+                    sdp_mem_gpu_buffer_const(max_val_mem, status),
+                    sdp_mem_gpu_buffer(max_idx_mem, status),
+                    sdp_mem_gpu_buffer(max_val_mem, status),
+                    sdp_mem_gpu_buffer(max_idx_mem, status)
+            };
+
+                sdp_launch_cuda_kernel(kernel_name,
+                        num_blocks_final_bfloat, num_threads_final_bfloat, 0, 0, args_final_bfloat, status
+                );
+            
+            }
+
+            // // ?????????? copy max and index back to host for checking. only uncomment for checking
+            // sdp_Mem* max_idx_cpu_mem = sdp_mem_create_copy(max_idx_mem, SDP_MEM_CPU, status);
+            // int64_t* max_idx_cpu_ptr = (int64_t*)sdp_mem_data(max_idx_cpu_mem);
+
+            // SDP_LOG_INFO("max index: %d", ((int)*max_idx_cpu_ptr/1000));
+            // SDP_LOG_INFO("max index: %d", ((int)*max_idx_cpu_ptr%1000));
+            // SDP_LOG_INFO("max index flat: %d", *max_idx_cpu_ptr);
+            
+            // if (use_bfloat){
+                
+            //     if (data_type == SDP_MEM_DOUBLE){
+
+            //         sdp_Mem* max_gpu_mem = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 1, variable_shape, status);
+
+            //         const void* args_convert[] = {
+            //             sdp_mem_gpu_buffer(max_val_mem, status),
+            //             sdp_mem_gpu_buffer(max_gpu_mem, status)
+            //         };
+
+            //         uint64_t num_threads_final_bfloat[] = {1, 1, 1};
+            //         uint64_t num_blocks_final_bfloat[] = {1, 1, 1};
+                
+            //         kernel_name = "bf16_2_double";
+
+            //         sdp_launch_cuda_kernel(kernel_name,
+            //                 num_blocks_final_bfloat, num_threads_final_bfloat, 0, 0, args_convert, status
+            //         );
+
+            //         sdp_Mem* max_val_cpu_mem = sdp_mem_create_copy(max_gpu_mem, SDP_MEM_CPU, status);
+            //         double* max_val_cpu_ptr = (double*)sdp_mem_data(max_val_cpu_mem);
+
+            //         SDP_LOG_INFO("max value: %f", *max_val_cpu_ptr);
+            //     }
+            //     else if (data_type == SDP_MEM_FLOAT){
+
+            //         float* max_val_cpu_ptr = (float*)sdp_mem_data(max_idx_cpu_mem);
+            //     }
+            //     else{
+            //         *status = SDP_ERR_DATA_TYPE;
+            //         SDP_LOG_ERROR("Unsupported data type");
+            //     } 
+            // }
 
             cudaEventRecord(stop_cuda);
 
@@ -646,7 +737,7 @@ void hogbom_clean_gpu(
                 }
             }
 
-
+            // reset number of blocks after reducing them in the reduction loop
             num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);            
 
             // add clean components here
@@ -654,13 +745,13 @@ void hogbom_clean_gpu(
             uint64_t num_blocks_clean_comp[] = {1, 1, 1};
 
             if (use_bfloat){
-                kernel_name = "add_clean_comp<__nv_bfloat16>";
+                kernel_name = "add_clean_comp<__nv_bfloat16, __nv_bfloat162>";
             }
             else if (data_type == SDP_MEM_DOUBLE){
-                kernel_name = "add_clean_comp<double>";
+                kernel_name = "add_clean_comp<double, double>";
             }
             else if (data_type == SDP_MEM_FLOAT){
-                kernel_name = "add_clean_comp<float>";
+                kernel_name = "add_clean_comp<float, float>";
             }
             else{
                 *status = SDP_ERR_DATA_TYPE;
@@ -698,13 +789,13 @@ void hogbom_clean_gpu(
 
             // subtract psf            
             if (use_bfloat){
-                kernel_name = "subtract_psf<__nv_bfloat16>";
+                kernel_name = "subtract_psf<__nv_bfloat16, __nv_bfloat162>";
             }
             else if (data_type == SDP_MEM_DOUBLE){
-                kernel_name = "subtract_psf<double>";
+                kernel_name = "subtract_psf<double, double>";
             }
             else if (data_type == SDP_MEM_FLOAT){
-                kernel_name = "subtract_psf<float>";
+                kernel_name = "subtract_psf<float, float>";
             }
             else{
                 *status = SDP_ERR_DATA_TYPE;
@@ -719,8 +810,6 @@ void hogbom_clean_gpu(
                 sdp_mem_gpu_buffer(max_val_mem, status),
                 sdp_mem_gpu_buffer(working_psf_mem, status),
                 sdp_mem_gpu_buffer(residual,status),
-                sdp_mem_gpu_buffer(clean_model, status),
-                sdp_mem_gpu_buffer(skymodel, status),
                 sdp_mem_gpu_buffer(threshold_mem, status),
             };
  
@@ -743,6 +832,12 @@ void hogbom_clean_gpu(
         // release memory for psf slicing in clean loop
         sdp_mem_ref_dec(working_psf_mem);
 
+        // reset image size to double / float size from bfloat size
+        if (use_bfloat)
+        {
+            dirty_img_size = original_img_size;
+        }
+        
         // if bfloat, convert clean components and residuals back to original precision for convolution with cbeam
         const void* args_convert_from_bfloat_clean_comp[] = {
             sdp_mem_gpu_buffer(clean_model, status),
@@ -797,6 +892,9 @@ void hogbom_clean_gpu(
 
         cudaEventElapsedTime(&milliseconds, start_cuda, stop_cuda);
         SDP_LOG_INFO("Convert back from bfloat: %.9f s", (milliseconds/1000));
+
+        // ?????????????????copy clean component to sky model for checking only
+        // sdp_mem_copy_contents(skymodel, clean_model, 0, 0, dirty_img_size, status);
 
         // convert to complex representaion for convolution with cbeam
         if (data_type == SDP_MEM_DOUBLE){

@@ -152,12 +152,12 @@ SDP_CUDA_KERNEL(create_cbeam<float, cuFloatComplex>);
 
 
 // find the maximum value in a list using reduction
-template<typename T>
+template<typename T, typename I>
 __global__ void find_maximum_value(
             const T *input,
-            int *index_in,
+            I *index_in,
             T *output,
-            int *index_out,
+            I *index_out,
             bool init_idx)
 {    
 
@@ -264,15 +264,15 @@ __global__ void find_maximum_value(
 }
 
 template<>
-__global__ void find_maximum_value(
-            const __nv_bfloat16 *input,
-            int *index_in,
-            __nv_bfloat16 *output,
-            int *index_out,
+__global__ void find_maximum_value<__nv_bfloat162, int2>(
+            const __nv_bfloat162 *input,
+            int2 *index_in,
+            __nv_bfloat162 *output,
+            int2 *index_out,
             bool init_idx)
 {
-    __shared__ __nv_bfloat16 max_values[256];
-    __shared__ int max_indices[256];
+    __shared__ __nv_bfloat162 max_values[256];
+    __shared__ int2 max_indices[256];
 
     int64_t tid = threadIdx.x;
     int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
@@ -287,18 +287,23 @@ __global__ void find_maximum_value(
     // if it hasn't, initialise it.
     else{
 
-        max_indices[tid] = i;
+        max_indices[tid].x = i;
+        max_indices[tid].y = i;
 
     }
     __syncthreads();
 
-
     // Perform reduction in shared memory
     for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
         if (tid < stride) {
-            if (__hlt(max_values[tid], max_values[tid + stride])) {
-                max_values[tid] = max_values[tid + stride];
-                max_indices[tid] = max_indices[tid + stride];
+            if (__hlt(max_values[tid].x, max_values[tid + stride].x)) {
+                max_values[tid].x = max_values[tid + stride].x;
+                max_indices[tid].x = max_indices[tid + stride].x;
+            }
+
+            if (__hlt(max_values[tid].y, max_values[tid + stride].y)) {
+                max_values[tid].y = max_values[tid + stride].y;
+                max_indices[tid].y = max_indices[tid + stride].y;
             }
         }
         __syncthreads();
@@ -308,20 +313,39 @@ __global__ void find_maximum_value(
     if (tid == 0) {
         output[blockIdx.x] = max_values[0];
         index_out[blockIdx.x] = max_indices[0];
+    } 
+}
+
+SDP_CUDA_KERNEL(find_maximum_value<double, int>);
+SDP_CUDA_KERNEL(find_maximum_value<float, int>);
+SDP_CUDA_KERNEL(find_maximum_value<__nv_bfloat162, int2>);
+
+
+__global__ void overall_maximum_value_bfloat(
+            const __nv_bfloat162 *in,
+            int2 *index_in,
+            __nv_bfloat16 *out,
+            int *index_out)
+{
+
+    if(__hgt(in[0].x, in[0].y)){
+        *out = in[0].x;
+        *index_out = index_in[0].x * 2;
     }
-    
+    else{
+        *out = in[0].y;
+        *index_out = index_in[0].y * 2 + 1;
+    }
 
 }
 
-SDP_CUDA_KERNEL(find_maximum_value<double>);
-SDP_CUDA_KERNEL(find_maximum_value<float>);
-SDP_CUDA_KERNEL(find_maximum_value<__nv_bfloat16>);
+SDP_CUDA_KERNEL(overall_maximum_value_bfloat);
 
 
 // add a component to the CLEAN component list
-template<typename T>
+template<typename T, typename T2>
 __global__ void add_clean_comp(
-            T* clean_comp,
+            T2* clean_comp,
             int* max_idx_flat,
             T* loop_gain,
             T* highest_value,
@@ -332,7 +356,7 @@ __global__ void add_clean_comp(
 }
 
 template<>
-__global__ void add_clean_comp(
+__global__ void add_clean_comp<double, double>(
             double* clean_comp,
             int* max_idx_flat,
             double* loop_gain,
@@ -357,7 +381,7 @@ __global__ void add_clean_comp(
 }
 
 template<>
-__global__ void add_clean_comp(
+__global__ void add_clean_comp<float, float>(
             float* clean_comp,
             int* max_idx_flat,
             float* loop_gain,
@@ -382,8 +406,8 @@ __global__ void add_clean_comp(
 }
 
 template<>
-__global__ void add_clean_comp(
-            __nv_bfloat16* clean_comp,
+__global__ void add_clean_comp<__nv_bfloat16, __nv_bfloat162>(
+            __nv_bfloat162* clean_comp,
             int* max_idx_flat,
             __nv_bfloat16* loop_gain,
             __nv_bfloat16* highest_value,
@@ -392,11 +416,18 @@ __global__ void add_clean_comp(
 ){
     // check threshold
     if (__hgt(highest_value[0], threshold[0]) && *thresh_reached == 0){
+
+        int bfloat_idx = *max_idx_flat / 2;
         
         // Add fraction of maximum to clean components list
         __nv_bfloat16 inter = __hmul(loop_gain[0], highest_value[0]);
-        clean_comp[max_idx_flat[0]] = __hadd(clean_comp[max_idx_flat[0]], inter);
 
+        if (*max_idx_flat % 2 == 0){
+            clean_comp[bfloat_idx].x = __hadd(clean_comp[bfloat_idx].x, inter);
+        }
+        else{
+            clean_comp[bfloat_idx].y = __hadd(clean_comp[bfloat_idx].y, inter);
+        }
     }
     // if threshold reached, set flag
     else{
@@ -405,30 +436,28 @@ __global__ void add_clean_comp(
 
 }
 
-SDP_CUDA_KERNEL(add_clean_comp<double>);
-SDP_CUDA_KERNEL(add_clean_comp<float>);
-SDP_CUDA_KERNEL(add_clean_comp<__nv_bfloat16>);
+SDP_CUDA_KERNEL(add_clean_comp<double, double>);
+SDP_CUDA_KERNEL(add_clean_comp<float, float>);
+SDP_CUDA_KERNEL(add_clean_comp<__nv_bfloat16, __nv_bfloat162>);
 
 
 // subtract the psf from the residual image
-template<typename T>
+template<typename T, typename T2>
 __global__ void subtract_psf(
             int64_t dirty_img_dim, 
             int64_t psf_dim, 
             T* loop_gain, 
             int* max_idx_flat, 
             T* highest_value, 
-            const T* psf, 
-            T* residual,
-            T* clean_comp,
-            T* skymodel,
+            const T2* psf, 
+            T2* residual,
             T* threshold
 ) {
             
 }
 
 template<>
-__global__ void subtract_psf(
+__global__ void subtract_psf<double, double>(
             int64_t dirty_img_dim, 
             int64_t psf_dim, 
             double* loop_gain, 
@@ -436,13 +465,10 @@ __global__ void subtract_psf(
             double* highest_value, 
             const double* psf, 
             double* residual,
-            double* clean_comp,
-            double* skymodel,
             double* threshold) {
 
     // check threshold
     if (highest_value[0] > threshold[0]){
-
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
         // int64_t psf_size = psf_dim * psf_dim;
 
@@ -477,7 +503,7 @@ __global__ void subtract_psf(
             double inter = __dmul_rn(loop_gain[0], highest_value[0]);
             inter = __dmul_rn(inter, psf[psf_flat_idx]);
             residual[i] =  __dsub_rn(residual[i],inter);
-           
+            
             // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
         }
     }
@@ -486,8 +512,9 @@ __global__ void subtract_psf(
     }
 }
 
+
 template<>
-__global__ void subtract_psf(
+__global__ void subtract_psf<float, float>(
             int64_t dirty_img_dim, 
             int64_t psf_dim, 
             float* loop_gain, 
@@ -495,11 +522,9 @@ __global__ void subtract_psf(
             float* highest_value, 
             const float* psf, 
             float* residual,
-            float* clean_comp,
-            float* skymodel,
             float* threshold) {
 
-    // check threshold
+        // check threshold
     if (highest_value[0] > threshold[0]){
 
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
@@ -536,35 +561,35 @@ __global__ void subtract_psf(
             float inter = __fmul_rn(loop_gain[0], highest_value[0]);
             inter = __fmul_rn(inter, psf[psf_flat_idx]);
             residual[i] =  __fsub_rn(residual[i],inter);
-           
+            
             // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
         }
+    }
+    else{
+        return;
     }
 }
 
 template<>
-__global__ void subtract_psf(
+__global__ void subtract_psf<__nv_bfloat16, __nv_bfloat162>(
             int64_t dirty_img_dim, 
             int64_t psf_dim, 
             __nv_bfloat16* loop_gain, 
             int* max_idx_flat, 
             __nv_bfloat16* highest_value, 
-            const __nv_bfloat16* psf, 
-            __nv_bfloat16* residual,
-            __nv_bfloat16* clean_comp,
-            __nv_bfloat16* skymodel,
+            const __nv_bfloat162* psf, 
+            __nv_bfloat162* residual,
             __nv_bfloat16* threshold) {
 
     // check threshold
-    // if (highest_value[0] > threshold[0]){
     if (__hgt(highest_value[0], threshold[0])){
 
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
         // int64_t psf_size = psf_dim * psf_dim;
 
         // get x and y from flat index
-        int max_idx_x = max_idx_flat[0] / dirty_img_dim;
-        int max_idx_y = max_idx_flat[0] % dirty_img_dim;
+        int max_idx_x = *max_idx_flat / dirty_img_dim;
+        int max_idx_y = *max_idx_flat % dirty_img_dim;
 
         // Identify start position of PSF window to subtract from residual
         int64_t psf_x_start = dirty_img_dim - max_idx_x;
@@ -589,11 +614,29 @@ __global__ void subtract_psf(
             // get flat index for psf
             int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
+            // find index in bfloat terms
+            int64_t bfloat_psf_idx = psf_flat_idx / 2;
+            int64_t bfloat_residual_idx = i / 2;
+
             // Subtract the PSF contribution from the residual
-            __nv_bfloat16 inter = __hmul(loop_gain[0], highest_value[0]);
-            inter = __hmul(inter, psf[psf_flat_idx]);
-            residual[i] =  __hsub(residual[i],inter);
-           
+            __nv_bfloat16 inter = __hmul(*loop_gain, *highest_value);
+            
+            // if psf_flat_index / 2 is even then we have .x, if odd then .y
+            if (psf_flat_idx % 2 == 0){
+                inter = __hmul(inter, psf[bfloat_psf_idx].x);
+            }
+            else{
+                inter = __hmul(inter, psf[bfloat_psf_idx].y);
+            }
+            
+            if (i % 2 == 0){
+                residual[bfloat_residual_idx].x =  __hsub(residual[bfloat_residual_idx].x,inter);
+            }
+            else
+            {
+                residual[bfloat_residual_idx].y =  __hsub(residual[bfloat_residual_idx].y,inter);
+            }
+            
             // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
         }
     }
@@ -602,9 +645,9 @@ __global__ void subtract_psf(
     }
 }
 
-SDP_CUDA_KERNEL(subtract_psf<double>);
-SDP_CUDA_KERNEL(subtract_psf<float>);
-SDP_CUDA_KERNEL(subtract_psf<__nv_bfloat16>);
+SDP_CUDA_KERNEL(subtract_psf<double, double>);
+SDP_CUDA_KERNEL(subtract_psf<float, float>);
+SDP_CUDA_KERNEL(subtract_psf<__nv_bfloat16, __nv_bfloat162>);
 
 
 // add the final residual image to the skymodel
@@ -665,11 +708,11 @@ SDP_CUDA_KERNEL(create_copy_complex<double, cuDoubleComplex>);
 SDP_CUDA_KERNEL(create_copy_complex<float, cuFloatComplex>);
 
 
-// convert a number from bfloat16 to float or double precision
+// convert a number from bfloat162 to float or double precision
 template<typename T>
 __global__ void convert_from_bfloat(
-    const __nv_bfloat16* in,
-    int64_t size,
+    const __nv_bfloat162* in,
+    int64_t size_out,
     T* out
 ){
 
@@ -677,30 +720,35 @@ __global__ void convert_from_bfloat(
 
 template<>
 __global__ void convert_from_bfloat<float>(
-    const __nv_bfloat16* in,
-    int64_t size,
+    const __nv_bfloat162* in,
+    int64_t size_out,
     float* out
-){
-    
+) {
     int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i < size){
-        out[i] = __bfloat162float(in[i]);
-         
+    if (i * 2 < size_out) { // Check if the first element of the pair is within the array
+        out[2*i] = __low2float(in[i]);
+
+        if (2*i + 1 < size_out){ // Check if the second element of the pair is within the array
+            out[2*i + 1] = __high2float(in[i]);
+        }
     }
 }
 
 template<>
 __global__ void convert_from_bfloat<double>(
-    const __nv_bfloat16* in,
-    int64_t size,
+    const __nv_bfloat162* in,
+    int64_t size_out,
     double* out
-){
-        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+) {
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i < size){
-        out[i] = (double)__bfloat162float(in[i]);
-         
+    if (i * 2 < size_out) { // Check if the first element of the pair is within the array
+        out[2*i] = (double)__low2float(in[i]);
+
+        if (2*i + 1 < size_out){ // Check if the second element of the pair is within the array
+            out[2*i + 1] = (double)__high2float(in[i]);
+        }
     }
 }
 
@@ -708,28 +756,15 @@ SDP_CUDA_KERNEL(convert_from_bfloat<double>);
 SDP_CUDA_KERNEL(convert_from_bfloat<float>);
 
 
-// cpnvert a double or single precision number to bfloat16
+
+
+// cpnvert a double or single precision number to bfloat162
 template<typename T>
 __global__ void convert_to_bfloat(
     const T* in,
     int64_t size,
-    __nv_bfloat16* out
+    __nv_bfloat162* out
 ){
-
-}
-
-template<>
-__global__ void convert_to_bfloat<double>(
-    const double* in,
-    int64_t size,
-    __nv_bfloat16* out
-){
-    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (i < size){
-        out[i] = __double2bfloat16(in[i]);
-         
-    }
 
 }
 
@@ -737,15 +772,41 @@ template<>
 __global__ void convert_to_bfloat<float>(
     const float* in,
     int64_t size,
-    __nv_bfloat16* out
-){
+    __nv_bfloat162* out
+) {
     int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i < size){
-        out[i] = __float2bfloat16(in[i]);
-        
+    if (i * 2 < size) { // Check if the first element of the pair is within the array
+        if (2*i + 1 < size){ // Check if the second element of the pair is within the array
+            out[i] = __floats2bfloat162_rn(in[2*i], in[2*i + 1]);
+        }
+        else{
+            out[i] = __floats2bfloat162_rn(in[2*i], 0.0f);
+        }
     }
+}
 
+template<>
+__global__ void convert_to_bfloat<double>(
+    const double* in,
+    int64_t size,
+    __nv_bfloat162* out
+) {
+    int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i * 2 < size) { // Check if the first element of the pair is within the array
+        __nv_bfloat16 first = __double2bfloat16(in[2*i]);
+        __nv_bfloat16 second;
+
+        if (2*i + 1 < size){ // Check if the second element of the pair is within the array
+            second = __double2bfloat16(in[2*i + 1]);
+        }
+        else{
+            second = __double2bfloat16(0.0) ;
+        }
+        
+        out[i] = __halves2bfloat162(first, second);
+    }
 }
 
 SDP_CUDA_KERNEL(convert_to_bfloat<double>);
@@ -799,6 +860,15 @@ SDP_CUDA_KERNEL(copy_var_gpu<float, float>);
 SDP_CUDA_KERNEL(copy_var_gpu<double, __nv_bfloat16>);
 SDP_CUDA_KERNEL(copy_var_gpu<float, __nv_bfloat16>);
 
+
+__global__ void bf16_2_double(
+    __nv_bfloat16* in,
+    double* out
+){
+    *out = (double)__bfloat162float(*in);
+}
+
+SDP_CUDA_KERNEL(bf16_2_double)
 // // max finding atomic experiment
 // __device__ __forceinline__ void my_atomic_max(double* addr, double value)
 // {
