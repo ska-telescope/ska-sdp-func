@@ -554,33 +554,40 @@ void hogbom_clean_gpu(
             ((dirty_img_size + num_threads[0] - 1) / num_threads[0]), 1, 1
         };
 
-        // size and shape for array of maximums used in the reduction
-        int64_t max_size = (int64_t)num_blocks[0];
-        int64_t max_shape[] = {max_size};
 
         // assign NULL pointers here to keep variables in context
         sdp_Mem* max_val_mem = NULL;
         sdp_Mem* max_idx_mem = NULL;
 
-        // save original image size
-        int64_t original_img_size = dirty_img_size;
+        // get size for number of reductions to perform
+        int64_t reduction_size = (int64_t)(dirty_img_size / 2);
+
+        // set number of threads and block for the reduction
+        uint64_t num_threads_reduce[] = {256, 1, 1};
+        uint64_t num_blocks_reduce[] = {
+            ((reduction_size + num_threads_reduce[0] - 1) / num_threads_reduce[0]), 1, 1
+        };
+
+        // size and shape for array of maximums used in the reduction
+        int64_t max_size = (int64_t)num_blocks_reduce[0];
+        int64_t max_shape[] = {max_size};
 
         // if bloat conversion selected, assign memory for bfloat loop variables
         if (use_bfloat){
             
             // // calculate how long the length of the bfloat162 list of dirty image elements is 
-            // dirty_img_size = (int64_t) dirty_img_size / 2;
+            reduction_size = (int64_t)(dirty_img_size / 4);
 
-            // if (original_img_size % 2 != 0){
-            //     dirty_img_size ++;
-            // }
+            if (dirty_img_size % 2 != 0){
+                reduction_size ++;
+            }
             
-            // // set correct number of blocks for bfloat162 array. (approx half of a double or float array)
-            // num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);
+            // set correct number of blocks for bfloat162 array. (approx half of a double or float array)
+            num_blocks_reduce[0] = ((reduction_size + num_threads_reduce[0] - 1) / num_threads_reduce[0]);
             
-            // // size and shape for array of maximums used in the reduction
-            // max_size = (int64_t)num_blocks[0];
-            // max_shape[0] = max_size;
+            // size and shape for array of maximums used in the reduction
+            max_size = (int64_t)num_blocks_reduce[0];
+            max_shape[0] = max_size;
             
             // to store image maximum value and index
             // 32 bits to hold bfloat162
@@ -628,20 +635,20 @@ void hogbom_clean_gpu(
             else{
                 *status = SDP_ERR_DATA_TYPE;
                 SDP_LOG_ERROR("Unsupported data type");
-            }     
+            }
 
             cudaEventRecord(start_cuda);
 
             // launch mulitple kernels to perform reduction
             // scale the number of blocks according to the size of the reduction
-            while (num_blocks[0] > 1)
+            while (num_blocks_reduce[0] > 1)
             {
 
                 sdp_launch_cuda_kernel(kernel_name,
-                        num_blocks, num_threads, 0, 0, args, status
+                        num_blocks_reduce, num_threads_reduce, 0, 0, args, status
                 );
 
-                num_blocks[0] = ((num_blocks[0] + num_threads[0] - 1) / num_threads[0]);
+                num_blocks_reduce[0] = ((num_blocks_reduce[0] + num_threads_reduce[0] - 1) / num_threads_reduce[0]);
 
                 args[0] = sdp_mem_gpu_buffer_const(max_val_mem, status);
                 
@@ -650,7 +657,7 @@ void hogbom_clean_gpu(
 
             // perform final reduction with 1 block for final answer
             sdp_launch_cuda_kernel(kernel_name,
-                        num_blocks, num_threads, 0, 0, args, status
+                        num_blocks_reduce, num_threads_reduce, 0, 0, args, status
                 );
 
             // if bfloat used final answer above will be a bfloat162 and an int2, get final answer from these 2
@@ -738,7 +745,7 @@ void hogbom_clean_gpu(
             }
 
             // reset number of blocks after reducing them in the reduction loop
-            num_blocks[0] = ((dirty_img_size + num_threads[0] - 1) / num_threads[0]);            
+            num_blocks_reduce[0] = ((reduction_size + num_threads_reduce[0] - 1) / num_threads_reduce[0]);
 
             // add clean components here
             uint64_t num_threads_clean_comp[] = {1, 1, 1};
@@ -832,11 +839,11 @@ void hogbom_clean_gpu(
         // release memory for psf slicing in clean loop
         sdp_mem_ref_dec(working_psf_mem);
 
-        // reset image size to double / float size from bfloat size
-        if (use_bfloat)
-        {
-            dirty_img_size = original_img_size;
-        }
+        // // reset image size to double / float size from bfloat size
+        // if (use_bfloat)
+        // {
+        //     dirty_img_size = original_img_size;
+        // }
         
         // if bfloat, convert clean components and residuals back to original precision for convolution with cbeam
         const void* args_convert_from_bfloat_clean_comp[] = {

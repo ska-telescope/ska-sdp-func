@@ -151,6 +151,143 @@ SDP_CUDA_KERNEL(create_cbeam<double, cuDoubleComplex>);
 SDP_CUDA_KERNEL(create_cbeam<float, cuFloatComplex>);
 
 
+template<typename T, typename I>
+__device__ void warpReduce(
+            volatile T* max_values,
+            volatile I* max_indices,
+            int tid)
+{
+}
+
+template<>
+__device__ void warpReduce<double, int>(
+            volatile double* max_values,
+            volatile int* max_indices,
+            int tid)
+{
+    if (max_values[tid] < max_values[tid + 32]) {
+                max_values[tid] = max_values[tid + 32];
+                max_indices[tid] = max_indices[tid + 32];
+        }
+    if (max_values[tid] < max_values[tid + 16]) {
+                max_values[tid] = max_values[tid + 16];
+                max_indices[tid] = max_indices[tid + 16];
+        } 
+    if (max_values[tid] < max_values[tid + 8]) {
+                max_values[tid] = max_values[tid + 8];
+                max_indices[tid] = max_indices[tid + 8];
+        } 
+    if (max_values[tid] < max_values[tid + 4]) {
+                max_values[tid] = max_values[tid + 4];
+                max_indices[tid] = max_indices[tid + 4];
+        }
+    if (max_values[tid] < max_values[tid + 2]) {
+                max_values[tid] = max_values[tid + 2];
+                max_indices[tid] = max_indices[tid + 2];
+        } 
+    if (max_values[tid] < max_values[tid + 1]) {
+                max_values[tid] = max_values[tid + 1];
+                max_indices[tid] = max_indices[tid + 1];
+        }      
+}
+
+template<>
+__device__ void warpReduce<float, int>(
+            volatile float* max_values,
+            volatile int* max_indices,
+            int tid)
+{
+    if (max_values[tid] < max_values[tid + 32]) {
+                max_values[tid] = max_values[tid + 32];
+                max_indices[tid] = max_indices[tid + 32];
+        }
+    if (max_values[tid] < max_values[tid + 16]) {
+                max_values[tid] = max_values[tid + 16];
+                max_indices[tid] = max_indices[tid + 16];
+        } 
+    if (max_values[tid] < max_values[tid + 8]) {
+                max_values[tid] = max_values[tid + 8];
+                max_indices[tid] = max_indices[tid + 8];
+        } 
+    if (max_values[tid] < max_values[tid + 4]) {
+                max_values[tid] = max_values[tid + 4];
+                max_indices[tid] = max_indices[tid + 4];
+        }
+    if (max_values[tid] < max_values[tid + 2]) {
+                max_values[tid] = max_values[tid + 2];
+                max_indices[tid] = max_indices[tid + 2];
+        } 
+    if (max_values[tid] < max_values[tid + 1]) {
+                max_values[tid] = max_values[tid + 1];
+                max_indices[tid] = max_indices[tid + 1];
+        }      
+}
+
+template<>
+__device__ void warpReduce<__nv_bfloat162, int2>(
+            volatile __nv_bfloat162* max_values,
+            volatile int2* max_indices,
+            int tid)
+{
+    if (__hlt(max_values[tid].x, max_values[tid + 32].x)) {
+        max_values[tid].x = max_values[tid + 32].x;
+        max_indices[tid].x = max_indices[tid + 32].x;
+    }
+    if (__hlt(max_values[tid].y, max_values[tid + 32].y)) {
+        max_values[tid].y = max_values[tid + 32].y;
+        max_indices[tid].y = max_indices[tid + 32].y;
+    }
+
+    if (__hlt(max_values[tid].x, max_values[tid + 16].x)) {
+        max_values[tid].x = max_values[tid + 16].x;
+        max_indices[tid].x = max_indices[tid + 16].x;
+    }
+    if (__hlt(max_values[tid].y, max_values[tid + 16].y)) {
+        max_values[tid].y = max_values[tid + 16].y;
+        max_indices[tid].y = max_indices[tid + 16].y;
+    }
+
+    if (__hlt(max_values[tid].x, max_values[tid + 8].x)) {
+        max_values[tid].x = max_values[tid + 8].x;
+        max_indices[tid].x = max_indices[tid + 8].x;
+    }
+    if (__hlt(max_values[tid].y, max_values[tid + 8].y)) {
+        max_values[tid].y = max_values[tid + 8].y;
+        max_indices[tid].y = max_indices[tid + 8].y;
+    }
+
+    if (__hlt(max_values[tid].x, max_values[tid + 4].x)) {
+        max_values[tid].x = max_values[tid + 4].x;
+        max_indices[tid].x = max_indices[tid + 4].x;
+    }
+    if (__hlt(max_values[tid].y, max_values[tid + 4].y)) {
+        max_values[tid].y = max_values[tid + 4].y;
+        max_indices[tid].y = max_indices[tid + 4].y;
+    }
+
+    if (__hlt(max_values[tid].x, max_values[tid + 2].x)) {
+        max_values[tid].x = max_values[tid + 2].x;
+        max_indices[tid].x = max_indices[tid + 2].x;
+    }
+    if (__hlt(max_values[tid].y, max_values[tid + 2].y)) {
+        max_values[tid].y = max_values[tid + 2].y;
+        max_indices[tid].y = max_indices[tid + 2].y;
+    }
+    
+    if (__hlt(max_values[tid].x, max_values[tid + 1].x)) {
+        max_values[tid].x = max_values[tid + 1].x;
+        max_indices[tid].x = max_indices[tid + 1].x;
+    }
+    if (__hlt(max_values[tid].y, max_values[tid + 1].y)) {
+        max_values[tid].y = max_values[tid + 1].y;
+        max_indices[tid].y = max_indices[tid + 1].y;
+    }
+
+}
+
+// SDP_CUDA_KERNEL(warpReduce)
+
+
 // find the maximum value in a list using reduction
 template<typename T, typename I>
 __global__ void find_maximum_value(
@@ -177,32 +314,53 @@ __global__ void find_maximum_value(
     int64_t tid = threadIdx.x;
     int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
+    // combine load with first comparison
+    double val = input[i];
+    int idx = (init_idx == true) ? index_in[i] : i;
+
+    int next_idx = i + blockDim.x;
+    double next_val = input[next_idx];
+    if (val < next_val) {
+        val = next_val;
+        idx = (init_idx == true) ? index_in[next_idx] : next_idx;
+    }
+
     // Load input elements into shared memory
-    max_values[tid] = input[i];
-    // if index array has already been initialised then load it
-    if(init_idx == true){
-        max_indices[tid] = index_in[i];
+    max_values[tid] = val;
+    // load index to shared memory
+    max_indices[tid] = idx;
 
-    }
-    // if it hasn't, initialise it.
-    else{
-
-        max_indices[tid] = i;
-
-    }
     __syncthreads();
 
 
     // Perform reduction in shared memory
-    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (tid < stride) {
-            if (max_values[tid] < max_values[tid + stride]) {
-                max_values[tid] = max_values[tid + stride];
-                max_indices[tid] = max_indices[tid + stride];
+    // for (unsigned int stride = blockDim.x / 2; stride > 32; stride >>= 1) {
+    //     if (tid < stride) {
+    //         if (max_values[tid] < max_values[tid + stride]) {
+    //             max_values[tid] = max_values[tid + stride];
+    //             max_indices[tid] = max_indices[tid + stride];
+    //         }
+    //     }
+    //     __syncthreads();
+    // }
+
+    if (tid < 128) {
+            if (max_values[tid] < max_values[tid + 128]) {
+                max_values[tid] = max_values[tid + 128];
+                max_indices[tid] = max_indices[tid + 128];
             }
         }
-        __syncthreads();
-    }
+    __syncthreads();
+
+    if (tid < 64) {
+            if (max_values[tid] < max_values[tid + 64]) {
+                max_values[tid] = max_values[tid + 64];
+                max_indices[tid] = max_indices[tid + 64];
+            }
+        }
+    __syncthreads();
+
+    if (tid < 32) warpReduce<double, int>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0) {
@@ -227,32 +385,54 @@ __global__ void find_maximum_value(
     int64_t tid = threadIdx.x;
     int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
+    // combine load with first comparison
+    float val = input[i];
+    // check if idx was initalised in a previous kernel
+    int idx = (init_idx == true) ? index_in[i] : i;
+
+    int next_idx = i + blockDim.x;
+    float next_val = input[next_idx];
+    if (val < next_val) {
+        val = next_val;
+        // check if idx was initalised in a previous kernel
+        idx = (init_idx == true) ? index_in[next_idx] : next_idx;
+    }
+
     // Load input elements into shared memory
-    max_values[tid] = input[i];
-    // if index array has already been initialised then load it
-    if(init_idx == true){
-        max_indices[tid] = index_in[i];
-
-    }
-    // if it hasn't, initialise it.
-    else{
-
-        max_indices[tid] = i;
-
-    }
+    max_values[tid] = val;
+    // load index to shared memory
+    max_indices[tid] = idx;
+    
     __syncthreads();
 
-
     // Perform reduction in shared memory
-    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (tid < stride) {
-            if (max_values[tid] < max_values[tid + stride]) {
-                max_values[tid] = max_values[tid + stride];
-                max_indices[tid] = max_indices[tid + stride];
+    // for (unsigned int stride = blockDim.x / 2; stride > 32; stride >>= 1) {
+    //     if (tid < stride) {
+    //         if (max_values[tid] < max_values[tid + stride]) {
+    //             max_values[tid] = max_values[tid + stride];
+    //             max_indices[tid] = max_indices[tid + stride];
+    //         }
+    //     }
+    //     __syncthreads();
+    // }
+
+    if (tid < 128) {
+            if (max_values[tid] < max_values[tid + 128]) {
+                max_values[tid] = max_values[tid + 128];
+                max_indices[tid] = max_indices[tid + 128];
             }
         }
-        __syncthreads();
-    }
+    __syncthreads();
+
+    if (tid < 64) {
+            if (max_values[tid] < max_values[tid + 64]) {
+                max_values[tid] = max_values[tid + 64];
+                max_indices[tid] = max_indices[tid + 64];
+            }
+        }
+    __syncthreads();
+
+    if (tid < 32) warpReduce<float, int>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0) {
@@ -277,37 +457,89 @@ __global__ void find_maximum_value<__nv_bfloat162, int2>(
     int64_t tid = threadIdx.x;
     int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
-    // Load input elements into shared memory
-    max_values[tid] = input[i];
-    // if index array has already been initialised then load it
-    if(init_idx == true){
-        max_indices[tid] = index_in[i];
+    // combine load with first comparison
+    __nv_bfloat162 val = input[i];
+    int2 idx;
+    if(init_idx) {
+        idx = index_in[i];
+    } else {
+        idx.x = i;
+        idx.y = i;
+    }
 
+    int next_i = i + blockDim.x;
+    __nv_bfloat162 next_val = input[next_i];
+    int2 next_idx;
+    // if index array has already been initialised then load it
+    if(init_idx) {
+        next_idx = index_in[next_i];
     }
     // if it hasn't, initialise it.
-    else{
-
-        max_indices[tid].x = i;
-        max_indices[tid].y = i;
-
+    else {
+        next_idx.x = next_i;
+        next_idx.y = next_i;
     }
+
+    // Compare and select the maximum for both halves.
+    if (__hlt(val.x, next_val.x)) {
+        val.x = next_val.x;
+        idx.x = next_idx.x;
+    }
+    if (__hlt(val.y, next_val.y)) {
+        val.y = next_val.y;
+        idx.y = next_idx.y;
+    }
+
+    // Load input elements into shared memory
+    max_values[tid] = val;
+    // load index to shared memory
+    max_indices[tid] = idx;
+    
     __syncthreads();
 
     // Perform reduction in shared memory
-    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (tid < stride) {
-            if (__hlt(max_values[tid].x, max_values[tid + stride].x)) {
-                max_values[tid].x = max_values[tid + stride].x;
-                max_indices[tid].x = max_indices[tid + stride].x;
-            }
+    // for (unsigned int stride = blockDim.x / 2; stride > 32; stride >>= 1) {
+    //     if (tid < stride) {
+    //         if (__hlt(max_values[tid].x, max_values[tid + stride].x)) {
+    //             max_values[tid].x = max_values[tid + stride].x;
+    //             max_indices[tid].x = max_indices[tid + stride].x;
+    //         }
 
-            if (__hlt(max_values[tid].y, max_values[tid + stride].y)) {
-                max_values[tid].y = max_values[tid + stride].y;
-                max_indices[tid].y = max_indices[tid + stride].y;
-            }
+    //         if (__hlt(max_values[tid].y, max_values[tid + stride].y)) {
+    //             max_values[tid].y = max_values[tid + stride].y;
+    //             max_indices[tid].y = max_indices[tid + stride].y;
+    //         }
+    //     }
+    //     __syncthreads();
+    // }
+
+    if (tid < 128) {
+        if (__hlt(max_values[tid].x, max_values[tid + 128].x)) {
+            max_values[tid].x = max_values[tid + 128].x;
+            max_indices[tid].x = max_indices[tid + 128].x;
         }
-        __syncthreads();
+
+        if (__hlt(max_values[tid].y, max_values[tid + 128].y)) {
+            max_values[tid].y = max_values[tid + 128].y;
+            max_indices[tid].y = max_indices[tid + 128].y;
+        }
     }
+    __syncthreads();
+
+    if (tid < 64) {
+        if (__hlt(max_values[tid].x, max_values[tid + 64].x)) {
+            max_values[tid].x = max_values[tid + 64].x;
+            max_indices[tid].x = max_indices[tid + 64].x;
+        }
+
+        if (__hlt(max_values[tid].y, max_values[tid + 64].y)) {
+            max_values[tid].y = max_values[tid + 64].y;
+            max_indices[tid].y = max_indices[tid + 64].y;
+        }
+    }
+    __syncthreads();
+
+    if (tid < 32) warpReduce<__nv_bfloat162, int2>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0) {
