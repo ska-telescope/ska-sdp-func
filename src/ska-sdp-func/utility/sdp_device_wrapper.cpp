@@ -4,6 +4,7 @@
 #include <cuda_runtime_api.h>
 #endif
 
+#include "ska-sdp-func/utility/private_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
@@ -13,7 +14,7 @@ void sdp_launch_cuda_kernel(
         const uint64_t num_blocks[3],
         const uint64_t num_threads[3],
         uint64_t shared_mem_bytes,
-        void* stream,
+        sdp_CudaStream* stream,
         const void** args,
         sdp_Error* status
 )
@@ -31,11 +32,14 @@ void sdp_launch_cuda_kernel(
     {
         dim3 num_blocks_(num_blocks[0], num_blocks[1], num_blocks[2]);
         dim3 num_threads_(num_threads[0], num_threads[1], num_threads[2]);
-        // TODO Stream is currently only a placeholder...
-        (void)stream;
+        cudaStream_t cuda_stream = 0;
+        if (stream)
+        {
+            cuda_stream = stream->stream;
+        }
         cudaError_t cuda_error = cudaLaunchKernel(iter->second,
                 num_blocks_, num_threads_, const_cast<void**>(args),
-                (size_t) shared_mem_bytes, 0
+                (size_t) shared_mem_bytes, cuda_stream
         );
         SDP_LOG_DEBUG("Running CUDA kernel '%s'", name);
         if (cuda_error != cudaSuccess)
@@ -65,4 +69,31 @@ void sdp_launch_cuda_kernel(
             "with CUDA support.", name
     );
 #endif
+}
+
+
+void sdp_cuda_set_device(int device)
+{
+#ifdef SDP_HAVE_CUDA
+    cudaSetDevice(device);
+#endif
+}
+
+
+sdp_CudaStream* sdp_cuda_stream_create()
+{
+    sdp_CudaStream* strm = (sdp_CudaStream*)calloc(1, sizeof(sdp_CudaStream));
+#ifdef SDP_HAVE_CUDA
+    cudaStreamCreate(&strm->stream);
+#endif
+    return strm;
+}
+
+
+void sdp_cuda_stream_destroy(sdp_CudaStream* stream)
+{
+#ifdef SDP_HAVE_CUDA
+    cudaStreamDestroy(stream->stream);
+#endif
+    free(stream);
 }

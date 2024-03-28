@@ -121,7 +121,8 @@ install(TARGETS "${PROJECT_NAME}"
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/src/ska-sdp-func"
     DESTINATION ${SDP_FUNC_INCLUDE_INSTALL_DIR}
     COMPONENT headers
-    FILES_MATCHING REGEX "^.*\.(h|hpp)$"
+    FILES_MATCHING REGEX "sdp_.*\.(h|hpp)$"
+    PATTERN private* EXCLUDE
 )
 install(FILES "${PROJECT_BINARY_DIR}/src/sdp_func_version.h"
     DESTINATION "${SDP_FUNC_INCLUDE_INSTALL_DIR}/ska-sdp-func/"
