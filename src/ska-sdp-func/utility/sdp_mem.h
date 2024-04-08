@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_errors.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
@@ -220,6 +221,29 @@ void sdp_mem_copy_contents(
         int64_t offset_dst,
         int64_t offset_src,
         int64_t num_elements,
+        sdp_Error* status
+);
+
+/**
+ * @brief Copies memory contents from one block to another.
+ *
+ * This function uses cudaMemcpyAsync for transfers that involve GPU memory.
+ *
+ * @param dst Handle to destination memory block.
+ * @param src Handle to source memory block.
+ * @param offset_dst Start offset (number of elements) into destination block.
+ * @param offset_src Start offset (number of elements) from source block.
+ * @param num_elements Number of elements to copy.
+ * @param stream Handle to CUDA stream to use.
+ * @param status Error status.
+ */
+void sdp_mem_copy_contents_async(
+        sdp_Mem* dst,
+        const sdp_Mem* src,
+        int64_t offset_dst,
+        int64_t offset_src,
+        int64_t num_elements,
+        sdp_CudaStream* stream,
         sdp_Error* status
 );
 

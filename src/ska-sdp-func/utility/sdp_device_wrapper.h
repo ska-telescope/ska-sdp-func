@@ -16,6 +16,23 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup Stream_struct
+ * @{
+ */
+
+/**
+ * @struct sdp_CudaStream
+ *
+ * @brief Wraps a CUDA stream handle.
+ */
+struct sdp_CudaStream;
+
+/** @} */ /* End group Stream_struct. */
+
+/* Typedefs. */
+typedef struct sdp_CudaStream sdp_CudaStream;
+
+/**
  * @defgroup device_func
  * @{
  */
@@ -35,7 +52,7 @@ extern "C" {
  * @param num_blocks Number of thread blocks in 3D.
  * @param num_threads Number of threads per block in 3D.
  * @param shared_mem_bytes Amount of dynamic shared memory required, in bytes.
- * @param stream CUDA stream (currently a placeholder).
+ * @param stream CUDA stream. A null pointer will use the default stream.
  * @param args Array of pointers to kernel arguments.
  * @param status Error status.
  */
@@ -44,10 +61,37 @@ void sdp_launch_cuda_kernel(
         const uint64_t num_blocks[3],
         const uint64_t num_threads[3],
         uint64_t shared_mem_bytes,
-        void* stream,
+        sdp_CudaStream* stream,
         const void** args,
         sdp_Error* status
 );
+
+/**
+ * @brief Sets the CUDA device to use.
+ *
+ * This is a wrapper for cudaSetDevice().
+ * It exists to allow the processing function library
+ * to be compiled independently of CUDA, if required.
+ */
+void sdp_cuda_set_device(int device);
+
+/**
+ * @brief Creates a CUDA stream.
+ *
+ * This is a wrapper for cudaStreamCreate().
+ * It exists to allow the processing function library
+ * to be compiled independently of CUDA, if required.
+ */
+sdp_CudaStream* sdp_cuda_stream_create();
+
+/**
+ * @brief Destroys a CUDA stream.
+ *
+ * This is a wrapper for cudaStreamDestroy().
+ * It exists to allow the processing function library
+ * to be compiled independently of CUDA, if required.
+ */
+void sdp_cuda_stream_destroy(sdp_CudaStream* stream);
 
 /** @} */ /* End group device_func. */
 

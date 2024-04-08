@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ska-sdp-func/utility/private_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
@@ -252,6 +253,71 @@ void sdp_mem_copy_contents(
     {
         *status = SDP_ERR_MEM_COPY_FAILURE;
         SDP_LOG_CRITICAL("cudaMemcpy error: %s",
+                cudaGetErrorString(cuda_error)
+        );
+    }
+#endif
+}
+
+
+void sdp_mem_copy_contents_async(
+        sdp_Mem* dst,
+        const sdp_Mem* src,
+        int64_t offset_dst,
+        int64_t offset_src,
+        int64_t num_elements,
+        sdp_CudaStream* stream,
+        sdp_Error* status
+)
+{
+#ifdef SDP_HAVE_CUDA
+    cudaError_t cuda_error = cudaSuccess;
+#endif
+    if (*status || !dst || !src || !dst->data || !src->data) return;
+    if (src->num_elements == 0 || num_elements == 0) return;
+    const int64_t element_size = sdp_mem_type_size(src->type);
+    const int64_t start_dst   = element_size * offset_dst;
+    const int64_t start_src   = element_size * offset_src;
+    const size_t bytes        = element_size * num_elements;
+    const int location_src    = src->location;
+    const int location_dst    = dst->location;
+    const void* p_src = (const void*)((const char*)(src->data) + start_src);
+    void* p_dst       = (void*)((char*)(dst->data) + start_dst);
+
+    if (location_src == SDP_MEM_CPU && location_dst == SDP_MEM_CPU)
+    {
+        memcpy(p_dst, p_src, bytes);
+    }
+#ifdef SDP_HAVE_CUDA
+    else if (location_src == SDP_MEM_CPU && location_dst == SDP_MEM_GPU)
+    {
+        cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
+                cudaMemcpyHostToDevice, stream->stream
+        );
+    }
+    else if (location_src == SDP_MEM_GPU && location_dst == SDP_MEM_CPU)
+    {
+        cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
+                cudaMemcpyDeviceToHost, stream->stream
+        );
+    }
+    else if (location_src == SDP_MEM_GPU && location_dst == SDP_MEM_GPU)
+    {
+        cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
+                cudaMemcpyDeviceToDevice, stream->stream
+        );
+    }
+#endif
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+        SDP_LOG_CRITICAL("Unsupported memory location");
+    }
+#ifdef SDP_HAVE_CUDA
+    if (cuda_error != cudaSuccess)
+    {
+        *status = SDP_ERR_MEM_COPY_FAILURE;
+        SDP_LOG_CRITICAL("cudaMemcpyAsync error: %s",
                 cudaGetErrorString(cuda_error)
         );
     }
