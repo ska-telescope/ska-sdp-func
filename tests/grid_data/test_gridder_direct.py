@@ -98,13 +98,13 @@ class DFTGridKernel:
         pswf_l = numpy.roll(self.pswf, -facet_offset_l)
         pswf_l = pswf_l[
             self.image_size // 2
-            - facet.shape[0] // 2: self.image_size // 2
+            - (facet.shape[0] // 2) : (self.image_size // 2)
             + facet.shape[0] // 2
         ]
         pswf_m = numpy.roll(self.pswf, -facet_offset_m)
         pswf_m = pswf_m[
             self.image_size // 2
-            - facet.shape[1] // 2: self.image_size // 2
+            - (facet.shape[1] // 2) : (self.image_size // 2)
             + facet.shape[1] // 2
         ]
 
