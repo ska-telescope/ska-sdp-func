@@ -6,7 +6,7 @@ authors = ["The SKA SDP Processing Function Library Developers"]
 license = "BSD-3-Clause"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 numpy = "^1.7.0"
 
 [tool.poetry.dev-dependencies]
@@ -28,7 +28,7 @@ pytest-timeout = "^2.0.1"
 platformdirs = "^2.5.1"
 
 [tool.poetry.group.test.dependencies]
-scipy = "^1.6.0"
+scipy = "^1.10.0"
 
 [tool.isort]
 multi_line_output = 3
