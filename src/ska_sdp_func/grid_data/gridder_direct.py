@@ -57,10 +57,9 @@ class GridderDirect(StructWrapper):
             in which case this could simply be the entire (corrected) image.
         :param subgrid_offset_u, subgrid_offset_v:
           Offset of subgrid centre relative to grid centre
-        :param ch_count: Channel count (determines size of array returned)
         :param freq0: Frequency of first channel (Hz)
         :param dfreq: Channel width (Hz)
-        :param uvws: ``float[uvw_count, 3]``
+        :param uvw: ``float[uvw_count, 3]``
             UVW coordinates of vibilities (in m)
         :param start_chs: ``int[uvw_count]``
             First channel to degrid for every uvw

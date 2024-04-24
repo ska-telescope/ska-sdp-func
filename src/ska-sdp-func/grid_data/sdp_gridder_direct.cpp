@@ -24,18 +24,20 @@ struct sdp_GridderDirect
 
 template<typename T>
 static void get_pixels(
-        const sdp_Mem* image,
+        const sdp_Mem* mem_image,
         double theta,
-        const sdp_Mem* taper_func_1d,
+        const sdp_Mem* mem_pswf,
         sdp_Mem* mem_flux,
         sdp_Mem* mem_l,
         sdp_Mem* mem_m,
-        sdp_Mem* mem_n
+        sdp_Mem* mem_n,
+        sdp_Error* status
 )
 {
-    const int64_t image_size = sdp_mem_shape_dim(image, 0);
-    const T* pix = (const T*)sdp_mem_data_const(image);
-    const double* taper = (const double*)sdp_mem_data_const(taper_func_1d);
+    if (*status) return;
+    const int64_t image_size = sdp_mem_shape_dim(mem_image, 0);
+    const T* pix = (const T*)sdp_mem_data_const(mem_image);
+    const double* pswf = (const double*)sdp_mem_data_const(mem_pswf);
     T* flux = (T*)sdp_mem_data(mem_flux);
     T* l = (T*)sdp_mem_data(mem_l);
     T* m = (T*)sdp_mem_data(mem_m);
@@ -48,7 +50,7 @@ static void get_pixels(
             const T pix_val = pix[il * image_size + im];
             if (pix_val != 0.0)
             {
-                flux[k] = pix_val * taper[il] * taper[im];
+                flux[k] = pix_val * pswf[il] * pswf[im];
                 l[k] = (il - image_size / 2) * theta / image_size;
                 m[k] = (im - image_size / 2) * theta / image_size;
                 n[k] = sqrt(1.0 - l[k] * l[k] - m[k] * m[k]) - 1.0;
@@ -182,13 +184,13 @@ static void image_to_flmn(
     if (type == SDP_MEM_DOUBLE)
     {
         get_pixels<double>(image, theta, taper_func_1d,
-                *mem_flux, *mem_l, *mem_m, *mem_n
+                *mem_flux, *mem_l, *mem_m, *mem_n, status
         );
     }
     else if (type == SDP_MEM_FLOAT)
     {
         get_pixels<float>(image, theta, taper_func_1d,
-                *mem_flux, *mem_l, *mem_m, *mem_n
+                *mem_flux, *mem_l, *mem_m, *mem_n, status
         );
     }
 }
