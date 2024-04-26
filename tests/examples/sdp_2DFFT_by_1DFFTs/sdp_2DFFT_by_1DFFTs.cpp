@@ -335,7 +335,7 @@ int main(int argc, char** argv)
                   inembed, istride, idist,
                   onembed, ostride, odist, CUFFT_Z2Z, batch);
 
-	if (cufftStatus != CUFFT_SUCCESS){
+    if (cufftStatus != CUFFT_SUCCESS){
 		fprintf(stderr, "cufftPlan1d failed! Can't create a plan! %s\n", cufftStatus);
 		exit(EXIT_FAILURE);
 	}
@@ -424,7 +424,6 @@ int main(int argc, char** argv)
 	SDP_LOG_INFO("cufftExecZ2Z finished%s\n", cufftStatus);
     	fftshift(image_fits, (int)grid_size, (int)grid_size);
 	SDP_LOG_INFO("fftshift finished%s\n", cufftStatus);
-
 
     // Output into the FITS file
     const char filename_img1D[] = "!image_sim_1d2d.fits";
