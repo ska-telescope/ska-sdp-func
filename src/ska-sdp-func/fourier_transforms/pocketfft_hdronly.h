@@ -89,7 +89,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 namespace pocketfft {
+
 namespace detail {
+
 using std::size_t;
 using std::ptrdiff_t;
 
@@ -749,6 +751,7 @@ struct util // hack to avoid duplicate symbols
 };
 
 namespace threading {
+
 #ifdef POCKETFFT_NO_MULTITHREADING
 
 
@@ -1119,6 +1122,7 @@ void thread_map(size_t nthreads, Func f)
 }
 
 #endif
+
 }
 
 //
@@ -5127,6 +5131,7 @@ void r2r_genuine_hartley(
         iin.advance(); iout.advance();
     }
 }
+
 } // namespace detail
 
 using detail::FORWARD;
@@ -5141,6 +5146,7 @@ using detail::r2r_separable_hartley;
 using detail::r2r_genuine_hartley;
 using detail::dct;
 using detail::dst;
+
 } // namespace pocketfft
 
 #undef POCKETFFT_NOINLINE
