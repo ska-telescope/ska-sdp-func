@@ -1,6 +1,6 @@
 # See the LICENSE file at the top-level directory of this distribution.
 
-"""Test degridding functions."""
+"""Test (de)gridding functions for subgrid gridder and degridder."""
 
 import numpy
 import scipy
@@ -18,6 +18,17 @@ def dft(flmn, uvws):
                 * numpy.exp((-2.0j * numpy.pi) * numpy.dot(flmn[:, 1:], uvw.T))
             )
             for uvw in uvws
+        ]
+    )
+
+
+def idft(vis, uvws, lmns):
+    return numpy.array(
+        [
+            numpy.sum(
+                vis * numpy.exp((2.0j * numpy.pi) * numpy.dot(lmn, uvws.T))
+            )
+            for lmn in lmns
         ]
     )
 
@@ -129,10 +140,10 @@ class DFTGridKernel:
         This is painfully slow, but as good as we can make it by definition
 
         :param subgrid_image: Fourier transformed subgrid to degrid from.
-          Note that the subgrid could especially span the entire grid,
-          in which case this could simply be the entire (corrected) image.
+            Note that the subgrid could especially span the entire grid,
+            in which case this could simply be the entire (corrected) image.
         :param subgrid_offset_u, subgrid_offset_v:
-          Offset of subgrid centre relative to grid centre
+            Offset of subgrid centre relative to grid centre
         :param ch_count: Channel count (determines size of array returned)
         :param freq0: Frequency of first channel (Hz)
         :param dfreq: Channel width (Hz)
@@ -181,10 +192,84 @@ class DFTGridKernel:
 
         return vis_out
 
+    def grid_subgrid(
+        self,
+        vis: numpy.ndarray,
+        uvws: numpy.ndarray,
+        start_chs: numpy.ndarray,
+        end_chs: numpy.ndarray,
+        ch_count: int,
+        freq0: float,
+        dfreq: float,
+        subgrid_image: numpy.ndarray,
+        subgrid_offset_u: int,
+        subgrid_offset_v: int,
+    ):
+        """
+        Grid visibilities using direct Fourier transformation
+
+        This is painfully slow, but as good as we can make it by definition
+
+        :param vis: ``complex[uvw_count, ch_count]`` Input visibilities
+        :param uvws: ``float[uvw_count, 3]``
+            UVW coordinates of vibilities (in m)
+        :param start_chs: ``int[uvw_count]``
+            First channel to degrid for every uvw
+        :param end_chs: ``int[uvw_count]``
+            Channel at which to stop degridding for every uvw
+        :param ch_count: Channel count (determines size of array returned)
+        :param freq0: Frequency of first channel (Hz)
+        :param dfreq: Channel width (Hz)
+        :param subgrid_image: Fourier transformed subgrid to be gridded to.
+            Note that the subgrid could especially span the entire grid,
+            in which case this could simply be the entire (corrected) image.
+        :param subgrid_offset_u, subgrid_offset_v:
+            Offset of subgrid relative to grid centre
+        """
+
+        # Generate lmns for subgrid image
+        subgrid_image_lmns = image_to_flmn(
+            numpy.ones_like(subgrid_image), self.theta
+        )[:, 1:]
+
+        # Create array to return
+        fluxes = numpy.zeros(subgrid_image.size, dtype=complex)
+        for i, (uvw, start_ch, end_ch) in enumerate(
+            zip(uvws, start_chs, end_chs)
+        ):
+
+            # Skip if there's no visibility to grid
+            if start_ch >= end_ch:
+                continue
+            assert start_ch >= 0
+            assert end_ch <= ch_count
+
+            # Scale + shift UVWs
+            uvw_scaled = numpy.vstack(
+                [uvw * ((freq0 + dfreq * ch) / C_0) for ch in range(ch_count)]
+            )
+            uwv_shifted = shift_uvw(
+                uvw_scaled, subgrid_offset_u, subgrid_offset_v, self.theta
+            )
+
+            # Grid visibilities
+            fluxes += idft(
+                vis[i, start_ch:end_ch],
+                uwv_shifted[start_ch:end_ch],
+                subgrid_image_lmns,
+            )
+
+        # Reshape, convolve
+        subgrid_image += numpy.real(
+            fluxes.reshape(subgrid_image.shape)
+            * self.pswf_sg[:, numpy.newaxis]
+            * self.pswf_sg[numpy.newaxis, :]
+        )
+
 
 def test_gridder_direct():
     # Common parameters
-    image_size = 512  # Total image size in pixels
+    image_size = 128  # Total image size in pixels
     theta = 0.1  # Total image size in directional cosines.
     support = 10
     print("Grid size: ", image_size / theta, "wavelengths")
@@ -219,3 +304,27 @@ def test_gridder_direct():
 
     # Check they are the same.
     numpy.testing.assert_allclose(vis, vis_ref)
+
+    # Generate reference subgrid (image, really).
+    img_ref = numpy.zeros((subgrid_size, subgrid_size))
+    gridder_ref.grid_subgrid(
+        vis_ref,
+        uvw,
+        start_chs,
+        end_chs,
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        img_ref,
+        idu,
+        idv,
+    )
+
+    # Call the gridder in PFL.
+    img_tst = numpy.zeros_like(img_ref)
+    gridder.grid(
+        vis_ref, uvw, start_chs, end_chs, freq0_hz, dfreq_hz, img_tst, idu, idv
+    )
+
+    # Check they are the same.
+    numpy.testing.assert_allclose(img_tst, img_ref)
