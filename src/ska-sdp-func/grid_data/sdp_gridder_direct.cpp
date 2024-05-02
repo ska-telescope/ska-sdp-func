@@ -186,7 +186,7 @@ void idft(
                 const VIS_TYPE phase = 2.0 * M_PI *
                         (l[s] * u + m[s] * v + n[s] * w);
                 const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
-                local_pix += std::real(vis[i * num_chan + c] * phasor);
+                local_pix += vis[i * num_chan + c] * phasor;
             }
         }
 
@@ -416,29 +416,29 @@ void sdp_gridder_direct_grid(
     sdp_Mem* l = 0, * m = 0, * n = 0;
 
     // Convert image into positions, and use DFT for gridding.
-    if (sdp_mem_type(subgrid_image) == SDP_MEM_DOUBLE &&
+    if (sdp_mem_type(subgrid_image) == SDP_MEM_COMPLEX_DOUBLE &&
             sdp_mem_type(uvw) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
     {
         image_to_lmn<double>(subgrid_image, plan->theta, &l, &m, &n, status);
-        idft<double, double, double, double>(
+        idft<double, complex<double>, double, double>(
                 plan, uvw, vis, start_chs, end_chs, l, m, n,
                 subgrid_offset_u, subgrid_offset_v, freq0_hz, dfreq_hz,
                 subgrid_image, status
         );
-        apply_taper<double>(subgrid_image, plan->pswf_sg, status);
+        apply_taper< complex<double> >(subgrid_image, plan->pswf_sg, status);
     }
-    else if (sdp_mem_type(subgrid_image) == SDP_MEM_FLOAT &&
+    else if (sdp_mem_type(subgrid_image) == SDP_MEM_COMPLEX_FLOAT &&
             sdp_mem_type(uvw) == SDP_MEM_FLOAT &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
     {
         image_to_lmn<float>(subgrid_image, plan->theta, &l, &m, &n, status);
-        idft<float, float, float, float>(
+        idft<float, complex<float>, float, float>(
                 plan, uvw, vis, start_chs, end_chs, l, m, n,
                 subgrid_offset_u, subgrid_offset_v, freq0_hz, dfreq_hz,
                 subgrid_image, status
         );
-        apply_taper<float>(subgrid_image, plan->pswf_sg, status);
+        apply_taper< complex<float> >(subgrid_image, plan->pswf_sg, status);
     }
     else
     {

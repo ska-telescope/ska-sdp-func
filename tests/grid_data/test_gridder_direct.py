@@ -260,7 +260,7 @@ class DFTGridKernel:
             )
 
         # Reshape, convolve
-        subgrid_image += numpy.real(
+        subgrid_image += (
             fluxes.reshape(subgrid_image.shape)
             * self.pswf_sg[:, numpy.newaxis]
             * self.pswf_sg[numpy.newaxis, :]
@@ -306,7 +306,7 @@ def test_gridder_direct():
     numpy.testing.assert_allclose(vis, vis_ref)
 
     # Generate reference subgrid (image, really).
-    img_ref = numpy.zeros((subgrid_size, subgrid_size))
+    img_ref = numpy.zeros((subgrid_size, subgrid_size), dtype=complex)
     gridder_ref.grid_subgrid(
         vis_ref,
         uvw,
