@@ -56,11 +56,11 @@ class GridderDirect(StructWrapper):
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
         :param subgrid_offset_u, subgrid_offset_v:
-          Offset of subgrid centre relative to grid centre
-        :param freq0: Frequency of first channel (Hz)
-        :param dfreq: Channel width (Hz)
+            Offset of subgrid centre relative to grid centre
+        :param freq0_hz: Frequency of first channel (Hz)
+        :param dfreq_hz: Channel width (Hz)
         :param uvw: ``float[uvw_count, 3]``
-            UVW coordinates of vibilities (in m)
+            UVW coordinates of visibilities (in m)
         :param start_chs: ``int[uvw_count]``
             First channel to degrid for every uvw
         :param end_chs: ``int[uvw_count]``
@@ -80,6 +80,52 @@ class GridderDirect(StructWrapper):
             Mem(vis),
         )
 
+    def grid(
+        self,
+        vis: numpy.ndarray,
+        uvw: numpy.ndarray,
+        start_chs: numpy.ndarray,
+        end_chs: numpy.ndarray,
+        freq0_hz: float,
+        dfreq_hz: float,
+        subgrid_image: numpy.ndarray,
+        subgrid_offset_u: int,
+        subgrid_offset_v: int,
+    ):
+        """Grid visibilities using direct Fourier transformation
+
+        This is painfully slow, but as good as we can make it by definition
+
+        The caller must ensure the output subgrid_image is sized correctly.
+
+        :param vis: ``complex[uvw_count, ch_count]`` Input visibilities
+        :param uvw: ``float[uvw_count, 3]``
+            UVW coordinates of visibilities (in m)
+        :param start_chs: ``int[uvw_count]``
+            First channel to grid for every uvw
+        :param end_chs: ``int[uvw_count]``
+            Channel at which to stop gridding for every uvw
+        :param freq0_hz: Frequency of first channel (Hz)
+        :param dfreq_hz: Channel width (Hz)
+        :param subgrid_image: Fourier transformed subgrid to be gridded to.
+            Note that the subgrid could especially span the entire grid,
+            in which case this could simply be the entire (corrected) image.
+        :param subgrid_offset_u, subgrid_offset_v:
+            Offset of subgrid relative to grid centre
+        """
+        Lib.sdp_gridder_direct_grid(
+            self,
+            Mem(vis),
+            Mem(uvw),
+            Mem(start_chs),
+            Mem(end_chs),
+            freq0_hz,
+            dfreq_hz,
+            Mem(subgrid_image),
+            subgrid_offset_u,
+            subgrid_offset_v,
+        )
+
 
 Lib.wrap_func(
     "sdp_gridder_direct_create",
@@ -91,12 +137,6 @@ Lib.wrap_func(
         ctypes.c_int,
     ],
     check_errcode=True,
-)
-
-Lib.wrap_func(
-    "sdp_gridder_direct_free",
-    restype=None,
-    argtypes=[GridderDirect.handle_type()],
 )
 
 Lib.wrap_func(
@@ -115,4 +155,28 @@ Lib.wrap_func(
         Mem.handle_type(),
     ],
     check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_grid",
+    restype=None,
+    argtypes=[
+        GridderDirect.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_double,
+        ctypes.c_double,
+        Mem.handle_type(),
+        ctypes.c_int,
+        ctypes.c_int,
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_free",
+    restype=None,
+    argtypes=[GridderDirect.handle_type()],
 )
