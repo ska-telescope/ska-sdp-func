@@ -24,20 +24,6 @@ struct sdp_GridderDirect
 // Begin anonymous namespace for file-local functions.
 namespace {
 
-// Local function to apply taper to an image using the 1D PSWF.
-template<typename T>
-void apply_taper(sdp_Mem* mem_image, const sdp_Mem* mem_pswf, sdp_Error* status)
-{
-    if (*status) return;
-    const int64_t image_size = sdp_mem_shape_dim(mem_image, 0);
-    const double* pswf = (const double*) sdp_mem_data_const(mem_pswf);
-    T* image = (T*) sdp_mem_data(mem_image);
-    for (int64_t il = 0; il < image_size; ++il)
-        for (int64_t im = 0; im < image_size; ++im)
-            image[il * image_size + im] *= pswf[il] * pswf[im];
-}
-
-
 // Local function for prediction of visibilities via direct FT.
 template<
         typename DIR_TYPE,
@@ -144,8 +130,8 @@ void idft(
 
     // Get data pointers.
     const int64_t num_uvw = sdp_mem_shape_dim(mem_uvw, 0);
+    const int64_t image_size = sdp_mem_shape_dim(mem_image, 0);
     const int num_chan = (int) sdp_mem_shape_dim(mem_vis, 1);
-    const int num_pix = (int) sdp_mem_num_elements(mem_image);
     const int* start_chs = (const int*) sdp_mem_data_const(mem_start_chs);
     const int* end_chs = (const int*) sdp_mem_data_const(mem_end_chs);
     const UVW_TYPE* uvw = (const UVW_TYPE*) sdp_mem_data_const(mem_uvw);
@@ -155,43 +141,49 @@ void idft(
     const complex<VIS_TYPE>* vis =
             (const complex<VIS_TYPE>*) sdp_mem_data_const(mem_vis);
     FLUX_TYPE* image = (FLUX_TYPE*) sdp_mem_data(mem_image);
+    const double* pswf = (const double*) sdp_mem_data_const(plan->pswf_sg);
 
     // Scale subgrid offset values.
     const UVW_TYPE du = (UVW_TYPE) subgrid_offset_u / plan->theta;
     const UVW_TYPE dv = (UVW_TYPE) subgrid_offset_v / plan->theta;
 
     // Loop over pixels.
-    #pragma omp parallel for
-    for (int s = 0; s < num_pix; ++s)
+    #pragma omp parallel for collapse(2)
+    for (int64_t il = 0; il < image_size; ++il)
     {
-        FLUX_TYPE local_pix = 0;
-
-        // Loop over uvw values.
-        for (int64_t i = 0; i < num_uvw; ++i)
+        for (int64_t im = 0; im < image_size; ++im)
         {
-            // Skip if there's no visibility to grid.
-            if (start_chs[i] >= end_chs[i])
-                continue;
+            FLUX_TYPE local_pix = 0;
+            const int64_t s = il * image_size + im; // Linearised pixel index.
 
-            // Loop over channels.
-            for (int c = 0; c < num_chan; ++c)
+            // Loop over uvw values.
+            for (int64_t i = 0; i < num_uvw; ++i)
             {
-                const UVW_TYPE inv_wave = (freq0_hz + dfreq_hz * c) / C_0;
+                // Skip if there's no visibility to grid.
+                if (start_chs[i] >= end_chs[i])
+                    continue;
 
-                // Scale and shift uvws.
-                const UVW_TYPE u = uvw[3 * i + 0] * inv_wave - du;
-                const UVW_TYPE v = uvw[3 * i + 1] * inv_wave - dv;
-                const UVW_TYPE w = uvw[3 * i + 2] * inv_wave;
+                // Loop over channels.
+                for (int c = 0; c < num_chan; ++c)
+                {
+                    const UVW_TYPE inv_wave = (freq0_hz + dfreq_hz * c) / C_0;
 
-                const VIS_TYPE phase = 2.0 * M_PI *
-                        (l[s] * u + m[s] * v + n[s] * w);
-                const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
-                local_pix += vis[i * num_chan + c] * phasor;
+                    // Scale and shift uvws.
+                    const UVW_TYPE u = uvw[3 * i + 0] * inv_wave - du;
+                    const UVW_TYPE v = uvw[3 * i + 1] * inv_wave - dv;
+                    const UVW_TYPE w = uvw[3 * i + 2] * inv_wave;
+
+                    const VIS_TYPE phase = 2.0 * M_PI *
+                            (l[s] * u + m[s] * v + n[s] * w);
+                    const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
+                    local_pix += vis[i * num_chan + c] * phasor;
+                }
             }
-        }
 
-        // Store local pixel value.
-        image[s] += local_pix;
+            // Store local pixel value, appropriately tapered by the PSWF.
+            // (We can't taper the whole image, as the input may be nonzero.)
+            image[s] += local_pix * (FLUX_TYPE) (pswf[il] * pswf[im]);
+        }
     }
 }
 
@@ -426,7 +418,6 @@ void sdp_gridder_direct_grid(
                 subgrid_offset_u, subgrid_offset_v, freq0_hz, dfreq_hz,
                 subgrid_image, status
         );
-        apply_taper<complex<double> >(subgrid_image, plan->pswf_sg, status);
     }
     else if (sdp_mem_type(subgrid_image) == SDP_MEM_COMPLEX_FLOAT &&
             sdp_mem_type(uvw) == SDP_MEM_FLOAT &&
@@ -438,7 +429,6 @@ void sdp_gridder_direct_grid(
                 subgrid_offset_u, subgrid_offset_v, freq0_hz, dfreq_hz,
                 subgrid_image, status
         );
-        apply_taper<complex<float> >(subgrid_image, plan->pswf_sg, status);
     }
     else
     {
