@@ -426,7 +426,7 @@ void sdp_gridder_direct_grid(
                 subgrid_offset_u, subgrid_offset_v, freq0_hz, dfreq_hz,
                 subgrid_image, status
         );
-        apply_taper< complex<double> >(subgrid_image, plan->pswf_sg, status);
+        apply_taper<complex<double> >(subgrid_image, plan->pswf_sg, status);
     }
     else if (sdp_mem_type(subgrid_image) == SDP_MEM_COMPLEX_FLOAT &&
             sdp_mem_type(uvw) == SDP_MEM_FLOAT &&
@@ -438,7 +438,7 @@ void sdp_gridder_direct_grid(
                 subgrid_offset_u, subgrid_offset_v, freq0_hz, dfreq_hz,
                 subgrid_image, status
         );
-        apply_taper< complex<float> >(subgrid_image, plan->pswf_sg, status);
+        apply_taper<complex<float> >(subgrid_image, plan->pswf_sg, status);
     }
     else
     {
