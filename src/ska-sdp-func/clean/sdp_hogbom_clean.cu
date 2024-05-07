@@ -165,30 +165,48 @@ __device__ void warpReduce<double, int>(
             volatile int* max_indices,
             int tid)
 {
-    if (max_values[tid] < max_values[tid + 32]) {
-                max_values[tid] = max_values[tid + 32];
-                max_indices[tid] = max_indices[tid + 32];
+    double shfl_val;
+    int shfl_idx; 
+
+    // unsigned mask = __ballot_sync(0xffffffff, tid < 32); // warpSize is 32
+
+    for (int offset = 16; offset > 0; offset >>=1) {
+
+        shfl_val = __shfl_down_sync(0xFFFFFFFF, max_values[tid], offset);
+        shfl_idx = __shfl_down_sync(0xFFFFFFFF, max_indices[tid], offset);
+        __syncwarp();
+
+        if (shfl_val > max_values[tid]) {
+            max_values[tid] = shfl_val;
+            max_indices[tid] = shfl_idx;
         }
-    if (max_values[tid] < max_values[tid + 16]) {
-                max_values[tid] = max_values[tid + 16];
-                max_indices[tid] = max_indices[tid + 16];
-        } 
-    if (max_values[tid] < max_values[tid + 8]) {
-                max_values[tid] = max_values[tid + 8];
-                max_indices[tid] = max_indices[tid + 8];
-        } 
-    if (max_values[tid] < max_values[tid + 4]) {
-                max_values[tid] = max_values[tid + 4];
-                max_indices[tid] = max_indices[tid + 4];
-        }
-    if (max_values[tid] < max_values[tid + 2]) {
-                max_values[tid] = max_values[tid + 2];
-                max_indices[tid] = max_indices[tid + 2];
-        } 
-    if (max_values[tid] < max_values[tid + 1]) {
-                max_values[tid] = max_values[tid + 1];
-                max_indices[tid] = max_indices[tid + 1];
-        }      
+    }
+
+
+    // if (max_values[tid] < max_values[tid + 32]) {
+    //             max_values[tid] = max_values[tid + 32];
+    //             max_indices[tid] = max_indices[tid + 32];
+    //     }
+    // if (max_values[tid] < max_values[tid + 16]) {
+    //             max_values[tid] = max_values[tid + 16];
+    //             max_indices[tid] = max_indices[tid + 16];
+    //     } 
+    // if (max_values[tid] < max_values[tid + 8]) {
+    //             max_values[tid] = max_values[tid + 8];
+    //             max_indices[tid] = max_indices[tid + 8];
+    //     } 
+    // if (max_values[tid] < max_values[tid + 4]) {
+    //             max_values[tid] = max_values[tid + 4];
+    //             max_indices[tid] = max_indices[tid + 4];
+    //     }
+    // if (max_values[tid] < max_values[tid + 2]) {
+    //             max_values[tid] = max_values[tid + 2];
+    //             max_indices[tid] = max_indices[tid + 2];
+    //     } 
+    // if (max_values[tid] < max_values[tid + 1]) {
+    //             max_values[tid] = max_values[tid + 1];
+    //             max_indices[tid] = max_indices[tid + 1];
+    //     }      
 }
 
 template<>
@@ -197,30 +215,47 @@ __device__ void warpReduce<float, int>(
             volatile int* max_indices,
             int tid)
 {
-    if (max_values[tid] < max_values[tid + 32]) {
-                max_values[tid] = max_values[tid + 32];
-                max_indices[tid] = max_indices[tid + 32];
+    float shfl_val;
+    int shfl_idx;
+
+    // unsigned mask = __ballot_sync(0xffffffff, tid < 32); // warpSize is 32
+
+    for (int offset = 16; offset > 0; offset >>=1) {
+
+        shfl_val = __shfl_down_sync(0xFFFFFFFF, max_values[tid], offset);
+        shfl_idx = __shfl_down_sync(0xFFFFFFFF, max_indices[tid], offset);
+        __syncwarp();
+
+        if (shfl_val > max_values[tid]) {
+            max_values[tid] = shfl_val;
+            max_indices[tid] = shfl_idx;
         }
-    if (max_values[tid] < max_values[tid + 16]) {
-                max_values[tid] = max_values[tid + 16];
-                max_indices[tid] = max_indices[tid + 16];
-        } 
-    if (max_values[tid] < max_values[tid + 8]) {
-                max_values[tid] = max_values[tid + 8];
-                max_indices[tid] = max_indices[tid + 8];
-        } 
-    if (max_values[tid] < max_values[tid + 4]) {
-                max_values[tid] = max_values[tid + 4];
-                max_indices[tid] = max_indices[tid + 4];
-        }
-    if (max_values[tid] < max_values[tid + 2]) {
-                max_values[tid] = max_values[tid + 2];
-                max_indices[tid] = max_indices[tid + 2];
-        } 
-    if (max_values[tid] < max_values[tid + 1]) {
-                max_values[tid] = max_values[tid + 1];
-                max_indices[tid] = max_indices[tid + 1];
-        }      
+    }
+
+    // if (max_values[tid] < max_values[tid + 32]) {
+    //             max_values[tid] = max_values[tid + 32];
+    //             max_indices[tid] = max_indices[tid + 32];
+    //     }
+    // if (max_values[tid] < max_values[tid + 16]) {
+    //             max_values[tid] = max_values[tid + 16];
+    //             max_indices[tid] = max_indices[tid + 16];
+    //     } 
+    // if (max_values[tid] < max_values[tid + 8]) {
+    //             max_values[tid] = max_values[tid + 8];
+    //             max_indices[tid] = max_indices[tid + 8];
+    //     } 
+    // if (max_values[tid] < max_values[tid + 4]) {
+    //             max_values[tid] = max_values[tid + 4];
+    //             max_indices[tid] = max_indices[tid + 4];
+    //     }
+    // if (max_values[tid] < max_values[tid + 2]) {
+    //             max_values[tid] = max_values[tid + 2];
+    //             max_indices[tid] = max_indices[tid + 2];
+    //     } 
+    // if (max_values[tid] < max_values[tid + 1]) {
+    //             max_values[tid] = max_values[tid + 1];
+    //             max_indices[tid] = max_indices[tid + 1];
+    //     }      
 }
 
 template<>
@@ -229,59 +264,83 @@ __device__ void warpReduce<__nv_bfloat162, int2>(
             volatile int2* max_indices,
             int tid)
 {
-    if (__hlt(max_values[tid].x, max_values[tid + 32].x)) {
-        max_values[tid].x = max_values[tid + 32].x;
-        max_indices[tid].x = max_indices[tid + 32].x;
-    }
-    if (__hlt(max_values[tid].y, max_values[tid + 32].y)) {
-        max_values[tid].y = max_values[tid + 32].y;
-        max_indices[tid].y = max_indices[tid + 32].y;
+    __nv_bfloat162 shfl_val;
+    int2 shfl_idx;
+
+    // unsigned mask = __ballot_sync(0xffffffff, tid < 32); // warpSize is 32
+
+    for (int offset = 16; offset > 0; offset >>=1) {
+
+        shfl_val.x = __shfl_down_sync(0xFFFFFFFF, max_values[tid].x, offset);
+        shfl_val.y = __shfl_down_sync(0xFFFFFFFF, max_values[tid].y, offset);
+        shfl_idx.x = __shfl_down_sync(0xFFFFFFFF, max_indices[tid].x, offset);
+        shfl_idx.y = __shfl_down_sync(0xFFFFFFFF, max_indices[tid].y, offset);
+
+        __syncwarp();
+
+        if (__hlt(max_values[tid].x, shfl_val.x)) {
+            max_values[tid].x = shfl_val.x;
+            max_indices[tid].x = shfl_idx.x;
+        }
+        if (__hlt(max_values[tid].y, shfl_val.y)) {
+            max_values[tid].y = shfl_val.y;
+            max_indices[tid].y = shfl_idx.y;
+        }
     }
 
-    if (__hlt(max_values[tid].x, max_values[tid + 16].x)) {
-        max_values[tid].x = max_values[tid + 16].x;
-        max_indices[tid].x = max_indices[tid + 16].x;
-    }
-    if (__hlt(max_values[tid].y, max_values[tid + 16].y)) {
-        max_values[tid].y = max_values[tid + 16].y;
-        max_indices[tid].y = max_indices[tid + 16].y;
-    }
+    // if (__hlt(max_values[tid].x, max_values[tid + 32].x)) {
+    //     max_values[tid].x = max_values[tid + 32].x;
+    //     max_indices[tid].x = max_indices[tid + 32].x;
+    // }
+    // if (__hlt(max_values[tid].y, max_values[tid + 32].y)) {
+    //     max_values[tid].y = max_values[tid + 32].y;
+    //     max_indices[tid].y = max_indices[tid + 32].y;
+    // }
 
-    if (__hlt(max_values[tid].x, max_values[tid + 8].x)) {
-        max_values[tid].x = max_values[tid + 8].x;
-        max_indices[tid].x = max_indices[tid + 8].x;
-    }
-    if (__hlt(max_values[tid].y, max_values[tid + 8].y)) {
-        max_values[tid].y = max_values[tid + 8].y;
-        max_indices[tid].y = max_indices[tid + 8].y;
-    }
+    // if (__hlt(max_values[tid].x, max_values[tid + 16].x)) {
+    //     max_values[tid].x = max_values[tid + 16].x;
+    //     max_indices[tid].x = max_indices[tid + 16].x;
+    // }
+    // if (__hlt(max_values[tid].y, max_values[tid + 16].y)) {
+    //     max_values[tid].y = max_values[tid + 16].y;
+    //     max_indices[tid].y = max_indices[tid + 16].y;
+    // }
 
-    if (__hlt(max_values[tid].x, max_values[tid + 4].x)) {
-        max_values[tid].x = max_values[tid + 4].x;
-        max_indices[tid].x = max_indices[tid + 4].x;
-    }
-    if (__hlt(max_values[tid].y, max_values[tid + 4].y)) {
-        max_values[tid].y = max_values[tid + 4].y;
-        max_indices[tid].y = max_indices[tid + 4].y;
-    }
+    // if (__hlt(max_values[tid].x, max_values[tid + 8].x)) {
+    //     max_values[tid].x = max_values[tid + 8].x;
+    //     max_indices[tid].x = max_indices[tid + 8].x;
+    // }
+    // if (__hlt(max_values[tid].y, max_values[tid + 8].y)) {
+    //     max_values[tid].y = max_values[tid + 8].y;
+    //     max_indices[tid].y = max_indices[tid + 8].y;
+    // }
 
-    if (__hlt(max_values[tid].x, max_values[tid + 2].x)) {
-        max_values[tid].x = max_values[tid + 2].x;
-        max_indices[tid].x = max_indices[tid + 2].x;
-    }
-    if (__hlt(max_values[tid].y, max_values[tid + 2].y)) {
-        max_values[tid].y = max_values[tid + 2].y;
-        max_indices[tid].y = max_indices[tid + 2].y;
-    }
+    // if (__hlt(max_values[tid].x, max_values[tid + 4].x)) {
+    //     max_values[tid].x = max_values[tid + 4].x;
+    //     max_indices[tid].x = max_indices[tid + 4].x;
+    // }
+    // if (__hlt(max_values[tid].y, max_values[tid + 4].y)) {
+    //     max_values[tid].y = max_values[tid + 4].y;
+    //     max_indices[tid].y = max_indices[tid + 4].y;
+    // }
+
+    // if (__hlt(max_values[tid].x, max_values[tid + 2].x)) {
+    //     max_values[tid].x = max_values[tid + 2].x;
+    //     max_indices[tid].x = max_indices[tid + 2].x;
+    // }
+    // if (__hlt(max_values[tid].y, max_values[tid + 2].y)) {
+    //     max_values[tid].y = max_values[tid + 2].y;
+    //     max_indices[tid].y = max_indices[tid + 2].y;
+    // }
     
-    if (__hlt(max_values[tid].x, max_values[tid + 1].x)) {
-        max_values[tid].x = max_values[tid + 1].x;
-        max_indices[tid].x = max_indices[tid + 1].x;
-    }
-    if (__hlt(max_values[tid].y, max_values[tid + 1].y)) {
-        max_values[tid].y = max_values[tid + 1].y;
-        max_indices[tid].y = max_indices[tid + 1].y;
-    }
+    // if (__hlt(max_values[tid].x, max_values[tid + 1].x)) {
+    //     max_values[tid].x = max_values[tid + 1].x;
+    //     max_indices[tid].x = max_indices[tid + 1].x;
+    // }
+    // if (__hlt(max_values[tid].y, max_values[tid + 1].y)) {
+    //     max_values[tid].y = max_values[tid + 1].y;
+    //     max_indices[tid].y = max_indices[tid + 1].y;
+    // }
 
 }
 
@@ -295,72 +354,85 @@ __global__ void find_maximum_value(
             I *index_in,
             T *output,
             I *index_out,
+            const int elements_per_thread,
+            const int num_elements,
             bool init_idx)
 {    
 
 }
 
 template<>
-__global__ void find_maximum_value(
+__global__ void find_maximum_value<double, int>(
             const double *input,
             int *index_in,
             double *output,
             int *index_out,
+            const int elements_per_thread,
+            const int num_elements,
             bool init_idx)
 {
     __shared__ double max_values[256];
     __shared__ int max_indices[256];
 
+    // thread index
     int64_t tid = threadIdx.x;
-    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
+    // index of block of values being worked on by this thread
+    int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
 
-    // combine load with first comparison
-    double val = input[i];
-    int idx = (init_idx == true) ? index_in[i] : i;
+    // initialise max_values to zero
+    max_values[tid] = (double)0.0;
 
-    int next_idx = i + blockDim.x;
-    double next_val = input[next_idx];
-    if (val < next_val) {
-        val = next_val;
-        idx = (init_idx == true) ? index_in[next_idx] : next_idx;
+    if(super_idx + tid < num_elements){
+        // load input to shared mem
+        max_values[tid] = input[super_idx + tid];
+        // check if idx was initalised in a previous kernel
+        max_indices[tid] = (init_idx == true) ? index_in[super_idx + tid] : super_idx + tid;
     }
 
-    // Load input elements into shared memory
-    max_values[tid] = val;
-    // load index to shared memory
-    max_indices[tid] = idx;
-
+    #pragma unroll
+    for (int i = 1; i < elements_per_thread; i++){
+        // current index being compared to value in shared mem
+        int64_t curr_idx = super_idx + i * blockDim.x + tid;
+        if (curr_idx < num_elements)
+        {
+            double val = max_values[tid];
+            double next_val = input[curr_idx];
+            if (next_val > val){
+                max_values[tid] = next_val;
+                max_indices[tid] = (init_idx == true) ? index_in[curr_idx] : curr_idx;
+            }
+        }
+    }
     __syncthreads();
 
+    #pragma unroll 
+    for (int s = blockDim.x / 2; s > 16; s >>= 1){
+        if (tid < s){
+            if (max_values[tid] < max_values[tid + s]) {
+                max_values[tid] = max_values[tid + s];
+                max_indices[tid] = max_indices[tid + s];
+            }
+        }
+        __syncthreads();
+    }
 
-    // Perform reduction in shared memory
-    // for (unsigned int stride = blockDim.x / 2; stride > 32; stride >>= 1) {
-    //     if (tid < stride) {
-    //         if (max_values[tid] < max_values[tid + stride]) {
-    //             max_values[tid] = max_values[tid + stride];
-    //             max_indices[tid] = max_indices[tid + stride];
+    // if (tid < 128) {
+    //         if (max_values[tid] < max_values[tid + 128]) {
+    //             max_values[tid] = max_values[tid + 128];
+    //             max_indices[tid] = max_indices[tid + 128];
     //         }
     //     }
-    //     __syncthreads();
-    // }
+    // __syncthreads();
 
-    if (tid < 128) {
-            if (max_values[tid] < max_values[tid + 128]) {
-                max_values[tid] = max_values[tid + 128];
-                max_indices[tid] = max_indices[tid + 128];
-            }
-        }
-    __syncthreads();
+    // if (tid < 64) {
+    //         if (max_values[tid] < max_values[tid + 64]) {
+    //             max_values[tid] = max_values[tid + 64];
+    //             max_indices[tid] = max_indices[tid + 64];
+    //         }
+    //     }
+    // __syncthreads();
 
-    if (tid < 64) {
-            if (max_values[tid] < max_values[tid + 64]) {
-                max_values[tid] = max_values[tid + 64];
-                max_indices[tid] = max_indices[tid + 64];
-            }
-        }
-    __syncthreads();
-
-    if (tid < 32) warpReduce<double, int>(max_values, max_indices, tid);
+    if (tid < 16) warpReduce<double, int>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0) {
@@ -368,79 +440,71 @@ __global__ void find_maximum_value(
         index_out[blockIdx.x] = max_indices[0];
     }
     
-
 }
 
 template<>
-__global__ void find_maximum_value(
+__global__ void find_maximum_value<float, int>(
             const float *input,
             int *index_in,
             float *output,
             int *index_out,
+            const int elements_per_thread,
+            const int num_elements,
             bool init_idx)
 {
     __shared__ float max_values[256];
     __shared__ int max_indices[256];
 
+
+    // thread index
     int64_t tid = threadIdx.x;
-    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
+    // index of block of values being worked on by this thread
+    int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
+    
+    // initialise max_values to zero
+    max_values[tid] = 0.0f;
 
-    // combine load with first comparison
-    float val = input[i];
-    // check if idx was initalised in a previous kernel
-    int idx = (init_idx == true) ? index_in[i] : i;
-
-    int next_idx = i + blockDim.x;
-    float next_val = input[next_idx];
-    if (val < next_val) {
-        val = next_val;
+    if(super_idx + tid < num_elements){
+        // load input to shared mem
+        max_values[tid] = input[super_idx + tid];
         // check if idx was initalised in a previous kernel
-        idx = (init_idx == true) ? index_in[next_idx] : next_idx;
+        max_indices[tid] = (init_idx == true) ? index_in[super_idx + tid] : super_idx + tid;
     }
 
-    // Load input elements into shared memory
-    max_values[tid] = val;
-    // load index to shared memory
-    max_indices[tid] = idx;
-    
-    __syncthreads();
-
-    // Perform reduction in shared memory
-    // for (unsigned int stride = blockDim.x / 2; stride > 32; stride >>= 1) {
-    //     if (tid < stride) {
-    //         if (max_values[tid] < max_values[tid + stride]) {
-    //             max_values[tid] = max_values[tid + stride];
-    //             max_indices[tid] = max_indices[tid + stride];
-    //         }
-    //     }
-    //     __syncthreads();
-    // }
-
-    if (tid < 128) {
-            if (max_values[tid] < max_values[tid + 128]) {
-                max_values[tid] = max_values[tid + 128];
-                max_indices[tid] = max_indices[tid + 128];
+    #pragma unroll
+    for (int i = 1; i < elements_per_thread; i++){
+        // current index being compared to value in shared mem
+        int64_t curr_idx = super_idx + i * blockDim.x + tid;
+        if (curr_idx < num_elements)
+        {
+            float val = max_values[tid];
+            float next_val = input[curr_idx];
+            if (next_val > val){
+                max_values[tid] = next_val;
+                max_indices[tid] = (init_idx == true) ? index_in[curr_idx] : curr_idx;
             }
         }
+    }
     __syncthreads();
 
-    if (tid < 64) {
-            if (max_values[tid] < max_values[tid + 64]) {
-                max_values[tid] = max_values[tid + 64];
-                max_indices[tid] = max_indices[tid + 64];
+    #pragma unroll 
+    for (int s = blockDim.x / 2; s > 16; s >>= 1){
+        if (tid < s){
+            if (max_values[tid] < max_values[tid + s]) {
+                max_values[tid] = max_values[tid + s];
+                max_indices[tid] = max_indices[tid + s];
             }
         }
-    __syncthreads();
+        __syncthreads();
+    }
 
-    if (tid < 32) warpReduce<float, int>(max_values, max_indices, tid);
+    if (tid < 16) warpReduce<float, int>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0) {
         output[blockIdx.x] = max_values[0];
         index_out[blockIdx.x] = max_indices[0];
     }
-    
-
 }
 
 template<>
@@ -449,97 +513,92 @@ __global__ void find_maximum_value<__nv_bfloat162, int2>(
             int2 *index_in,
             __nv_bfloat162 *output,
             int2 *index_out,
+            const int elements_per_thread,
+            const int num_elements,
             bool init_idx)
 {
     __shared__ __nv_bfloat162 max_values[256];
     __shared__ int2 max_indices[256];
 
+    // thread index
     int64_t tid = threadIdx.x;
-    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
+    // index of block of values being worked on by this thread
+    int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
 
-    // combine load with first comparison
-    __nv_bfloat162 val = input[i];
-    int2 idx;
-    if(init_idx) {
-        idx = index_in[i];
-    } else {
-        idx.x = i;
-        idx.y = i;
-    }
+    // initialise max_values to zero
+    max_values[tid] =  __floats2bfloat162_rn (0.0f, 0.0f);
 
-    int next_i = i + blockDim.x;
-    __nv_bfloat162 next_val = input[next_i];
-    int2 next_idx;
-    // if index array has already been initialised then load it
-    if(init_idx) {
-        next_idx = index_in[next_i];
-    }
-    // if it hasn't, initialise it.
-    else {
-        next_idx.x = next_i;
-        next_idx.y = next_i;
+    if(super_idx + tid < num_elements){
+        // load input to shared mem
+        max_values[tid] = input[super_idx + tid];
+        // check if idx was initalised in a previous kernel
+        max_indices[tid].x = (init_idx == true) ? index_in[super_idx + tid].x : 2 * (super_idx + tid);
+        max_indices[tid].y = (init_idx == true) ? index_in[super_idx + tid].y : 2 * (super_idx + tid) + 1;
     }
 
-    // Compare and select the maximum for both halves.
-    if (__hlt(val.x, next_val.x)) {
-        val.x = next_val.x;
-        idx.x = next_idx.x;
-    }
-    if (__hlt(val.y, next_val.y)) {
-        val.y = next_val.y;
-        idx.y = next_idx.y;
-    }
+    #pragma unroll
+    for (int i = 1; i < elements_per_thread; i++){
+        // current index being compared to value in shared mem
+        int64_t curr_idx = super_idx + i * blockDim.x + tid;
+        if (curr_idx < num_elements){
+            __nv_bfloat162 val = max_values[tid];
+            __nv_bfloat162 next_val = input[curr_idx];
+            if (__hlt(val.x, next_val.x)){
+                max_values[tid].x = next_val.x;
+                max_indices[tid].x = (init_idx == true) ? index_in[curr_idx].x : 2 * curr_idx;
+            }
 
-    // Load input elements into shared memory
-    max_values[tid] = val;
-    // load index to shared memory
-    max_indices[tid] = idx;
-    
+            if (__hlt(val.y, next_val.y)){
+                max_values[tid].y = next_val.y;
+                max_indices[tid].y = (init_idx == true) ? index_in[curr_idx].y : 2 * curr_idx + 1;
+            }
+        }
+    }
     __syncthreads();
 
-    // Perform reduction in shared memory
-    // for (unsigned int stride = blockDim.x / 2; stride > 32; stride >>= 1) {
-    //     if (tid < stride) {
-    //         if (__hlt(max_values[tid].x, max_values[tid + stride].x)) {
-    //             max_values[tid].x = max_values[tid + stride].x;
-    //             max_indices[tid].x = max_indices[tid + stride].x;
-    //         }
+    #pragma unroll 
+    for (int s = blockDim.x / 2; s > 16; s >>= 1){
+        if (tid < s){
+            if (__hlt(max_values[tid].x, max_values[tid + s].x)) {
+                max_values[tid].x = max_values[tid + s].x;
+                max_indices[tid].x = max_indices[tid + s].x;
+            }
 
-    //         if (__hlt(max_values[tid].y, max_values[tid + stride].y)) {
-    //             max_values[tid].y = max_values[tid + stride].y;
-    //             max_indices[tid].y = max_indices[tid + stride].y;
-    //         }
+            if (__hlt(max_values[tid].y, max_values[tid + s].y)) {
+                max_values[tid].y = max_values[tid + s].y;
+                max_indices[tid].y = max_indices[tid + s].y;
+            }
+        }
+        __syncthreads();
+    }
+
+    // if (tid < 128) {
+    //     if (__hlt(max_values[tid].x, max_values[tid + 128].x)) {
+    //         max_values[tid].x = max_values[tid + 128].x;
+    //         max_indices[tid].x = max_indices[tid + 128].x;
     //     }
-    //     __syncthreads();
+
+    //     if (__hlt(max_values[tid].y, max_values[tid + 128].y)) {
+    //         max_values[tid].y = max_values[tid + 128].y;
+    //         max_indices[tid].y = max_indices[tid + 128].y;
+    //     }
     // }
+    // __syncthreads();
 
-    if (tid < 128) {
-        if (__hlt(max_values[tid].x, max_values[tid + 128].x)) {
-            max_values[tid].x = max_values[tid + 128].x;
-            max_indices[tid].x = max_indices[tid + 128].x;
-        }
+    // if (tid < 64) {
+    //     if (__hlt(max_values[tid].x, max_values[tid + 64].x)) {
+    //         max_values[tid].x = max_values[tid + 64].x;
+    //         max_indices[tid].x = max_indices[tid + 64].x;
+    //     }
 
-        if (__hlt(max_values[tid].y, max_values[tid + 128].y)) {
-            max_values[tid].y = max_values[tid + 128].y;
-            max_indices[tid].y = max_indices[tid + 128].y;
-        }
-    }
-    __syncthreads();
+    //     if (__hlt(max_values[tid].y, max_values[tid + 64].y)) {
+    //         max_values[tid].y = max_values[tid + 64].y;
+    //         max_indices[tid].y = max_indices[tid + 64].y;
+    //     }
+    // }
+    // __syncthreads();
 
-    if (tid < 64) {
-        if (__hlt(max_values[tid].x, max_values[tid + 64].x)) {
-            max_values[tid].x = max_values[tid + 64].x;
-            max_indices[tid].x = max_indices[tid + 64].x;
-        }
-
-        if (__hlt(max_values[tid].y, max_values[tid + 64].y)) {
-            max_values[tid].y = max_values[tid + 64].y;
-            max_indices[tid].y = max_indices[tid + 64].y;
-        }
-    }
-    __syncthreads();
-
-    if (tid < 32) warpReduce<__nv_bfloat162, int2>(max_values, max_indices, tid);
+    if (tid < 16) warpReduce<__nv_bfloat162, int2>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0) {
@@ -560,14 +619,23 @@ __global__ void overall_maximum_value_bfloat(
             int *index_out)
 {
 
-    if(__hgt(in[0].x, in[0].y)){
+    if(__hgt(in[0].y, in[0].x)){
         *out = in[0].x;
-        *index_out = index_in[0].x * 2;
-    }
+        *index_out = index_in[0].x;
+    }  
     else{
         *out = in[0].y;
-        *index_out = index_in[0].y * 2 + 1;
-    }
+        *index_out = index_in[0].y;
+    }  
+    
+    // if(__hgt(in[0].x, in[0].y)){
+    //     *out = in[0].x;
+    //     *index_out = index_in[0].x * 2;
+    // }
+    // else{
+    //     *out = in[0].y;
+    //     *index_out = index_in[0].y * 2 + 1;
+    // }
 
 }
 
@@ -681,6 +749,7 @@ __global__ void subtract_psf(
             T* loop_gain, 
             int* max_idx_flat, 
             T* highest_value, 
+            const int elements_per_thread,
             const T2* psf, 
             T2* residual,
             T* threshold
@@ -695,6 +764,7 @@ __global__ void subtract_psf<double, double>(
             double* loop_gain, 
             int* max_idx_flat, 
             double* highest_value, 
+            const int elements_per_thread,
             const double* psf, 
             double* residual,
             double* threshold) {
@@ -712,31 +782,41 @@ __global__ void subtract_psf<double, double>(
         int64_t psf_x_start = dirty_img_dim - max_idx_x;
         int64_t psf_y_start = dirty_img_dim - max_idx_y;
 
-        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+        // int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
-        // check thread is in bounds
-        if (i < dirty_img_size){
+        // thread index
+        int64_t tid = threadIdx.x;
+        // index of block of values being worked on by this thread
+        int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
 
-            // Compute the x and y coordinates in the dirty image
-            int64_t x_dirty = i / dirty_img_dim;
-            int64_t y_dirty = i % dirty_img_dim;
+        #pragma unroll
+        for (int i = 0; i < elements_per_thread; i++){
+            int64_t curr_idx = super_idx + i * blockDim.x + tid;
 
-            // Compute the x and y coordinates in the psf
-            int64_t x_psf = x_dirty + psf_x_start;
-            int64_t y_psf = y_dirty + psf_y_start;
+            // check thread is in bounds
+            if (curr_idx < dirty_img_size){
 
-            // // get flat index for dirty image
-            // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
+                // Compute the x and y coordinates in the dirty image
+                int64_t x_dirty = curr_idx / dirty_img_dim;
+                int64_t y_dirty = curr_idx % dirty_img_dim;
 
-            // get flat index for psf
-            int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+                // Compute the x and y coordinates in the psf
+                int64_t x_psf = x_dirty + psf_x_start;
+                int64_t y_psf = y_dirty + psf_y_start;
 
-            // Subtract the PSF contribution from the residual
-            double inter = __dmul_rn(loop_gain[0], highest_value[0]);
-            inter = __dmul_rn(inter, psf[psf_flat_idx]);
-            residual[i] =  __dsub_rn(residual[i],inter);
-            
-            // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
+                // // get flat index for dirty image
+                // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
+
+                // get flat index for psf
+                int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+
+                // Subtract the PSF contribution from the residual
+                double inter = __dmul_rn(loop_gain[0], highest_value[0]);
+                inter = __dmul_rn(inter, psf[psf_flat_idx]);
+                residual[curr_idx] =  __dsub_rn(residual[curr_idx],inter);
+                
+                // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
+            }
         }
     }
     else{
@@ -752,6 +832,7 @@ __global__ void subtract_psf<float, float>(
             float* loop_gain, 
             int* max_idx_flat, 
             float* highest_value, 
+            const int elements_per_thread,
             const float* psf, 
             float* residual,
             float* threshold) {
@@ -770,31 +851,41 @@ __global__ void subtract_psf<float, float>(
         int64_t psf_x_start = dirty_img_dim - max_idx_x;
         int64_t psf_y_start = dirty_img_dim - max_idx_y;
 
-        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+        // int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
-        // check thread is in bounds
-        if (i < dirty_img_size){
+        // thread index
+        int64_t tid = threadIdx.x;
+        // index of block of values being worked on by this thread
+        int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
 
-            // Compute the x and y coordinates in the dirty image
-            int64_t x_dirty = i / dirty_img_dim;
-            int64_t y_dirty = i % dirty_img_dim;
+        #pragma unroll
+        for (int i = 0; i < elements_per_thread; i++){
+            int64_t curr_idx = super_idx + i * blockDim.x + tid;
 
-            // Compute the x and y coordinates in the psf
-            int64_t x_psf = x_dirty + psf_x_start;
-            int64_t y_psf = y_dirty + psf_y_start;
+            // check thread is in bounds
+            if (curr_idx < dirty_img_size){
 
-            // // get flat index for dirty image
-            // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
+                // Compute the x and y coordinates in the dirty image
+                int64_t x_dirty = curr_idx / dirty_img_dim;
+                int64_t y_dirty = curr_idx % dirty_img_dim;
 
-            // get flat index for psf
-            int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+                // Compute the x and y coordinates in the psf
+                int64_t x_psf = x_dirty + psf_x_start;
+                int64_t y_psf = y_dirty + psf_y_start;
 
-            // Subtract the PSF contribution from the residual
-            float inter = __fmul_rn(loop_gain[0], highest_value[0]);
-            inter = __fmul_rn(inter, psf[psf_flat_idx]);
-            residual[i] =  __fsub_rn(residual[i],inter);
-            
-            // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
+                // // get flat index for dirty image
+                // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
+
+                // get flat index for psf
+                int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+
+                // Subtract the PSF contribution from the residual
+                float inter = __fmul_rn(loop_gain[0], highest_value[0]);
+                inter = __fmul_rn(inter, psf[psf_flat_idx]);
+                residual[curr_idx] =  __fsub_rn(residual[curr_idx],inter);
+                
+                // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
+            }
         }
     }
     else{
@@ -809,6 +900,7 @@ __global__ void subtract_psf<__nv_bfloat16, __nv_bfloat162>(
             __nv_bfloat16* loop_gain, 
             int* max_idx_flat, 
             __nv_bfloat16* highest_value, 
+            const int elements_per_thread,
             const __nv_bfloat162* psf, 
             __nv_bfloat162* residual,
             __nv_bfloat16* threshold) {
@@ -820,56 +912,66 @@ __global__ void subtract_psf<__nv_bfloat16, __nv_bfloat162>(
         // int64_t psf_size = psf_dim * psf_dim;
 
         // get x and y from flat index
-        int max_idx_x = *max_idx_flat / dirty_img_dim;
-        int max_idx_y = *max_idx_flat % dirty_img_dim;
+        int max_idx_x = max_idx_flat[0] / dirty_img_dim;
+        int max_idx_y = max_idx_flat[0] % dirty_img_dim;
 
         // Identify start position of PSF window to subtract from residual
         int64_t psf_x_start = dirty_img_dim - max_idx_x;
         int64_t psf_y_start = dirty_img_dim - max_idx_y;
 
-        int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+        // int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
-        // check thread is in bounds
-        if (i < dirty_img_size){
+        // thread index
+        int64_t tid = threadIdx.x;
+        // index of block of values being worked on by this thread
+        int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
 
-            // Compute the x and y coordinates in the dirty image
-            int64_t x_dirty = i / dirty_img_dim;
-            int64_t y_dirty = i % dirty_img_dim;
+        #pragma unroll
+        for (int i = 0; i < elements_per_thread; i++){
+            int64_t curr_idx = super_idx + i * blockDim.x + tid;
 
-            // Compute the x and y coordinates in the psf
-            int64_t x_psf = x_dirty + psf_x_start;
-            int64_t y_psf = y_dirty + psf_y_start;
+            // check thread is in bounds
+            if (curr_idx < dirty_img_size){
 
-            // // get flat index for dirty image
-            // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
+                // Compute the x and y coordinates in the dirty image
+                int64_t x_dirty = curr_idx / dirty_img_dim;
+                int64_t y_dirty = curr_idx % dirty_img_dim;
 
-            // get flat index for psf
-            int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+                // Compute the x and y coordinates in the psf
+                int64_t x_psf = x_dirty + psf_x_start;
+                int64_t y_psf = y_dirty + psf_y_start;
 
-            // find index in bfloat terms
-            int64_t bfloat_psf_idx = psf_flat_idx / 2;
-            int64_t bfloat_residual_idx = i / 2;
+                // // get flat index for dirty image
+                // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
 
-            // Subtract the PSF contribution from the residual
-            __nv_bfloat16 inter = __hmul(*loop_gain, *highest_value);
-            
-            // if psf_flat_index / 2 is even then we have .x, if odd then .y
-            if (psf_flat_idx % 2 == 0){
-                inter = __hmul(inter, psf[bfloat_psf_idx].x);
+                // get flat index for psf
+                int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
+
+                // find index in bfloat terms
+                int64_t bfloat_psf_idx = psf_flat_idx / 2;
+                int64_t bfloat_residual_idx = curr_idx / 2;
+
+                // Subtract the PSF contribution from the residual
+                __nv_bfloat16 inter = __hmul(*loop_gain, highest_value[0]);
+                
+                // if psf_flat_index / 2 is even then we have .x, if odd then .y
+                if (psf_flat_idx % 2 == 0){
+                    inter = __hmul(inter, psf[bfloat_psf_idx].x);
+                }
+                else{
+                    inter = __hmul(inter, psf[bfloat_psf_idx].y);
+                }
+                
+                if (curr_idx % 2 == 0){
+                    residual[bfloat_residual_idx].x =  __hsub(residual[bfloat_residual_idx].x,inter);
+                }
+                else
+                {
+                    residual[bfloat_residual_idx].y =  __hsub(residual[bfloat_residual_idx].y,inter);
+                }
+                
+                // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
             }
-            else{
-                inter = __hmul(inter, psf[bfloat_psf_idx].y);
-            }
-            
-            if (i % 2 == 0){
-                residual[bfloat_residual_idx].x =  __hsub(residual[bfloat_residual_idx].x,inter);
-            }
-            else
-            {
-                residual[bfloat_residual_idx].y =  __hsub(residual[bfloat_residual_idx].y,inter);
-            }
-            
-            // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
         }
     }
     else{
