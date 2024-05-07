@@ -300,29 +300,12 @@ template<typename T>
 void grid_corr(
         const sdp_GridderDirect* plan,
         sdp_Mem* mem_facet,
-        int offset_l,
-        int offset_m,
+        const double* pswf_l,
+        const double* pswf_m,
         sdp_Error* status
 )
 {
     if (*status) return;
-
-    // Shift PSWF by facet offsets.
-    sdp_Mem* mem_pswf_l = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
-    sdp_Mem* mem_pswf_m = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
-    const double* pswf = (const double*) sdp_mem_data_const(plan->pswf);
-    double* pswf_l = (double*) sdp_mem_data(mem_pswf_l);
-    double* pswf_m = (double*) sdp_mem_data(mem_pswf_m);
-    const int64_t pswf_size = sdp_mem_shape_dim(plan->pswf, 0);
-    for (int64_t i = 0; i < pswf_size; ++i)
-    {
-        int64_t il = i + offset_l;
-        int64_t im = i + offset_m;
-        if (il >= pswf_size) il -= pswf_size;
-        if (im >= pswf_size) im -= pswf_size;
-        pswf_l[i] = pswf[il];
-        pswf_m[i] = pswf[im];
-    }
 
     // Apply portion of shifted PSWF to facet.
     T* facet = (T*) sdp_mem_data(mem_facet);
@@ -337,8 +320,6 @@ void grid_corr(
             facet[k] /= (T) (pswf_l[pl] * pswf_m[pm]);
         }
     }
-    sdp_mem_free(mem_pswf_l);
-    sdp_mem_free(mem_pswf_m);
 }
 
 } // End anonymous namespace for file-local functions.
@@ -450,33 +431,45 @@ void sdp_gridder_direct_degrid_correct(
         return;
     }
 
+    // Shift PSWF by facet offsets.
+    sdp_Mem* mem_pswf_l = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
+    sdp_Mem* mem_pswf_m = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
+    if (*status) return;
+    const double* pswf = (const double*) sdp_mem_data_const(plan->pswf);
+    double* pswf_l = (double*) sdp_mem_data(mem_pswf_l);
+    double* pswf_m = (double*) sdp_mem_data(mem_pswf_m);
+    const int64_t pswf_size = sdp_mem_shape_dim(plan->pswf, 0);
+    for (int64_t i = 0; i < pswf_size; ++i)
+    {
+        int64_t il = i + facet_offset_l;
+        int64_t im = i + facet_offset_m;
+        if (il >= pswf_size) il -= pswf_size;
+        if (im >= pswf_size) im -= pswf_size;
+        pswf_l[i] = pswf[il];
+        pswf_m[i] = pswf[im];
+    }
+
     // Apply grid correction for the appropriate data type.
     switch (sdp_mem_type(facet))
     {
     case SDP_MEM_DOUBLE:
-        grid_corr<double>(
-                plan, facet, facet_offset_l, facet_offset_m, status
-        );
+        grid_corr<double>(plan, facet, pswf_l, pswf_m, status);
         break;
     case SDP_MEM_COMPLEX_DOUBLE:
-        grid_corr<complex<double> >(
-                plan, facet, facet_offset_l, facet_offset_m, status
-        );
+        grid_corr<complex<double> >(plan, facet, pswf_l, pswf_m, status);
         break;
     case SDP_MEM_FLOAT:
-        grid_corr<float>(
-                plan, facet, facet_offset_l, facet_offset_m, status
-        );
+        grid_corr<float>(plan, facet, pswf_l, pswf_m, status);
         break;
     case SDP_MEM_COMPLEX_FLOAT:
-        grid_corr<complex<float> >(
-                plan, facet, facet_offset_l, facet_offset_m, status
-        );
+        grid_corr<complex<float> >(plan, facet, pswf_l, pswf_m, status);
         break;
     default:
         *status = SDP_ERR_DATA_TYPE;
         break;
     }
+    sdp_mem_free(mem_pswf_l);
+    sdp_mem_free(mem_pswf_m);
 }
 
 
