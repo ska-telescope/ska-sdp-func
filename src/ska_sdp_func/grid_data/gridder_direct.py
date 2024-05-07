@@ -80,6 +80,19 @@ class GridderDirect(StructWrapper):
             Mem(vis),
         )
 
+    def degrid_correct(
+        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+    ):
+        """Do degrid correction to enable degridding from the FT of the image.
+
+        :param facet: ``complex[facet_size,facet_size]`` Facet.
+        :param facet_offset_l, facet_offset_m:
+            Offset of facet centre relative to image centre
+        """
+        Lib.sdp_gridder_direct_degrid_correct(
+            self, Mem(facet), facet_offset_l, facet_offset_m
+        )
+
     def grid(
         self,
         vis: numpy.ndarray,
@@ -126,6 +139,19 @@ class GridderDirect(StructWrapper):
             subgrid_offset_v,
         )
 
+    def grid_correct(
+        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+    ):
+        """Do grid correction after gridding.
+
+        :param facet: ``complex[facet_size,facet_size]`` Facet.
+        :param facet_offset_l, facet_offset_m:
+            Offset of facet centre relative to image centre
+        """
+        Lib.sdp_gridder_direct_grid_correct(
+            self, Mem(facet), facet_offset_l, facet_offset_m
+        )
+
 
 Lib.wrap_func(
     "sdp_gridder_direct_create",
@@ -158,6 +184,18 @@ Lib.wrap_func(
 )
 
 Lib.wrap_func(
+    "sdp_gridder_direct_degrid_correct",
+    restype=None,
+    argtypes=[
+        GridderDirect.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_int,
+        ctypes.c_int,
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
     "sdp_gridder_direct_grid",
     restype=None,
     argtypes=[
@@ -168,6 +206,18 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_double,
         ctypes.c_double,
+        Mem.handle_type(),
+        ctypes.c_int,
+        ctypes.c_int,
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_grid_correct",
+    restype=None,
+    argtypes=[
+        GridderDirect.handle_type(),
         Mem.handle_type(),
         ctypes.c_int,
         ctypes.c_int,

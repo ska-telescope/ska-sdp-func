@@ -85,6 +85,22 @@ void sdp_gridder_direct_degrid(
 );
 
 /**
+ * @brief Do degrid correction to enable degridding from the FT of the image.
+ *
+ * @param facet ``complex[facet_size, facet_size]`` Facet.
+ * @param facet_offset_l Offset of facet centre in l, relative to image centre.
+ * @param facet_offset_m Offset of facet centre in m, relative to image centre.
+ * @param status Error status.
+ */
+void sdp_gridder_direct_degrid_correct(
+        sdp_GridderDirect* plan,
+        sdp_Mem* facet,
+        int facet_offset_l,
+        int facet_offset_m,
+        sdp_Error* status
+);
+
+/**
  * @brief Grid visibilities using direct Fourier transformation.
  *
  * This is painfully slow, but as good as we can make it by definition.
@@ -114,6 +130,22 @@ void sdp_gridder_direct_grid(
         sdp_Mem* subgrid_image,
         int subgrid_offset_u,
         int subgrid_offset_v,
+        sdp_Error* status
+);
+
+/**
+ * @brief Do grid correction after gridding.
+ *
+ * @param facet ``complex[facet_size, facet_size]`` Facet.
+ * @param facet_offset_l Offset of facet centre in l, relative to image centre.
+ * @param facet_offset_m Offset of facet centre in m, relative to image centre.
+ * @param status Error status.
+ */
+void sdp_gridder_direct_grid_correct(
+        sdp_GridderDirect* plan,
+        sdp_Mem* facet,
+        int facet_offset_l,
+        int facet_offset_m,
         sdp_Error* status
 );
 

@@ -192,6 +192,36 @@ class DFTGridKernel:
 
         return vis_out
 
+    def grid_correct(
+        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+    ):
+        """
+        Do grid correction after gridding
+
+        :param facet: ``complex[facet_size,facet_size]``
+            Facet data resulting from gridding
+        :param facet_offset_l, facet_offset_m:
+            Offset of facet centre relative to image centre
+        :returns: Corrected image facet
+        """
+
+        # Determine PSWF portions that apply to facet
+        pswf_l = numpy.roll(self.pswf, -facet_offset_l)
+        pswf_l = pswf_l[
+            self.image_size // 2
+            - facet.shape[0] // 2 : self.image_size // 2
+            + facet.shape[0] // 2
+        ]
+        pswf_m = numpy.roll(self.pswf, -facet_offset_m)
+        pswf_m = pswf_m[
+            self.image_size // 2
+            - facet.shape[1] // 2 : self.image_size // 2
+            + facet.shape[1] // 2
+        ]
+
+        # Apply
+        return facet / pswf_l[:, numpy.newaxis] / pswf_m[numpy.newaxis, :]
+
     def grid_subgrid(
         self,
         vis: numpy.ndarray,
@@ -325,6 +355,30 @@ def test_gridder_direct():
     gridder.grid(
         vis_ref, uvw, start_chs, end_chs, freq0_hz, dfreq_hz, img_tst, idu, idv
     )
+
+    # Check they are the same.
+    numpy.testing.assert_allclose(img_tst, img_ref)
+
+
+def test_gridder_direct_degrid_correct():
+    image_size = 128  # Total image size in pixels
+    theta = 0.1  # Total image size in directional cosines.
+    support = 10
+    subgrid_size = image_size // 4
+
+    # Create a test image.
+    image = numpy.random.random_sample((subgrid_size, subgrid_size))
+    facet_offset_l = 5
+    facet_offset_m = 15
+
+    # Generate reference data.
+    gridder_ref = DFTGridKernel(image_size, subgrid_size, theta, support)
+    img_ref = gridder_ref.degrid_correct(image, facet_offset_l, facet_offset_m)
+
+    # Call the degrid correction function in PFL.
+    gridder = GridderDirect(image_size, subgrid_size, theta, support)
+    img_tst = numpy.array(image)
+    gridder.degrid_correct(img_tst, facet_offset_l, facet_offset_m)
 
     # Check they are the same.
     numpy.testing.assert_allclose(img_tst, img_ref)
