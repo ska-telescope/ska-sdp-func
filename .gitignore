@@ -20,6 +20,8 @@ __pycache__/
 
 # Test data
 *.bin
+*.npy
+test_*.png
 tests/test_data/
 
 # Make files
