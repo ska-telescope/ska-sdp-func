@@ -32,6 +32,20 @@ using namespace std;
 #define M_PI 3.1415926535897931
 #endif
 
+#define NUM_STREAMS 4
+
+/********************/
+/* CUDA ERROR CHECK */
+/********************/
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+    if (code != cudaSuccess)
+    {
+        fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+        if (abort) exit(code);
+    }
+}
 
 
 
@@ -119,6 +133,86 @@ void transpose_inplace_block(sdp_Double2* data, size_t m, size_t block)
     }
 
 }
+
+void cufft_stream_1stage(
+		cufftDoubleComplex *idata_1d_all,
+		cufftDoubleComplex *odata_1d_all,
+		sdp_Double2* grid_out,
+		sdp_Double2* image_fits,
+		int64_t grid_size,
+		int batch_size,
+		cufftHandle* plan_1d,
+		cudaStream_t* streams,
+		int stream_number,
+		size_t j
+		){
+	cudaError_t	cudaStatus;
+	cufftResult cufftStatus;
+	size_t idx_d, idx_h;
+
+	idx_d = stream_number*batch_size*grid_size;
+	idx_h = (size_t)((j+stream_number*batch_size)*grid_size);
+	SDP_LOG_INFO("Stream %d, J = %d, idx_h = %d, idx_d = %d", stream_number, (int)j,idx_h,idx_d);
+
+	cudaStatus = cudaMemcpyAsync((idata_1d_all+idx_d), (cufftDoubleComplex*)(grid_out + idx_h), sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyHostToDevice, streams[stream_number]);
+    if (cudaStatus != cudaSuccess){
+		fprintf(stderr, "cudaMemcpy failed! Can't copy to GPU memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	cufftStatus = cufftExecZ2Z(plan_1d[stream_number], (idata_1d_all+idx_d), (odata_1d_all+idx_d), CUFFT_INVERSE);
+	if (cufftStatus != CUFFT_SUCCESS){
+		fprintf(stderr, "cufftExecZ2Z failed! Can't make Z2Z transform!\n");
+		exit(EXIT_FAILURE);
+	}
+	cudaStatus = cudaMemcpyAsync((cufftDoubleComplex*)(image_fits + idx_h), (odata_1d_all+idx_d), sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyDeviceToHost, streams[stream_number]);
+
+    if (cudaStatus != cudaSuccess){
+		fprintf(stderr, "cudaMemcpy failed! Can't copy from GPU memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+}
+
+void cufft_stream_2stage(
+		cufftDoubleComplex *idata_1d_all,
+		cufftDoubleComplex *odata_1d_all,
+		sdp_Double2* image_fits,
+		int64_t grid_size,
+		int batch_size,
+		cufftHandle* plan_1d,
+		cudaStream_t* streams,
+		int stream_number,
+		size_t j
+		){
+	cudaError_t	cudaStatus;
+	cufftResult cufftStatus;
+	size_t idx_d, idx_h;
+
+	idx_d = stream_number*batch_size*grid_size;
+	idx_h = (size_t)((j+stream_number*batch_size)*grid_size);
+	SDP_LOG_INFO("Stream %d, J = %d, idx_h = %d, idx_d = %d", stream_number, (int)j,idx_h,idx_d);
+
+	cudaStatus = cudaMemcpyAsync((idata_1d_all+idx_d), (cufftDoubleComplex*)(image_fits + idx_h), sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyHostToDevice, streams[stream_number]);
+    if (cudaStatus != cudaSuccess){
+		fprintf(stderr, "cudaMemcpy failed! Can't copy to GPU memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	cufftStatus = cufftExecZ2Z(plan_1d[stream_number], (idata_1d_all+idx_d), (odata_1d_all+idx_d), CUFFT_INVERSE);
+	if (cufftStatus != CUFFT_SUCCESS){
+		fprintf(stderr, "cufftExecZ2Z failed! Can't make Z2Z transform!\n");
+		exit(EXIT_FAILURE);
+	}
+	cudaStatus = cudaMemcpyAsync((cufftDoubleComplex*)(image_fits + idx_h), (odata_1d_all+idx_d), sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyDeviceToHost, streams[stream_number]);
+
+    if (cudaStatus != cudaSuccess){
+		fprintf(stderr, "cudaMemcpy failed! Can't copy from GPU memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+}
+
 
 
 // Output the absolute value of the 2D array into the FITS file, compressing if required
@@ -223,8 +317,10 @@ int main(int argc, char** argv)
     double uvw_scale;
     int ha_num;
     double dec_rad;
-    int gpu_start, idx, idx2;
+    int gpu_start, idx, idx2, idx3, idx4;
     size_t block_size;
+    int batch_size;
+    int num_streams;
 
     clock_t start, end;
     double cpu_time_used;
@@ -241,6 +337,8 @@ int main(int argc, char** argv)
     grid_size = 8192;
     grid_size_default = 4096;
     block_size = 8;
+    batch_size =1024;
+    num_streams = NUM_STREAMS;
     printf("Program Name Is: %s\n", argv[0]);
     if (argc == 2)
     {
@@ -255,8 +353,28 @@ int main(int argc, char** argv)
     {
         grid_size = (int64_t) atoi(argv[1]);
         grid_size_default = (int64_t) atoi(argv[2]);
-        block_size = (size_t) atoi(argv[3]);
+        batch_size = atoi(argv[3]);
     }
+    else if (argc == 5)
+    {
+        grid_size = (int64_t) atoi(argv[1]);
+        grid_size_default = (int64_t) atoi(argv[2]);
+        batch_size = atoi(argv[3]);
+        num_streams = atoi(argv[4]);
+    }
+    else if (argc == 6)
+    {
+        grid_size = (int64_t) atoi(argv[1]);
+        grid_size_default = (int64_t) atoi(argv[2]);
+        batch_size = atoi(argv[3]);
+        num_streams = atoi(argv[4]);
+        block_size = (size_t) atoi(argv[5]);
+    }
+    else
+    {
+    	printf("Usage: 2DFFT_by_1DFFTs <grid_size=8192> <grid_size_default for FITS output = 4096> <batch_size=1024> <num_streams=NUM_STREAMS> <block_size=8>\n");
+    }
+
 
     SDP_LOG_INFO("Grid size is %ld x %ld", grid_size, grid_size);
     SDP_LOG_INFO("Grid output size is %ld x %ld",
@@ -264,6 +382,8 @@ int main(int argc, char** argv)
             grid_size_default
     );
     SDP_LOG_INFO("Block size is %ld", block_size);
+    SDP_LOG_INFO("Batch size is %d", batch_size);
+    SDP_LOG_INFO("Number of streams is %d", num_streams);
 
     /*
      * Define a list of sources,
@@ -378,15 +498,14 @@ int main(int argc, char** argv)
     sdp_mem_clear_contents(image_out, &status);
 
     // Create 1D FFT setup
-    cufftDoubleComplex *odata_1d, *idata_1d;
-    cufftDoubleComplex *h_odata_1d, *h_idata_1d;
-    cufftHandle plan_1d;
+    cufftDoubleComplex *idata_1d_all, *odata_1d_all;
 
-    int batch_size =1024; //2,4,8,16 etc
-    cudaStatus = cudaMalloc((void**)&odata_1d, sizeof(cufftDoubleComplex)*grid_size*batch_size);
-    cudaStatus = cudaMalloc((void**)&idata_1d, sizeof(cufftDoubleComplex)*grid_size*batch_size);
-    cudaStatus = cudaMallocHost((void**)&h_odata_1d, sizeof(cufftDoubleComplex)*grid_size*batch_size);
-    cudaStatus = cudaMallocHost((void**)&h_idata_1d, sizeof(cufftDoubleComplex)*grid_size*batch_size);
+    cudaStream_t* streams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*num_streams);
+    for (int i = 0; i < num_streams; i++) gpuErrchk(cudaStreamCreate(&streams[i]));
+
+    cudaStatus = cudaMalloc((void**)&odata_1d_all, sizeof(cufftDoubleComplex)*grid_size*batch_size*num_streams);
+    cudaStatus = cudaMalloc((void**)&idata_1d_all, sizeof(cufftDoubleComplex)*grid_size*batch_size*num_streams);
+
     if (cudaStatus != cudaSuccess){
 		fprintf(stderr, "cudaMalloc failed! Can't allocate GPU memory for d_original_signal\n");
 		exit(EXIT_FAILURE);
@@ -401,62 +520,57 @@ int main(int argc, char** argv)
     int inembed[] = { 0 };                  // --- Input size with pitch (ignored for 1D transforms)
     int onembed[] = { 0 };                  // --- Output size with pitch (ignored for 1D transforms)
     int batch = batch_size;                 // --- Number of batched executions
-    cufftStatus = cufftPlanMany(&plan_1d, rank, n,
-                  inembed, istride, idist,
-                  onembed, ostride, odist, CUFFT_Z2Z, batch);
 
-    //cufftStatus = cufftPlan1d(&plan_1d, grid_size, CUFFT_Z2Z, batch_size);
-	if (cufftStatus != CUFFT_SUCCESS){
-		fprintf(stderr, "cufftPlan1d failed! Can't create a plan! %s\n", cufftStatus);
-		exit(EXIT_FAILURE);
-	}
-	SDP_LOG_INFO("cufftPlanMany %s", cufftStatus);
+    // --- Creates cuFFT plans and sets them in streams
+    cufftHandle* plan_1d = (cufftHandle*) malloc(sizeof(cufftHandle)*num_streams);
+    for (int i = 0; i < num_streams; i++) {
+        //cufftPlan1d(&plan_1d[i], N, CUFFT_C2C, 1);
+        cufftStatus = cufftPlanMany(&plan_1d[i], rank, n,
+                      inembed, istride, idist,
+                      onembed, ostride, odist, CUFFT_Z2Z, batch);
+    	if (cufftStatus != CUFFT_SUCCESS){
+    		fprintf(stderr, "cufftPlan1d failed! Can't create a plan! %s\n", cufftStatus);
+    		exit(EXIT_FAILURE);
+    	}
+    	SDP_LOG_INFO("cufftPlanMany %d %s", i, cufftStatus);
+        cufftSetStream(plan_1d[i], streams[i]);
+    }
+
+    gpuErrchk(cudaHostRegister(grid_out, sizeof(cufftDoubleComplex)*grid_size*grid_size, cudaHostRegisterPortable));
+    gpuErrchk(cudaHostRegister(image_fits, sizeof(cufftDoubleComplex)*grid_size*grid_size, cudaHostRegisterPortable));
 
 	size_t i,j,k;
-
 	start = clock();
-
     // Working through columns
-	for(j=0;j<grid_size; j+=batch_size){
-         // Finf initial idx on the host
-        idx = (int)(j*grid_size);
-        // Get pointer and cast to cuComplex.
-        h_idata_1d = (cufftDoubleComplex*)(image_fits + idx);
+	for(j=0;j<grid_size; j+=num_streams*batch_size){
 
-		// H2D copy the column
-	    cudaStatus = cudaMemcpy(idata_1d, (cufftDoubleComplex*)(grid_out + idx), sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyHostToDevice);
+        for (k = 0; k < num_streams; ++k)
+        	cufft_stream_1stage(
+        		idata_1d_all,
+        		odata_1d_all,
+        		grid_out,
+        		image_fits,
+        		grid_size,
+        		batch_size,
+        		plan_1d,
+        		streams,
+        		k,
+        		j
+        		);
 
-	    if (cudaStatus != cudaSuccess){
-			fprintf(stderr, "cudaMemcpy failed! Can't copy to GPU memory\n");
-			exit(EXIT_FAILURE);
-		}
+	    for(i = 0; i < num_streams; i++) gpuErrchk(cudaStreamSynchronize(streams[i]));
 
-	    // Make inverse 1D FFT
-		cufftStatus = cufftExecZ2Z(plan_1d, idata_1d, odata_1d, CUFFT_INVERSE);
-		if (cufftStatus != CUFFT_SUCCESS){
-			fprintf(stderr, "cufftExecZ2Z failed! Can't make Z2Z transform!\n");
-			exit(EXIT_FAILURE);
-		}
-		//SDP_LOG_INFO("cufftExecZ2Z %s\n", cufftStatus);
-
-		// D2H copy the column
-	    cudaStatus = cudaMemcpy((cufftDoubleComplex*)(image_fits + idx), odata_1d, sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyDeviceToHost);
-
-	    if (cudaStatus != cudaSuccess){
-			fprintf(stderr, "cudaMemcpy failed! Can't copy to GPU memory\n");
-			exit(EXIT_FAILURE);
-		}
 	}
 
+
+	cudaDeviceSynchronize();
 	end = clock();
 	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
 	SDP_LOG_INFO("Rows 1D FFT took %f ms", cpu_time_used);
 
 	start = clock();
 	// Corner rotate (transpose)
-	//size_t block_size = 16;
 	transpose_inplace_block(image_fits, grid_size, block_size);
-	//transpose_inplace(image_fits, grid_size);
 	end = clock();
 	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
 	SDP_LOG_INFO("Corner rotate took %f ms", cpu_time_used);
@@ -464,42 +578,30 @@ int main(int argc, char** argv)
 
 	start = clock();
     // Working through rows
-	for(j=0;j<grid_size; j+=batch_size){
-         // Finf initial idx on the host
-        idx = (int)(j*grid_size);
-        // Get pointer and cast to cuComplex.
-        h_idata_1d = (cufftDoubleComplex*)(image_fits + idx);
+	for(j=0;j<grid_size; j+=num_streams*batch_size){
 
-		// H2D copy the column
-	    cudaStatus = cudaMemcpy(idata_1d, (cufftDoubleComplex*)(image_fits + idx), sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyHostToDevice);
+        for (k = 0; k < num_streams; ++k)
+        	cufft_stream_2stage(
+        		idata_1d_all,
+        		odata_1d_all,
+        		image_fits,
+        		grid_size,
+        		batch_size,
+        		plan_1d,
+        		streams,
+        		k,
+        		j
+        		);
 
-	    if (cudaStatus != cudaSuccess){
-			fprintf(stderr, "cudaMemcpy failed! Can't copy to GPU memory\n");
-			exit(EXIT_FAILURE);
-		}
-
-	    // Make inverse 1D FFT
-		cufftStatus = cufftExecZ2Z(plan_1d, idata_1d, odata_1d, CUFFT_INVERSE);
-		if (cufftStatus != CUFFT_SUCCESS){
-			fprintf(stderr, "cufftExecZ2Z failed! Can't make Z2Z transform!\n");
-			exit(EXIT_FAILURE);
-		}
-		//SDP_LOG_INFO("cufftExecZ2Z %s\n", cufftStatus);
-
-		// D2H copy the column
-	    cudaStatus = cudaMemcpy((cufftDoubleComplex*)(image_fits + idx), odata_1d, sizeof(cufftDoubleComplex)*grid_size*batch_size, cudaMemcpyDeviceToHost);
-
-	    if (cudaStatus != cudaSuccess){
-			fprintf(stderr, "cudaMemcpy failed! Can't copy to GPU memory\n");
-			exit(EXIT_FAILURE);
-		}
+	    for(i = 0; i < num_streams; i++) gpuErrchk(cudaStreamSynchronize(streams[i]));
 	}
-
+    cudaDeviceSynchronize();
 	end = clock();
 	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
 	SDP_LOG_INFO("Columns 1D FFT took %f ms", cpu_time_used);
 
-
+    gpuErrchk(cudaHostUnregister(grid_out));
+    gpuErrchk(cudaHostUnregister(image_fits));
 
 	SDP_LOG_INFO("cufftExecZ2Z finished%s", cufftStatus);
     fftshift(image_fits, (int)grid_size, (int)grid_size);
@@ -516,8 +618,19 @@ int main(int argc, char** argv)
     );
     SDP_LOG_INFO("FITSIO status %d\n", status_fits);
 
-	sdp_mem_free(sources);
+    for(int i = 0; i < num_streams; i++) {
+    	gpuErrchk(cudaStreamDestroy(streams[i]));
+    	cufftDestroy(plan_1d[i]);
+    }
+
+    cudaFree(idata_1d_all);
+    cudaFree(odata_1d_all);
+
+    sdp_mem_free(sources);
     sdp_mem_free(grid_sim);
     sdp_mem_free(image_out);
+
+    cudaDeviceReset();
+
     return 0;
 }
