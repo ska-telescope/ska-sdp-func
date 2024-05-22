@@ -6,6 +6,7 @@
 
 #include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 
 using std::complex;
 
@@ -101,11 +102,11 @@ template<typename T>
 void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
 {
     if (*status) return;
-    if (sdp_mem_num_dims(window) != 1 || sdp_mem_num_dims(kernel) != 2)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        return;
-    }
+    sdp_MemViewCpu<const T, 1> window_;
+    sdp_MemViewCpu<T, 2> kernel_;
+    sdp_mem_check_and_view(window, &window_, status);
+    sdp_mem_check_and_view(kernel, &kernel_, status);
+    if (*status) return;
     const int support = (int) sdp_mem_shape_dim(window, 0);
     const int oversampling = (int) sdp_mem_shape_dim(kernel, 0) - 1;
     if (support != (int) sdp_mem_shape_dim(kernel, 1))
@@ -116,11 +117,9 @@ void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
     const double inv_support = 1.0 / support;
     const double inv_oversampling = 1.0 / oversampling;
     const int half_suppport = support / 2;
-    const T* window_ = (const T*) sdp_mem_data_const(window);
-    T* kernel_ = (T*) sdp_mem_data(kernel);
 
     // There are (oversampling + 1) rows and (support) columns in the output.
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for
     for (int i = 0; i <= oversampling; ++i)
     {
         for (int s_out = 0; s_out < support; ++s_out)
@@ -135,9 +134,9 @@ void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
             for (int s_in = 0; s_in < support; ++s_in)
             {
                 const double l = (s_in - half_suppport) * inv_support;
-                val += window_[s_in] * cos(2 * M_PI * u * l); // real part only
+                val += window_(s_in) * cos(2 * M_PI * u * l); // real part only
             }
-            kernel_[i * support + s_out] = (T) val * inv_support;
+            kernel_(i, s_out) = (T) val * inv_support;
         }
     }
 }
@@ -179,22 +178,26 @@ void uvw_bounds_all(
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
         double uvw_min[3],
-        double uvw_max[3]
+        double uvw_max[3],
+        sdp_Error* status
 )
 {
     const double SPEED_OF_LIGHT = 299792458.0;
-    const UVW_TYPE* uvws_ = (const UVW_TYPE*) sdp_mem_data_const(uvws);
-    const int* start_chs_ = (const int*) sdp_mem_data_const(start_chs);
-    const int* end_chs_ = (const int*) sdp_mem_data_const(end_chs);
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(start_chs, &start_chs_, status);
+    sdp_mem_check_and_view(end_chs, &end_chs_, status);
     const int64_t num_uvw = sdp_mem_shape_dim(uvws, 0);
     uvw_min[0] = uvw_min[1] = uvw_min[2] = INFINITY;
     uvw_max[0] = uvw_max[1] = uvw_max[2] = -INFINITY;
+    if (*status) return;
     for (int64_t i = 0; i < num_uvw; ++i)
     {
-        const int start_ch = start_chs_[i], end_ch = end_chs_[i];
+        const int start_ch = start_chs_(i), end_ch = end_chs_(i);
         if (start_ch >= end_ch)
             continue;
-        const double uvw[] = {uvws_[3 * i], uvws_[3 * i + 1], uvws_[3 * i + 2]};
+        const double uvw[] = {uvws_(i, 0), uvws_(i, 1), uvws_(i, 2)};
         for (int j = 0; j < 3; ++j)
         {
             const double u0 = freq0_hz * uvw[j] / SPEED_OF_LIGHT;
@@ -353,36 +356,22 @@ void sdp_gridder_make_w_pattern(
 )
 {
     if (*status) return;
-    if (sdp_mem_location(w_pattern) != SDP_MEM_CPU)
+    sdp_MemViewCpu<complex<double>, 2> w_pattern_;
+    sdp_mem_check_and_view(w_pattern, &w_pattern_, status);
+    const int half_size = subgrid_size / 2;
+    if (*status) return;
+    #pragma omp parallel for
+    for (int il = 0; il < subgrid_size; ++il)
     {
-        *status = SDP_ERR_MEM_LOCATION;
-        return;
-    }
-    if (sdp_mem_type(w_pattern) != SDP_MEM_COMPLEX_DOUBLE)
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        return;
-    }
-    const int num_pix = subgrid_size * subgrid_size;
-    const int64_t ns_shape[] = {(int64_t) num_pix};
-    sdp_Mem* ns = sdp_mem_create(
-            SDP_MEM_DOUBLE, SDP_MEM_CPU, 1, ns_shape, status
-    );
-    sdp_gridder_image_to_lmn(
-            subgrid_size, theta, shear_u, shear_v, 0, 0, ns, status
-    );
-    double* ns_ = (double*) sdp_mem_data(ns);
-    complex<double>* w_pattern_ = (complex<double>*) sdp_mem_data(w_pattern);
-    if (!*status)
-    {
-        #pragma omp parallel for
-        for (int i = 0; i < num_pix; ++i)
+        for (int im = 0; im < subgrid_size; ++im)
         {
-            const double phase = 2.0 * M_PI * w_step * ns_[i];
-            w_pattern_[i] = complex<double>(cos(phase), sin(phase));
+            const double l_ = (il - half_size) * theta / subgrid_size;
+            const double m_ = (im - half_size) * theta / subgrid_size;
+            const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
+            const double phase = 2.0 * M_PI * w_step * n_;
+            w_pattern_(il, im) = complex<double>(cos(phase), sin(phase));
         }
     }
-    sdp_mem_free(ns);
 }
 
 
@@ -449,13 +438,15 @@ void sdp_gridder_uvw_bounds_all(
     if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
     {
         uvw_bounds_all<double>(
-                uvws, freq0_hz, dfreq_hz, start_chs, end_chs, uvw_min, uvw_max
+                uvws, freq0_hz, dfreq_hz, start_chs, end_chs, uvw_min, uvw_max,
+                status
         );
     }
     else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
     {
         uvw_bounds_all<float>(
-                uvws, freq0_hz, dfreq_hz, start_chs, end_chs, uvw_min, uvw_max
+                uvws, freq0_hz, dfreq_hz, start_chs, end_chs, uvw_min, uvw_max,
+                status
         );
     }
     else

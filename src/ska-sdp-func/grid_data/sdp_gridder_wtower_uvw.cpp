@@ -8,6 +8,7 @@
 #include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 
 using std::complex;
 
@@ -51,12 +52,13 @@ void degrid_channels(
 )
 {
     if (*status) return;
-    VIS_TYPE* vis_ = (VIS_TYPE*) sdp_mem_data(vis);
-    const VIS_TYPE* subgrids_ = (const VIS_TYPE*) sdp_mem_data_const(subgrids);
-    const double* uv_k_ = (const double*) sdp_mem_data_const(plan->uv_kernel);
-    const double* w_k_ = (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_chan = sdp_mem_shape_dim(vis, 1);
-    const int subgrid_square = plan->subgrid_size * plan->subgrid_size;
+    sdp_MemViewCpu<VIS_TYPE, 2> vis_;
+    sdp_MemViewCpu<const VIS_TYPE, 3> subgrids_;
+    sdp_MemViewCpu<const double, 2> uv_k_, w_k_;
+    sdp_mem_check_and_view(vis, &vis_, status);
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    sdp_mem_check_and_view(plan->uv_kernel, &uv_k_, status);
+    sdp_mem_check_and_view(plan->w_kernel, &w_k_, status);
     const int half_subgrid = plan->subgrid_size / 2;
     const double half_vr_m1 = (plan->vr_size - 1) / 2.0;
     const int half_vr = plan->vr_size / 2;
@@ -64,6 +66,7 @@ void degrid_channels(
     const int w_oversample = plan->w_oversampling;
     const double theta = plan->theta;
     double u = uvw0[0], v = uvw0[1], w = uvw0[2];
+    if (*status) return;
 
     // Loop over selected channels.
     for (int c = start_ch; c < end_ch; c++)
@@ -84,33 +87,29 @@ void degrid_channels(
         if (u_offset < 0) u_offset += oversample + 1;
         if (v_offset < 0) v_offset += oversample + 1;
         if (w_offset < 0) w_offset += w_oversample + 1;
-        u_offset *= plan->support;
-        v_offset *= plan->support;
-        w_offset *= plan->w_support;
 
         // Degrid visibility.
         VIS_TYPE local_vis = (VIS_TYPE) 0;
         for (int iw = 0; iw < plan->w_support; ++iw)
         {
-            const double kernel_w = w_k_[w_offset + iw];
+            const double kernel_w = w_k_(w_offset, iw);
             for (int iu = 0; iu < plan->support; ++iu)
             {
-                const double kernel_wu = kernel_w * uv_k_[u_offset + iu];
+                const double kernel_wu = kernel_w * uv_k_(u_offset, iu);
                 for (int iv = 0; iv < plan->support; ++iv)
                 {
-                    const double kernel_wuv = kernel_wu * uv_k_[v_offset + iv];
+                    const double kernel_wuv = kernel_wu * uv_k_(v_offset, iv);
                     int ix_u = iu0 + iu;
                     int ix_v = iv0 + iv;
                     if (ix_u < 0) ix_u += plan->subgrid_size;
                     if (ix_v < 0) ix_v += plan->subgrid_size;
-                    const int64_t idx = (
-                        iw * subgrid_square + ix_u * plan->subgrid_size + ix_v
+                    local_vis += ((VIS_TYPE) kernel_wuv *
+                            subgrids_(iw, ix_u, ix_v)
                     );
-                    local_vis += ((VIS_TYPE) kernel_wuv) * subgrids_[idx];
                 }
             }
         }
-        vis_[row_index * num_chan + c] = local_vis;
+        vis_(row_index, c) = local_vis;
 
         // Next point.
         u += duvw[0];
@@ -141,22 +140,23 @@ void degrid(
 
     // Loop over rows. Each row contains visibilities for all channels.
     const int64_t num_uvw = sdp_mem_shape_dim(uvws, 0);
-    const UVW_TYPE* uvws_ = (const UVW_TYPE*) sdp_mem_data_const(uvws);
-    const int* start_chs_ = (const int*) sdp_mem_data_const(start_chs);
-    const int* end_chs_ = (const int*) sdp_mem_data_const(end_chs);
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(start_chs, &start_chs_, status);
+    sdp_mem_check_and_view(end_chs, &end_chs_, status);
+    if (*status) return;
     #pragma omp parallel for
     for (int64_t i = 0; i < num_uvw; ++i)
     {
         // Skip if there's no visibility to degrid.
-        int start_ch = start_chs_[i], end_ch = end_chs_[i];
+        int start_ch = start_chs_(i), end_ch = end_chs_(i);
         if (start_ch >= end_ch)
             continue;
 
         // Select only visibilities on this w-plane
         // (inlined from clamp_channels).
-        const UVW_TYPE uvw[] = {
-            uvws_[3 * i], uvws_[3 * i + 1], uvws_[3 * i + 2]
-        };
+        const UVW_TYPE uvw[] = {uvws_(i, 0), uvws_(i, 1), uvws_(i, 2)};
         const double w0 = freq0_hz * uvw[2] / C_0;
         const double dw = dfreq_hz * uvw[2] / C_0;
         const double _min = (w_plane - 1) * plan->w_step;
@@ -211,14 +211,13 @@ void grid_channels(
 )
 {
     if (*status) return;
-    const complex<VIS_TYPE>* vis_ = (
-        (const complex<VIS_TYPE>*) sdp_mem_data_const(vis)
-    );
-    VIS_TYPE* subgrids_ = (VIS_TYPE*) sdp_mem_data(subgrids);
-    const double* uv_k_ = (const double*) sdp_mem_data_const(plan->uv_kernel);
-    const double* w_k_ = (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_chan = sdp_mem_shape_dim(vis, 1);
-    const int subgrid_square = plan->subgrid_size * plan->subgrid_size;
+    sdp_MemViewCpu<const VIS_TYPE, 2> vis_;
+    sdp_MemViewCpu<VIS_TYPE, 3> subgrids_;
+    sdp_MemViewCpu<const double, 2> uv_k_, w_k_;
+    sdp_mem_check_and_view(vis, &vis_, status);
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    sdp_mem_check_and_view(plan->uv_kernel, &uv_k_, status);
+    sdp_mem_check_and_view(plan->w_kernel, &w_k_, status);
     const int half_subgrid = plan->subgrid_size / 2;
     const double half_vr_m1 = (plan->vr_size - 1) / 2.0;
     const int half_vr = plan->vr_size / 2;
@@ -246,36 +245,25 @@ void grid_channels(
         if (u_offset < 0) u_offset += oversample + 1;
         if (v_offset < 0) v_offset += oversample + 1;
         if (w_offset < 0) w_offset += w_oversample + 1;
-        u_offset *= plan->support;
-        v_offset *= plan->support;
-        w_offset *= plan->w_support;
 
         // Grid visibility.
-        complex<VIS_TYPE> local_vis = vis_[row_index * num_chan + c];
+        VIS_TYPE local_vis = vis_(row_index, c);
         for (int iw = 0; iw < plan->w_support; ++iw)
         {
-            const double kernel_w = w_k_[w_offset + iw];
+            const double kernel_w = w_k_(w_offset, iw);
             for (int iu = 0; iu < plan->support; ++iu)
             {
-                const double kernel_wu = kernel_w * uv_k_[u_offset + iu];
+                const double kernel_wu = kernel_w * uv_k_(u_offset, iu);
                 for (int iv = 0; iv < plan->support; ++iv)
                 {
-                    const double kernel_wuv = kernel_wu * uv_k_[v_offset + iv];
+                    const double kernel_wuv = kernel_wu * uv_k_(v_offset, iv);
                     int ix_u = iu0 + iu;
                     int ix_v = iv0 + iv;
                     if (ix_u < 0) ix_u += plan->subgrid_size;
                     if (ix_v < 0) ix_v += plan->subgrid_size;
-                    const int64_t idx = (
-                        iw * subgrid_square + ix_u * plan->subgrid_size + ix_v
+                    subgrids_(iw, ix_u, ix_v) += ((VIS_TYPE) kernel_wuv *
+                            local_vis
                     );
-                    const complex<VIS_TYPE> tmp = (
-                        (complex<VIS_TYPE>) kernel_wuv * local_vis
-                    );
-                    // Atomic adds slow things down a lot.
-                    // #pragma omp atomic
-                    subgrids_[2 * idx + 0] += tmp.real();
-                    // #pragma omp atomic
-                    subgrids_[2 * idx + 1] += tmp.imag();
                 }
             }
         }
@@ -309,23 +297,22 @@ void grid(
 
     // Loop over rows. Each row contains visibilities for all channels.
     const int64_t num_uvw = sdp_mem_shape_dim(uvws, 0);
-    const UVW_TYPE* uvws_ = (const UVW_TYPE*) sdp_mem_data_const(uvws);
-    const int* start_chs_ = (const int*) sdp_mem_data_const(start_chs);
-    const int* end_chs_ = (const int*) sdp_mem_data_const(end_chs);
-    // Unfortunately this way of parallelisation makes the gridder slower.
-    // #pragma omp parallel for
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(start_chs, &start_chs_, status);
+    sdp_mem_check_and_view(end_chs, &end_chs_, status);
+    if (*status) return;
     for (int64_t i = 0; i < num_uvw; ++i)
     {
         // Skip if there's no visibility to degrid.
-        int start_ch = start_chs_[i], end_ch = end_chs_[i];
+        int start_ch = start_chs_(i), end_ch = end_chs_(i);
         if (start_ch >= end_ch)
             continue;
 
         // Select only visibilities on this w-plane
         // (inlined from clamp_channels).
-        const UVW_TYPE uvw[] = {
-            uvws_[3 * i], uvws_[3 * i + 1], uvws_[3 * i + 2]
-        };
+        const UVW_TYPE uvw[] = {uvws_(i, 0), uvws_(i, 1), uvws_(i, 2)};
         const double w0 = freq0_hz * uvw[2] / C_0;
         const double dw = dfreq_hz * uvw[2] / C_0;
         const double _min = (w_plane - 1) * plan->w_step;
@@ -379,16 +366,18 @@ void grid_corr(
     if (*status) return;
 
     // Apply portion of shifted PSWF to facet.
-    T* facet_ = (T*) sdp_mem_data(facet);
+    sdp_MemViewCpu<T, 2> facet_;
+    sdp_mem_check_and_view(facet, &facet_, status);
+    if (*status) return;
     const int64_t num_l = sdp_mem_shape_dim(facet, 0);
     const int64_t num_m = sdp_mem_shape_dim(facet, 1);
-    for (int64_t il = 0, k = 0; il < num_l; ++il)
+    for (int64_t il = 0; il < num_l; ++il)
     {
         const int64_t pl = il + (plan->image_size / 2 - num_l / 2);
-        for (int64_t im = 0; im < num_m; ++im, ++k)
+        for (int64_t im = 0; im < num_m; ++im)
         {
             const int64_t pm = im + (plan->image_size / 2 - num_m / 2);
-            facet_[k] /= (T) (
+            facet_(il, im) /= (T) (
                 pswf_l[pl] * pswf_m[pm] * pswf_n[pl * plan->image_size + pm]
             );
         }
@@ -822,7 +811,7 @@ void sdp_gridder_wtower_uvw_grid(
         if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            grid<double, double>(
+            grid<double, complex<double> >(
                     plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
                     freq0_hz, dfreq_hz, uvws, start_chs, end_chs, vis, status
             );
@@ -830,7 +819,7 @@ void sdp_gridder_wtower_uvw_grid(
         else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
                 sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
         {
-            grid<float, float>(
+            grid<float, complex<float> >(
                     plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
                     freq0_hz, dfreq_hz, uvws, start_chs, end_chs, vis, status
             );

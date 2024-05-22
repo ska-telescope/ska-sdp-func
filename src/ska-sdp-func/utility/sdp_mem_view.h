@@ -174,42 +174,70 @@ sdp_MemType sdp_mem_lift_type();
 
 
 template<>
-sdp_MemType sdp_mem_lift_type<char>()
+inline sdp_MemType sdp_mem_lift_type<char>()
 {
     return SDP_MEM_CHAR;
 }
 
 
 template<>
-sdp_MemType sdp_mem_lift_type<int32_t>()
+inline sdp_MemType sdp_mem_lift_type<int32_t>()
 {
     return SDP_MEM_INT;
 }
 
 
 template<>
-sdp_MemType sdp_mem_lift_type<float>()
+inline sdp_MemType sdp_mem_lift_type<float>()
 {
     return SDP_MEM_FLOAT;
 }
 
 
 template<>
-sdp_MemType sdp_mem_lift_type<double>()
+inline sdp_MemType sdp_mem_lift_type<const float>()
+{
+    return SDP_MEM_FLOAT;
+}
+
+
+template<>
+inline sdp_MemType sdp_mem_lift_type<double>()
 {
     return SDP_MEM_DOUBLE;
 }
 
 
 template<>
-sdp_MemType sdp_mem_lift_type<std::complex<float> >()
+inline sdp_MemType sdp_mem_lift_type<const double>()
+{
+    return SDP_MEM_DOUBLE;
+}
+
+
+template<>
+inline sdp_MemType sdp_mem_lift_type<std::complex<float> >()
 {
     return SDP_MEM_COMPLEX_FLOAT;
 }
 
 
 template<>
-sdp_MemType sdp_mem_lift_type<std::complex<double> >()
+inline sdp_MemType sdp_mem_lift_type<const std::complex<float> >()
+{
+    return SDP_MEM_COMPLEX_FLOAT;
+}
+
+
+template<>
+inline sdp_MemType sdp_mem_lift_type<std::complex<double> >()
+{
+    return SDP_MEM_COMPLEX_DOUBLE;
+}
+
+
+template<>
+inline sdp_MemType sdp_mem_lift_type<const std::complex<double> >()
 {
     return SDP_MEM_COMPLEX_DOUBLE;
 }
@@ -298,7 +326,7 @@ void sdp_mem_check_and_view_at(
  */
 template<typename num_t, int32_t num_dims, sdp_MemLocation loc>
 void sdp_mem_check_and_view_at(
-        sdp_Mem* mem,
+        const sdp_Mem* mem,
         sdp_MemView<const num_t, num_dims, loc>* view,
         sdp_Error* status,
         const char* func,
