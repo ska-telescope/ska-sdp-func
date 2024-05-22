@@ -269,7 +269,7 @@ void grid_channels(
                         iw * subgrid_square + ix_u * plan->subgrid_size + ix_v
                     );
                     const complex<VIS_TYPE> tmp = (
-                            (complex<VIS_TYPE>) kernel_wuv * local_vis
+                        (complex<VIS_TYPE>) kernel_wuv * local_vis
                     );
                     // Atomic adds slow things down a lot.
                     // #pragma omp atomic
