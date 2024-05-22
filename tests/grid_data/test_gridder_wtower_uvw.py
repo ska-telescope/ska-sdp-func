@@ -722,7 +722,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         ), "dropped visibilities!"
 
         # Accumulate remaining data from subgrids
-        for i in range(self.support):
+        for i in range(self.w_support):
             w_subgrid_image /= self.w_pattern
             w_subgrid_image += ifft(subgrids[i])
 
@@ -834,7 +834,7 @@ def test_gridder_wtower_uvw():
     # Common parameters
     image_size = 256  # Total image size in pixels
     subgrid_size = image_size // 4  # Needs to be even.
-    theta = 0.1  # Total image size in directional cosines.
+    theta = 0.02  # Total image size in directional cosines.
     shear_u = 0.2
     shear_v = 0.1
     support = 10
@@ -850,6 +850,7 @@ def test_gridder_wtower_uvw():
     dfreq_hz = 1e3
 
     # Create an image for input to degridding.
+    numpy.random.seed(123)
     image = numpy.zeros((subgrid_size, subgrid_size))
     image[subgrid_size // 4, subgrid_size // 4] = 1.0
     image[5 * subgrid_size // 6, 2 * subgrid_size // 6] = 0.5
@@ -914,6 +915,36 @@ def test_gridder_wtower_uvw():
 
     # Check results from both are the same.
     numpy.testing.assert_allclose(vis, vis_ref, atol=1e-14, rtol=1e-13)
+
+    # Generate reference subgrid.
+    img_ref = numpy.zeros((subgrid_size, subgrid_size), dtype=complex)
+    t0 = time.time()
+    gridder_ref.grid_subgrid(
+        vis_ref,
+        uvw,
+        start_chs,
+        end_chs,
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        img_ref,
+        idu,
+        idv,
+    )
+    t1_r = time.time() - t0
+    print(f"Reference uvw grid_subgrid took {t1_r:.4f} s.")
+
+    # Call the gridder in PFL.
+    img_tst = numpy.zeros_like(img_ref)
+    t0 = time.time()
+    gridder.grid(
+        vis_ref, uvw, start_chs, end_chs, freq0_hz, dfreq_hz, img_tst, idu, idv
+    )
+    t1 = time.time() - t0
+    print(f"PFL uvw grid took {t1:.4f} s. (speed-up: {t1_r / t1:.0f})")
+
+    # Check results from both are the same.
+    assert numpy.max(numpy.abs(img_tst - img_ref)) < 1e-10
 
     # Check make_kernel for consistency.
     window = numpy.random.random_sample((support))

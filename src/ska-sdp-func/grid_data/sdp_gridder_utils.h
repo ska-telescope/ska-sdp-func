@@ -14,6 +14,32 @@ extern "C" {
 #endif
 
 /**
+ * @brief Multiply every element in an array by those in another array.
+ *
+ * Elements in the second array are raised to the given exponent,
+ * and the results are accumulated into the output, so that:
+ * out += in1 * in2 ** exponent
+ *
+ * An exponent of 1 is handled separately, so pow() is not called unnecessarily.
+ *
+ * The parameter @p in2 may be NULL, in which case the output is given by:
+ * out += in1
+ *
+ * @param out Output array.
+ * @param in1 First input array.
+ * @param in2 Second input array. May be NULL if not required.
+ * @param exponent Exponent to use for second input array.
+ * @param status Error status.
+ */
+void sdp_gridder_accumulate_scaled_arrays(
+        sdp_Mem* out,
+        const sdp_Mem* in1,
+        const sdp_Mem* in2,
+        double exponent,
+        sdp_Error* status
+);
+
+/**
  * @brief Convert all image pixel positions to coordinates.
  *
  * @param image_size Side length of image, in pixels.

@@ -206,6 +206,21 @@ sdp_Mem* sdp_mem_create_copy(
 void sdp_mem_clear_contents(sdp_Mem* mem, sdp_Error* status);
 
 /**
+ * @brief Clears the specified elements of a memory block.
+ *
+ * @param mem Handle to memory block.
+ * @param start_index Start index to clear.
+ * @param num_elements Number of elements to clear.
+ * @param status Error status.
+ */
+void sdp_mem_clear_portion(
+        sdp_Mem* mem,
+        int64_t start_index,
+        int64_t num_elements,
+        sdp_Error* status
+);
+
+/**
  * @brief Copies memory contents from one block to another.
  *
  * @param dst Handle to destination memory block.

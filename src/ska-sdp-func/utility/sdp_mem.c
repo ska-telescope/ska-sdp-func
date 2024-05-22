@@ -178,15 +178,28 @@ sdp_Mem* sdp_mem_create_copy(
 void sdp_mem_clear_contents(sdp_Mem* mem, sdp_Error* status)
 {
     if (*status || !mem || mem->num_elements == 0) return;
-    const size_t size = mem->num_elements * sdp_mem_type_size(mem->type);
+    sdp_mem_clear_portion(mem, 0, mem->num_elements, status);
+}
+
+
+void sdp_mem_clear_portion(
+        sdp_Mem* mem,
+        int64_t start_index,
+        int64_t num_elements,
+        sdp_Error* status
+)
+{
+    if (*status || !mem || num_elements == 0) return;
+    const size_t offset = start_index * sdp_mem_type_size(mem->type);
+    const size_t size = num_elements * sdp_mem_type_size(mem->type);
     if (mem->location == SDP_MEM_CPU)
     {
-        memset(mem->data, 0, size);
+        memset(((char*) (mem->data)) + offset, 0, size);
     }
     else if (mem->location == SDP_MEM_GPU)
     {
 #ifdef SDP_HAVE_CUDA
-        cudaMemset(mem->data, 0, size);
+        cudaMemset(((char*) (mem->data)) + offset, 0, size);
 #else
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("The processing function library was compiled "

@@ -12,6 +12,42 @@ using std::complex;
 // Begin anonymous namespace for file-local functions.
 namespace {
 
+// Local function to multiply every element in an array by those in another
+// array raised to the given exponent, accumulating the results in the output:
+// out += in1 * in2 ** exponent
+template<typename OUT_TYPE, typename IN1_TYPE, typename IN2_TYPE>
+void accum_scale_array(
+        sdp_Mem* out,
+        const sdp_Mem* in1,
+        const sdp_Mem* in2,
+        double exponent
+)
+{
+    const int64_t num_elements = sdp_mem_num_elements(out);
+    OUT_TYPE* out_ = (OUT_TYPE*) sdp_mem_data(out);
+    const IN1_TYPE* in1_ = (const IN1_TYPE*) sdp_mem_data_const(in1);
+    const IN2_TYPE* in2_ = in2 ? (const IN2_TYPE*) sdp_mem_data_const(in2) : 0;
+    if (in2_)
+    {
+        if (exponent == 1.0)
+        {
+            for (int64_t i = 0; i < num_elements; ++i)
+                out_[i] += (IN2_TYPE) in1_[i] * in2_[i];
+        }
+        else
+        {
+            for (int64_t i = 0; i < num_elements; ++i)
+                out_[i] += (IN2_TYPE) in1_[i] * pow(in2_[i], exponent);
+        }
+    }
+    else
+    {
+        for (int64_t i = 0; i < num_elements; ++i)
+            out_[i] += (OUT_TYPE) in1_[i];
+    }
+}
+
+
 // Convert (l, m) to (n) directions, allowing for shear.
 template<typename T>
 T lm_to_n(const T& l, const T& m, const T& h_u, const T& h_v)
@@ -178,6 +214,53 @@ void uvw_bounds_all(
 }
 
 } // End anonymous namespace for file-local functions.
+
+
+void sdp_gridder_accumulate_scaled_arrays(
+        sdp_Mem* out,
+        const sdp_Mem* in1,
+        const sdp_Mem* in2,
+        double exponent,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_MemType type_out = sdp_mem_type(out);
+    sdp_MemType type1 = sdp_mem_type(in1);
+    sdp_MemType type2 = in2 ? sdp_mem_type(in2) : SDP_MEM_COMPLEX_DOUBLE;
+    if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
+            type1 == SDP_MEM_DOUBLE && type2 == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        accum_scale_array<complex<double>, double, complex<double> >(
+                out, in1, in2, exponent
+        );
+    }
+    else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
+            type1 == SDP_MEM_FLOAT && type2 == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        accum_scale_array<complex<float>, float, complex<double> >(
+                out, in1, in2, exponent
+        );
+    }
+    else if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
+            type1 == SDP_MEM_COMPLEX_DOUBLE && type2 == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        accum_scale_array<complex<double>, complex<double>, complex<double> >(
+                out, in1, in2, exponent
+        );
+    }
+    else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
+            type1 == SDP_MEM_COMPLEX_FLOAT && type2 == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        accum_scale_array<complex<float>, complex<float>, complex<double> >(
+                out, in1, in2, exponent
+        );
+    }
+    else
+    {
+        *status = SDP_ERR_DATA_TYPE;
+    }
+}
 
 
 void sdp_gridder_image_to_lmn(
