@@ -35,7 +35,7 @@ void sdp_gridder_accumulate_scaled_arrays(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        double exponent,
+        int exponent,
         sdp_Error* status
 );
 
@@ -138,7 +138,7 @@ void sdp_gridder_scale_inv_array(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        double exponent,
+        int exponent,
         sdp_Error* status
 );
 

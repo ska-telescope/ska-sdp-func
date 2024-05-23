@@ -523,7 +523,7 @@ void sdp_gridder_wtower_uvw_degrid(
 
     // Perform w_subgrid_image = subgrid_image /
     //             plan->w_pattern ** (first_w_plane - plan->w_support // 2)
-    const double exponent = first_w_plane - plan->w_support / 2;
+    const int exponent = first_w_plane - plan->w_support / 2;
     sdp_gridder_scale_inv_array(
             w_subgrid_image, subgrid_image, plan->w_pattern, exponent, status
     );
@@ -864,7 +864,7 @@ void sdp_gridder_wtower_uvw_grid(
     // )
     // We don't need to multiply by subgrid_size**2,
     // because the iFFT output is already scaled by this.
-    double exponent = last_w_plane + plan->w_support / 2 - 1;
+    int exponent = last_w_plane + plan->w_support / 2 - 1;
     sdp_gridder_accumulate_scaled_arrays(
             subgrid_image, w_subgrid_image, plan->w_pattern, exponent, status
     );

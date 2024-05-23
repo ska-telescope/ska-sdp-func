@@ -21,7 +21,7 @@ void accum_scale_array(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        double exponent
+        int exponent
 )
 {
     const int64_t num_elements = sdp_mem_num_elements(out);
@@ -30,7 +30,7 @@ void accum_scale_array(
     const IN2_TYPE* in2_ = in2 ? (const IN2_TYPE*) sdp_mem_data_const(in2) : 0;
     if (in2_)
     {
-        if (exponent == 1.0)
+        if (exponent == 1)
         {
             for (int64_t i = 0; i < num_elements; ++i)
                 out_[i] += (IN2_TYPE) in1_[i] * in2_[i];
@@ -149,14 +149,14 @@ void scale_inv_array(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        double exponent
+        int exponent
 )
 {
     const int64_t num_elements = sdp_mem_num_elements(out);
     OUT_TYPE* out_ = (OUT_TYPE*) sdp_mem_data(out);
     const IN1_TYPE* in1_ = (const IN1_TYPE*) sdp_mem_data_const(in1);
     const IN2_TYPE* in2_ = (const IN2_TYPE*) sdp_mem_data_const(in2);
-    if (exponent == 1.0)
+    if (exponent == 1)
     {
         for (int64_t i = 0; i < num_elements; ++i)
             out_[i] = (IN2_TYPE) in1_[i] / in2_[i];
@@ -223,7 +223,7 @@ void sdp_gridder_accumulate_scaled_arrays(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        double exponent,
+        int exponent,
         sdp_Error* status
 )
 {
@@ -379,7 +379,7 @@ void sdp_gridder_scale_inv_array(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        double exponent,
+        int exponent,
         sdp_Error* status
 )
 {
