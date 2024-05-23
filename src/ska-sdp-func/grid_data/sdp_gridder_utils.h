@@ -145,6 +145,7 @@ void sdp_gridder_uvw_bounds_all(
 #ifdef __cplusplus
 }
 
+
 // Convert (l, m) to (n) directions, allowing for shear.
 template<typename T>
 T lm_to_n(const T& l, const T& m, const T& h_u, const T& h_v)

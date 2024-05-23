@@ -385,7 +385,6 @@ void grid_corr(
     }
 }
 
-
 } // End anonymous namespace for file-local functions.
 
 
@@ -452,7 +451,7 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
             const double m_ = (im - half_size) * theta / image_size;
             const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
             const double pswf_val = sdp_pswf_evaluate(
-                    plan->pswf_n_func, n_* 2.0 * w_step
+                    plan->pswf_n_func, n_ * 2.0 * w_step
             );
             pswf_n_(il, im) = pswf_val == 0.0 ? 1.0 : pswf_val;
         }
