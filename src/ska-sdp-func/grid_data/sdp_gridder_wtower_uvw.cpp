@@ -29,7 +29,6 @@ struct sdp_GridderWtowerUVW
     int w_oversampling;
     sdp_PSWF* pswf_n_func;
     sdp_Mem* pswf;
-    sdp_Mem* pswf_n;
     sdp_Mem* uv_kernel;
     sdp_Mem* w_kernel;
     sdp_Mem* w_pattern;
@@ -358,9 +357,10 @@ template<typename T>
 void grid_corr(
         const sdp_GridderWtowerUVW* plan,
         sdp_Mem* facet,
+        int facet_offset_l,
+        int facet_offset_m,
         const double* pswf_l,
         const double* pswf_m,
-        const double* pswf_n,
         sdp_Error* status
 )
 {
@@ -370,17 +370,29 @@ void grid_corr(
     sdp_MemViewCpu<T, 2> facet_;
     sdp_mem_check_and_view(facet, &facet_, status);
     if (*status) return;
-    const int64_t num_l = sdp_mem_shape_dim(facet, 0);
-    const int64_t num_m = sdp_mem_shape_dim(facet, 1);
-    for (int64_t il = 0; il < num_l; ++il)
+    const int num_l = (int) sdp_mem_shape_dim(facet, 0);
+    const int num_m = (int) sdp_mem_shape_dim(facet, 1);
+    const int image_size = plan->image_size;
+    const int half_image_size = image_size / 2;
+    const double theta = plan->theta;
+    for (int il = 0; il < num_l; ++il)
     {
-        const int64_t pl = il + (plan->image_size / 2 - num_l / 2);
-        for (int64_t im = 0; im < num_m; ++im)
+        const int pl = il + (half_image_size - num_l / 2);
+        const double l_ = (
+            (pl + facet_offset_l - half_image_size) * theta / image_size
+        );
+        for (int im = 0; im < num_m; ++im)
         {
-            const int64_t pm = im + (plan->image_size / 2 - num_m / 2);
-            facet_(il, im) /= (T) (
-                pswf_l[pl] * pswf_m[pm] * pswf_n[pl * plan->image_size + pm]
+            const int pm = im + (half_image_size - num_m / 2);
+            const double m_ = (
+                (pm + facet_offset_m - half_image_size) * theta / image_size
             );
+            const double n_ = lm_to_n(l_, m_, plan->shear_u, plan->shear_v);
+            double pswf_n_val = sdp_pswf_evaluate(
+                    plan->pswf_n_func, n_ * 2.0 * plan->w_step
+            );
+            if (pswf_n_val == 0.0) pswf_n_val = 1.0;
+            facet_(il, im) /= (T) (pswf_l[pl] * pswf_m[pm] * pswf_n_val);
         }
     }
 }
@@ -434,28 +446,8 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
     sdp_generate_pswf(0, support * (M_PI / 2), plan->pswf, status);
     if (image_size % 2 == 0) ((double*) sdp_mem_data(plan->pswf))[0] = 1e-15;
 
-    // Generate pswf_n (2D).
+    // Create a function handle to allow pswf_n to be evaluated on-the-fly.
     plan->pswf_n_func = sdp_pswf_create(0, w_support * (M_PI / 2));
-    const int64_t pswf_n_shape[] = {image_size, image_size};
-    plan->pswf_n = sdp_mem_create(
-            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, pswf_n_shape, status
-    );
-    sdp_MemViewCpu<double, 2> pswf_n_;
-    sdp_mem_check_and_view(plan->pswf_n, &pswf_n_, status);
-    const int half_size = image_size / 2;
-    for (int il = 0; il < image_size; ++il)
-    {
-        for (int im = 0; im < image_size; ++im)
-        {
-            const double l_ = (il - half_size) * theta / image_size;
-            const double m_ = (im - half_size) * theta / image_size;
-            const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
-            const double pswf_val = sdp_pswf_evaluate(
-                    plan->pswf_n_func, n_ * 2.0 * w_step
-            );
-            pswf_n_(il, im) = pswf_val == 0.0 ? 1.0 : pswf_val;
-        }
-    }
 
     // Generate oversampled convolution kernel (uv_kernel).
     const int64_t uv_kernel_shape[] = {oversampling + 1, plan->vr_size};
@@ -651,13 +643,10 @@ void sdp_gridder_wtower_uvw_degrid_correct(
     // Shift PSWF by facet offsets.
     sdp_Mem* pswf_l = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
     sdp_Mem* pswf_m = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
-    sdp_Mem* pswf_n = sdp_mem_create_copy(plan->pswf_n, SDP_MEM_CPU, status);
     if (*status) return;
     const double* pswf = (const double*) sdp_mem_data_const(plan->pswf);
-    const double* pswf_n0 = (const double*) sdp_mem_data_const(plan->pswf_n);
     double* pswf_l_ = (double*) sdp_mem_data(pswf_l);
     double* pswf_m_ = (double*) sdp_mem_data(pswf_m);
-    double* pswf_n_ = (double*) sdp_mem_data(pswf_n);
     const int64_t pswf_size = sdp_mem_shape_dim(plan->pswf, 0);
     for (int64_t i = 0; i < pswf_size; ++i)
     {
@@ -670,41 +659,32 @@ void sdp_gridder_wtower_uvw_degrid_correct(
         pswf_l_[i] = pswf[il];
         pswf_m_[i] = pswf[im];
     }
-    for (int64_t j = 0; j < pswf_size; ++j)
-    {
-        for (int64_t i = 0; i < pswf_size; ++i)
-        {
-            int64_t il = j + facet_offset_l;
-            int64_t im = i + facet_offset_m;
-            if (il >= pswf_size) il -= pswf_size;
-            if (im >= pswf_size) im -= pswf_size;
-            if (il < 0) il += pswf_size;
-            if (im < 0) im += pswf_size;
-            pswf_n_[j * pswf_size + i] = pswf_n0[il * pswf_size + im];
-        }
-    }
 
     // Apply grid correction for the appropriate data type.
     switch (sdp_mem_type(facet))
     {
     case SDP_MEM_DOUBLE:
         grid_corr<double>(
-                plan, facet, pswf_l_, pswf_m_, pswf_n_, status
+                plan, facet, facet_offset_l, facet_offset_m,
+                pswf_l_, pswf_m_, status
         );
         break;
     case SDP_MEM_COMPLEX_DOUBLE:
         grid_corr<complex<double> >(
-                plan, facet, pswf_l_, pswf_m_, pswf_n_, status
+                plan, facet, facet_offset_l, facet_offset_m,
+                pswf_l_, pswf_m_, status
         );
         break;
     case SDP_MEM_FLOAT:
         grid_corr<float>(
-                plan, facet, pswf_l_, pswf_m_, pswf_n_, status
+                plan, facet, facet_offset_l, facet_offset_m,
+                pswf_l_, pswf_m_, status
         );
         break;
     case SDP_MEM_COMPLEX_FLOAT:
         grid_corr<complex<float> >(
-                plan, facet, pswf_l_, pswf_m_, pswf_n_, status
+                plan, facet, facet_offset_l, facet_offset_m,
+                pswf_l_, pswf_m_, status
         );
         break;
     default:
@@ -713,7 +693,6 @@ void sdp_gridder_wtower_uvw_degrid_correct(
     }
     sdp_mem_free(pswf_l);
     sdp_mem_free(pswf_m);
-    sdp_mem_free(pswf_n);
 }
 
 
@@ -892,7 +871,6 @@ void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan)
 {
     sdp_pswf_free(plan->pswf_n_func);
     sdp_mem_free(plan->pswf);
-    sdp_mem_free(plan->pswf_n);
     sdp_mem_free(plan->uv_kernel);
     sdp_mem_free(plan->w_kernel);
     sdp_mem_free(plan->w_pattern);
