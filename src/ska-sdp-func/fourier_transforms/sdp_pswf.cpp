@@ -689,35 +689,44 @@ static inline void generate_pswf(
 }
 
 
-template<class num_t>
-static inline void generate_pswf_at_x(
-        int m,
-        double c,
-        const num_t* x,
-        num_t* pswf,
-        int size,
-        int stride
-)
+struct sdp_PSWF
 {
+    int m;
+    double c;
+    double coeffs[200];
+};
+
+
+sdp_PSWF* sdp_pswf_create(int m, double c)
+{
+    sdp_PSWF* plan = (sdp_PSWF*) calloc(1, sizeof(sdp_PSWF));
+    plan->m = m;
+    plan->c = c;
+
     // Calculate characteristic values of spheroidal wave functions
     int n = m;
     int kd = 1; // prolate
     double cv = 0, eg[2];
-    pswf_segv(&m, &n, &c, &kd, &cv, eg);
+    pswf_segv(&plan->m, &n, &plan->c, &kd, &cv, eg);
 
     // Calculate expansion coefficients
-    double df[200], ck[200];
-    pswf_sdmn(&m, &n, &c, &cv, &kd, df);
-    pswf_sckb(m, n, c, df, ck);
+    double df[200];
+    pswf_sdmn(&plan->m, &n, &plan->c, &cv, &kd, df);
+    pswf_sckb(plan->m, n, plan->c, df, plan->coeffs);
+    return plan;
+}
 
-    // Evaluate function at specified values of x
-    for (int i = 0; i < size; i++)
-    {
-        double x_val = (double) (x[i]);
-        pswf[stride * i] = (
-            fabs(x_val) < 1.0 ? pswf_aswfa(m, n, c, ck, x_val) : 1.0
-        );
-    }
+
+double sdp_pswf_evaluate(const sdp_PSWF* plan, double x)
+{
+    const int m = plan->m, n = plan->m;
+    return fabs(x) < 1 ? pswf_aswfa(m, n, plan->c, plan->coeffs, x) : 0;
+}
+
+
+void sdp_pswf_free(sdp_PSWF* plan)
+{
+    free(plan);
 }
 
 
@@ -775,57 +784,6 @@ void sdp_generate_pswf(
         generate_pswf(m,
                 c,
                 static_cast<std::complex<double>*>(sdp_mem_data(out)),
-                size,
-                stride
-        );
-        break;
-    default:
-        *status = SDP_ERR_DATA_TYPE;
-    }
-}
-
-
-/*
- * Generate prolate spheroidal wave function (PSWF) at specified values.
- */
-void sdp_generate_pswf_at_x(
-        int m,
-        double c,
-        const sdp_Mem* x,
-        sdp_Mem* out,
-        sdp_Error* status
-)
-{
-    if (*status) return;
-    if (sdp_mem_location(out) != SDP_MEM_CPU)
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        return;
-    }
-    const int size = sdp_mem_num_elements(out);
-    const int stride = 1;
-    if (sdp_mem_num_elements(x) != size)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        return;
-    }
-
-    switch (sdp_mem_type(out))
-    {
-    case SDP_MEM_DOUBLE:
-        generate_pswf_at_x(m,
-                c,
-                static_cast<const double*>(sdp_mem_data_const(x)),
-                static_cast<double*>(sdp_mem_data(out)),
-                size,
-                stride
-        );
-        break;
-    case SDP_MEM_FLOAT:
-        generate_pswf_at_x(m,
-                c,
-                static_cast<const float*>(sdp_mem_data_const(x)),
-                static_cast<float*>(sdp_mem_data(out)),
                 size,
                 stride
         );

@@ -40,29 +40,6 @@ void sdp_gridder_accumulate_scaled_arrays(
 );
 
 /**
- * @brief Convert all image pixel positions to coordinates.
- *
- * @param image_size Side length of image, in pixels.
- * @param theta Total image size in direction cosines.
- * @param shear_u Shear parameter in u (use zero for no shear).
- * @param shear_v Shear parameter in v (use zero for no shear).
- * @param l Output pixel l directions. May be NULL if not needed.
- * @param m Output pixel m directions. May be NULL if not needed.
- * @param n Output pixel n directions. May be NULL if not needed.
- * @param status Error status.
- */
-void sdp_gridder_image_to_lmn(
-        int image_size,
-        double theta,
-        double shear_u,
-        double shear_v,
-        sdp_Mem* l,
-        sdp_Mem* m,
-        sdp_Mem* n,
-        sdp_Error* status
-);
-
-/**
  * @brief Convert image-space window function to oversampled kernel.
  *
  * This uses a DFT to do the transformation to Fourier space.
@@ -167,6 +144,24 @@ void sdp_gridder_uvw_bounds_all(
 
 #ifdef __cplusplus
 }
+
+// Convert (l, m) to (n) directions, allowing for shear.
+template<typename T>
+T lm_to_n(const T& l, const T& m, const T& h_u, const T& h_v)
+{
+    // Easy case.
+    if (h_u == 0 and h_v == 0)
+        return sqrt(1 - l * l - m * m) - 1;
+
+    // Sheared case.
+    const T hul_hvm_1 = h_u * l + h_v * m - 1; // = -1 with h_u = h_v = 0
+    const T hu2_hv2_1 = h_u * h_u + h_v * h_v + 1; // = 1 with h_u = h_v = 0
+    return (
+        sqrt(hul_hvm_1 * hul_hvm_1 - hu2_hv2_1 * (l * l + m * m)) +
+        hul_hvm_1
+    ) / hu2_hv2_1;
+}
+
 #endif
 
 #endif /* include guard */

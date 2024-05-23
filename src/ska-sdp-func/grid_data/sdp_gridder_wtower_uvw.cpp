@@ -27,6 +27,7 @@ struct sdp_GridderWtowerUVW
     double w_step;
     int w_support;
     int w_oversampling;
+    sdp_PSWF* pswf_n_func;
     sdp_Mem* pswf;
     sdp_Mem* pswf_n;
     sdp_Mem* uv_kernel;
@@ -385,17 +386,6 @@ void grid_corr(
 }
 
 
-// Local function to scale every element in an array by a fixed value.
-template<typename T>
-void scale_real(sdp_Mem* data, double value, sdp_Error* status)
-{
-    if (*status) return;
-    const int64_t num_elements = sdp_mem_num_elements(data);
-    T* data_ = (T*) sdp_mem_data(data);
-    for (int64_t i = 0; i < num_elements; ++i)
-        data_[i] *= value;
-}
-
 } // End anonymous namespace for file-local functions.
 
 
@@ -446,19 +436,27 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
     if (image_size % 2 == 0) ((double*) sdp_mem_data(plan->pswf))[0] = 1e-15;
 
     // Generate pswf_n (2D).
+    plan->pswf_n_func = sdp_pswf_create(0, w_support * (M_PI / 2));
     const int64_t pswf_n_shape[] = {image_size, image_size};
     plan->pswf_n = sdp_mem_create(
             SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, pswf_n_shape, status
     );
-    sdp_Mem* ns = sdp_mem_create(
-            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, pswf_n_shape, status
-    );
-    sdp_gridder_image_to_lmn(
-            image_size, theta, shear_u, shear_v, 0, 0, ns, status
-    );
-    scale_real<double>(ns, 2.0 * w_step, status);
-    sdp_generate_pswf_at_x(0, w_support * (M_PI / 2), ns, plan->pswf_n, status);
-    sdp_mem_free(ns);
+    sdp_MemViewCpu<double, 2> pswf_n_;
+    sdp_mem_check_and_view(plan->pswf_n, &pswf_n_, status);
+    const int half_size = image_size / 2;
+    for (int il = 0; il < image_size; ++il)
+    {
+        for (int im = 0; im < image_size; ++im)
+        {
+            const double l_ = (il - half_size) * theta / image_size;
+            const double m_ = (im - half_size) * theta / image_size;
+            const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
+            const double pswf_val = sdp_pswf_evaluate(
+                    plan->pswf_n_func, n_* 2.0 * w_step
+            );
+            pswf_n_(il, im) = pswf_val == 0.0 ? 1.0 : pswf_val;
+        }
+    }
 
     // Generate oversampled convolution kernel (uv_kernel).
     const int64_t uv_kernel_shape[] = {oversampling + 1, plan->vr_size};
@@ -893,6 +891,7 @@ void sdp_gridder_wtower_uvw_grid_correct(
 
 void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan)
 {
+    sdp_pswf_free(plan->pswf_n_func);
     sdp_mem_free(plan->pswf);
     sdp_mem_free(plan->pswf_n);
     sdp_mem_free(plan->uv_kernel);

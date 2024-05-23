@@ -49,54 +49,6 @@ void accum_scale_array(
 }
 
 
-// Convert (l, m) to (n) directions, allowing for shear.
-template<typename T>
-T lm_to_n(const T& l, const T& m, const T& h_u, const T& h_v)
-{
-    // Easy case.
-    if (h_u == 0 and h_v == 0)
-        return sqrt(1 - l * l - m * m) - 1;
-
-    // Sheared case.
-    const T hul_hvm_1 = h_u * l + h_v * m - 1; // = -1 with h_u = h_v = 0
-    const T hu2_hv2_1 = h_u * h_u + h_v * h_v + 1; // = 1 with h_u = h_v = 0
-    return (
-        sqrt(hul_hvm_1 * hul_hvm_1 - hu2_hv2_1 * (l * l + m * m)) +
-        hul_hvm_1
-    ) / hu2_hv2_1;
-}
-
-
-// Convert all image pixel positions to coordinates.
-template<typename T>
-void image_to_lmn(
-        int image_size,
-        double theta,
-        double shear_u,
-        double shear_v,
-        sdp_Mem* l,
-        sdp_Mem* m,
-        sdp_Mem* n
-)
-{
-    // Store pixel data.
-    T* l_ = l ? (T*) sdp_mem_data(l) : NULL;
-    T* m_ = m ? (T*) sdp_mem_data(m) : NULL;
-    T* n_ = n ? (T*) sdp_mem_data(n) : NULL;
-    for (int il = 0, k = 0; il < image_size; ++il)
-    {
-        for (int im = 0; im < image_size; ++im, ++k)
-        {
-            const double local_l = (il - image_size / 2) * theta / image_size;
-            const double local_m = (im - image_size / 2) * theta / image_size;
-            if (l_) l_[k] = local_l;
-            if (m_) m_[k] = local_m;
-            if (n_) n_[k] = lm_to_n(local_l, local_m, shear_u, shear_v);
-        }
-    }
-}
-
-
 // Make an oversampled uv-space kernel from an image-space window function.
 template<typename T>
 void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
@@ -258,37 +210,6 @@ void sdp_gridder_accumulate_scaled_arrays(
         accum_scale_array<complex<float>, complex<float>, complex<double> >(
                 out, in1, in2, exponent
         );
-    }
-    else
-    {
-        *status = SDP_ERR_DATA_TYPE;
-    }
-}
-
-
-void sdp_gridder_image_to_lmn(
-        int image_size,
-        double theta,
-        double shear_u,
-        double shear_v,
-        sdp_Mem* l,
-        sdp_Mem* m,
-        sdp_Mem* n,
-        sdp_Error* status
-)
-{
-    if (*status) return;
-    sdp_MemType type = (
-        l ? sdp_mem_type(l) : m ? sdp_mem_type(m) :
-                n ? sdp_mem_type(n) : SDP_MEM_VOID
-    );
-    if (type == SDP_MEM_DOUBLE)
-    {
-        image_to_lmn<double>(image_size, theta, shear_u, shear_v, l, m, n);
-    }
-    else if (type == SDP_MEM_FLOAT)
-    {
-        image_to_lmn<float>(image_size, theta, shear_u, shear_v, l, m, n);
     }
     else
     {
