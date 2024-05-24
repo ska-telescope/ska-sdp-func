@@ -4,7 +4,7 @@
 #define SKA_SDP_PROC_FUNC_PSWF_H_
 
 /**
- * @file sdp_swiftly.h
+ * @file sdp_pswf.h
  */
 
 #include "ska-sdp-func/utility/sdp_mem.h"
@@ -14,28 +14,70 @@ extern "C" {
 #endif
 
 /**
- * @brief Generate prolate spheroidal wave function (PSWF)
+ * @defgroup PSWF_struct
+ * @{
+ */
+
+/**
+ * @struct sdp_PSWF
  *
- * The number of dimensions used for the FFT is specified using the
- * @p num_dims_fft parameter. If this is less than the number of dimensions
- * in the arrays, then the FFT batch size is assumed to be the size of the
- * first (slowest varying) dimension.
+ * @brief
+ * Provides methods to evaluate the prolate spheroidal wave function (PSWF).
+ */
+struct sdp_PSWF;
+
+/** @} */ /* End group PSWF_struct. */
+
+typedef struct sdp_PSWF sdp_PSWF;
+
+/**
+ * @defgroup PSWF_func
+ * @{
+ */
+
+/**
+ * @brief Generate prolate spheroidal wave function (PSWF)
  *
  * Only CPU mode is supported.
  *
  * @param m Mode parameter. 0 is generally best-behaved.
  * @param c Size parameter.
- * @param pswf_out Memory space to fill with function values
+ * @param pswf_out Memory space to fill with function values.
  * @param status Error status.
- *
- * @return sdp_Fft* Handle to FFT plan.
  */
 void sdp_generate_pswf(
         int m,
         double c,
-        struct sdp_Mem* pswf_out,
+        sdp_Mem* pswf_out,
         sdp_Error* status
 );
+
+/**
+ * @brief Create plan for PSWF evaluation.
+ *
+ * @param m Mode parameter. 0 is generally best-behaved.
+ * @param c Size parameter.
+ * @return Handle to function plan.
+ */
+sdp_PSWF* sdp_pswf_create(int m, double c);
+
+/**
+ * @brief Evaluate PSWF at a single point.
+ *
+ * @param plan Handle to function plan.
+ * @param x Value at which to evaluate function, where |x| < 1.0.
+ * @return Value of PSWF at @p x.
+ */
+double sdp_pswf_evaluate(const sdp_PSWF* plan, double x);
+
+/**
+ * @brief Destroy plan for PSWF evaluation.
+ *
+ * @param plan Handle to function plan.
+ */
+void sdp_pswf_free(sdp_PSWF* plan);
+
+/** @} */ /* End group PSWF_func. */
 
 #ifdef __cplusplus
 }

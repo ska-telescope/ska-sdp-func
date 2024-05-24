@@ -689,13 +689,54 @@ static inline void generate_pswf(
 }
 
 
-/**
- * \brief Generate prolate spheroidal wave function (PSWF)
+struct sdp_PSWF
+{
+    int m;
+    double c;
+    double coeffs[200];
+};
+
+
+sdp_PSWF* sdp_pswf_create(int m, double c)
+{
+    sdp_PSWF* plan = (sdp_PSWF*) calloc(1, sizeof(sdp_PSWF));
+    plan->m = m;
+    plan->c = c;
+
+    // Calculate characteristic values of spheroidal wave functions
+    int n = m;
+    int kd = 1; // prolate
+    double cv = 0, eg[2];
+    pswf_segv(&plan->m, &n, &plan->c, &kd, &cv, eg);
+
+    // Calculate expansion coefficients
+    double df[200];
+    pswf_sdmn(&plan->m, &n, &plan->c, &cv, &kd, df);
+    pswf_sckb(plan->m, n, plan->c, df, plan->coeffs);
+    return plan;
+}
+
+
+double sdp_pswf_evaluate(const sdp_PSWF* plan, double x)
+{
+    const int m = plan->m, n = plan->m;
+    return fabs(x) < 1 ? pswf_aswfa(m, n, plan->c, plan->coeffs, x) : 0;
+}
+
+
+void sdp_pswf_free(sdp_PSWF* plan)
+{
+    free(plan);
+}
+
+
+/*
+ * Generate prolate spheroidal wave function (PSWF).
  */
 void sdp_generate_pswf(
         int m,
         double c,
-        struct sdp_Mem* out,
+        sdp_Mem* out,
         sdp_Error* status
 )
 {

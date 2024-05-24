@@ -9,3 +9,4 @@ and degridding functions.
   :maxdepth: 1
 
   gridder_uvw_es_fft
+  gridder_wtower_uvw

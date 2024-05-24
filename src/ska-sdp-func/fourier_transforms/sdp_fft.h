@@ -71,6 +71,18 @@ void sdp_fft_exec(
  */
 void sdp_fft_free(sdp_Fft* fft);
 
+/**
+ * @brief Provide fftshift() behaviour for complex data.
+ *
+ * The data are multiplied by a checker-board pattern to achieve the same
+ * result as fftshift(), without actually moving memory around.
+ * CPU or GPU memory locations are supported.
+ *
+ * @param data Array to shift. Can be 1D or 2D, but must be of complex type.
+ * @param status Error status.
+ */
+void sdp_fft_phase(sdp_Mem* data, sdp_Error* status);
+
 /** @} */ /* End group fft_func. */
 
 #ifdef __cplusplus

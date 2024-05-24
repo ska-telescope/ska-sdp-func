@@ -1,15 +1,19 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #include <cmath>
+#include <complex>
 #include <cstdlib>
 #include <cstring>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cufft.h>
 #endif
+
+using std::complex;
 
 struct sdp_Float2
 {
@@ -622,4 +626,76 @@ void sdp_fft_free(sdp_Fft* fft)
         sdp_mem_free(fft->temp);
     }
     free(fft);
+}
+
+
+template<typename T>
+void fft_phase(int num_x, int num_y, complex<T>* data)
+{
+    #pragma omp parallel for collapse(2)
+    for (int iy = 0; iy < num_y; ++iy)
+        for (int ix = 0; ix < num_x; ++ix)
+            data[iy * num_x + ix] *= (T) (1 - (((ix + iy) & 1) << 1));
+}
+
+
+void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
+{
+    if (*status || !data) return;
+    const int num_y = (int) sdp_mem_shape_dim(data, 0);
+    const int num_x = (int) sdp_mem_num_dims(data) > 1 ?
+                sdp_mem_shape_dim(data, 1) : 1;
+    if (sdp_mem_location(data) == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            fft_phase(num_x, num_y, (complex<double>*) sdp_mem_data(data));
+        }
+        else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            fft_phase(num_x, num_y, (complex<float>*) sdp_mem_data(data));
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+    }
+    else if (sdp_mem_location(data) == SDP_MEM_GPU)
+    {
+        size_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        const char* kernel_name = 0;
+        if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            kernel_name = "fft_phase<float>";
+        }
+        else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            kernel_name = "fft_phase<double>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            return;
+        }
+        if (num_x == 1)
+        {
+            num_threads[0] = 1;
+            num_threads[1] = 256;
+        }
+        if (num_y == 1)
+        {
+            num_threads[0] = 256;
+            num_threads[1] = 1;
+        }
+        const void* arg[] = {&num_x, &num_y, sdp_mem_gpu_buffer(data, status)};
+        num_blocks[0] = (num_x + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (num_y + num_threads[1] - 1) / num_threads[1];
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+    }
 }
