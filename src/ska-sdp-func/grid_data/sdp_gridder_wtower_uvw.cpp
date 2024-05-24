@@ -240,8 +240,20 @@ void grid_channels(
         int u_offset = int(round((u * theta - iu_shift + 1) * oversample));
         int v_offset = int(round((v * theta - iv_shift + 1) * oversample));
         int w_offset = int(round((w / plan->w_step + 1) * w_oversample));
+        // Comment from Peter:
+        // For future reference - at least on CPU the memory latency for
+        // accessing the kernel is the main bottleneck of (de)gridding.
+        // This can be mitigated quite well by pre-fetching the next kernel
+        // value before starting to (de)grid the current one.
 
         // Cater for the negative indexing which is allowed in Python!
+        // Comment from Peter: The task is to find e.g. iu0 and u_offset
+        // such that iu0 + u_offset / oversampling + support / 2
+        // most closely approximates u.
+        // TODO The proper way of doing this would likely be to calculate
+        // u * oversampling - support * (oversampling / 2), round that and
+        // take integer division / modulo oversampling of that to obtain
+        // iu0 and u_offset respectively.
         if (u_offset < 0) u_offset += oversample + 1;
         if (v_offset < 0) v_offset += oversample + 1;
         if (w_offset < 0) w_offset += w_oversample + 1;
@@ -505,6 +517,9 @@ void sdp_gridder_wtower_uvw_degrid(
 
     // First w-plane we need to generate is (support / 2) below the first one
     // with visibilities.
+    // Comment from Peter: That is actually a bit of a simplifying
+    // assumption I made, and might well overshoot.
+    // TODO Might need to check this properly.
     const int64_t subgrid_shape[] = {plan->subgrid_size, plan->subgrid_size};
     sdp_Mem* w_subgrid_image = sdp_mem_create(
             sdp_mem_type(vis), SDP_MEM_CPU, 2, subgrid_shape, status
@@ -574,6 +589,10 @@ void sdp_gridder_wtower_uvw_degrid(
                 );
 
             // subgrids[-1] = fft(w_subgrid_image)
+            // TODO Could save one memory copy here by doing the FFT in-place
+            // in the subgrid buffer. This would need a new wrapper function
+            // to pull out the pointer and metadata for the 2D slice within
+            // the 3D subgrid stack.
             sdp_mem_copy_contents(
                     fft_buffer, w_subgrid_image, 0, 0, num_elements_sg, status
             );
