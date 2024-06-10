@@ -78,6 +78,7 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
  *     in which case this could simply be the entire (corrected) image.
  * @param subgrid_offset_u Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_v Offset of subgrid centre relative to grid centre.
+ * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
  * @param freq0_hz Frequency of first channel (Hz).
  * @param dfreq_hz Channel separation (Hz).
  * @param uvws ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).
@@ -90,6 +91,7 @@ void sdp_gridder_wtower_uvw_degrid(
         const sdp_Mem* subgrid_image,
         int subgrid_offset_u,
         int subgrid_offset_v,
+        int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
         const sdp_Mem* uvws,
@@ -133,6 +135,7 @@ void sdp_gridder_wtower_uvw_degrid_correct(
  *     in which case this could simply be the entire (corrected) image.
  * @param subgrid_offset_u Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_v Offset of subgrid centre relative to grid centre.
+ * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
  */
 void sdp_gridder_wtower_uvw_grid(
         const sdp_GridderWtowerUVW* plan,
@@ -145,6 +148,7 @@ void sdp_gridder_wtower_uvw_grid(
         sdp_Mem* subgrid_image,
         int subgrid_offset_u,
         int subgrid_offset_v,
+        int subgrid_offset_w,
         sdp_Error* status
 );
 

@@ -127,6 +127,7 @@ void degrid(
         int w_plane,
         int subgrid_offset_u,
         int subgrid_offset_v,
+        int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
         const sdp_Mem* uvws,
@@ -186,7 +187,7 @@ void degrid(
         double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
         uvw0[0] -= subgrid_offset_u / plan->theta;
         uvw0[1] -= subgrid_offset_v / plan->theta;
-        uvw0[2] -= w_plane * plan->w_step;
+        uvw0[2] -= ((subgrid_offset_w + w_plane) * plan->w_step);
 
         // Degrid visibilities over all selected channels.
         degrid_channels<VIS_TYPE>(
@@ -296,6 +297,7 @@ void grid(
         int w_plane,
         int subgrid_offset_u,
         int subgrid_offset_v,
+        int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
         const sdp_Mem* uvws,
@@ -354,7 +356,7 @@ void grid(
         double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
         uvw0[0] -= subgrid_offset_u / plan->theta;
         uvw0[1] -= subgrid_offset_v / plan->theta;
-        uvw0[2] -= w_plane * plan->w_step;
+        uvw0[2] -= ((subgrid_offset_w + w_plane) * plan->w_step);
 
         // Grid visibilities over all selected channels.
         grid_channels<VIS_TYPE>(
@@ -496,6 +498,7 @@ void sdp_gridder_wtower_uvw_degrid(
         const sdp_Mem* subgrid_image,
         int subgrid_offset_u,
         int subgrid_offset_v,
+        int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
         const sdp_Mem* uvws,
@@ -619,7 +622,8 @@ void sdp_gridder_wtower_uvw_degrid(
         {
             degrid<double, complex<double> >(
                     plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
-                    freq0_hz, dfreq_hz, uvws, start_chs, end_chs, vis, status
+                    subgrid_offset_w, freq0_hz, dfreq_hz, uvws,
+                    start_chs, end_chs, vis, status
             );
         }
         else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
@@ -627,7 +631,8 @@ void sdp_gridder_wtower_uvw_degrid(
         {
             degrid<float, complex<float> >(
                     plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
-                    freq0_hz, dfreq_hz, uvws, start_chs, end_chs, vis, status
+                    subgrid_offset_w, freq0_hz, dfreq_hz, uvws,
+                    start_chs, end_chs, vis, status
             );
         }
         else
@@ -726,6 +731,7 @@ void sdp_gridder_wtower_uvw_grid(
         sdp_Mem* subgrid_image,
         int subgrid_offset_u,
         int subgrid_offset_v,
+        int subgrid_offset_w,
         sdp_Error* status
 )
 {
@@ -808,7 +814,8 @@ void sdp_gridder_wtower_uvw_grid(
         {
             grid<double, complex<double> >(
                     plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
-                    freq0_hz, dfreq_hz, uvws, start_chs, end_chs, vis, status
+                    subgrid_offset_w, freq0_hz, dfreq_hz, uvws,
+                    start_chs, end_chs, vis, status
             );
         }
         else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
@@ -816,7 +823,8 @@ void sdp_gridder_wtower_uvw_grid(
         {
             grid<float, complex<float> >(
                     plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
-                    freq0_hz, dfreq_hz, uvws, start_chs, end_chs, vis, status
+                    subgrid_offset_w, freq0_hz, dfreq_hz, uvws,
+                    start_chs, end_chs, vis, status
             );
         }
         else
