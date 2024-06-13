@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "ska-sdp-func/visibility/sdp_opt_weighting.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include <cooperative_groups.h>
 
 #define TILE_RANGES(SUPPORT, U_MIN, U_MAX, V_MIN, V_MAX) \
     const int rel_u = grid_u - top_left_u; \
@@ -224,9 +225,68 @@ __global__ void sdp_bucket_sort_simple_gpu(
 SDP_CUDA_KERNEL(sdp_bucket_sort_simple_gpu<double, double, double, double, 1>)
 
 
+template <typename UVW_TYPE, typename WEIGHT_TYPE>
+__global__ void sdp_test_briggs_gpu(
+     const UVW_TYPE* const __restrict__ sorted_uu, 
+    const UVW_TYPE* const __restrict__ sorted_vv, 
+    const WEIGHT_TYPE* const __restrict__ sorted_weights, 
+    const int* const __restrict__ sorted_tile,
+    const int* const __restrict__ tile_offsets,
+    const int* const __restrict__ num_points_in_tiles, 
+    const int top_left_u, 
+    const int top_left_v, 
+    const int grid_size,
+    const int num_tiles,
+    const int support,
+    const int robust_param,
+    const int64_t tile_size_u, 
+    const int64_t tile_size_v,
+    WEIGHT_TYPE* output_weights
+)
+{
+    double sw = 0.0;
+    double sw2 = 0.0;
+    extern __shared__ double tile[];
+    tile[threadIdx.x] = 0.0;
+    
+    __syncthreads();
 
-template<typename WEIGHT_TYPE, typename UVW_TYPE>
-__global__ void sdp_optimised_weighting_1_gpu(
+    size_t tile_idx = blockIdx.x;
+    int grid_centre = grid_size/2;
+    int64_t start_vis = tile_offsets[tile_idx];
+    int64_t total_vis = tile_offsets[tile_idx+1] - tile_offsets[tile_idx];
+    const int pu = sorted_tile[start_vis] & 32767;
+    const int pv = sorted_tile[start_vis] >> 15;
+    const int tile_idx_u = pu * tile_size_u + top_left_u;
+    const int tile_idx_v = pv * tile_size_v + top_left_v;
+
+    __syncthreads();
+
+
+    for (size_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
+    {
+        UVW_TYPE pos_u = sorted_uu[i_vis];
+        UVW_TYPE pos_v = sorted_vv[i_vis];
+        int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
+        int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
+        const int64_t tile_grid_u = grid_u - tile_idx_u;
+        const int64_t tile_grid_v = grid_v - tile_idx_v;
+        if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
+        {
+        //printf("Do someting\n");
+        const int64_t tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
+        printf("Tile grid idx: %d\n ThreadIndex: %d\n", tile_grid_idx, i_vis);
+        WEIGHT_TYPE weight = sorted_weights[i_vis];
+        //if (threadIdx.x == 0) printf("Tile grid idx: %d\n", tile_grid_idx);
+        atomicAdd(&tile[tile_grid_idx], weight);
+        }
+    }
+}
+
+SDP_CUDA_KERNEL(sdp_test_briggs_gpu<double, double>)
+
+template<typename UVW_TYPE, typename WEIGHT_TYPE>
+__global__ void sdp_main_briggs_optimised_gpu(
     const UVW_TYPE* const __restrict__ sorted_uu, 
     const UVW_TYPE* const __restrict__ sorted_vv, 
     const WEIGHT_TYPE* const __restrict__ sorted_weights, 
@@ -241,183 +301,83 @@ __global__ void sdp_optimised_weighting_1_gpu(
     const int robust_param,
     const int64_t tile_size_u, 
     const int64_t tile_size_v,
-    WEIGHT_TYPE* sum_weight, 
-    WEIGHT_TYPE* sum_weight2,
-    WEIGHT_TYPE* tiled_grid
+    WEIGHT_TYPE* output_weights
 )
 {
-    __shared__ double sw[1];
-    __shared__ double sw2[1];
-    extern __shared__ double tile[];
+    extern __shared__ WEIGHT_TYPE tile[];
     tile[threadIdx.x] = 0.0;
-    sw2[0] = 0.0;
-    sw[0] = 0.0;
+    WEIGHT_TYPE sw2 = 0.0;
+    WEIGHT_TYPE sw = 0.0;
 
     __syncthreads();
 
-    const int64_t tile_idx =  blockIdx.x; 
+    const size_t tile_idx =  blockIdx.x; 
     const int grid_centre = grid_size / 2;
-    const int start_vis = tile_offsets[tile_idx];
-    const int total_vis = tile_offsets[tile_idx + 1] - tile_offsets[tile_idx];
-
-    for(int64_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
+    const int64_t start_vis = tile_offsets[tile_idx];
+    const int64_t total_vis = tile_offsets[tile_idx + 1] - tile_offsets[tile_idx];
+    const int pu = sorted_tile[start_vis] & 32767;
+    const int pv = sorted_tile[start_vis] >> 15;
+    const int tile_idx_u = pu * tile_size_u + top_left_u;
+    const int tile_idx_v = pv * tile_size_v + top_left_v;
+    
+    for(size_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
     {
         const UVW_TYPE pos_u = sorted_uu[i_vis];
         const UVW_TYPE pos_v = sorted_vv[i_vis];
-        const int pu = sorted_tile[i_vis] & 32767;
-        const int pv = sorted_tile[i_vis] >> 15;
-        const int tile_idx_u = pu * tile_size_u + top_left_u;
-        const int tile_idx_v = pv * tile_size_v + top_left_v;
         const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
         const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
-        const int tile_grid_u = grid_u - tile_idx_u;
-        const int tile_grid_v = grid_v - tile_idx_v;
+        const int64_t tile_grid_u = grid_u - tile_idx_u;
+        const int64_t tile_grid_v = grid_v - tile_idx_v;
         if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
         {
-            const int tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
+            const int64_t tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
             atomicAdd(&tile[tile_grid_idx], sorted_weights[i_vis]);
         }
     }
 
     __syncthreads();
 
-    for(int64_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
+    for(size_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
     {
         const UVW_TYPE pos_u = sorted_uu[i_vis];
         const UVW_TYPE pos_v = sorted_vv[i_vis];
-        const int pu = sorted_tile[i_vis] & 32767;
-        const int pv = sorted_tile[i_vis] >> 15;
-        const int tile_idx_u = pu * tile_size_u + top_left_u;
-        const int tile_idx_v = pv * tile_size_v + top_left_v;
         const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
         const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
-        const int tile_grid_u = grid_u - tile_idx_u;
-        const int tile_grid_v = grid_v - tile_idx_v;
+        const int64_t tile_grid_u = grid_u - tile_idx_u;
+        const int64_t tile_grid_v = grid_v - tile_idx_v;
         if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
         {
-            const int tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
-            atomicAdd(&sw[0], tile[tile_grid_idx]);
-            atomicAdd(&sw2[0], tile[tile_grid_idx] * tile[tile_grid_idx]);
+            const int64_t tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
+            atomicAdd(&sw, tile[tile_grid_idx]);
+            atomicAdd(&sw2, tile[tile_grid_idx] * tile[tile_grid_idx]);
         }
 
     }
     
     __syncthreads();
 
-    *sum_weight = sw[0];
-    *sum_weight2 = sw2[0];
-
-    __syncthreads();
-
-    // Write to global memory 
-     for(int64_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
-    {
-        const UVW_TYPE pos_u = sorted_uu[i_vis];
-        const UVW_TYPE pos_v = sorted_vv[i_vis];
-        const int pu = sorted_tile[i_vis] & 32767;
-        const int pv = sorted_tile[i_vis] >> 15;
-        const int tile_idx_u = pu * tile_size_u + top_left_u;
-        const int tile_idx_v = pv * tile_size_v + top_left_v;
-        const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
-        const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
-        const int tile_grid_u = grid_u - tile_idx_u;
-        const int tile_grid_v = grid_v - tile_idx_v;
-        if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
-        {
-            int global_grid_idx = INDEX_2D(grid_size, grid_size, grid_u, grid_v);
-            int tiled_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
-            tiled_grid[global_grid_idx] = tile[tiled_grid_idx];
-        }
-    }
-
-    __syncthreads();
-
-    // double numerator = pow(5.0 * 1 / (pow(10.0,robust_param)), 2.0);
-    // double denominator = *sum_weight2 / *sum_weight;
-    // double robustness = numerator / denominator;
-
-    // WEIGHT_TYPE weight_val = 1.0;
-
-    // __syncthreads();
-
-    // for(int64_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
-    // {
-    //     const UVW_TYPE pos_u = sorted_uu[i_vis];
-    //     const UVW_TYPE pos_v = sorted_vv[i_vis];
-    //     const int pu = sorted_tile[i_vis] & 32767;
-    //     const int pv = sorted_tile[i_vis] >> 15;
-    //     const int tile_idx_u = pu * tile_size_u + top_left_u;
-    //     const int tile_idx_v = pv * tile_size_v + top_left_v;
-    //     const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
-    //     const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
-    //     const int tile_grid_u = grid_u - tile_idx_u;
-    //     const int tile_grid_v = grid_v - tile_idx_v;
-    //     if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
-    //     {            
-    //         const int tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
-    //         weight_val = sorted_weights[i_vis]/ (1 + (robustness * tile[tile_grid_idx]));
-    //         output_weights[i_vis] = weight_val;
-    //     }
-    // }
-
-}
-
-SDP_CUDA_KERNEL(sdp_optimised_weighting_1_gpu<double, double>)
-
-// Utilised when writing to global memory
-template<typename WEIGHT_TYPE, typename UVW_TYPE>
-__global__ void sdp_optimised_weighting_2_gpu(
-    const UVW_TYPE* const __restrict__ sorted_uu, 
-    const UVW_TYPE* const __restrict__ sorted_vv, 
-    const WEIGHT_TYPE* const __restrict__ sorted_weights,
-    const WEIGHT_TYPE* const __restrict__ sum_weight, 
-    const WEIGHT_TYPE* const __restrict__ sum_weight2, 
-    const WEIGHT_TYPE* const __restrict__ tiled_grid,
-    const int* const __restrict__ sorted_tile,
-    const int* const __restrict__ tile_offsets,
-    const int* const __restrict__ num_points_in_tiles, 
-    const int top_left_u, 
-    const int top_left_v, 
-    const int grid_size,
-    const int64_t tile_size_u, 
-    const int64_t tile_size_v,
-    const int robust_param,
-    WEIGHT_TYPE* output_weights
-)
-{
-    double numerator = pow(5.0 * 1 / (pow(10.0,robust_param)), 2.0);
-    double denominator = *sum_weight2 / *sum_weight;
-    double robustness = numerator / denominator;
-
+    WEIGHT_TYPE numerator = pow(5.0 * 1 / (pow(10.0,robust_param)), 2.0);
+    WEIGHT_TYPE denominator = sw2 / sw;
+    WEIGHT_TYPE robustness = numerator / denominator;
     WEIGHT_TYPE weight_val = 1.0;
 
     __syncthreads();
 
-    const int64_t tile_idx =  blockIdx.x; 
-    const int grid_centre = grid_size / 2;
-    const int start_vis = tile_offsets[tile_idx];
-    const int total_vis = tile_offsets[tile_idx + 1] - tile_offsets[tile_idx];
+    const size_t i_vis = threadIdx.x;
 
-    for(int64_t i_vis = threadIdx.x + start_vis; i_vis < total_vis; i_vis += blockDim.x)
-    {
-        const UVW_TYPE pos_u = sorted_uu[i_vis];
-        const UVW_TYPE pos_v = sorted_vv[i_vis];
-        const int pu = sorted_tile[i_vis] & 32767;
-        const int pv = sorted_tile[i_vis] >> 15;
-        const int tile_idx_u = pu * tile_size_u + top_left_u;
-        const int tile_idx_v = pv * tile_size_v + top_left_v;
-        const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
-        const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
-        const int tile_grid_u = grid_u - tile_idx_u;
-        const int tile_grid_v = grid_v - tile_idx_v;
-        if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
-        {            
-            const int tile_grid_idx = INDEX_2D(grid_size, grid_size, grid_u, grid_v);
-            weight_val = sorted_weights[i_vis]/ (1 + (robustness * tiled_grid[tile_grid_idx]));
-            output_weights[i_vis] = weight_val;
-        }
-    } 
-
+    const UVW_TYPE pos_u = sorted_uu[i_vis];
+    const UVW_TYPE pos_v = sorted_vv[i_vis];
+    const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
+    const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
+    const int64_t tile_grid_v = grid_v - tile_idx_v;
+    const int64_t tile_grid_u = grid_u - tile_idx_u;
+    if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
+    {            
+        const int64_t tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
+        weight_val = sorted_weights[i_vis]/ (1 + (robustness * tile[tile_grid_idx]));
+        output_weights[i_vis] = weight_val;
+    }
+    
 }
 
-SDP_CUDA_KERNEL(sdp_optimised_weighting_2_gpu<double, double>)
+SDP_CUDA_KERNEL(sdp_main_briggs_optimised_gpu<double, double>)

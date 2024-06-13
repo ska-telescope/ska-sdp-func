@@ -83,6 +83,29 @@ void sdp_tile_and_prefix_sum(
         sdp_Error* status
 );
 
+void sdp_bucket_sort(
+    const sdp_Mem* uvw,
+    const sdp_Mem* freqs,
+    const sdp_Mem* vis,
+    const sdp_Mem* weights,
+    const double robust_param,
+    const int grid_size,
+    const double cell_size_rad,
+    const int64_t support,
+    int* num_visibilites,
+    sdp_Mem* sorted_uu,
+    sdp_Mem* sorted_vv, 
+    sdp_Mem* sorted_weight, 
+    sdp_Mem* sorted_tile,
+    sdp_Mem* sorted_vis,
+    sdp_Mem* tile_offsets,
+    sdp_Mem* num_points_in_tiles,
+    sdp_Mem* output_weights,
+    sdp_Error* status
+);
+
+
+
 /** @} */ /* End group weight_func. */
 
 #ifdef __cplusplus
