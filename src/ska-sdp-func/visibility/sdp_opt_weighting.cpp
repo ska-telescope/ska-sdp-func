@@ -2,7 +2,7 @@
 #include <complex>
 #include <vector>
 #include <ctime>
-#include "cuda_runtime.h"
+#include <cuda_runtime.h>
 #include <iostream>
 #include "ska-sdp-func/utility/sdp_data_model_checks.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
@@ -355,8 +355,6 @@ void sdp_tile_and_prefix_sum(
                 status
         );
 
-        cudaDeviceSynchronize();
-
         const char* kernel_name_prefix = 0;
         kernel_name_prefix = "sdp_preifx_sum_gpu<int>";
 
@@ -390,26 +388,28 @@ void sdp_tile_and_prefix_sum(
 
 }
 
-void sdp_optimized_weighting(
-        const sdp_Mem* uvw,
-        const sdp_Mem* freqs,
-        const sdp_Mem* vis,
-        const sdp_Mem* weights,
-        const double robust_param,
-        const int grid_size,
-        const double cell_size_rad,
-        const int64_t support,
-        int* num_visibilites,
-        sdp_Mem* sorted_uu,
-        sdp_Mem* sorted_vv, 
-        sdp_Mem* sorted_weight, 
-        sdp_Mem* sorted_tile,
-        sdp_Mem* sorted_vis,
-        sdp_Mem* tile_offsets,
-        sdp_Mem* num_points_in_tiles,
-        sdp_Mem* output_weights,
-        sdp_Error* status
+
+void sdp_bucket_sort(
+    const sdp_Mem* uvw,
+    const sdp_Mem* freqs,
+    const sdp_Mem* vis,
+    const sdp_Mem* weights,
+    const double robust_param,
+    const int grid_size,
+    const double cell_size_rad,
+    const int64_t support,
+    int* num_visibilites,
+    sdp_Mem* sorted_uu,
+    sdp_Mem* sorted_vv, 
+    sdp_Mem* sorted_weight, 
+    sdp_Mem* sorted_tile,
+    sdp_Mem* sorted_vis,
+    sdp_Mem* tile_offsets,
+    sdp_Mem* num_points_in_tiles,
+    sdp_Mem* output_weights,
+    sdp_Error* status
 )
+
 {
     if (*status) return;
     sdp_MemLocation vis_location = sdp_mem_location(vis);
@@ -500,10 +500,6 @@ void sdp_optimized_weighting(
                     (int*)sdp_mem_data(sorted_tile),
                     cell_size_rad
             );
-
-            *status = SDP_ERR_MEM_LOCATION;
-            SDP_LOG_ERROR("CPU Briggs Weighting doesn't exist yet!");
-
         }
         else
         {
@@ -514,7 +510,7 @@ void sdp_optimized_weighting(
     else if (vis_location == SDP_MEM_GPU)
     { 
 
-        // Define hyperparameters
+        // Define hyperparameters for tiling and bucket sort
 
         const uint64_t num_threads[] = {128, 2, 2};
         const uint64_t num_blocks[] = {
@@ -523,6 +519,10 @@ void sdp_optimized_weighting(
             (num_times + num_threads[2] - 1) / num_threads[2]
         };
 
+        //Define hyperparameters for weighting
+
+        printf("Number of tiles = %d \n", num_tiles);
+        
         // Launch bucket sort kernel
 
         const char* kernel_name2 = 0;
@@ -572,43 +572,130 @@ void sdp_optimized_weighting(
                 status
         );
 
+    }
+}
 
-        //Make sure weights are on the gpu
-        sdp_mem_check_location(output_weights, SDP_MEM_GPU, status);
+void sdp_optimized_weighting(
+        const sdp_Mem* uvw,
+        const sdp_Mem* freqs,
+        const sdp_Mem* vis,
+        const sdp_Mem* weights,
+        const double robust_param,
+        const int grid_size,
+        const double cell_size_rad,
+        const int64_t support,
+        int* num_visibilites,
+        sdp_Mem* sorted_uu,
+        sdp_Mem* sorted_vv, 
+        sdp_Mem* sorted_weight, 
+        sdp_Mem* sorted_tile,
+        sdp_Mem* sorted_vis,
+        sdp_Mem* tile_offsets,
+        sdp_Mem* num_points_in_tiles,
+        sdp_Mem* output_weights,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_MemLocation vis_location = sdp_mem_location(vis);
+    sdp_MemType vis_type = sdp_mem_type(vis);
+    sdp_MemType uvw_type = sdp_mem_type(uvw);
+    sdp_MemType freq_type = sdp_mem_type(freqs);
+    sdp_MemType weight_type = sdp_mem_type(weights);
+    int64_t num_times = 0;
+    int64_t num_baselines = 0;
+    int64_t num_channels = 0;
+    int64_t num_pols = 0;
 
-        clock_t start_time = clock();
+    //Calculate parameters for tiling
+    int64_t grid_centre = grid_size / 2 ;
+    const int64_t tile_size_u = 32;
+    const int64_t tile_size_v = 16;
+    int64_t ctile_u = grid_centre / tile_size_u;
+    int64_t ctile_v = grid_centre / tile_size_v;
+    const float inv_tile_size_u = 1.0 / tile_size_u;
+    const float inv_tile_size_v = 1.0 / tile_size_v;
+    int64_t num_tiles_u = (grid_size + tile_size_u - 1) / tile_size_u;
+    int64_t num_tiles_v = (grid_size + tile_size_v - 1) / tile_size_v;
+    int64_t num_tiles = num_tiles_u * num_tiles_v;
+    int64_t top_left_u = grid_centre - ctile_u * tile_size_u - tile_size_u / 2;
+    int64_t top_left_v = grid_centre - ctile_v * tile_size_v - tile_size_v / 2;
 
-        printf("Number of tiles to be processed: %ld \n", num_tiles);
+    // Check parameters
+    sdp_data_model_get_vis_metadata(
+            vis,
+            &vis_type,
+            &vis_location,
+            &num_times,
+            &num_baselines,
+            &num_channels,
+            &num_pols,
+            status
+    );
 
-        //Define hyperparameters for weighting
+    sdp_data_model_check_uvw(
+            uvw,
+            SDP_MEM_VOID,
+            vis_location,
+            num_times,
+            num_baselines,
+            status
+    );
 
-        const uint64_t num_threads_briggs[] = {tile_size_u * tile_size_v, 1 , 1};
-        const uint64_t num_blocks_briggs[] = {num_tiles, 1, 1};
+    sdp_data_model_check_weights(
+            weights,
+            SDP_MEM_VOID,
+            vis_location,
+            num_times,
+            num_baselines,
+            num_channels,
+            num_pols,
+            status
+    );
 
-        int all_vis = *num_visibilites;
- 
-        const char* kernel_name_weighting = 0;
+    constexpr int NUM_POL = 1;
+
+    if (vis_location == SDP_MEM_CPU)
+    {
         if (uvw_type == SDP_MEM_DOUBLE &&
-        weight_type == SDP_MEM_DOUBLE && freq_type == SDP_MEM_DOUBLE)
+                weight_type == SDP_MEM_DOUBLE &&
+                freq_type == SDP_MEM_DOUBLE)
         {
-            kernel_name_weighting = "sdp_optimised_weighting_1_gpu<double, double>";
-        }
 
+            *status = SDP_ERR_MEM_LOCATION;
+            SDP_LOG_ERROR("CPU Briggs Weighting doesn't exist yet!");
+
+        }
         else
         {
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported data type(s)");
         }
+    }
+    else if (vis_location == SDP_MEM_GPU)
+    { 
 
-        const int64_t uv_size[] = {grid_size, grid_size};
-        const int64_t sumweight_shape[] = {1};
-        const int64_t sum_weight2_shape[] = {1};
+        //Define hyperparameters for weighting
 
-        sdp_Mem* tile_grid_uv = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 2, uv_size, status);
-        sdp_Mem* sum_weight = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 1, sumweight_shape, status);
-        sdp_Mem* sum_weight2 = sdp_mem_create(SDP_MEM_DOUBLE, SDP_MEM_GPU, 1, sum_weight2_shape, status);
+        printf("Number of tiles = %d \n", num_tiles);
+        
+        int n_threads  = tile_size_u * tile_size_v;
+        const uint64_t num_threads_briggs[] = {n_threads, 1, 1};
+        const uint64_t num_blocks_briggs[] = {(int)num_tiles - 1, 1, 1};
 
+       //Make sure weights are on the gpu
+        sdp_mem_check_location(output_weights, SDP_MEM_GPU, status);
 
+        clock_t start_time = clock();
+
+        const char* kernel_name_weights_update = 0;
+        
+        if (uvw_type == SDP_MEM_DOUBLE &&
+        weight_type == SDP_MEM_DOUBLE && freq_type == SDP_MEM_DOUBLE)
+        {
+            kernel_name_weights_update= "sdp_test_briggs_gpu<double, double>";
+        }
+        
         const void* weighting_args[]{
             sdp_mem_gpu_buffer_const(sorted_uu, status), 
             sdp_mem_gpu_buffer_const(sorted_vv, status),
@@ -624,74 +711,27 @@ void sdp_optimized_weighting(
             (const void*)&robust_param,
             (const void*)&tile_size_u, 
             (const void*)&tile_size_v,  
-            sdp_mem_gpu_buffer(sum_weight, status),
-            sdp_mem_gpu_buffer(sum_weight2, status), 
-            sdp_mem_gpu_buffer(tile_grid_uv, status)
+            sdp_mem_gpu_buffer(output_weights, status)
         };
 
-        cudaDeviceSynchronize();
-        
+        size_t shared_mem_size = tile_size_u * tile_size_v * sizeof(double);
+
         sdp_launch_cuda_kernel(
-            kernel_name_weighting, 
+            kernel_name_weights_update,
             num_blocks_briggs, 
             num_threads_briggs,
-            tile_size_u * tile_size_v * SDP_MEM_DOUBLE,
-            0, 
+            shared_mem_size, 
+            0,  
             weighting_args, 
             status
         );
 
         cudaDeviceSynchronize();
 
-        const char* kernel_name_weights_update = 0;
-        if (uvw_type == SDP_MEM_DOUBLE &&
-        weight_type == SDP_MEM_DOUBLE && freq_type == SDP_MEM_DOUBLE)
-        {
-            kernel_name_weights_update= "sdp_optimised_weighting_2_gpu<double, double>";
-        }
-
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
-            SDP_LOG_ERROR("Unsupported data type(s)");
-        }
-
-        const void* weighting_update_args[] = {
-            sdp_mem_gpu_buffer_const(sorted_uu, status), 
-            sdp_mem_gpu_buffer_const(sorted_vv, status),
-            sdp_mem_gpu_buffer_const(sorted_weight, status),
-            sdp_mem_gpu_buffer_const(sum_weight, status), 
-            sdp_mem_gpu_buffer_const(sum_weight2,status),
-            sdp_mem_gpu_buffer_const(tile_grid_uv, status),
-            sdp_mem_gpu_buffer_const(sorted_tile, status), 
-            sdp_mem_gpu_buffer_const(tile_offsets, status), 
-            sdp_mem_gpu_buffer_const(num_points_in_tiles, status),
-            (const void*)&top_left_u, 
-            (const void*)&top_left_v,
-            (const void*)&grid_size,
-            (const void*)&tile_size_u, 
-            (const void*)&tile_size_v,
-            (const void*)&robust_param, 
-            sdp_mem_gpu_buffer(output_weights, status)
-        };
-
-        sdp_launch_cuda_kernel(
-            kernel_name_weights_update, 
-            num_blocks_briggs, 
-            num_threads_briggs,
-            0, 
-            0, 
-            weighting_update_args, 
-            status
-        );
-        
-
         clock_t end_time = clock();
 
         double duration = double(end_time - start_time)/CLOCKS_PER_SEC;
 
         printf("Briggs Time: %e \n", duration);
-
-
     }
 }
