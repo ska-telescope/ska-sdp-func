@@ -845,6 +845,7 @@ def test_gridder_wtower_uvw():
     print("Grid size: ", image_size / theta, "wavelengths")
     idu = 80
     idv = 90
+    idw = 0
     ch_count = 100
     freq0_hz = 1e6
     dfreq_hz = 1e3
@@ -908,7 +909,7 @@ def test_gridder_wtower_uvw():
     vis = numpy.zeros((num_uvw, ch_count), dtype=numpy.complex128)
     t0 = time.time()
     gridder.degrid(
-        image, idu, idv, freq0_hz, dfreq_hz, uvw, start_chs, end_chs, vis
+        image, idu, idv, idw, freq0_hz, dfreq_hz, uvw, start_chs, end_chs, vis
     )
     t1 = time.time() - t0
     print(f"PFL uvw degrid took {t1:.4f} s. (speed-up: {t1_r / t1:.0f})")
@@ -938,7 +939,16 @@ def test_gridder_wtower_uvw():
     img_tst = numpy.zeros_like(img_ref)
     t0 = time.time()
     gridder.grid(
-        vis_ref, uvw, start_chs, end_chs, freq0_hz, dfreq_hz, img_tst, idu, idv
+        vis_ref,
+        uvw,
+        start_chs,
+        end_chs,
+        freq0_hz,
+        dfreq_hz,
+        img_tst,
+        idu,
+        idv,
+        idw,
     )
     t1 = time.time() - t0
     print(f"PFL uvw grid took {t1:.4f} s. (speed-up: {t1_r / t1:.0f})")

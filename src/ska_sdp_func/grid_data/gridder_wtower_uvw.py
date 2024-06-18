@@ -64,6 +64,7 @@ class GridderWtowerUVW(StructWrapper):
         subgrid_image: numpy.ndarray,
         subgrid_offset_u: int,
         subgrid_offset_v: int,
+        subgrid_offset_w: int,
         freq0_hz: float,
         dfreq_hz: float,
         uvws: numpy.ndarray,
@@ -78,8 +79,12 @@ class GridderWtowerUVW(StructWrapper):
         :param subgrid_image: Fourier transformed subgrid to degrid from.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid centre relative to grid centre
+        :param subgrid_offset_u:
+            Offset of subgrid centre relative to grid centre.
+        :param subgrid_offset_v:
+            Offset of subgrid centre relative to grid centre.
+        :param subgrid_offset_w:
+            Offset of subgrid centre relative to grid centre.
         :param freq0_hz: Frequency of first channel (Hz)
         :param dfreq_hz: Channel width (Hz)
         :param uvws: ``float[uvw_count, 3]``
@@ -95,6 +100,7 @@ class GridderWtowerUVW(StructWrapper):
             Mem(subgrid_image),
             subgrid_offset_u,
             subgrid_offset_v,
+            subgrid_offset_w,
             freq0_hz,
             dfreq_hz,
             Mem(uvws),
@@ -127,6 +133,7 @@ class GridderWtowerUVW(StructWrapper):
         subgrid_image: numpy.ndarray,
         subgrid_offset_u: int,
         subgrid_offset_v: int,
+        subgrid_offset_w: int,
     ):
         """Grid visibilities using w-stacking/towers.
 
@@ -144,8 +151,12 @@ class GridderWtowerUVW(StructWrapper):
         :param subgrid_image: Fourier transformed subgrid to be gridded to.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid relative to grid centre
+        :param subgrid_offset_u:
+            Offset of subgrid centre relative to grid centre.
+        :param subgrid_offset_v:
+            Offset of subgrid centre relative to grid centre.
+        :param subgrid_offset_w:
+            Offset of subgrid centre relative to grid centre.
         """
         Lib.sdp_gridder_wtower_uvw_grid(
             self,
@@ -158,6 +169,7 @@ class GridderWtowerUVW(StructWrapper):
             Mem(subgrid_image),
             subgrid_offset_u,
             subgrid_offset_v,
+            subgrid_offset_w,
         )
 
     def grid_correct(
@@ -200,6 +212,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_int,
         ctypes.c_double,
         ctypes.c_double,
         Mem.handle_type(),
@@ -234,6 +247,7 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_double,
         Mem.handle_type(),
+        ctypes.c_int,
         ctypes.c_int,
         ctypes.c_int,
     ],
