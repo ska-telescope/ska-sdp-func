@@ -207,6 +207,86 @@ void sdp_bucket_sort_simple(
     }
 }
 
+template<typename UVW_TYPE, typename FREQ_TYPE, typename VIS_TYPE,
+        typename WEIGHT_TYPE, int NUM_POL>
+void tiled_indexing(
+    const int64_t support,
+    const int64_t num_times,
+    const int64_t num_baselines,
+    const int64_t num_channels,
+    const int grid_size,
+    const float inv_tile_size_u,
+    const float inv_tile_size_v,
+    const UVW_TYPE* uvw,
+    const FREQ_TYPE* freqs,
+    const VIS_TYPE* vis,
+    const WEIGHT_TYPE* weight,
+    const int64_t num_tiles_u,
+    const int64_t top_left_u,
+    const int64_t top_left_v,
+    int* tile_offsets,
+    VIS_TYPE* sorted_vis_index,
+    int* sorted_tile,
+    const double cell_size_rad
+
+)
+{
+    const int64_t grid_centre = grid_size / 2;
+    const double grid_scale =  grid_size * cell_size_rad;
+    for (int i_time = 0; i_time < num_times; i_time++)
+    {
+        for (int i_baseline = 0; i_baseline < num_baselines; i_baseline++)
+        {
+            const int i_uv = INDEX_3D(
+                    num_times, num_baselines, 3,
+                    i_time, i_baseline, 0
+            );
+
+            for (int i_channel = 0; i_channel < num_channels; i_channel++)
+            {
+                const int i_vis = INDEX_4D(
+                        num_times, num_baselines, num_channels, NUM_POL,
+                        i_time, i_baseline, i_channel, 0
+                );
+
+                const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
+                const UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength * grid_scale;
+                const UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength * grid_scale;
+
+                const int grid_u =
+                        (int)round(pos_u) + grid_centre;
+                const int grid_v =
+                        (int)round(pos_v) + grid_centre;
+
+                if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
+                        (grid_v + support < grid_size) &&
+                        (grid_v - support) >= 0)
+                {
+                    int tile_u_min, tile_u_max, tile_v_min, tile_v_max;
+                    TILE_RANGES(support,
+                            tile_v_min,
+                            tile_u_max,
+                            tile_v_min,
+                            tile_v_max
+                    );
+                    for (int pv = tile_v_min; pv < tile_v_max; pv++)
+                    {
+                        for (int pu = tile_u_min; pu < tile_u_max; pu++)
+                        {
+                            int off = tile_offsets[pu + pv * num_tiles_u];
+                            tile_offsets[pu + pv * num_tiles_u] += 1;
+                            for (int i = 0; i < NUM_POL; i++)
+                            {
+                                sorted_vis_index[off] = i_vis + i;
+                            }
+                            sorted_tile[off] = pv * 32768 + pu;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 void sdp_tile_and_prefix_sum(
         const sdp_Mem* uvw,
@@ -693,7 +773,7 @@ void sdp_optimized_weighting(
         if (uvw_type == SDP_MEM_DOUBLE &&
         weight_type == SDP_MEM_DOUBLE && freq_type == SDP_MEM_DOUBLE)
         {
-            kernel_name_weights_update= "sdp_test_briggs_gpu<double, double>";
+            kernel_name_weights_update= "sdp_opt_briggs_gpu<double, double>";
         }
         
         const void* weighting_args[]{
