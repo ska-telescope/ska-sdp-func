@@ -773,7 +773,7 @@ void sdp_optimized_weighting(
         if (uvw_type == SDP_MEM_DOUBLE &&
         weight_type == SDP_MEM_DOUBLE && freq_type == SDP_MEM_DOUBLE)
         {
-            kernel_name_weights_update= "sdp_opt_briggs_gpu<double, double>";
+            kernel_name_weights_update= "sdp_opt_briggs_bucket_gpu<double, double>";
         }
         
         const void* weighting_args[]{

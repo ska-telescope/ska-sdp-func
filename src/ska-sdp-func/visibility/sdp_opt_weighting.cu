@@ -256,7 +256,7 @@ __global__ void sdp_tiled_indexing_gpu(
     if(i_baseline >= num_baselines || i_channel >= num_channels || i_time >= num_times) return;
     
     const int i_uvw = INDEX_3D(
-            num_times, num_baselines, 3,
+            num_times, num_baselines, 2,
             i_time, i_baseline, 0
     );
     
@@ -302,7 +302,7 @@ SDP_CUDA_KERNEL(sdp_tiled_indexing_gpu<double, double, double, double, 1>)
 
 
 template <typename UVW_TYPE, typename WEIGHT_TYPE>
-__global__ void sdp_opt_briggs_gpu(
+__global__ void sdp_opt_briggs_bucket_gpu(
      const UVW_TYPE* const __restrict__ sorted_uu, 
     const UVW_TYPE* const __restrict__ sorted_vv, 
     const WEIGHT_TYPE* const __restrict__ sorted_weights, 
@@ -401,6 +401,129 @@ __global__ void sdp_opt_briggs_gpu(
 
 }
 
-SDP_CUDA_KERNEL(sdp_opt_briggs_gpu<double, double>)
+SDP_CUDA_KERNEL(sdp_opt_briggs_bucket_gpu<double, double>)
 
+
+
+template <typename UVW_TYPE, typename WEIGHT_TYPE, typename FREQ_TYPE>
+__global__ void sdp_opt_briggs_index_gpu(
+    const  UVW_TYPE* const __restrict__ uvw, 
+    const WEIGHT_TYPE* const __restrict__ weights,
+    const FREQ_TYPE* freqs,
+    const int* const __restrict__ sorted_index,
+    const int* const __restrict__ sorted_tile,
+    const int* const __restrict__ tile_offsets,
+    const int* const __restrict__ num_points_in_tiles, 
+    const int top_left_u, 
+    const int top_left_v, 
+    const int grid_size,
+    const int num_tiles,
+    const int support,
+    const int robust_param,
+    const int64_t num_channels,
+    const int64_t tile_size_u, 
+    const int64_t tile_size_v,
+    const double cell_size_rad,
+    WEIGHT_TYPE* output_weights
+)
+{
+
+    __shared__ WEIGHT_TYPE sw;
+    __shared__ WEIGHT_TYPE sw2;
+    extern __shared__ WEIGHT_TYPE tile[];
+    tile[threadIdx.x] = 0.0;
+    sw = 0.0;
+    sw2 = 0.0;
+    __syncthreads();
+
+    size_t tile_idx = blockIdx.x;
+    int grid_centre = grid_size/2;
+    int64_t start_vis = tile_offsets[tile_idx];
+    int64_t total_vis = tile_offsets[tile_idx+1] - tile_offsets[tile_idx];
+    const int pu = sorted_tile[start_vis] & 32767;
+    const int pv = sorted_tile[start_vis] >> 15;
+    const int tile_idx_u = pu * tile_size_u + top_left_u;
+    const int tile_idx_v = pv * tile_size_v + top_left_v;
+
+    __syncthreads();
+
+
+    for (size_t i_thread = threadIdx.x + start_vis; i_thread < total_vis; i_thread += blockDim.x)
+    {
+
+        const double grid_scale = grid_size * cell_size_rad;
+        const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
+        int i_vis = sorted_index[i_thread];
+        int i_uv = i_vis / num_channels - i_channel;
+        const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
+        UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength * grid_scale;
+        UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength * grid_scale;
+        int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
+        int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
+        const int64_t tile_grid_u = grid_u - tile_idx_u;
+        const int64_t tile_grid_v = grid_v - tile_idx_v;
+        if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
+        {
+            const int64_t tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
+            WEIGHT_TYPE weight = weights[i_vis];
+            atomicAdd(&tile[tile_grid_idx], weight);
+        }
+    }
+
+    __syncthreads();
+
+     for(size_t i_thread = threadIdx.x + start_vis; i_thread < total_vis; i_thread += blockDim.x)
+    {
+        const double grid_scale = grid_size * cell_size_rad;
+        const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
+        int i_vis = sorted_index[i_thread];
+        int i_uv = i_vis / num_channels - i_channel;
+        const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
+        UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength * grid_scale;
+        UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength * grid_scale;
+        const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
+        const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
+        const int64_t tile_grid_u = grid_u - tile_idx_u;
+        const int64_t tile_grid_v = grid_v - tile_idx_v;
+        if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
+        {
+            const int64_t tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
+            atomicAdd(&sw, tile[tile_grid_idx]);
+            atomicAdd(&sw2, tile[tile_grid_idx] * tile[tile_grid_idx]);
+        }
+
+    }
+
+    __syncthreads();
+
+    WEIGHT_TYPE numerator = pow(5.0 * 1 / (pow(10.0,robust_param)), 2.0);
+    WEIGHT_TYPE denominator = sw2 / sw;
+    WEIGHT_TYPE robustness = numerator / denominator;
+    WEIGHT_TYPE weight_val = 1.0;
+  
+   __syncthreads(); 
+
+    const size_t i_thread = threadIdx.x;
+
+    const double grid_scale = grid_size * cell_size_rad;
+    const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
+    int i_vis = sorted_index[i_thread];
+    int i_uv = i_vis / num_channels - i_channel;
+    const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
+    UVW_TYPE pos_u = uvw[i_uv + 0] * inv_wavelength * grid_scale;
+    UVW_TYPE pos_v = uvw[i_uv + 1] * inv_wavelength * grid_scale;
+    const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
+    const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
+    const int64_t tile_grid_v = grid_v - tile_idx_v;
+    const int64_t tile_grid_u = grid_u - tile_idx_u;
+    if(tile_grid_u >= 0 && tile_grid_u < tile_size_u && tile_grid_v >= 0 && tile_grid_v < tile_size_v)
+    {            
+        const int64_t tile_grid_idx = INDEX_2D(tile_size_u, tile_size_v, tile_grid_u, tile_grid_v);
+        weight_val = weights[i_vis]/ (1 + (robustness * tile[tile_grid_idx]));
+        output_weights[i_vis] = weight_val;
+    }
+
+}
+
+SDP_CUDA_KERNEL(sdp_opt_briggs_index_gpu<double, double, double>)
 
