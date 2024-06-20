@@ -8,6 +8,11 @@ import time
 import numpy
 import scipy
 
+try:
+    import cupy
+except ImportError:
+    cupy = None
+
 import ska_sdp_func.grid_data as sdp_grid_func
 
 # from ska_sdp_func.utility import Lib, Mem
@@ -999,20 +1004,89 @@ def test_gridder_wtower_uvw():
     print(f"PFL make_w_pattern took {t1:.4f} s. (speed-up: {t1_r / t1:.0f})")
     numpy.testing.assert_allclose(w_pattern_ref, w_pattern_pfl)
 
-    # sz = 128
-    # test_1 = numpy.zeros((sz, sz))
-    # test_x = numpy.random.random_sample((sz, sz))
-    # test_x[0, 0] = 0
-    # test_x[0, 1] = -.9999999
-    # test_x[1, 1] = .9999999
-    # Lib.sdp_generate_pswf_at_x(
-    #     0, w_support * (math.pi / 2), Mem(test_x), Mem(test_1)
-    # )
-    # test_2 = scipy.special.pro_ang1(
-    #     0, 0, numpy.pi * w_support / 2, test_x
-    # )[0].reshape(sz, sz)
-    # test_2[numpy.isnan(test_2)] = 1
-    # numpy.testing.assert_allclose(test_1, test_2)
+
+def test_gridder_wtower_uvw_gpu():
+    # Common parameters
+    image_size = 2048  # Total image size in pixels
+    subgrid_size = image_size // 4  # Needs to be even.
+    theta = 0.02  # Total image size in directional cosines.
+    shear_u = 0.2
+    shear_v = 0.1
+    support = 10
+    oversampling = 16 * 1024
+    w_step = 280
+    w_support = 10
+    w_oversampling = 16 * 1024
+    print("Grid size: ", image_size / theta, "wavelengths")
+    idu = 80
+    idv = 90
+    idw = 0
+    ch_count = 100
+    freq0_hz = 1e6
+    dfreq_hz = 1e3
+
+    # Create an image for input to degridding.
+    numpy.random.seed(123)
+    image = numpy.zeros((subgrid_size, subgrid_size), dtype=numpy.float32)
+    image[subgrid_size // 4, subgrid_size // 4] = 1.0
+    image[5 * subgrid_size // 6, 2 * subgrid_size // 6] = 0.5
+    num_uvw = 30000
+    uvw = numpy.random.random_sample((num_uvw, 3)) * 100
+    uvw = uvw.astype(numpy.float32)
+    start_chs = numpy.zeros((num_uvw), dtype=numpy.int32)
+    end_chs = numpy.ones((num_uvw), dtype=numpy.int32) * (ch_count)
+
+    # Create the PFL (de)gridder.
+    gridder = sdp_grid_func.GridderWtowerUVW(
+        image_size,
+        subgrid_size,
+        theta,
+        shear_u,
+        shear_v,
+        support,
+        oversampling,
+        w_step,
+        w_support,
+        w_oversampling,
+    )
+
+    # Call the degridder with data in CPU memory.
+    vis0 = numpy.zeros((num_uvw, ch_count), dtype=numpy.complex64)
+    t0 = time.time()
+    gridder.degrid(
+        image, idu, idv, idw, freq0_hz, dfreq_hz, uvw, start_chs, end_chs, vis0
+    )
+    t1_r = time.time() - t0
+    print(f"PFL CPU degrid took {t1_r:.4f} s.")
+
+    if cupy:
+        # Copy data to GPU memory.
+        image_gpu = cupy.asarray(image)
+        uvw_gpu = cupy.asarray(uvw)
+        start_chs_gpu = cupy.asarray(start_chs)
+        end_chs_gpu = cupy.asarray(end_chs)
+        vis_gpu = cupy.zeros((num_uvw, ch_count), dtype=cupy.complex64)
+
+        # Call the degridder with data in GPU memory.
+        t0 = time.time()
+        gridder.degrid(
+            image_gpu,
+            idu,
+            idv,
+            idw,
+            freq0_hz,
+            dfreq_hz,
+            uvw_gpu,
+            start_chs_gpu,
+            end_chs_gpu,
+            vis_gpu,
+        )
+        t1 = time.time() - t0
+        print(f"PFL GPU degrid took {t1:.4f} s.")
+
+        # Check results from both are the same.
+        vis = cupy.asnumpy(vis_gpu)
+        numpy.testing.assert_allclose(vis, vis0, atol=1e-6, rtol=1e-5)
 
 
 def test_gridder_wtower_uvw_degrid_correct():

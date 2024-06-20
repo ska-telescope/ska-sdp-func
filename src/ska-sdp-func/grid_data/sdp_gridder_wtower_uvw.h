@@ -87,7 +87,7 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
  * @param vis ``complex[uvw_count, ch_count]`` Output degridded visibilities.
  */
 void sdp_gridder_wtower_uvw_degrid(
-        const sdp_GridderWtowerUVW* plan,
+        sdp_GridderWtowerUVW* plan,
         const sdp_Mem* subgrid_image,
         int subgrid_offset_u,
         int subgrid_offset_v,
@@ -138,7 +138,7 @@ void sdp_gridder_wtower_uvw_degrid_correct(
  * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
  */
 void sdp_gridder_wtower_uvw_grid(
-        const sdp_GridderWtowerUVW* plan,
+        sdp_GridderWtowerUVW* plan,
         const sdp_Mem* vis,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,

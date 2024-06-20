@@ -6,6 +6,7 @@
 
 #include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 
 using std::complex;
@@ -124,32 +125,25 @@ void scale_inv_array(
 // Determine (scaled) min and max values in uvw coordinates.
 template<typename UVW_TYPE>
 void uvw_bounds_all(
-        const sdp_Mem* uvws,
+        const sdp_MemViewCpu<const UVW_TYPE, 2>& uvws,
         double freq0_hz,
         double dfreq_hz,
-        const sdp_Mem* start_chs,
-        const sdp_Mem* end_chs,
+        const sdp_MemViewCpu<const int, 1>& start_chs,
+        const sdp_MemViewCpu<const int, 1>& end_chs,
         double uvw_min[3],
         double uvw_max[3],
         sdp_Error* status
 )
 {
     const double SPEED_OF_LIGHT = 299792458.0;
-    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
-    sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
-    sdp_mem_check_and_view(uvws, &uvws_, status);
-    sdp_mem_check_and_view(start_chs, &start_chs_, status);
-    sdp_mem_check_and_view(end_chs, &end_chs_, status);
-    const int64_t num_uvw = sdp_mem_shape_dim(uvws, 0);
-    uvw_min[0] = uvw_min[1] = uvw_min[2] = INFINITY;
-    uvw_max[0] = uvw_max[1] = uvw_max[2] = -INFINITY;
+    const int64_t num_uvw = uvws.shape[0];
     if (*status) return;
     for (int64_t i = 0; i < num_uvw; ++i)
     {
-        const int start_ch = start_chs_(i), end_ch = end_chs_(i);
+        const int start_ch = start_chs(i), end_ch = end_chs(i);
         if (start_ch >= end_ch)
             continue;
-        const double uvw[] = {uvws_(i, 0), uvws_(i, 1), uvws_(i, 2)};
+        const double uvw[] = {uvws(i, 0), uvws(i, 1), uvws(i, 2)};
         for (int j = 0; j < 3; ++j)
         {
             const double u0 = freq0_hz * uvw[j] / SPEED_OF_LIGHT;
@@ -305,41 +299,107 @@ void sdp_gridder_scale_inv_array(
 )
 {
     if (*status) return;
-    if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
-            sdp_mem_type(in1) == SDP_MEM_DOUBLE &&
-            sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+    const sdp_MemLocation loc = sdp_mem_location(out);
+    if (sdp_mem_location(in1) != loc || sdp_mem_location(in2) != loc)
     {
-        scale_inv_array<complex<double>, double, complex<double> >(
-                out, in1, in2, exponent
-        );
+        *status = SDP_ERR_MEM_LOCATION;
+        return;
     }
-    else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
-            sdp_mem_type(in1) == SDP_MEM_FLOAT &&
-            sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+    if (loc == SDP_MEM_CPU)
     {
-        scale_inv_array<complex<float>, float, complex<double> >(
-                out, in1, in2, exponent
-        );
-    }
-    else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
-            sdp_mem_type(in1) == SDP_MEM_COMPLEX_DOUBLE &&
-            sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
-    {
-        scale_inv_array<complex<double>, complex<double>, complex<double> >(
-                out, in1, in2, exponent
-        );
-    }
-    else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
-            sdp_mem_type(in1) == SDP_MEM_COMPLEX_FLOAT &&
-            sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
-    {
-        scale_inv_array<complex<float>, complex<float>, complex<double> >(
-                out, in1, in2, exponent
-        );
+        if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(in1) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            scale_inv_array<complex<double>, double, complex<double> >(
+                    out, in1, in2, exponent
+            );
+        }
+        else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(in1) == SDP_MEM_FLOAT &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            scale_inv_array<complex<float>, float, complex<double> >(
+                    out, in1, in2, exponent
+            );
+        }
+        else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(in1) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            scale_inv_array<complex<double>, complex<double>, complex<double> >(
+                    out, in1, in2, exponent
+            );
+        }
+        else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(in1) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            scale_inv_array<complex<float>, complex<float>, complex<double> >(
+                    out, in1, in2, exponent
+            );
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
     }
     else
     {
-        *status = SDP_ERR_DATA_TYPE;
+        uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
+        const char* kernel_name = 0;
+        const int64_t num_elements = sdp_mem_num_elements(out);
+        if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(in1) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            kernel_name = "sdp_gridder_scale_inv_array<"
+                    "thrust::complex<double>, double, "
+                    "thrust::complex<double> "
+                    ">";
+        }
+        else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(in1) == SDP_MEM_FLOAT &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            kernel_name = "sdp_gridder_scale_inv_array<"
+                    "thrust::complex<float>, float, thrust::complex<double> "
+                    ">";
+        }
+        else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(in1) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            kernel_name = "sdp_gridder_scale_inv_array<"
+                    "thrust::complex<double>, thrust::complex<double>, "
+                    "thrust::complex<double> "
+                    ">";
+        }
+        else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(in1) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            kernel_name = "sdp_gridder_scale_inv_array<"
+                    "thrust::complex<float>, thrust::complex<float>, "
+                    "thrust::complex<double> "
+                    ">";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            return;
+        }
+        const void* arg[] = {
+            &num_elements,
+            sdp_mem_gpu_buffer(out, status),
+            sdp_mem_gpu_buffer_const(in1, status),
+            sdp_mem_gpu_buffer_const(in2, status),
+            &exponent
+        };
+        num_blocks[0] = (num_elements + num_threads[0] - 1) / num_threads[0];
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
     }
 }
 
@@ -356,22 +416,100 @@ void sdp_gridder_uvw_bounds_all(
 )
 {
     if (*status) return;
-    if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
+
+    // Initialise the output values.
+    uvw_min[0] = uvw_min[1] = uvw_min[2] = INFINITY;
+    uvw_max[0] = uvw_max[1] = uvw_max[2] = -INFINITY;
+
+    // Check memory location.
+    const sdp_MemLocation loc = sdp_mem_location(uvws);
+    if (loc == SDP_MEM_CPU)
     {
-        uvw_bounds_all<double>(
-                uvws, freq0_hz, dfreq_hz, start_chs, end_chs, uvw_min, uvw_max,
-                status
-        );
+        sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
+        sdp_mem_check_and_view(start_chs, &start_chs_, status);
+        sdp_mem_check_and_view(end_chs, &end_chs_, status);
+
+        if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
+        {
+            sdp_MemViewCpu<const double, 2> uvws_;
+            sdp_mem_check_and_view(uvws, &uvws_, status);
+            uvw_bounds_all<double>(
+                    uvws_, freq0_hz, dfreq_hz, start_chs_, end_chs_,
+                    uvw_min, uvw_max, status
+            );
+        }
+        else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
+        {
+            sdp_MemViewCpu<const float, 2> uvws_;
+            sdp_mem_check_and_view(uvws, &uvws_, status);
+            uvw_bounds_all<float>(
+                    uvws_, freq0_hz, dfreq_hz, start_chs_, end_chs_,
+                    uvw_min, uvw_max, status
+            );
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
     }
-    else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
+    else if (loc == SDP_MEM_GPU)
     {
-        uvw_bounds_all<float>(
-                uvws, freq0_hz, dfreq_hz, start_chs, end_chs, uvw_min, uvw_max,
-                status
+        const int64_t shape[] = {3};
+        sdp_Mem* uvw_min_cpu = sdp_mem_create_wrapper(
+                uvw_min, SDP_MEM_DOUBLE, SDP_MEM_CPU, 1, shape, NULL, status
         );
-    }
-    else
-    {
-        *status = SDP_ERR_DATA_TYPE;
+        sdp_Mem* uvw_max_cpu = sdp_mem_create_wrapper(
+                uvw_max, SDP_MEM_DOUBLE, SDP_MEM_CPU, 1, shape, NULL, status
+        );
+        sdp_Mem* uvw_min_gpu = sdp_mem_create_copy(uvw_min_cpu, loc, status);
+        sdp_Mem* uvw_max_gpu = sdp_mem_create_copy(uvw_max_cpu, loc, status);
+
+        // Call the kernel.
+        uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
+        const int64_t num_elements = sdp_mem_shape_dim(uvws, 0);
+        num_blocks[0] = (num_elements + num_threads[0] - 1) / num_threads[0];
+        sdp_MemViewGpu<const double, 2> uvws_dbl;
+        sdp_MemViewGpu<const float, 2> uvws_flt;
+        sdp_MemViewGpu<const int, 1> start_chs_, end_chs_;
+        sdp_mem_check_and_view(start_chs, &start_chs_, status);
+        sdp_mem_check_and_view(end_chs, &end_chs_, status);
+        const char* kernel_name = 0;
+        int is_dbl = 0;
+        if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
+        {
+            is_dbl = 1;
+            sdp_mem_check_and_view(uvws, &uvws_dbl, status);
+            kernel_name = "sdp_gridder_uvw_bounds_all<double>";
+        }
+        else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
+        {
+            is_dbl = 0;
+            sdp_mem_check_and_view(uvws, &uvws_flt, status);
+            kernel_name = "sdp_gridder_uvw_bounds_all<float>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+        const void* arg[] = {
+            is_dbl ? (const void*)&uvws_dbl : (const void*)&uvws_flt,
+            (const void*)&freq0_hz,
+            (const void*)&dfreq_hz,
+            (const void*)&start_chs_,
+            (const void*)&end_chs_,
+            sdp_mem_gpu_buffer(uvw_min_gpu, status),
+            sdp_mem_gpu_buffer(uvw_max_gpu, status)
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+
+        // Copy results back.
+        sdp_mem_copy_contents(uvw_min_cpu, uvw_min_gpu, 0, 0, shape[0], status);
+        sdp_mem_copy_contents(uvw_max_cpu, uvw_max_gpu, 0, 0, shape[0], status);
+        sdp_mem_free(uvw_min_cpu);
+        sdp_mem_free(uvw_max_cpu);
+        sdp_mem_free(uvw_min_gpu);
+        sdp_mem_free(uvw_max_gpu);
     }
 }
