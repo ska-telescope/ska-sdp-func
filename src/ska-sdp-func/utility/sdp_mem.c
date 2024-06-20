@@ -150,6 +150,65 @@ sdp_Mem* sdp_mem_create_wrapper(
 }
 
 
+sdp_Mem* sdp_mem_create_wrapper_for_slice(
+        const sdp_Mem* src,
+        const int64_t* slice_offsets,
+        const int32_t num_dims_slice,
+        const int64_t* slice_shape,
+        sdp_Error* status
+)
+{
+    if (!src->is_c_contiguous)
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_CRITICAL("sdp_mem_create_wrapper_for_slice() "
+                "can only be used with contiguous arrays"
+        );
+        return 0;
+    }
+    if (num_dims_slice > src->num_dims)
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_CRITICAL(
+                "Number of dimensions in slice (%d) is larger than src (%d)",
+                num_dims_slice, src->num_dims
+        );
+        return 0;
+    }
+    int64_t offset = 0;
+    int64_t hypercube_size = 1;
+    for (int32_t i = src->num_dims - 1; i >= 0; --i)
+    {
+        if (slice_offsets[i] >= src->shape[i])
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_CRITICAL(
+                    "Slice offset in dimension %d is out of bounds: %d >= %d",
+                    i, slice_offsets[i], src->shape[i]
+            );
+            return 0;
+        }
+        offset += slice_offsets[i] * hypercube_size;
+        hypercube_size *= src->shape[i];
+    }
+    hypercube_size = 1;
+    for (int32_t i = num_dims_slice - 1; i >= 0; --i)
+    {
+        hypercube_size *= slice_shape[i];
+    }
+    if (offset + hypercube_size > src->num_elements)
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_CRITICAL("Slice would spill past end of the original array");
+        return 0;
+    }
+    offset *= sdp_mem_type_size(src->type);
+    return sdp_mem_create_wrapper(((char*) (src->data)) + offset,
+            src->type, src->location, num_dims_slice, slice_shape, 0, status
+    );
+}
+
+
 sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src)
 {
     sdp_Error status = SDP_SUCCESS;
