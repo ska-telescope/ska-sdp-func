@@ -1,10 +1,10 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#ifndef SKA_SDP_PROC_FUNC_MEM_UTILS_H_
-#define SKA_SDP_PROC_FUNC_MEM_UTILS_H_
+#ifndef SKA_SDP_PROC_FUNC_MEM_VIEW_H_
+#define SKA_SDP_PROC_FUNC_MEM_VIEW_H_
 
 /**
- * @file sdp_mem_utils.h
+ * @file sdp_mem_view.h
  *
  * Contains C++ utilities for accessing ::sdp_Mem objects
  */
@@ -57,9 +57,25 @@ struct sdp_MemView
     int64_t stride[num_dims]; /**< Memory stride in dimension (in units of element type size) */
 
     /**
-     * @brief Operator for accessing data contained in 0-dimensional
-     * array views
+     * @brief Operator for accessing const data via 0-dimensional array views.
      */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
+    inline const num_t &operator ()() const
+    {
+        static_assert(num_dims == 0,
+                "Wrong number of indices passed to operator ()!"
+        );
+        return *ptr;
+    }
+
+    /**
+     * @brief Operator for accessing data via 0-dimensional array views.
+     */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
     inline num_t &operator ()()
     {
         static_assert(num_dims == 0,
@@ -69,9 +85,28 @@ struct sdp_MemView
     }
 
     /**
-     * @brief Operator for accessing data contained in 1-dimensional
-     * array views
+     * @brief Operator for accessing const data via 1-dimensional array views.
      */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
+    inline const num_t &operator ()(int64_t i0) const
+    {
+        static_assert(num_dims == 1,
+                "Wrong number of indices passed to operator ()!"
+        );
+#ifndef NDEBUG
+        assert(i0 >= 0 && i0 < shape[0]);
+#endif
+        return ptr[stride[0] * i0];
+    }
+
+    /**
+     * @brief Operator for accessing data via 1-dimensional array views.
+     */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
     inline num_t &operator ()(int64_t i0)
     {
         static_assert(num_dims == 1,
@@ -84,9 +119,29 @@ struct sdp_MemView
     }
 
     /**
-     * @brief Operator for accessing data contained in 2-dimensional
-     * array views
+     * @brief Operator for accessing const data via 2-dimensional array views.
      */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
+    inline const num_t &operator ()(int64_t i0, int64_t i1) const
+    {
+        static_assert(num_dims == 2,
+                "Wrong number of indices passed to operator ()!"
+        );
+#ifndef NDEBUG
+        assert(i0 >= 0 && i0 < shape[0]);
+        assert(i1 >= 0 && i1 < shape[1]);
+#endif
+        return ptr[stride[0] * i0 + stride[1] * i1];
+    }
+
+    /**
+     * @brief Operator for accessing data via 2-dimensional array views.
+     */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
     inline num_t &operator ()(int64_t i0, int64_t i1)
     {
         static_assert(num_dims == 2,
@@ -100,9 +155,30 @@ struct sdp_MemView
     }
 
     /**
-     * @brief Operator for accessing data contained in 3-dimensional
-     * array views
+     * @brief Operator for accessing const data via 3-dimensional array views.
      */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
+    inline const num_t &operator ()(int64_t i0, int64_t i1, int64_t i2) const
+    {
+        static_assert(num_dims == 3,
+                "Wrong number of indices passed to operator ()!"
+        );
+#ifndef NDEBUG
+        assert(i0 >= 0 && i0 < shape[0]);
+        assert(i1 >= 0 && i1 < shape[1]);
+        assert(i2 >= 0 && i2 < shape[2]);
+#endif
+        return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2];
+    }
+
+    /**
+     * @brief Operator for accessing data via 3-dimensional array views.
+     */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
     inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2)
     {
         static_assert(num_dims == 3,
@@ -117,9 +193,37 @@ struct sdp_MemView
     }
 
     /**
-     * @brief Operator for accessing data contained in 4-dimensional
-     * array views
+     * @brief Operator for accessing const data via 4-dimensional array views.
      */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
+    inline const num_t &operator ()(
+            int64_t i0,
+            int64_t i1,
+            int64_t i2,
+            int64_t i3
+    ) const
+    {
+        static_assert(num_dims == 4,
+                "Wrong number of indices passed to operator ()!"
+        );
+#ifndef NDEBUG
+        assert(i0 >= 0 && i0 < shape[0]);
+        assert(i1 >= 0 && i1 < shape[1]);
+        assert(i2 >= 0 && i2 < shape[2]);
+        assert(i3 >= 0 && i3 < shape[3]);
+#endif
+        return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
+                       stride[3] * i3];
+    }
+
+    /**
+     * @brief Operator for accessing data via 4-dimensional array views.
+     */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
     inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2, int64_t i3)
     {
         static_assert(num_dims == 4,
@@ -136,9 +240,38 @@ struct sdp_MemView
     }
 
     /**
-     * @brief Operator for accessing data contained in 5-dimensional
-     * array views
+     * @brief Operator for accessing const data via 5-dimensional array views.
      */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
+    inline const num_t &operator ()(
+            int64_t i0,
+            int64_t i1,
+            int64_t i2,
+            int64_t i3,
+            int64_t i4
+    ) const
+    {
+        static_assert(num_dims == 5,
+                "Wrong number of indices passed to operator ()!"
+        );
+#ifndef NDEBUG
+        assert(i0 >= 0 && i0 < shape[0]);
+        assert(i1 >= 0 && i1 < shape[1]);
+        assert(i2 >= 0 && i2 < shape[2]);
+        assert(i3 >= 0 && i3 < shape[3]);
+        assert(i4 >= 0 && i4 < shape[4]);
+#endif
+        return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
+                       stride[3] * i3 + stride[4] * i4];
+    }
+    /**
+     * @brief Operator for accessing data via 5-dimensional array views.
+     */
+#ifdef __CUDACC__
+    __host__ __device__
+#endif
     inline num_t &operator ()(
             int64_t i0,
             int64_t i1,
