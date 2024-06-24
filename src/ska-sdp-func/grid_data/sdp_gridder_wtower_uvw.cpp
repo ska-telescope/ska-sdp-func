@@ -8,11 +8,10 @@
 #include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.h"
+#include "ska-sdp-func/math/sdp_math_macros.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 
 using std::complex;
-
-#define C_0 299792458.0
 
 struct sdp_GridderWtowerUVW
 {

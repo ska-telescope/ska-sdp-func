@@ -1,15 +1,10 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include <cmath>
 #include <thrust/complex.h>
 
+#include "ska-sdp-func/math/sdp_math_macros.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
-
-#define C_0 299792458.0
-
-#define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
-#define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
 
 template<typename UVW_TYPE, typename VIS_TYPE>

@@ -2,6 +2,7 @@
 
 #include <thrust/complex.h>
 
+#include "ska-sdp-func/math/sdp_math_macros.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 
@@ -69,7 +70,6 @@ __global__ void sdp_gridder_uvw_bounds_all(
         double* uvw_max
 )
 {
-    const double SPEED_OF_LIGHT = 299792458.0;
     const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
     const int64_t num_uvw = uvws.shape[0];
     if (i >= num_uvw)
@@ -81,8 +81,8 @@ __global__ void sdp_gridder_uvw_bounds_all(
     #pragma unroll
     for (int j = 0; j < 3; ++j)
     {
-        const double u0 = freq0_hz * uvw[j] / SPEED_OF_LIGHT;
-        const double du = dfreq_hz * uvw[j] / SPEED_OF_LIGHT;
+        const double u0 = freq0_hz * uvw[j] / C_0;
+        const double du = dfreq_hz * uvw[j] / C_0;
         if (uvw[j] >= 0)
         {
             (void)atomicMin(&uvw_min[j], u0 + start_ch * du);

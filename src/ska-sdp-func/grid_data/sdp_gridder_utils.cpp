@@ -6,6 +6,7 @@
 
 #include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
+#include "ska-sdp-func/math/sdp_math_macros.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 
@@ -135,7 +136,6 @@ void uvw_bounds_all(
         sdp_Error* status
 )
 {
-    const double SPEED_OF_LIGHT = 299792458.0;
     const int64_t num_uvw = uvws.shape[0];
     if (*status) return;
     for (int64_t i = 0; i < num_uvw; ++i)
@@ -146,8 +146,8 @@ void uvw_bounds_all(
         const double uvw[] = {uvws(i, 0), uvws(i, 1), uvws(i, 2)};
         for (int j = 0; j < 3; ++j)
         {
-            const double u0 = freq0_hz * uvw[j] / SPEED_OF_LIGHT;
-            const double du = dfreq_hz * uvw[j] / SPEED_OF_LIGHT;
+            const double u0 = freq0_hz * uvw[j] / C_0;
+            const double du = dfreq_hz * uvw[j] / C_0;
             if (uvw[j] >= 0)
             {
                 uvw_min[j] = std::min(u0 + start_ch * du, uvw_min[j]);
