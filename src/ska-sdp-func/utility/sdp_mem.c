@@ -158,14 +158,6 @@ sdp_Mem* sdp_mem_create_wrapper_for_slice(
         sdp_Error* status
 )
 {
-    if (!src->is_c_contiguous)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_CRITICAL("sdp_mem_create_wrapper_for_slice() "
-                "can only be used with contiguous arrays"
-        );
-        return 0;
-    }
     if (num_dims_slice > src->num_dims)
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
@@ -175,9 +167,7 @@ sdp_Mem* sdp_mem_create_wrapper_for_slice(
         );
         return 0;
     }
-    int64_t offset = 0;
-    int64_t hypercube_size = 1;
-    for (int32_t i = src->num_dims - 1; i >= 0; --i)
+    for (int32_t i = 0; i < src->num_dims; ++i)
     {
         if (slice_offsets[i] >= src->shape[i])
         {
@@ -188,24 +178,39 @@ sdp_Mem* sdp_mem_create_wrapper_for_slice(
             );
             return 0;
         }
-        offset += slice_offsets[i] * hypercube_size;
-        hypercube_size *= src->shape[i];
     }
-    hypercube_size = 1;
-    for (int32_t i = num_dims_slice - 1; i >= 0; --i)
+    for (int32_t i = 0; i < num_dims_slice; ++i)
     {
-        hypercube_size *= slice_shape[i];
+        const int32_t i_dim_slice = num_dims_slice - 1 - i;
+        if (slice_shape[i_dim_slice] > src->shape[src->num_dims - 1 - i])
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_CRITICAL(
+                    "Slice shape in dimension %d is too large: %d > %d",
+                    i_dim_slice, slice_shape[i_dim_slice],
+                    src->shape[src->num_dims - 1 - i]
+            );
+            return 0;
+        }
     }
-    if (offset + hypercube_size > src->num_elements)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        SDP_LOG_CRITICAL("Slice would spill past end of the original array");
-        return 0;
-    }
-    offset *= sdp_mem_type_size(src->type);
-    return sdp_mem_create_wrapper(((char*) (src->data)) + offset,
-            src->type, src->location, num_dims_slice, slice_shape, 0, status
+    int64_t offset = 0; // offset in bytes.
+    int64_t* stride = (int64_t*) calloc(
+            (uint32_t) num_dims_slice, sizeof(int64_t)
     );
+    for (int32_t i = 0; i < src->num_dims; ++i)
+    {
+        offset += slice_offsets[i] * src->stride[i]; // stride in bytes.
+    }
+    for (int32_t i = 0; i < num_dims_slice; ++i)
+    {
+        stride[num_dims_slice - 1 - i] = src->stride[src->num_dims - 1 - i];
+    }
+    sdp_Mem* mem = sdp_mem_create_wrapper(((char*) (src->data)) + offset,
+            src->type, src->location, num_dims_slice, slice_shape, stride,
+            status
+    );
+    free(stride);
+    return mem;
 }
 
 
