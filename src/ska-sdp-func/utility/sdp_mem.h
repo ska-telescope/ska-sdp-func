@@ -176,6 +176,29 @@ sdp_Mem* sdp_mem_create_wrapper(
 );
 
 /**
+ * @brief Creates a wrapper for a slice in a multidimensional array.
+ *
+ * This provides a way to wrap a portion (a slice) of an existing array.
+ * Both the offset to the slice and the shape of the slice are passed
+ * as parameters.
+ *
+ * @param src Handle to source memory block.
+ * @param slice_offsets Indices to specify offsets to the slice.
+ *     Must have the same number of indices as the dimensions of @p src
+ * @param num_dims_slice Number of dimensions of the returned slice wrapper.
+ * @param slice_shape Size of each dimension of the slice, in elements.
+ * @param status Error status.
+ * @return ::sdp_Mem* Handle to wrapped memory.
+ */
+sdp_Mem* sdp_mem_create_wrapper_for_slice(
+        const sdp_Mem* src,
+        const int64_t* slice_offsets,
+        const int32_t num_dims_slice,
+        const int64_t* slice_shape,
+        sdp_Error* status
+);
+
+/**
  * @brief Create a shallow copy, or an alias, of a block's metadata.
  *
  * @param src Handle to source memory block.

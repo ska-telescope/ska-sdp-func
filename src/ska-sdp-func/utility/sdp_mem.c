@@ -150,6 +150,70 @@ sdp_Mem* sdp_mem_create_wrapper(
 }
 
 
+sdp_Mem* sdp_mem_create_wrapper_for_slice(
+        const sdp_Mem* src,
+        const int64_t* slice_offsets,
+        const int32_t num_dims_slice,
+        const int64_t* slice_shape,
+        sdp_Error* status
+)
+{
+    if (num_dims_slice > src->num_dims)
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_CRITICAL(
+                "Number of dimensions in slice (%d) is larger than src (%d)",
+                num_dims_slice, src->num_dims
+        );
+        return 0;
+    }
+    for (int32_t i = 0; i < src->num_dims; ++i)
+    {
+        if (slice_offsets[i] >= src->shape[i])
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_CRITICAL(
+                    "Slice offset in dimension %d is out of bounds: %d >= %d",
+                    i, slice_offsets[i], src->shape[i]
+            );
+            return 0;
+        }
+    }
+    for (int32_t i = 0; i < num_dims_slice; ++i)
+    {
+        const int32_t i_dim_slice = num_dims_slice - 1 - i;
+        if (slice_shape[i_dim_slice] > src->shape[src->num_dims - 1 - i])
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_CRITICAL(
+                    "Slice shape in dimension %d is too large: %d > %d",
+                    i_dim_slice, slice_shape[i_dim_slice],
+                    src->shape[src->num_dims - 1 - i]
+            );
+            return 0;
+        }
+    }
+    int64_t offset = 0; // offset in bytes.
+    int64_t* stride = (int64_t*) calloc(
+            (uint32_t) num_dims_slice, sizeof(int64_t)
+    );
+    for (int32_t i = 0; i < src->num_dims; ++i)
+    {
+        offset += slice_offsets[i] * src->stride[i]; // stride in bytes.
+    }
+    for (int32_t i = 0; i < num_dims_slice; ++i)
+    {
+        stride[num_dims_slice - 1 - i] = src->stride[src->num_dims - 1 - i];
+    }
+    sdp_Mem* mem = sdp_mem_create_wrapper(((char*) (src->data)) + offset,
+            src->type, src->location, num_dims_slice, slice_shape, stride,
+            status
+    );
+    free(stride);
+    return mem;
+}
+
+
 sdp_Mem* sdp_mem_create_alias(const sdp_Mem* src)
 {
     sdp_Error status = SDP_SUCCESS;
