@@ -22,6 +22,8 @@
 #include <utility>
 #include <time.h>
 #include <fftw3.h>
+#include <omp.h>
+#include <sys/time.h>
 #include "fitsio.h"
 
 #include "ska-sdp-func/utility/sdp_logging.h"
@@ -145,6 +147,7 @@ void transpose_inplace_block(sdp_Double2 *A, int64_t n, int64_t block){
         return dgsit(A, n);
     }
     // transpose square blocks
+#   pragma omp parallel for collapse(2)
     for (i = 0; i < m; i += block){
         for (j = i; j < m; j += block){
             (i == j) ? __transpose_block_diag(A, n, i, j, block) : __transpose_block(A, n, i, j, block);
@@ -384,8 +387,10 @@ int main(int argc, char** argv)
     int nthreads;
 
     clock_t start, end;
-    clock_t start_1d2d, end_1d2d;
+    //clock_t start_1d2d, end_1d2d;
     double cpu_time_used;
+    struct timeval start_1d2d, end_1d2d;
+    struct timeval start_fftw3, end_fftw3;
 
     int64_t grid_size;
     int64_t grid_size_default;
@@ -614,10 +619,13 @@ int main(int argc, char** argv)
     gpuErrchk(cudaHostRegister(grid_out, sizeof(cufftDoubleComplex)*grid_size*grid_size, cudaHostRegisterPortable));
     gpuErrchk(cudaHostRegister(image_fits, sizeof(cufftDoubleComplex)*grid_size*grid_size, cudaHostRegisterPortable));
 
+    SDP_LOG_INFO("Starting 1D->2D FFT");
 	size_t i,j,k;
 	start = clock();
-    start_1d2d = clock();
-   // Working through columns
+    //start_1d2d = clock();
+    gettimeofday(&start_1d2d, NULL);
+
+    // Working through columns
 	for(j=0;j<grid_size; j+=num_streams*batch_size){
 
         for (k = 0; k < num_streams; ++k)
@@ -643,12 +651,18 @@ int main(int argc, char** argv)
 	SDP_LOG_INFO("Rows 1D FFT took %f ms", cpu_time_used);
 
 	start = clock();
+	double start_omp, end_omp;
+	start_omp = omp_get_wtime();//clock();
+
 	// Corner rotate (transpose)
 	transpose_inplace_block(image_fits, grid_size, (int64_t) block_size);
 	//transpose_inplace(image_fits, grid_size);
 	end = clock();
-	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
-	SDP_LOG_INFO("Corner rotate took %f ms", cpu_time_used);
+	end_omp = omp_get_wtime();//clock();
+//	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
+	cpu_time_used = (end_omp - start_omp)  * 1000;
+
+	SDP_LOG_INFO("OpenMP Corner rotate took %f ms", cpu_time_used);
 
 
 	start = clock();
@@ -672,7 +686,8 @@ int main(int argc, char** argv)
 	}
     cudaDeviceSynchronize();
 	end = clock();
-    end_1d2d = clock();
+    //end_1d2d = clock();
+    gettimeofday(&end_1d2d, NULL);
 
 	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000;
 	SDP_LOG_INFO("Columns 1D FFT took %f ms", cpu_time_used);
@@ -680,7 +695,9 @@ int main(int argc, char** argv)
     gpuErrchk(cudaHostUnregister(grid_out));
     gpuErrchk(cudaHostUnregister(image_fits));
 
-	cpu_time_used = ((double) (end_1d2d - start_1d2d)) / CLOCKS_PER_SEC * 1000;
+	//cpu_time_used = (end_1d2d.tv_usec  - start_1d2d.tv_usec)/1000.;// ((double) (end_1d2d - start_1d2d)) / CLOCKS_PER_SEC * 1000;
+	cpu_time_used = (end_1d2d.tv_sec - start_1d2d.tv_sec) * 1000000u + end_1d2d.tv_usec - start_1d2d.tv_usec;
+	cpu_time_used = cpu_time_used/1000.;
 	SDP_LOG_INFO("1D-2D FFT took in total %f ms", cpu_time_used);
 
 
@@ -799,16 +816,24 @@ int main(int argc, char** argv)
     SDP_LOG_INFO("Using %d threads", nthreads);
 
     struct timespec startm, finishm;
-    clock_gettime(CLOCK_REALTIME, &startm);
-    start = clock();
+    //clock_gettime(CLOCK_REALTIME, &startm);
+    //start = clock();
+    gettimeofday(&start_fftw3, NULL);
+
     int dir = FFTW_BACKWARD;
     fftw_plan p = fftw_plan_dft_2d(grid_size, grid_size, reinterpret_cast<fftw_complex*>(grid_out), reinterpret_cast<fftw_complex*>(image_fits), dir, FFTW_ESTIMATE);
     fftw_execute(p);
-    clock_gettime(CLOCK_REALTIME, &finishm);
-	end = clock();
-	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000 /nthreads;
+    //clock_gettime(CLOCK_REALTIME, &finishm);
+	//end = clock();
+	gettimeofday(&end_fftw3, NULL);
+	cpu_time_used = (end_fftw3.tv_sec - start_fftw3.tv_sec) * 1000000u + end_fftw3.tv_usec - start_fftw3.tv_usec;
+	cpu_time_used = cpu_time_used/1000.;
+
+			//(end_fftw3.tv_usec  - start_fftw3.tv_usec)/1000.;// ((double) (end_1d2d - start_1d2d)) / CLOCKS_PER_SEC * 1000;
+
+	//cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC * 1000 /nthreads;
 	SDP_LOG_INFO("2D FFTW3 took %f ms", cpu_time_used);
-	cpu_time_used = (double)(finishm.tv_nsec - startm.tv_nsec)/1000000.0;
+	//cpu_time_used = (double)(finishm.tv_nsec - startm.tv_nsec)/1000000.0;
 	//SDP_LOG_INFO("2D FFTW3 took %f ms", cpu_time_used);
 
     fftshift(image_fits, (int)grid_size, (int)grid_size);
@@ -845,4 +870,3 @@ int main(int argc, char** argv)
 
     return 0;
 }
-
