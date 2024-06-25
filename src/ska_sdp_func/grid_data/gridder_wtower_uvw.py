@@ -20,11 +20,11 @@ class GridderWtowerUVW(StructWrapper):
         image_size: int,
         subgrid_size: int,
         theta: float,
+        w_step: float,
         shear_u: float,
         shear_v: float,
         support: int,
         oversampling: int,
-        w_step: float,
         w_support: int,
         w_oversampling: int,
     ):
@@ -33,11 +33,11 @@ class GridderWtowerUVW(StructWrapper):
         :param image_size: Total image size in pixels.
         :param subgrid_size: Sub-grid size in pixels.
         :param theta: Total image size in direction cosines.
+        :param w_step: Spacing between w-planes.
         :param shear_u: Shear parameter in u (use zero for no shear).
         :param shear_v: Shear parameter in v (use zero for no shear).
         :param support: Kernel support size in (u, v).
         :param oversampling: Oversampling factor for uv-kernel.
-        :param w_step: Spacing between w-planes.
         :param w_support: Support size in w.
         :param w_oversampling: Oversampling factor for w-kernel.
         """
@@ -45,11 +45,11 @@ class GridderWtowerUVW(StructWrapper):
             image_size,
             subgrid_size,
             theta,
+            w_step,
             shear_u,
             shear_v,
             support,
             oversampling,
-            w_step,
             w_support,
             w_oversampling,
         )
@@ -195,9 +195,9 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
-        ctypes.c_int,
-        ctypes.c_int,
         ctypes.c_double,
+        ctypes.c_int,
+        ctypes.c_int,
         ctypes.c_int,
         ctypes.c_int,
     ],

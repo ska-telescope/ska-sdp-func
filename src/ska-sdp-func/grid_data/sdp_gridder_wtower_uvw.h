@@ -44,11 +44,11 @@ typedef struct sdp_GridderWtowerUVW sdp_GridderWtowerUVW;
  * @param image_size Total image size in pixels.
  * @param subgrid_size Sub-grid size in pixels.
  * @param theta Total image size in direction cosines.
+ * @param w_step Spacing between w-planes.
  * @param shear_u Shear parameter in u (use zero for no shear).
  * @param shear_v Shear parameter in v (use zero for no shear).
  * @param support Kernel support size in (u, v).
  * @param oversampling Oversampling factor for uv-kernel.
- * @param w_step Spacing between w-planes.
  * @param w_support Support size in w.
  * @param w_oversampling Oversampling factor for w-kernel.
  * @param status Error status.
@@ -57,11 +57,11 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
         int image_size,
         int subgrid_size,
         double theta,
+        double w_step,
         double shear_u,
         double shear_v,
         int support,
         int oversampling,
-        double w_step,
         int w_support,
         int w_oversampling,
         sdp_Error* status
