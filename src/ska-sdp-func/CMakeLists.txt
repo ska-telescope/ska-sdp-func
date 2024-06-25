@@ -1,5 +1,6 @@
 # Define list of folders containing source files.
 set(${PROJECT_NAME}_FOLDERS
+    clean
     examples
     fourier_transforms
     grid_data

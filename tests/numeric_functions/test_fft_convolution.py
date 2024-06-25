@@ -3,6 +3,7 @@
 
 import numpy as np
 import scipy.signal as sig
+
 from ska_sdp_func.numeric_functions import fft_convolution
 
 try:
@@ -31,7 +32,10 @@ def test_fft_convolution():
 
     out_reference = sig.fftconvolve(in1, in2, mode="same")
 
-    print("Performing convolution at double precision on CPU using ska-sdp-func...")
+    print(
+        "Performing convolution at double precision on CPU using "
+        "ska-sdp-func..."
+    )
     fft_convolution(in1, in2, out)
 
     np.testing.assert_allclose(out, out_reference)
@@ -45,10 +49,15 @@ def test_fft_convolution():
 
     out_reference_float = sig.fftconvolve(in1_float, in2_float, mode="same")
 
-    print("Performing convolution at float precision on CPU using ska-sdp-func...")
+    print(
+        "Performing convolution at float precision on CPU using "
+        "ska-sdp-func..."
+    )
     fft_convolution(in1_float, in2_float, out_float)
 
-    np.testing.assert_array_almost_equal(out_float, out_reference_float, decimal=0)
+    np.testing.assert_array_almost_equal(
+        out_float, out_reference_float, decimal=0
+    )
 
     print("FFT convlution at float precision on CPU: Test passed")
 
@@ -73,7 +82,10 @@ def test_fft_convolution():
         in2_gpu_float = cupy.asarray(in2_float)
         out_gpu_float = cupy.zeros_like(in1_gpu_float)
 
-        print("Performing convolution at float precision on GPU using ska-sdp-func...")
+        print(
+            "Performing convolution at float precision on GPU using "
+            "ska-sdp-func..."
+        )
         fft_convolution(in1_gpu_float, in2_gpu_float, out_gpu_float)
 
         output_gpu_check = cupy.asnumpy(out_gpu_float)

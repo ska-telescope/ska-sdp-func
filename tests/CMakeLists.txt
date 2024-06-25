@@ -1,5 +1,6 @@
 # Define list of folders containing test files.
 set(${PROJECT_NAME}_TEST_FOLDERS
+    clean
     examples
     fourier_transforms
     grid_data
