@@ -13,6 +13,7 @@
 extern "C" {
 #endif
 
+
 /**
  * @brief Clamp channels for a particular uvw position.
  *
@@ -30,11 +31,7 @@ extern "C" {
  * @param min_uvw Minimum value for u or v or w (inclusive).
  * @param max_uvw Maximum value for u or v or w (exclusive).
  */
-#ifdef __CUDACC__
-__host__ __device__ __forceinline__
-#else
-inline
-#endif
+SDP_INLINE
 void sdp_gridder_clamp_channels_inline(
         const double u,
         const double freq0_hz,
