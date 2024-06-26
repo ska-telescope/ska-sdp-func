@@ -514,7 +514,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
     def degrid_subgrid(
         self,
         subgrid_image: numpy.ndarray,
-        subgrid_offsets: tuple[int, int, int],
+        subgrid_offsets,
         ch_count: int,
         freq0: float,
         dfreq: float,
@@ -528,8 +528,9 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         :param subgrid_image: Fourier transformed subgrid to degrid from.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid centre relative to grid centre
+        :param subgrid_offsets:
+            Tuple of integers containing offset of subgrid in (u, v, w)
+            relative to grid centre.
         :param ch_count: Channel count (determines size of array returned)
         :param freq0: Frequency of first channel (Hz)
         :param dfreq: Channel width (Hz)
@@ -642,7 +643,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         freq0: float,
         dfreq: float,
         subgrid_image: numpy.ndarray,
-        subgrid_offsets: tuple[int, int, int],
+        subgrid_offsets,
     ):
         """
         Grid visibilities using w-stacking/towers.
@@ -660,8 +661,9 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         :param subgrid_image: Fourier transformed subgrid to be gridded to.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid relative to grid centre
+        :param subgrid_offsets:
+            Tuple of integers containing offset of subgrid in (u, v, w)
+            relative to grid centre.
         """
 
         # Determine w-range
