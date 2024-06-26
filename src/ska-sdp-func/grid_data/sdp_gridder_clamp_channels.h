@@ -23,13 +23,13 @@ extern "C" {
  * Adapted from
  * https://gitlab.com/ska-telescope/sdp/ska-sdp-exec-iotest/-/blob/proc-func-refactor/src/grid.c?ref_type=heads#L464
  *
- * @param uvw u or v or w position, in metres.
+ * @param u u or v or w position, in metres.
  * @param freq0_hz Frequency of first channel, in Hz.
  * @param dfreq_hz Channel width, in Hz.
  * @param start_ch Channel range to clamp (excluding end).
  * @param end_ch Channel range to clamp (excluding end).
- * @param min_uvw Minimum value for u or v or w (inclusive).
- * @param max_uvw Maximum value for u or v or w (exclusive).
+ * @param min_u Minimum value for u or v or w (inclusive).
+ * @param max_u Maximum value for u or v or w (exclusive).
  */
 SDP_INLINE
 void sdp_gridder_clamp_channels_inline(
