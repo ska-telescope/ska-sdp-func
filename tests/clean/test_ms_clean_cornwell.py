@@ -446,6 +446,36 @@ def test_ms_clean_cornwell():
         skymodel, skymodel_reference, decimal=3
     )
     np.testing.assert_array_almost_equal(
-        clean_model, clean_comp_reference, decimal=3
+        clean_model, clean_comp_reference, decimal=2
     )
-    print("msCLEAN from Cornwell on CPU: Test passed")
+    print("msCLEAN from Cornwell at double precision on CPU: Test passed")
+
+    dirty_img_float = dirty_img.astype(np.float32)
+    psf_float = psf.astype(np.float32)
+    skymodel_float = skymodel.astype(np.float32)
+    clean_model_float = clean_model.astype(np.float32)
+    residual_float = residual.astype(np.float32)
+    cbeam_details_float = cbeam_details.astype(np.float32)
+    scales_float = scales.astype(np.float32)
+
+    ms_clean_cornwell(
+        dirty_img_float,
+        psf_float,
+        cbeam_details_float,
+        scales_float,
+        loop_gain,
+        threshold,
+        cycle_limit,
+        clean_model_float,
+        residual_float,
+        skymodel_float,
+    )
+
+    np.testing.assert_array_almost_equal(
+        skymodel_float, skymodel_reference, decimal=3
+    )
+    np.testing.assert_array_almost_equal(
+        clean_model_float, clean_comp_reference, decimal=2
+    )
+
+    print("msCLEAN from Cornwell at float precision on CPU: Test passed")

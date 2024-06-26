@@ -42,8 +42,7 @@ void sdp_ms_clean_cornwell(
         sdp_Error* status
 );
 
-#ifdef __cplusplus
-}
+#ifdef __cplusplus}
 #endif
 
 #endif /* include guard */

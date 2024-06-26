@@ -542,6 +542,12 @@ void sdp_ms_clean_cornwell(
         SDP_LOG_ERROR("The Dirty image and PSF must be of the same data type");
         return;
     }
+    
+    if (data_type != sdp_mem_type(scale_list)){
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("The Dirty image and scale list must be of the same data type");
+        return;
+    }
 
     if (data_type != sdp_mem_type(skymodel)){
         *status = SDP_ERR_DATA_TYPE;
