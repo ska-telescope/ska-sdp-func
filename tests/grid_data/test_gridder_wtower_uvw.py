@@ -953,7 +953,10 @@ def test_gridder_wtower_uvw():
             vis_ref[r, :],
             atol=1e-14,
             rtol=1e-13,
-            err_msg=f"degridded data for row {r} is not consistent: uvw={uvw[r,:]}",
+            err_msg=(
+                f"degridded data for row {r} is not consistent: "
+                f"uvw={uvw[r,:]}"
+            ),
         )
 
     # Generate reference subgrid.
