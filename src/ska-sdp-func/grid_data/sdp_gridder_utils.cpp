@@ -208,36 +208,32 @@ void sdp_gridder_accumulate_scaled_arrays(
                 type2 == SDP_MEM_COMPLEX_DOUBLE)
         {
             accum_scale_array<
-                    complex<double>, complex<double>, complex<double> >(
-                    out, in1, in2, exponent, status
-            );
+                    complex<double>, complex<double>, complex<double>
+            >(out, in1, in2, exponent, status);
         }
         else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
                 type1 == SDP_MEM_COMPLEX_FLOAT &&
                 type2 == SDP_MEM_COMPLEX_DOUBLE)
         {
             accum_scale_array<
-                    complex<float>, complex<float>, complex<double> >(
-                    out, in1, in2, exponent, status
-            );
+                    complex<float>, complex<float>, complex<double>
+            >(out, in1, in2, exponent, status);
         }
         else if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
                 type1 == SDP_MEM_COMPLEX_FLOAT &&
                 type2 == SDP_MEM_COMPLEX_DOUBLE)
         {
             accum_scale_array<
-                    complex<double>, complex<float>, complex<double> >(
-                    out, in1, in2, exponent, status
-            );
+                    complex<double>, complex<float>, complex<double>
+            >(out, in1, in2, exponent, status);
         }
         else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
                 type1 == SDP_MEM_COMPLEX_DOUBLE &&
                 type2 == SDP_MEM_COMPLEX_DOUBLE)
         {
             accum_scale_array<
-                    complex<float>, complex<double>, complex<double> >(
-                    out, in1, in2, exponent, status
-            );
+                    complex<float>, complex<double>, complex<double>
+            >(out, in1, in2, exponent, status);
         }
         else
         {

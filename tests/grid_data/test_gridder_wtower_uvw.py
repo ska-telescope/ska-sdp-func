@@ -1147,9 +1147,7 @@ def test_gridder_wtower_uvw_gpu():
         numpy.testing.assert_allclose(vis, vis0, atol=1e-7)
 
         # Call the gridder with data in GPU memory.
-        img_gpu = cupy.zeros(
-            (subgrid_size, subgrid_size), dtype=complex_type
-        )
+        img_gpu = cupy.zeros((subgrid_size, subgrid_size), dtype=complex_type)
         t0 = time.time()
         gridder.grid(
             vis_gpu,

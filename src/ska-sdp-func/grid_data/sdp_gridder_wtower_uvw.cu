@@ -228,7 +228,7 @@ __global__ void sdp_gridder_wtower_grid(
                         iw * subgrid_square + ix_u * subgrid_size + ix_v
                     );
                     const complex<double> grid_val = (
-                            (complex<double>) kern_wuv * local_vis
+                        (complex<double>) kern_wuv * local_vis
                     );
                     // The atomic adds will be very slow.
                     sdp_atomic_add(&subgrids[idx],     grid_val.real());

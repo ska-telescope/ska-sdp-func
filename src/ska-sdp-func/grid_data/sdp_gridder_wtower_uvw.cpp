@@ -405,7 +405,7 @@ void grid(
                             iw * subgrid_square + ix_u * subgrid_size + ix_v
                         );
                         const complex<double> grid_val = (
-                                (complex<double>) kern_wuv * local_vis
+                            (complex<double>) kern_wuv * local_vis
                         );
                         subgrids[idx] += (VIS_TYPE) grid_val;
                     }
