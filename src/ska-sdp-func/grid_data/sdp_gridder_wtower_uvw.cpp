@@ -6,6 +6,7 @@
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
+#include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.h"
 #include "ska-sdp-func/math/sdp_math_macros.h"
@@ -18,12 +19,12 @@ struct sdp_GridderWtowerUVW
     int image_size;
     int subgrid_size;
     double theta;
+    double w_step;
     double shear_u;
     double shear_v;
     int support;
     int vr_size;
     int oversampling;
-    double w_step;
     int w_support;
     int w_oversampling;
     sdp_PSWF* pswf_n_func;
@@ -77,32 +78,17 @@ void degrid(
     for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
     {
         // Skip if there's no visibility to degrid.
-        int start_ch = start_chs(i_row), end_ch = end_chs(i_row);
+        int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
         if (start_ch >= end_ch)
             continue;
 
-        // Select only visibilities on this w-plane
-        // (inlined from clamp_channels).
+        // Select only visibilities on this w-plane.
         const UVW_TYPE uvw[] = {uvws(i_row, 0), uvws(i_row, 1), uvws(i_row, 2)};
-        const double w0 = freq0_hz * uvw[2] / C_0;
-        const double dw = dfreq_hz * uvw[2] / C_0;
-        const double _min = (w_plane - 1) * plan->w_step;
-        const double _max = w_plane * plan->w_step;
-        const double eta = 1e-3;
-        if (w0 > eta)
-        {
-            start_ch = std::max(start_ch, int(ceil((_min - w0) / dw)));
-            end_ch = std::min(end_ch, int(ceil((_max - w0) / dw)));
-        }
-        else if (w0 < -eta)
-        {
-            start_ch = std::max(start_ch, int(ceil((_max - w0) / dw)));
-            end_ch = std::min(end_ch, int(ceil((_min - w0) / dw)));
-        }
-        else if (_min > 0 or _max <= 0)
-        {
-            continue;
-        }
+        const double min_w = (w_plane + subgrid_offset_w - 1) * plan->w_step;
+        const double max_w = (w_plane + subgrid_offset_w) * plan->w_step;
+        sdp_gridder_clamp_channels_inline(
+                uvw[2], freq0_hz, dfreq_hz, &start_ch, &end_ch, min_w, max_w
+        );
         if (start_ch >= end_ch)
             continue;
 
@@ -115,7 +101,7 @@ void degrid(
         uvw0[2] -= ((subgrid_offset_w + w_plane) * plan->w_step);
 
         // Loop over selected channels.
-        for (int c = start_ch; c < end_ch; c++)
+        for (int64_t c = start_ch; c < end_ch; c++)
         {
             const double u = uvw0[0] + c * duvw[0];
             const double v = uvw0[1] + c * duvw[1];
@@ -304,101 +290,133 @@ void degrid_gpu(
 }
 
 
-// Local function to grid over selected channels.
-template<typename VIS_TYPE>
-void grid_channels(
+// Local function to do the gridding.
+template<typename UVW_TYPE, typename VIS_TYPE>
+void grid(
         const sdp_GridderWtowerUVW* plan,
-        int64_t row_index,
-        int start_ch,
-        int end_ch,
-        double uvw0[3],
-        double duvw[3],
-        sdp_Mem* subgrids,
-        const sdp_Mem* vis,
+        VIS_TYPE* subgrids,
+        int w_plane,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double freq0_hz,
+        double dfreq_hz,
+        const sdp_MemViewCpu<const UVW_TYPE, 2>& uvws,
+        const sdp_MemViewCpu<const int, 1>& start_chs,
+        const sdp_MemViewCpu<const int, 1>& end_chs,
+        const sdp_MemViewCpu<const VIS_TYPE, 2>& vis,
         sdp_Error* status
 )
 {
     if (*status) return;
-    sdp_MemViewCpu<const VIS_TYPE, 2> vis_;
-    sdp_MemViewCpu<VIS_TYPE, 3> subgrids_;
-    sdp_MemViewCpu<const double, 2> uv_k_, w_k_;
-    sdp_mem_check_and_view(vis, &vis_, status);
-    sdp_mem_check_and_view(subgrids, &subgrids_, status);
-    sdp_mem_check_and_view(plan->uv_kernel, &uv_k_, status);
-    sdp_mem_check_and_view(plan->w_kernel, &w_k_, status);
+    const double* uv_kernel =
+            (const double*) sdp_mem_data_const(plan->uv_kernel);
+    const double* w_kernel =
+            (const double*) sdp_mem_data_const(plan->w_kernel);
+    const int64_t num_uvw = uvws.shape[0];
+    const int64_t subgrid_size = plan->subgrid_size;
+    const int64_t subgrid_square = subgrid_size * subgrid_size;
     const int half_subgrid = plan->subgrid_size / 2;
     const double half_vr_m1 = (plan->vr_size - 1) / 2.0;
     const int half_vr = plan->vr_size / 2;
     const int oversample = plan->oversampling;
     const int w_oversample = plan->w_oversampling;
     const double theta = plan->theta;
-    double u = uvw0[0], v = uvw0[1], w = uvw0[2];
 
-    // Loop over selected channels.
-    for (int c = start_ch; c < end_ch; c++)
+    // Loop over rows. Each row contains visibilities for all channels.
+    for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
     {
-        // Determine top-left corner of grid region
-        // centered approximately on visibility.
-        const int iu0 = int(round(theta * u - half_vr_m1)) + half_subgrid;
-        const int iv0 = int(round(theta * v - half_vr_m1)) + half_subgrid;
-        const int iu_shift = iu0 + half_vr - half_subgrid;
-        const int iv_shift = iv0 + half_vr - half_subgrid;
+        // Skip if there's no visibility to grid.
+        int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
+        if (start_ch >= end_ch)
+            continue;
 
-        // Determine which kernel to use.
-        int u_offset = int(round((u * theta - iu_shift + 1) * oversample));
-        int v_offset = int(round((v * theta - iv_shift + 1) * oversample));
-        int w_offset = int(round((w / plan->w_step + 1) * w_oversample));
-        // Comment from Peter:
-        // For future reference - at least on CPU the memory latency for
-        // accessing the kernel is the main bottleneck of (de)gridding.
-        // This can be mitigated quite well by pre-fetching the next kernel
-        // value before starting to (de)grid the current one.
+        // Select only visibilities on this w-plane.
+        const UVW_TYPE uvw[] = {uvws(i_row, 0), uvws(i_row, 1), uvws(i_row, 2)};
+        const double min_w = (w_plane + subgrid_offset_w - 1) * plan->w_step;
+        const double max_w = (w_plane + subgrid_offset_w) * plan->w_step;
+        sdp_gridder_clamp_channels_inline(
+                uvw[2], freq0_hz, dfreq_hz, &start_ch, &end_ch, min_w, max_w
+        );
+        if (start_ch >= end_ch)
+            continue;
 
-        // Cater for the negative indexing which is allowed in Python!
-        // Comment from Peter: The task is to find e.g. iu0 and u_offset
-        // such that iu0 + u_offset / oversampling + support / 2
-        // most closely approximates u.
-        // TODO The proper way of doing this would likely be to calculate
-        // u * oversampling - support * (oversampling / 2), round that and
-        // take integer division / modulo oversampling of that to obtain
-        // iu0 and u_offset respectively.
-        if (u_offset < 0) u_offset += oversample + 1;
-        if (v_offset < 0) v_offset += oversample + 1;
-        if (w_offset < 0) w_offset += w_oversample + 1;
+        // Scale + shift UVWs.
+        const double s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
+        double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
+        double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
+        uvw0[0] -= subgrid_offset_u / plan->theta;
+        uvw0[1] -= subgrid_offset_v / plan->theta;
+        uvw0[2] -= ((subgrid_offset_w + w_plane) * plan->w_step);
 
-        // Grid visibility.
-        VIS_TYPE local_vis = vis_(row_index, c);
-        for (int iw = 0; iw < plan->w_support; ++iw)
+        // Loop over selected channels.
+        for (int64_t c = start_ch; c < end_ch; c++)
         {
-            const double kernel_w = w_k_(w_offset, iw);
-            for (int iu = 0; iu < plan->support; ++iu)
+            const double u = uvw0[0] + c * duvw[0];
+            const double v = uvw0[1] + c * duvw[1];
+            const double w = uvw0[2] + c * duvw[2];
+
+            // Determine top-left corner of grid region
+            // centered approximately on visibility.
+            const int iu0 = int(round(theta * u - half_vr_m1)) + half_subgrid;
+            const int iv0 = int(round(theta * v - half_vr_m1)) + half_subgrid;
+            const int iu_shift = iu0 + half_vr - half_subgrid;
+            const int iv_shift = iv0 + half_vr - half_subgrid;
+
+            // Determine which kernel to use.
+            int u_off = int(round((u * theta - iu_shift + 1) * oversample));
+            int v_off = int(round((v * theta - iv_shift + 1) * oversample));
+            int w_off = int(round((w / plan->w_step + 1) * w_oversample));
+            // Comment from Peter:
+            // For future reference - at least on CPU the memory latency for
+            // accessing the kernel is the main bottleneck of (de)gridding.
+            // This can be mitigated quite well by pre-fetching the next kernel
+            // value before starting to (de)grid the current one.
+
+            // Cater for the negative indexing which is allowed in Python!
+            // Comment from Peter: The task is to find e.g. iu0 and u_offset
+            // such that iu0 + u_offset / oversampling + support / 2
+            // most closely approximates u.
+            // TODO The proper way of doing this would likely be to calculate
+            // u * oversampling - support * (oversampling / 2), round that and
+            // take integer division / modulo oversampling of that to obtain
+            // iu0 and u_offset respectively.
+            if (u_off < 0) u_off += oversample + 1;
+            if (v_off < 0) v_off += oversample + 1;
+            if (w_off < 0) w_off += w_oversample + 1;
+            u_off *= plan->support;
+            v_off *= plan->support;
+            w_off *= plan->w_support;
+
+            // Grid visibility.
+            const VIS_TYPE local_vis = vis(i_row, c);
+            for (int iw = 0; iw < plan->w_support; ++iw)
             {
-                const double kernel_wu = kernel_w * uv_k_(u_offset, iu);
-                for (int iv = 0; iv < plan->support; ++iv)
+                const double kern_w = w_kernel[w_off + iw];
+                for (int iu = 0; iu < plan->support; ++iu)
                 {
-                    const double kernel_wuv = kernel_wu * uv_k_(v_offset, iv);
-                    int ix_u = iu0 + iu;
-                    int ix_v = iv0 + iv;
-                    if (ix_u < 0) ix_u += plan->subgrid_size;
-                    if (ix_v < 0) ix_v += plan->subgrid_size;
-                    subgrids_(iw, ix_u, ix_v) += ((VIS_TYPE) kernel_wuv *
-                            local_vis
-                    );
+                    const double kern_wu = kern_w * uv_kernel[u_off + iu];
+                    for (int iv = 0; iv < plan->support; ++iv)
+                    {
+                        const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
+                        int ix_u = iu0 + iu;
+                        int ix_v = iv0 + iv;
+                        if (ix_u < 0) ix_u += plan->subgrid_size;
+                        if (ix_v < 0) ix_v += plan->subgrid_size;
+                        const int64_t idx = (
+                            iw * subgrid_square + ix_u * subgrid_size + ix_v
+                        );
+                        subgrids[idx] += ((VIS_TYPE) kern_wuv * local_vis);
+                    }
                 }
             }
         }
-
-        // Next point.
-        u += duvw[0];
-        v += duvw[1];
-        w += duvw[2];
     }
 }
 
 
-// Local function to do the gridding.
-template<typename UVW_TYPE, typename VIS_TYPE>
-void grid(
+// Local function to call the CPU gridding kernel.
+void grid_cpu(
         const sdp_GridderWtowerUVW* plan,
         sdp_Mem* subgrids,
         int w_plane,
@@ -415,60 +433,38 @@ void grid(
 )
 {
     if (*status) return;
-
-    // Loop over rows. Each row contains visibilities for all channels.
-    const int64_t num_uvw = sdp_mem_shape_dim(uvws, 0);
-    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
     sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
-    sdp_mem_check_and_view(uvws, &uvws_, status);
     sdp_mem_check_and_view(start_chs, &start_chs_, status);
     sdp_mem_check_and_view(end_chs, &end_chs_, status);
-    if (*status) return;
-    for (int64_t i = 0; i < num_uvw; ++i)
+    if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
     {
-        // Skip if there's no visibility to degrid.
-        int start_ch = start_chs_(i), end_ch = end_chs_(i);
-        if (start_ch >= end_ch)
-            continue;
-
-        // Select only visibilities on this w-plane
-        // (inlined from clamp_channels).
-        const UVW_TYPE uvw[] = {uvws_(i, 0), uvws_(i, 1), uvws_(i, 2)};
-        const double w0 = freq0_hz * uvw[2] / C_0;
-        const double dw = dfreq_hz * uvw[2] / C_0;
-        const double _min = (w_plane - 1) * plan->w_step;
-        const double _max = w_plane * plan->w_step;
-        const double eta = 1e-3;
-        if (w0 > eta)
-        {
-            start_ch = std::max(start_ch, int(ceil((_min - w0) / dw)));
-            end_ch = std::min(end_ch, int(ceil((_max - w0) / dw)));
-        }
-        else if (w0 < -eta)
-        {
-            start_ch = std::max(start_ch, int(ceil((_max - w0) / dw)));
-            end_ch = std::min(end_ch, int(ceil((_min - w0) / dw)));
-        }
-        else if (_min > 0 or _max <= 0)
-        {
-            continue;
-        }
-        if (start_ch >= end_ch)
-            continue;
-
-        // Scale + shift UVWs.
-        const double s_uvw0 = (freq0_hz + start_ch * dfreq_hz) / C_0;
-        const double s_duvw = dfreq_hz / C_0;
-        double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
-        double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
-        uvw0[0] -= subgrid_offset_u / plan->theta;
-        uvw0[1] -= subgrid_offset_v / plan->theta;
-        uvw0[2] -= ((subgrid_offset_w + w_plane) * plan->w_step);
-
-        // Grid visibilities over all selected channels.
-        grid_channels<VIS_TYPE>(
-                plan, i, start_ch, end_ch, uvw0, duvw, subgrids, vis, status
+        sdp_MemViewCpu<const complex<double>, 2> vis_;
+        sdp_MemViewCpu<const double, 2> uvws_;
+        sdp_mem_check_and_view(vis, &vis_, status);
+        sdp_mem_check_and_view(uvws, &uvws_, status);
+        grid<double, complex<double> >(
+                plan, (complex<double>*) sdp_mem_data(subgrids),
+                w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                freq0_hz, dfreq_hz, uvws_, start_chs_, end_chs_, vis_, status
         );
+    }
+    else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        sdp_MemViewCpu<const complex<float>, 2> vis_;
+        sdp_MemViewCpu<const float, 2> uvws_;
+        sdp_mem_check_and_view(vis, &vis_, status);
+        sdp_mem_check_and_view(uvws, &uvws_, status);
+        grid<float, complex<float> >(
+                plan, (complex<float>*) sdp_mem_data(subgrids),
+                w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                freq0_hz, dfreq_hz, uvws_, start_chs_, end_chs_, vis_, status
+        );
+    }
+    else
+    {
+        *status = SDP_ERR_DATA_TYPE;
     }
 }
 
@@ -525,11 +521,11 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
         int image_size,
         int subgrid_size,
         double theta,
+        double w_step,
         double shear_u,
         double shear_v,
         int support,
         int oversampling,
-        double w_step,
         int w_support,
         int w_oversampling,
         sdp_Error* status
@@ -550,12 +546,12 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
     plan->image_size = image_size;
     plan->subgrid_size = subgrid_size;
     plan->theta = theta;
+    plan->w_step = w_step;
     plan->shear_u = shear_u;
     plan->shear_v = shear_v;
     plan->support = support;
     plan->vr_size = support; // vr_size is the same as support.
     plan->oversampling = oversampling;
-    plan->w_step = w_step;
     plan->w_support = w_support;
     plan->w_oversampling = w_oversampling;
 
@@ -642,8 +638,13 @@ void sdp_gridder_wtower_uvw_degrid(
     sdp_gridder_uvw_bounds_all(
             uvws, freq0_hz, dfreq_hz, start_chs, end_chs, c_min, c_max, status
     );
-    const int first_w_plane = (int) floor(c_min[2] / plan->w_step);
-    const int last_w_plane = (int) ceil(c_max[2] / plan->w_step);
+
+    // Get subgrid at first w-plane.
+    const double eta = 1e-5;
+    const int first_w_plane = (int) floor(c_min[2] / plan->w_step - eta) -
+            subgrid_offset_w;
+    const int last_w_plane = (int) ceil(c_max[2] / plan->w_step + eta) -
+            subgrid_offset_w + 1;
 
     // First w-plane we need to generate is (support / 2) below the first one
     // with visibilities.
@@ -852,14 +853,29 @@ void sdp_gridder_wtower_uvw_grid(
 )
 {
     if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(vis);
+    if (sdp_mem_location(subgrid_image) != loc ||
+            sdp_mem_location(uvws) != loc ||
+            sdp_mem_location(start_chs) != loc ||
+            sdp_mem_location(end_chs) != loc)
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+        SDP_LOG_ERROR("All arrays must be co-located");
+        return;
+    }
 
     // Determine w-range.
     double c_min[] = {0, 0, 0}, c_max[] = {0, 0, 0};
     sdp_gridder_uvw_bounds_all(
             uvws, freq0_hz, dfreq_hz, start_chs, end_chs, c_min, c_max, status
     );
-    const int first_w_plane = (int) floor(c_min[2] / plan->w_step);
-    const int last_w_plane = (int) ceil(c_max[2] / plan->w_step);
+
+    // Get subgrid at first w-plane.
+    const double eta = 1e-5;
+    const int first_w_plane = (int) floor(c_min[2] / plan->w_step - eta) -
+            subgrid_offset_w;
+    const int last_w_plane = (int) ceil(c_max[2] / plan->w_step + eta) -
+            subgrid_offset_w + 1;
 
     // Create subgrid image and subgrids to accumulate on.
     const int64_t num_elements_sg = plan->subgrid_size * plan->subgrid_size;
@@ -868,17 +884,17 @@ void sdp_gridder_wtower_uvw_grid(
         plan->w_support, plan->subgrid_size, plan->subgrid_size
     };
     sdp_Mem* w_subgrid_image = sdp_mem_create(
-            sdp_mem_type(vis), SDP_MEM_CPU, 2, subgrid_shape, status
+            sdp_mem_type(vis), loc, 2, subgrid_shape, status
     );
     sdp_Mem* subgrids = sdp_mem_create(
-            sdp_mem_type(vis), SDP_MEM_CPU, 3, subgrids_shape, status
+            sdp_mem_type(vis), loc, 3, subgrids_shape, status
     );
     sdp_mem_clear_contents(subgrids, status);
     sdp_mem_clear_contents(w_subgrid_image, status);
 
     // Create the iFFT plan and scratch buffer.
     sdp_Mem* fft_buffer = sdp_mem_create(
-            sdp_mem_type(vis), SDP_MEM_CPU, 2, subgrid_shape, status
+            sdp_mem_type(vis), loc, 2, subgrid_shape, status
     );
     sdp_Fft* fft = sdp_fft_create(fft_buffer, fft_buffer, 2, false, status);
 
@@ -925,27 +941,17 @@ void sdp_gridder_wtower_uvw_grid(
             );
         }
 
-        if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
-                sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
+        if (loc == SDP_MEM_CPU)
         {
-            grid<double, complex<double> >(
-                    plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
-                    subgrid_offset_w, freq0_hz, dfreq_hz, uvws,
-                    start_chs, end_chs, vis, status
+            grid_cpu(plan, subgrids, w_plane, subgrid_offset_u,
+                    subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
+                    uvws, start_chs, end_chs, vis, status
             );
         }
-        else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
-                sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
+        else if (loc == SDP_MEM_GPU)
         {
-            grid<float, complex<float> >(
-                    plan, subgrids, w_plane, subgrid_offset_u, subgrid_offset_v,
-                    subgrid_offset_w, freq0_hz, dfreq_hz, uvws,
-                    start_chs, end_chs, vis, status
-            );
-        }
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
+            *status = SDP_ERR_MEM_LOCATION;
+            SDP_LOG_CRITICAL("w-towers GPU gridder not yet implemented");
             break;
         }
     }

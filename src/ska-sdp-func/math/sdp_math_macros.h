@@ -9,6 +9,12 @@
 #include <math.h>
 #endif
 
+#ifdef __CUDACC__
+#define SDP_INLINE __device__ __host__ __forceinline__
+#else
+#define SDP_INLINE inline
+#endif
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846264338327950288
 #endif

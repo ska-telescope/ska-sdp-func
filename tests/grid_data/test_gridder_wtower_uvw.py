@@ -101,8 +101,8 @@ def image_to_flmn(image, theta, h_u, h_v):
     return numpy.array(result)
 
 
-def shift_uvw(uvw, idu, idv, theta):
-    return uvw - [idu / theta, idv / theta, 0]
+def shift_uvw(uvw, offsets, theta, w_step=0):
+    return uvw - numpy.array(offsets) * [1 / theta, 1 / theta, w_step]
 
 
 def clamp_channels(uvw, freq0, dfreq, start_ch, end_ch, min_uvw, max_uvw):
@@ -136,18 +136,22 @@ def clamp_channels(uvw, freq0, dfreq, start_ch, end_ch, min_uvw, max_uvw):
         # end_ch is exclusive. This means that two calls to
         # clamp_channels where any min_uvw is equal to any max_uvw will
         # never return overlapping channel ranges.
-        if _u > eta:
-            start_ch = max(start_ch, int(math.ceil((_min - u0) / du)))
-            end_ch = min(end_ch, int(math.ceil((_max - u0) / du)))
-        elif _u < -eta:
-            start_ch = max(start_ch, int(math.ceil((_max - u0) / du)))
-            end_ch = min(end_ch, int(math.ceil((_min - u0) / du)))
-        else:
-            # Assume _u = 0, which makes this a binary decision:
-            # Does the range include 0 or not? Also let's be careful
-            # just in case somebody puts a subgrid boundary right at zero.
-            if _min > 0 or _max <= 0:
-                return (0, 0)
+        try:
+            if _u > eta:
+                start_ch = max(start_ch, int(math.ceil((_min - u0) / du)))
+                end_ch = min(end_ch, int(math.ceil((_max - u0) / du)))
+            elif _u < -eta:
+                start_ch = max(start_ch, int(math.ceil((_max - u0) / du)))
+                end_ch = min(end_ch, int(math.ceil((_min - u0) / du)))
+            else:
+                # Assume _u = 0, which makes this a binary decision:
+                # Does the range include 0 or not? Also let's be careful
+                # just in case somebody puts a subgrid boundary right at zero.
+                if _min > 0 or _max <= 0:
+                    return (0, 0)
+        except OverflowError:
+            print(_u, _max, _min, du)
+            raise
 
     if end_ch <= start_ch:
         return (0, 0)
@@ -275,6 +279,7 @@ class DFTGridKernel:
         image_size: int,
         subgrid_size: int,
         theta: float,
+        w_step: float,
         shear_u: float,
         shear_v: float,
         support: int,
@@ -286,6 +291,7 @@ class DFTGridKernel:
         self.image_size = image_size
         self.subgrid_size = subgrid_size
         self.theta = theta
+        self.w_step = w_step  # not currently used
         self.shear_u = shear_u
         self.shear_v = shear_v
         self.support = support
@@ -307,13 +313,14 @@ class LocalGridKernel(DFTGridKernel):
         image_size: int,
         subgrid_size: int,
         theta: float,
+        w_step: float,
         shear_u: float,
         shear_v: float,
         support: int,
         vr_size: int,
     ):
         super().__init__(
-            image_size, subgrid_size, theta, shear_u, shear_v, support
+            image_size, subgrid_size, theta, w_step, shear_u, shear_v, support
         )
         self.vr_size = vr_size
 
@@ -328,15 +335,22 @@ class WtowerGridKernel(LocalGridKernel):
         image_size: int,
         subgrid_size: int,
         theta: float,
+        w_step: float,
         shear_u: float,
         shear_v: float,
         support: int,
         vr_size: int,
-        w_step: float,
     ):
 
         super().__init__(
-            image_size, subgrid_size, theta, shear_u, shear_v, support, vr_size
+            image_size,
+            subgrid_size,
+            theta,
+            w_step,
+            shear_u,
+            shear_v,
+            support,
+            vr_size,
         )
         self.w_step = w_step
 
@@ -359,23 +373,23 @@ class WtowerUVGridKernel(WtowerGridKernel):
         image_size: int,
         subgrid_size: int,
         theta: float,
+        w_step: float,
         shear_u: float,
         shear_v: float,
         support: int,
         vr_size: int,
         oversampling: int,
-        w_step: float,
     ):
 
         super().__init__(
             image_size,
             subgrid_size,
             theta,
+            w_step,
             shear_u,
             shear_v,
             support,
             vr_size,
-            w_step,
         )
         self.oversampling = oversampling
 
@@ -393,11 +407,11 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         image_size: int,
         subgrid_size: int,
         theta: float,
+        w_step: float,
         shear_u: float,
         shear_v: float,
         support: int,
         oversampling: int,
-        w_step: float,
         w_support: int,
         w_oversampling: int,
     ):
@@ -408,12 +422,12 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
             image_size,
             subgrid_size,
             theta,
+            w_step,
             shear_u,
             shear_v,
             support,
             support,
             oversampling,
-            w_step,
         )
         self.w_oversampling = w_oversampling
         self.w_support = w_support
@@ -427,7 +441,10 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         )
 
     def degrid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
     ):
         """
         Do degrid correction to enable degridding from the FT of the image
@@ -459,7 +476,10 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         )
 
     def grid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
     ):
         """
         Do grid correction after gridding
@@ -494,8 +514,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
     def degrid_subgrid(
         self,
         subgrid_image: numpy.ndarray,
-        subgrid_offset_u: int,
-        subgrid_offset_v: int,
+        subgrid_offsets,
         ch_count: int,
         freq0: float,
         dfreq: float,
@@ -509,8 +528,9 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         :param subgrid_image: Fourier transformed subgrid to degrid from.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid centre relative to grid centre
+        :param subgrid_offsets:
+            Tuple of integers containing offset of subgrid in (u, v, w)
+            relative to grid centre.
         :param ch_count: Channel count (determines size of array returned)
         :param freq0: Frequency of first channel (Hz)
         :param dfreq: Channel width (Hz)
@@ -529,8 +549,16 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         )
 
         # Get subgrid at first w-plane
-        first_w_plane = int(numpy.floor(uvw_min[2] / self.w_step))
-        last_w_plane = int(numpy.ceil(uvw_max[2] / self.w_step))
+        eta = 1e-5
+        first_w_plane = (
+            int(numpy.floor(uvw_min[2] / self.w_step - eta))
+            - subgrid_offsets[2]
+        )
+        last_w_plane = (
+            int(numpy.floor(uvw_max[2] / self.w_step + eta))
+            - subgrid_offsets[2]
+            + 1
+        )
 
         # First w-plane we need to generate is support/2 below the first one
         # with visibilities.
@@ -548,7 +576,6 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         # Create array to return
         uvw_count = uvws.shape[0]
         vis_out = numpy.zeros((uvw_count, ch_count), dtype=complex)
-        vis_count = numpy.zeros(uvw_count)
         for w_plane in range(first_w_plane, last_w_plane + 1):
 
             # Move to next w-plane
@@ -573,19 +600,18 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                 min_uvw = [
                     uvw_min[0] - 1,
                     uvw_min[1] - 1,
-                    (w_plane - 1) * self.w_step,
+                    (w_plane + subgrid_offsets[2] - 1) * self.w_step,
                 ]
                 max_uvw = [
                     uvw_max[0] + 1,
                     uvw_max[1] + 1,
-                    w_plane * self.w_step,
+                    (w_plane + subgrid_offsets[2]) * self.w_step,
                 ]
                 start_ch, end_ch = clamp_channels(
                     uvw, freq0, dfreq, start_ch, end_ch, min_uvw, max_uvw
                 )
                 if start_ch >= end_ch:
                     continue
-                vis_count[i] += end_ch - start_ch
 
                 # Scale + shift UVWs
                 uvw_stretched = numpy.vstack(
@@ -595,10 +621,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                     ]
                 )
                 uvw_shifted = shift_uvw(
-                    uvw_stretched,
-                    subgrid_offset_u,
-                    subgrid_offset_v,
-                    self.theta,
+                    uvw_stretched, subgrid_offsets, self.theta, self.w_step
                 )
                 uvw_shifted -= [0, 0, w_plane * self.w_step]
 
@@ -608,9 +631,6 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                     subgrids,
                 )
 
-        assert numpy.all(
-            vis_count == end_chs - start_chs
-        ), "dropped visibilities!"
         return vis_out
 
     def grid_subgrid(
@@ -623,8 +643,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         freq0: float,
         dfreq: float,
         subgrid_image: numpy.ndarray,
-        subgrid_offset_u: int,
-        subgrid_offset_v: int,
+        subgrid_offsets,
     ):
         """
         Grid visibilities using w-stacking/towers.
@@ -642,16 +661,25 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         :param subgrid_image: Fourier transformed subgrid to be gridded to.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid relative to grid centre
+        :param subgrid_offsets:
+            Tuple of integers containing offset of subgrid in (u, v, w)
+            relative to grid centre.
         """
 
         # Determine w-range
         uvw_min, uvw_max = uvw_bounds_all(
             uvws, freq0, dfreq, start_chs, end_chs
         )
-        first_w_plane = int(numpy.floor(uvw_min[2] / self.w_step))
-        last_w_plane = int(numpy.ceil(uvw_max[2] / self.w_step))
+        eta = 1e-5
+        first_w_plane = (
+            int(numpy.floor(uvw_min[2] / self.w_step - eta))
+            - subgrid_offsets[2]
+        )
+        last_w_plane = (
+            int(numpy.floor(uvw_max[2] / self.w_step + eta))
+            - subgrid_offsets[2]
+            + 1
+        )
 
         # Create subgrid image and subgrids to accumulate on
         w_subgrid_image = numpy.zeros_like(subgrid_image)
@@ -661,8 +689,6 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         )
 
         # Iterate over w-planes
-        uvw_count = uvws.shape[0]
-        vis_count = numpy.zeros(uvw_count)
         for w_plane in range(first_w_plane, last_w_plane + 1):
 
             # Move to next w-plane
@@ -690,19 +716,18 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                 min_uvw = [
                     uvw_min[0] - 1,
                     uvw_min[1] - 1,
-                    (w_plane - 1) * self.w_step,
+                    (w_plane + subgrid_offsets[2] - 1) * self.w_step,
                 ]
                 max_uvw = [
                     uvw_max[0] + 1,
                     uvw_max[1] + 1,
-                    w_plane * self.w_step,
+                    (w_plane + subgrid_offsets[2]) * self.w_step,
                 ]
                 start_ch, end_ch = clamp_channels(
                     uvw, freq0, dfreq, start_ch, end_ch, min_uvw, max_uvw
                 )
                 if start_ch >= end_ch:
                     continue
-                vis_count[i] += end_ch - start_ch
 
                 # Scale + shift UVWs
                 uvw_scaled = numpy.vstack(
@@ -712,7 +737,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                     ]
                 )
                 uvw_shifted = shift_uvw(
-                    uvw_scaled, subgrid_offset_u, subgrid_offset_v, self.theta
+                    uvw_scaled, subgrid_offsets, self.theta, self.w_step
                 )
                 uvw_shifted -= [0, 0, w_plane * self.w_step]
 
@@ -722,9 +747,6 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                     uvw_shifted[start_ch:end_ch],
                     subgrids,
                 )
-        assert numpy.all(
-            vis_count == end_chs - start_chs
-        ), "dropped visibilities!"
 
         # Accumulate remaining data from subgrids
         for i in range(self.w_support):
@@ -850,7 +872,7 @@ def test_gridder_wtower_uvw():
     print("Grid size: ", image_size / theta, "wavelengths")
     idu = 80
     idv = 90
-    idw = 0
+    idw = 12
     ch_count = 100
     freq0_hz = 1e6
     dfreq_hz = 1e3
@@ -871,11 +893,11 @@ def test_gridder_wtower_uvw():
         image_size,
         subgrid_size,
         theta,
+        w_step,
         shear_u,
         shear_v,
         support,
         oversampling,
-        w_step,
         w_support,
         w_oversampling,
     )
@@ -888,11 +910,11 @@ def test_gridder_wtower_uvw():
         image_size,
         subgrid_size,
         theta,
+        w_step,
         shear_u,
         shear_v,
         support,
         oversampling,
-        w_step,
         w_support,
         w_oversampling,
     )
@@ -905,7 +927,14 @@ def test_gridder_wtower_uvw():
     # Call the reference degridder.
     t0 = time.time()
     vis_ref = gridder_ref.degrid_subgrid(
-        image, idu, idv, ch_count, freq0_hz, dfreq_hz, uvw, start_chs, end_chs
+        image,
+        (idu, idv, idw),
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        uvw,
+        start_chs,
+        end_chs,
     )
     t1_r = time.time() - t0
     print(f"Reference uvw degrid_subgrid took {t1_r:.4f} s.")
@@ -920,7 +949,17 @@ def test_gridder_wtower_uvw():
     print(f"PFL uvw degrid took {t1:.4f} s. (speed-up: {t1_r / t1:.0f})")
 
     # Check results from both are the same.
-    numpy.testing.assert_allclose(vis, vis_ref, atol=1e-14, rtol=1e-13)
+    for r in range(num_uvw):
+        numpy.testing.assert_allclose(
+            vis[r, :],
+            vis_ref[r, :],
+            atol=1e-14,
+            rtol=1e-13,
+            err_msg=(
+                f"degridded data for row {r} is not consistent: "
+                f"uvw={uvw[r,:]}"
+            ),
+        )
 
     # Generate reference subgrid.
     img_ref = numpy.zeros((subgrid_size, subgrid_size), dtype=complex)
@@ -934,8 +973,7 @@ def test_gridder_wtower_uvw():
         freq0_hz,
         dfreq_hz,
         img_ref,
-        idu,
-        idv,
+        (idu, idv, idw),
     )
     t1_r = time.time() - t0
     print(f"Reference uvw grid_subgrid took {t1_r:.4f} s.")
@@ -1041,11 +1079,11 @@ def test_gridder_wtower_uvw_gpu():
         image_size,
         subgrid_size,
         theta,
+        w_step,
         shear_u,
         shear_v,
         support,
         oversampling,
-        w_step,
         w_support,
         w_oversampling,
     )
@@ -1112,11 +1150,11 @@ def test_gridder_wtower_uvw_degrid_correct():
         image_size,
         subgrid_size,
         theta,
+        w_step,
         shear_u,
         shear_v,
         support,
         oversampling,
-        w_step,
         w_support,
         w_oversampling,
     )
@@ -1127,11 +1165,11 @@ def test_gridder_wtower_uvw_degrid_correct():
         image_size,
         subgrid_size,
         theta,
+        w_step,
         shear_u,
         shear_v,
         support,
         oversampling,
-        w_step,
         w_support,
         w_oversampling,
     )

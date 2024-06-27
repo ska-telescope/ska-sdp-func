@@ -2,7 +2,7 @@
 
 #include <thrust/complex.h>
 
-#include "ska-sdp-func/math/sdp_math_macros.h"
+#include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 
@@ -39,36 +39,17 @@ __global__ void sdp_gridder_wtower_degrid(
 
     // Each row contains visibilities for all channels.
     // Skip if there's no visibility to degrid.
-    int start_ch = start_chs(i_row), end_ch = end_chs(i_row);
+    int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
     if (start_ch >= end_ch)
         return;
 
-    // Select only visibilities on this w-plane
-    // (inlined from clamp_channels).
+    // Select only visibilities on this w-plane.
     const UVW_TYPE uvw[] = {uvws(i_row, 0), uvws(i_row, 1), uvws(i_row, 2)};
-    const double w0 = freq0_hz * uvw[2] / C_0;
-    const double dw = dfreq_hz * uvw[2] / C_0;
-    const double _min = (w_plane - 1) * w_step;
-    const double _max = w_plane * w_step;
-    const double eta = 1e-3;
-    if (w0 > eta)
-    {
-        const int start_ch_ = int(ceil((_min - w0) / dw));
-        const int end_ch_ = int(ceil((_max - w0) / dw));
-        start_ch = MAX(start_ch, start_ch_);
-        end_ch = MIN(end_ch, end_ch_);
-    }
-    else if (w0 < -eta)
-    {
-        const int start_ch_ = int(ceil((_max - w0) / dw));
-        const int end_ch_ = int(ceil((_min - w0) / dw));
-        start_ch = MAX(start_ch, start_ch_);
-        end_ch = MIN(end_ch, end_ch_);
-    }
-    else if (_min > 0 or _max <= 0)
-    {
-        return;
-    }
+    const double min_w = (w_plane + subgrid_offset_w - 1) * w_step;
+    const double max_w = (w_plane + subgrid_offset_w) * w_step;
+    sdp_gridder_clamp_channels_inline(
+            uvw[2], freq0_hz, dfreq_hz, &start_ch, &end_ch, min_w, max_w
+    );
     if (start_ch >= end_ch)
         return;
 
@@ -86,7 +67,7 @@ __global__ void sdp_gridder_wtower_degrid(
     const int half_vr = vr_size / 2;
 
     // Loop over selected channels.
-    for (int c = start_ch; c < end_ch; c++)
+    for (int64_t c = start_ch; c < end_ch; c++)
     {
         const double u = uvw0[0] + c * duvw[0];
         const double v = uvw0[1] + c * duvw[1];

@@ -1,7 +1,7 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
-  CUDA_ARCH: "7.0;8.0"
+  CUDA_ARCH: "8.0"
 
 stages:
   - lint
@@ -102,7 +102,7 @@ python-gemnasium-scan-legacy:
 build-test-debug:
   stage: test
   image: nvidia/cuda:12.2.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu-v100]
+  tags: [ska-gpu-a100]
   before_script:
     - *ready_reports
     - *cuda_key
@@ -130,7 +130,7 @@ build-test-debug:
 build-test-release:
   stage: test
   image: nvidia/cuda:12.2.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu-v100]
+  tags: [ska-gpu-a100]
   before_script:
     - *ready_reports
     - *cuda_key
@@ -171,7 +171,7 @@ python-build-for-development:
 python-test:
   stage: test
   image: nvidia/cuda:12.2.0-devel-ubuntu20.04
-  tags: [k8srunner-gpu-v100]
+  tags: [ska-gpu-a100]
   before_script:
     - echo "Running Python test stage"
     - *cuda_key
