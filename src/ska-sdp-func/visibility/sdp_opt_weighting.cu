@@ -247,7 +247,7 @@ __global__ void sdp_tiled_indexing_gpu(
         const double cell_size_rad
 )
 {
-    const int grid_centre = grid_size / 2;
+   const int grid_centre = grid_size / 2;
     const size_t i_baseline = blockDim.x * blockIdx.x + threadIdx.x;
     const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
     const size_t i_time = blockDim.z * blockIdx.z + threadIdx.z;
@@ -256,7 +256,7 @@ __global__ void sdp_tiled_indexing_gpu(
     if(i_baseline >= num_baselines || i_channel >= num_channels || i_time >= num_times) return;
     
     const int i_uvw = INDEX_3D(
-            num_times, num_baselines, 2,
+            num_times, num_baselines, 3,
             i_time, i_baseline, 0
     );
     
