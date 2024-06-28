@@ -100,11 +100,42 @@ void sdp_bucket_sort(
     sdp_Mem* sorted_vis,
     sdp_Mem* tile_offsets,
     sdp_Mem* num_points_in_tiles,
-    sdp_Mem* output_weights,
     sdp_Error* status
 );
 
+void sdp_tiled_indexing(
+        const sdp_Mem* uvw,
+        const sdp_Mem* freqs,
+        const sdp_Mem* vis,
+        const sdp_Mem* weights,
+        const double robust_param,
+        const int grid_size,
+        const double cell_size_rad,
+        const int64_t support,
+        int* num_visibilites,
+        sdp_Mem* sorted_tile,
+        sdp_Mem* sorted_vis_index,
+        sdp_Mem* tile_offsets,
+        sdp_Error* status
+);
 
+void sdp_optimised_indexed_weighting(
+        const sdp_Mem* uvw,
+        const sdp_Mem* freqs,
+        const sdp_Mem* vis,
+        const sdp_Mem* weights,
+        const double robust_param,
+        const int grid_size,
+        const double cell_size_rad,
+        const int64_t support,
+        int* num_visibilites, 
+        sdp_Mem* sorted_tile,
+        sdp_Mem* sorted_vis_index,
+        sdp_Mem* tile_offsets,
+        sdp_Mem* num_points_in_tiles,
+        sdp_Mem* output_weights,
+        sdp_Error* status
+);
 
 /** @} */ /* End group weight_func. */
 
