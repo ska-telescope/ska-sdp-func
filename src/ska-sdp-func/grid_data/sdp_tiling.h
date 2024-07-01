@@ -70,27 +70,26 @@ void sdp_tile_simple(
         sdp_Error* status
 );
 
-
 void sdp_bucket_simple(
-    const int64_t support, 
-    const int grid_size, 
-    const float inv_tile_size_u,
-    const float inv_tile_size_v,
-    const int64_t top_left_u,
-    const int64_t top_left_v, 
-    const int64_t num_tiles_u, 
-    const double cell_size_rad, 
-    const sdp_Mem* uvw, 
-    const sdp_Mem* vis, 
-    const sdp_Mem* weights, 
-    const sdp_Mem* freqs, 
-    sdp_Mem* tile_offsets, 
-    sdp_Mem* sorted_uu, 
-    sdp_Mem* sorted_vv, 
-    sdp_Mem* sorted_vis, 
-    sdp_Mem* sorted_weight, 
-    sdp_Mem* sorted_tile,
-    sdp_Error* status 
+        const int64_t support,
+        const int grid_size,
+        const float inv_tile_size_u,
+        const float inv_tile_size_v,
+        const int64_t top_left_u,
+        const int64_t top_left_v,
+        const int64_t num_tiles_u,
+        const double cell_size_rad,
+        const sdp_Mem* uvw,
+        const sdp_Mem* vis,
+        const sdp_Mem* weights,
+        const sdp_Mem* freqs,
+        sdp_Mem* tile_offsets,
+        sdp_Mem* sorted_uu,
+        sdp_Mem* sorted_vv,
+        sdp_Mem* sorted_vis,
+        sdp_Mem* sorted_weight,
+        sdp_Mem* sorted_tile,
+        sdp_Error* status
 );
 
 /** @} */ /* End group tiling_func. */

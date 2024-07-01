@@ -28,7 +28,7 @@
 
 template<typename T>
 __global__ void sdp_preifx_sum_for_bucket_sort(
-        const T num_tiles, 
+        const T num_tiles,
         T* num_points_in_tiles,
         T* tile_offsets
 )
@@ -64,7 +64,6 @@ __global__ void sdp_preifx_sum_for_bucket_sort(
         idx += blockDim.x;
         running_total += scratch[2 * blockDim.x - 1];
     }
-
 }
 
 SDP_CUDA_KERNEL(sdp_preifx_sum_for_bucket_sort<int>);
@@ -95,14 +94,14 @@ __global__ void sdp_tile_count_simple_gpu(
     const size_t i_time = blockDim.z * blockIdx.z + threadIdx.z;
     const double grid_scale = grid_size * cell_size_rad;
 
-    if(i_baseline >= num_baselines || i_channel >= num_channels || i_time >= num_times) return;
-    
+    if (i_baseline >= num_baselines || i_channel >= num_channels ||
+            i_time >= num_times) return;
+
     const int i_uvw = INDEX_3D(
             num_times, num_baselines, 3,
             i_time, i_baseline, 0
     );
 
-    
     const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
     const UVW_TYPE pos_u = uvw[i_uvw + 0] * inv_wavelength * grid_scale;
     const UVW_TYPE pos_v = uvw[i_uvw + 1] * inv_wavelength * grid_scale;
@@ -159,7 +158,7 @@ __global__ void sdp_bucket_sort_simple_gpu(
         UVW_TYPE* sorted_vv,
         VIS_TYPE* sorted_vis,
         WEIGHT_TYPE* sorted_weight,
-        int* sorted_tile, 
+        int* sorted_tile,
         const double cell_size_rad
 )
 {
@@ -169,13 +168,14 @@ __global__ void sdp_bucket_sort_simple_gpu(
     const size_t i_time = blockDim.z * blockIdx.z + threadIdx.z;
     const double grid_scale = grid_size * cell_size_rad;
 
-    if(i_baseline >= num_baselines || i_channel >= num_channels || i_time >= num_times) return;
-    
+    if (i_baseline >= num_baselines || i_channel >= num_channels ||
+            i_time >= num_times) return;
+
     const int i_uvw = INDEX_3D(
             num_times, num_baselines, 3,
             i_time, i_baseline, 0
     );
-    
+
     const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
     const UVW_TYPE pos_u = uvw[i_uvw + 0] * inv_wavelength * grid_scale;
     const UVW_TYPE pos_v = uvw[i_uvw + 1] * inv_wavelength * grid_scale;
@@ -197,8 +197,8 @@ __global__ void sdp_bucket_sort_simple_gpu(
         tile_v_min = (int)(floor(v1)); tile_v_max = (int)(ceil(v2));
 
         const int i_vis = INDEX_4D(
-        num_times, num_baselines, num_channels, NUM_POL,
-        i_time, i_baseline, i_channel, 0
+                num_times, num_baselines, num_channels, NUM_POL,
+                i_time, i_baseline, i_channel, 0
         );
 
         for (int pv = tile_v_min; pv < tile_v_max; pv++)

@@ -26,25 +26,25 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
-        ctypes.POINTER(ctypes.c_int)
+        ctypes.POINTER(ctypes.c_int),
     ],
     check_errcode=True,
 )
 
 Lib.wrap_func(
     "sdp_bucket_simple",
-    restype=None, 
+    restype=None,
     argtypes=[
         ctypes.c_int64,
-        ctypes.c_int, 
-        ctypes.c_float, 
-        ctypes.c_float, 
-        ctypes.c_int64, 
-        ctypes.c_int64, 
-        ctypes.c_int64, 
+        ctypes.c_int,
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_int64,
+        ctypes.c_int64,
+        ctypes.c_int64,
         ctypes.c_double,
-        Mem.handle_type(), 
-        Mem.handle_type(), 
+        Mem.handle_type(),
+        Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
@@ -54,7 +54,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
     ],
-    check_errcode=True, 
+    check_errcode=True,
 )
 
 
@@ -74,8 +74,8 @@ def tile_simple(
     num_tiles,
     tile_offsets,
     num_points_in_tiles,
-    num_skipped, 
-    num_visibilites
+    num_skipped,
+    num_visibilites,
 ):
     """
     Calculate the number of visibilies in each tile.
@@ -126,28 +126,29 @@ def tile_simple(
         Mem(tile_offsets),
         Mem(num_points_in_tiles),
         Mem(num_skipped),
-        ctypes.byref(num_visibilites)
+        ctypes.byref(num_visibilites),
     )
 
+
 def bucket_simple(
-        support,
-        grid_size, 
-        inv_tile_size_u,
-        inv_tile_size_v, 
-        top_left_u, 
-        top_left_v, 
-        num_tiles_u, 
-        cell_size_rad, 
-        uvw,
-        vis,
-        weights, 
-        freqs, 
-        tile_offsets, 
-        sorted_uu, 
-        sorted_vv, 
-        sorted_vis, 
-        sorted_weight, 
-        sorted_tile
+    support,
+    grid_size,
+    inv_tile_size_u,
+    inv_tile_size_v,
+    top_left_u,
+    top_left_v,
+    num_tiles_u,
+    cell_size_rad,
+    uvw,
+    vis,
+    weights,
+    freqs,
+    tile_offsets,
+    sorted_uu,
+    sorted_vv,
+    sorted_vis,
+    sorted_weight,
+    sorted_tile,
 ):
     """
     Sort the visibilities according to the tile they fall into
@@ -182,22 +183,22 @@ def bucket_simple(
     """
 
     Lib.sdp_bucket_simple(
-        support, 
-        grid_size, 
-        inv_tile_size_u, 
+        support,
+        grid_size,
+        inv_tile_size_u,
         inv_tile_size_v,
-        top_left_u, 
+        top_left_u,
         top_left_v,
-        num_tiles_u, 
+        num_tiles_u,
         cell_size_rad,
-        Mem(uvw), 
-        Mem(vis), 
-        Mem(weights), 
-        Mem(freqs), 
+        Mem(uvw),
+        Mem(vis),
+        Mem(weights),
+        Mem(freqs),
         Mem(tile_offsets),
-        Mem(sorted_uu), 
+        Mem(sorted_uu),
         Mem(sorted_vv),
-        Mem(sorted_vis), 
-        Mem(sorted_weight), 
-        Mem(sorted_tile)
+        Mem(sorted_vis),
+        Mem(sorted_weight),
+        Mem(sorted_tile),
     )

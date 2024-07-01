@@ -1,20 +1,22 @@
 """Test the optimised briggs weighting function"""
 
-import time
 import ctypes
-import numpy as np
-from math import floor
-from ska_sdp_func.visibility.opt_weighting import optimized_weighting, \
-optimised_indexed_weighting,tile_and_prefix_sum,tiled_indexing,bucket_sort
+import time
 
-try:
-    import cupy
-except:
-    raise "No cupy found!"
+import cupy
+import numpy as np
+
+from ska_sdp_func.visibility.opt_weighting import (
+    bucket_sort,
+    optimised_indexed_weighting,
+    optimized_weighting,
+    tile_and_prefix_sum,
+    tiled_indexing,
+)
 
 
 def bucket_sort_params(grid_size):
-    #Prepare parameters for bucket sort
+    # Prepare parameters for bucket sort
     tile_size_u = cupy.int64(32)
     tile_size_v = cupy.int64(16)
     num_tiles_u = cupy.int64((grid_size + tile_size_u - 1) / tile_size_u)
@@ -25,6 +27,7 @@ def bucket_sort_params(grid_size):
     num_skipped = cupy.zeros(1, dtype=cupy.int32)
 
     return num_points_in_tiles, num_skipped, tile_offsets
+
 
 def gen_gpu_arrays(num_visibilities, indexed):
     sorted_uu = np.zeros(num_visibilities.value, dtype=np.float64)
@@ -42,11 +45,25 @@ def gen_gpu_arrays(num_visibilities, indexed):
     sorted_tile_gpu = cupy.asarray(sorted_tile)
     sorted_vis_index_gpu = cupy.asarray(sorted_vis_index)
 
-    if (indexed == 0) : 
-        return sorted_uu_gpu, sorted_vv_gpu, sorted_vis_gpu, sorted_weight_gpu, output_weights, sorted_tile_gpu
+    if indexed == 0:
+        return (
+            sorted_uu_gpu,
+            sorted_vv_gpu,
+            sorted_vis_gpu,
+            sorted_weight_gpu,
+            output_weights,
+            sorted_tile_gpu,
+        )
 
-    if (indexed == 1) :
-        return sorted_tile_gpu, sorted_vis_index_gpu, output_weights
+    if indexed == 1:
+        return (
+            sorted_tile_gpu,
+            sorted_vis_index_gpu,
+            output_weights,
+            sorted_uu_gpu,
+            sorted_vv_gpu,
+        )
+
 
 def input_gen():
     """
@@ -153,143 +170,192 @@ def input_gen():
     vis = cupy.asarray(vis_np)
     weights = cupy.asarray(weights_np)
 
-    return freqs, uvw, vis, baselines, pol, times, \
-    weights, robust_param, grid_size, cell_size_rad, support 
+    return (
+        freqs,
+        uvw,
+        vis,
+        baselines,
+        pol,
+        times,
+        weights,
+        robust_param,
+        grid_size,
+        cell_size_rad,
+        support,
+    )
+
 
 def test_optmised_weighting():
     """
     Test optimised weighting
     """
     indexed = 0
-    freqs, uvw, vis, baselines, pol, times, weights, \
-    robust_param, grid_size, cell_size_rad, support = input_gen()
-    num_visibilities = ctypes.c_int(0)
-    num_points_in_tiles, num_skipped, tile_offsets = bucket_sort_params(grid_size)
-
-    tile_and_prefix_sum(
-        uvw, 
-        freqs, 
-        vis, 
-        grid_size, 
-        cell_size_rad, 
-        support,
-        num_visibilities,
-        tile_offsets,
-        num_points_in_tiles,
-        num_skipped
-    )
-    
-    print("Bucket sort tile offsets:")
-    print(tile_offsets)
-
-    sorted_uu,sorted_vv,sorted_vis,sorted_weights,output_weights,sorted_tile = gen_gpu_arrays(num_visibilities, indexed)
-
-    bucket_sort(
-        uvw, 
-        freqs, 
-        vis, 
-        weights, 
-        robust_param, 
-        grid_size, 
-        cell_size_rad,
-        support, 
-        num_visibilities,
-        sorted_uu,
-        sorted_vv,
-        sorted_weights,
-        sorted_tile,
-        sorted_vis,
-        tile_offsets,
-        num_points_in_tiles,
-        output_weights
-    )
-
-    optimized_weighting(
-        uvw, 
-        freqs, 
-        vis, 
-        weights, 
+    (
+        freqs,
+        uvw,
+        vis,
+        baselines,
+        pol,
+        times,
+        weights,
         robust_param,
         grid_size,
         cell_size_rad,
-        support, 
-        num_visibilities,
-        sorted_uu,
-        sorted_vv,
-        sorted_weights,
-        sorted_tile,
-        sorted_vis,
-        tile_offsets,
-        num_points_in_tiles,
-        output_weights
+        support,
+    ) = input_gen()
+    num_visibilities = ctypes.c_int(0)
+    num_points_in_tiles, num_skipped, tile_offsets = bucket_sort_params(
+        grid_size
     )
 
-    return output_weights
-
-def test_indexed_weighting():
-    """
-    Test indexed weighting
-    """
-    indexed = 1
-    freqs, uvw, vis, baselines, pol, times, weights, \
-    robust_param, grid_size, cell_size_rad, support = input_gen()
-    num_visibilities = ctypes.c_int(0)
-    num_points_in_tiles, num_skipped, tile_offsets = bucket_sort_params(grid_size)
-
     tile_and_prefix_sum(
-        uvw, 
-        freqs, 
-        vis, 
-        grid_size, 
-        cell_size_rad, 
+        uvw,
+        freqs,
+        vis,
+        grid_size,
+        cell_size_rad,
         support,
         num_visibilities,
         tile_offsets,
         num_points_in_tiles,
-        num_skipped
+        num_skipped,
     )
 
-    print("Tiled indexing tile offsets:")
+    (
+        sorted_uu,
+        sorted_vv,
+        sorted_vis,
+        sorted_weights,
+        output_weights,
+        sorted_tile,
+    ) = gen_gpu_arrays(num_visibilities, indexed)
 
-    print(tile_offsets)
-
-    sorted_tile, sorted_vis_index, output_weights = gen_gpu_arrays(num_visibilities, indexed)
-
-    tiled_indexing(
-        uvw, 
-        freqs, 
-        vis, 
+    bucket_sort(
+        uvw,
+        freqs,
+        vis,
         weights,
         robust_param,
         grid_size,
         cell_size_rad,
         support,
         num_visibilities,
-        sorted_tile, 
-        sorted_vis_index,
-        tile_offsets
+        sorted_uu,
+        sorted_vv,
+        sorted_weights,
+        sorted_tile,
+        sorted_vis,
+        tile_offsets,
+        num_points_in_tiles,
+        output_weights,
     )
 
-   # optimised_indexed_weighting(
-        #uvw, 
-        #freqs, 
-        #vis, 
-        #weights, 
-        #robust_param,
-        #grid_size,
-        #cell_size_rad,
-        #support, 
-        #num_visibilities,
-        #sorted_tile,
-        #sorted_vis_index,
-        #tile_offsets,
-        #num_points_in_tiles,
-        #output_weights
-    #)
+    optimized_weighting(
+        uvw,
+        freqs,
+        vis,
+        weights,
+        robust_param,
+        grid_size,
+        cell_size_rad,
+        support,
+        num_visibilities,
+        sorted_uu,
+        sorted_vv,
+        sorted_weights,
+        sorted_tile,
+        sorted_vis,
+        tile_offsets,
+        num_points_in_tiles,
+        output_weights,
+    )
 
     return output_weights
 
-if __name__ == "__main__" :
+
+def test_indexed_weighting():
+    """
+    Test indexed weighting
+    """
+    indexed = 1
+    (
+        freqs,
+        uvw,
+        vis,
+        baselines,
+        pol,
+        times,
+        weights,
+        robust_param,
+        grid_size,
+        cell_size_rad,
+        support,
+    ) = input_gen()
+    num_visibilities = ctypes.c_int(0)
+    num_points_in_tiles, num_skipped, tile_offsets = bucket_sort_params(
+        grid_size
+    )
+
+    tile_and_prefix_sum(
+        uvw,
+        freqs,
+        vis,
+        grid_size,
+        cell_size_rad,
+        support,
+        num_visibilities,
+        tile_offsets,
+        num_points_in_tiles,
+        num_skipped,
+    )
+
+    (
+        sorted_tile,
+        sorted_vis_index,
+        output_weights,
+        sorted_uu,
+        sorted_vv,
+    ) = gen_gpu_arrays(num_visibilities, indexed)
+
+    tiled_indexing(
+        uvw,
+        freqs,
+        vis,
+        weights,
+        robust_param,
+        grid_size,
+        cell_size_rad,
+        support,
+        num_visibilities,
+        sorted_tile,
+        sorted_uu,
+        sorted_vv,
+        sorted_vis_index,
+        tile_offsets,
+    )
+
+    optimised_indexed_weighting(
+        uvw,
+        vis,
+        weights,
+        robust_param,
+        grid_size,
+        cell_size_rad,
+        support,
+        num_visibilities,
+        sorted_tile,
+        sorted_uu,
+        sorted_vv,
+        sorted_vis_index,
+        tile_offsets,
+        num_points_in_tiles,
+        output_weights,
+    )
+
+    return output_weights
+
+
+if __name__ == "__main__":
     n_indexed_start = time.time()
     n_indexed_w = test_optmised_weighting()
     n_indexed_end = time.time()
@@ -297,11 +363,6 @@ if __name__ == "__main__" :
     indexed_start = time.time()
     indexed_w = test_indexed_weighting()
     indexed_end = time.time()
-
-    #assert cupy.allclose(
-        #None, indexed_w,
-        #"Indexed weighting and bucket sorted weighting are not the same!"
-    #)
 
     print("Bucket sorted weighting time")
     print(n_indexed_end - n_indexed_start)

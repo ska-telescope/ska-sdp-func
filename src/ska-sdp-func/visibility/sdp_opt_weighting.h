@@ -47,7 +47,6 @@ extern "C" {
  * @param status Error status.
  */
 
-
 void sdp_optimized_weighting(
         const sdp_Mem* uvw,
         const sdp_Mem* freqs,
@@ -59,8 +58,8 @@ void sdp_optimized_weighting(
         const int64_t support,
         int* num_visibilites,
         sdp_Mem* sorted_uu,
-        sdp_Mem* sorted_vv, 
-        sdp_Mem* sorted_weight, 
+        sdp_Mem* sorted_vv,
+        sdp_Mem* sorted_weight,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_vis,
         sdp_Mem* tile_offsets,
@@ -76,7 +75,7 @@ void sdp_tile_and_prefix_sum(
         const int grid_size,
         const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites, 
+        int* num_visibilites,
         sdp_Mem* tile_offsets,
         sdp_Mem* num_points_in_tiles,
         sdp_Mem* num_skipped,
@@ -84,23 +83,23 @@ void sdp_tile_and_prefix_sum(
 );
 
 void sdp_bucket_sort(
-    const sdp_Mem* uvw,
-    const sdp_Mem* freqs,
-    const sdp_Mem* vis,
-    const sdp_Mem* weights,
-    const double robust_param,
-    const int grid_size,
-    const double cell_size_rad,
-    const int64_t support,
-    int* num_visibilites,
-    sdp_Mem* sorted_uu,
-    sdp_Mem* sorted_vv, 
-    sdp_Mem* sorted_weight, 
-    sdp_Mem* sorted_tile,
-    sdp_Mem* sorted_vis,
-    sdp_Mem* tile_offsets,
-    sdp_Mem* num_points_in_tiles,
-    sdp_Error* status
+        const sdp_Mem* uvw,
+        const sdp_Mem* freqs,
+        const sdp_Mem* vis,
+        const sdp_Mem* weights,
+        const double robust_param,
+        const int grid_size,
+        const double cell_size_rad,
+        const int64_t support,
+        int* num_visibilites,
+        sdp_Mem* sorted_uu,
+        sdp_Mem* sorted_vv,
+        sdp_Mem* sorted_weight,
+        sdp_Mem* sorted_tile,
+        sdp_Mem* sorted_vis,
+        sdp_Mem* tile_offsets,
+        sdp_Mem* num_points_in_tiles,
+        sdp_Error* status
 );
 
 void sdp_tiled_indexing(
@@ -114,6 +113,8 @@ void sdp_tiled_indexing(
         const int64_t support,
         int* num_visibilites,
         sdp_Mem* sorted_tile,
+        sdp_Mem* sorted_uu,
+        sdp_Mem* sorted_vv,
         sdp_Mem* sorted_vis_index,
         sdp_Mem* tile_offsets,
         sdp_Error* status
@@ -121,15 +122,16 @@ void sdp_tiled_indexing(
 
 void sdp_optimised_indexed_weighting(
         const sdp_Mem* uvw,
-        const sdp_Mem* freqs,
         const sdp_Mem* vis,
         const sdp_Mem* weights,
         const double robust_param,
         const int grid_size,
         const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites, 
+        int* num_visibilites,
         sdp_Mem* sorted_tile,
+        sdp_Mem* sorted_uu,
+        sdp_Mem* sorted_vv,
         sdp_Mem* sorted_vis_index,
         sdp_Mem* tile_offsets,
         sdp_Mem* num_points_in_tiles,
