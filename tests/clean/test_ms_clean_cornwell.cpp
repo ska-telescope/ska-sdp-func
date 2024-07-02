@@ -486,19 +486,19 @@ static void run_and_check(
 
     // scale list
     const int64_t scales_shape[] = {5};
-    sdp_Mem* scales = sdp_mem_create(input_type,
+    sdp_Mem* scales = sdp_mem_create(SDP_MEM_INT,
             SDP_MEM_CPU,
             1,
             scales_shape,
             status
     );
-    double* scales_ptr = (double*)sdp_mem_data(scales);
+    int* scales_ptr = (int*)sdp_mem_data(scales);
     // pre-computed variables
-    scales_ptr[0] = 0.0;
-    scales_ptr[1] = 8.0;
-    scales_ptr[2] = 16.0;
-    scales_ptr[3] = 32.0;
-    scales_ptr[4] = 64.0;
+    scales_ptr[0] = 0;
+    scales_ptr[1] = 8;
+    scales_ptr[2] = 16;
+    scales_ptr[3] = 32;
+    scales_ptr[4] = 64;
 
     create_test_data(
             dirty_img,
