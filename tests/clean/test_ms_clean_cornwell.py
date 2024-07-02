@@ -388,7 +388,7 @@ def reference_ms_clean_cornwell(
     # # Add remaining residual
     skymodel = clean_comp_convolved + scaled_residuals[0]
 
-    return skymodel, clean_comp
+    return skymodel, clean_comp, scaled_residuals[0]
 
 
 def test_ms_clean_cornwell():
@@ -398,7 +398,7 @@ def test_ms_clean_cornwell():
     dirty_size = 256
     psf_size = 512
     cbeam_details = np.array([5.0, 5.0, 1.0, 128.0], dtype=np.float64)
-    scales = np.array([0, 2, 4, 8, 16], dtype=np.float64)
+    scales = np.array([0, 2, 4, 8, 16], dtype=np.intc)
     loop_gain = 0.1
     threshold = 0.001
     cycle_limit = 10000
@@ -417,14 +417,16 @@ def test_ms_clean_cornwell():
     skymodel = skymodel.astype(np.float64)
 
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference, clean_comp_reference = reference_ms_clean_cornwell(
-        dirty_img,
-        psf,
-        cbeam_details,
-        loop_gain,
-        threshold,
-        cycle_limit,
-        scales,
+    skymodel_reference, clean_comp_reference, residual_reference = (
+        reference_ms_clean_cornwell(
+            dirty_img,
+            psf,
+            cbeam_details,
+            loop_gain,
+            threshold,
+            cycle_limit,
+            scales,
+        )
     )
 
     print("Testing msCLEAN from Cornwell on CPU from ska-sdp-func...")
@@ -448,6 +450,9 @@ def test_ms_clean_cornwell():
     np.testing.assert_array_almost_equal(
         clean_model, clean_comp_reference, decimal=2
     )
+    np.testing.assert_array_almost_equal(
+        residual, residual_reference, decimal=2
+    )
     print("msCLEAN from Cornwell at double precision on CPU: Test passed")
 
     dirty_img_float = dirty_img.astype(np.float32)
@@ -456,13 +461,12 @@ def test_ms_clean_cornwell():
     clean_model_float = clean_model.astype(np.float32)
     residual_float = residual.astype(np.float32)
     cbeam_details_float = cbeam_details.astype(np.float32)
-    scales_float = scales.astype(np.float32)
 
     ms_clean_cornwell(
         dirty_img_float,
         psf_float,
         cbeam_details_float,
-        scales_float,
+        scales,
         loop_gain,
         threshold,
         cycle_limit,
@@ -476,6 +480,9 @@ def test_ms_clean_cornwell():
     )
     np.testing.assert_array_almost_equal(
         clean_model_float, clean_comp_reference, decimal=2
+    )
+    np.testing.assert_array_almost_equal(
+        residual_float, residual_reference, decimal=2
     )
 
     print("msCLEAN from Cornwell at float precision on CPU: Test passed")
