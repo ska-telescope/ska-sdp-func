@@ -2,11 +2,12 @@
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 
 import setuptools
-from setuptools import Extension, setup
+from setuptools import Extension
 from setuptools.command.build_ext import build_ext
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -112,6 +113,14 @@ class CMakeBuild(build_ext):
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
 
+        # Delete source tree from the installation, which the current version
+        # of poetry copies into the wheel, even though we ask it not to.
+        # Currently an open issue:
+        # https://github.com/python-poetry/poetry/issues/5441
+        if "build/lib." in extdir:
+            path_to_remove = os.path.join(extdir, "ska-sdp-func")
+            shutil.rmtree(path_to_remove)
+
         subprocess.check_call(
             ["cmake", ext.sourcedir] + cmake_args, cwd=self.build_temp
         )
@@ -119,24 +128,16 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", "."] + build_args, cwd=self.build_temp
         )
 
-setup(
-    name="ska_sdp_func",
-    version="1.0.1",
-    description="SKA SDP Processing Function Library (Python bindings)",
-    ext_modules=[CMakeExtension("ska_sdp_func")],
-    cmdclass={"build_ext": CMakeBuild},
-    packages=setuptools.find_namespace_packages(where="src"),
-    package_dir={"": "src"},
-    include_package_data=True,
-    classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
-        "Environment :: Console",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: BSD License",
-        "Natural Language :: English",
-        "Programming Language :: Python :: 3"
-    ],
-    author="The SKA SDP Processing Function Library Developers",
-    url="https://gitlab.com/ska-telescope/sdp/ska-sdp-func/",
-    license="BSD"
-)
+
+def build(setup_kwargs):
+    """
+    Entry point to build the extensions.
+    """
+    setup_kwargs.update(
+        {
+            "ext_modules": [CMakeExtension("ska_sdp_func")],
+            "cmdclass": {"build_ext": CMakeBuild},
+            "packages": setuptools.find_namespace_packages(where="src"),
+            "package_dir": {"": "src/"},
+        }
+    )
