@@ -36,4 +36,4 @@ build:
 
 # Add further places where version needs to be propagated to
 post-set-release:
-	@. .make-support; setSetupPyRelease; setCMakeRelease; setConanRelease
+	@. .make-support; setPyProjectRelease; setCMakeRelease; setConanRelease
