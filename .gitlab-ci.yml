@@ -98,9 +98,9 @@ python-lint:
   tags: [ska-default]
   before_script:
     - '[ -f .make/python.mk ] || (echo "File python.mk not included in Makefile"; exit 1;)'
-    - 'make help | grep python-lint'
     - apt-get -y update
     - apt-get -y install make python3 python3-pip
+    - 'make help | grep python-lint'
     - pip3 install poetry
     - poetry config virtualenvs.in-project true
     - poetry config virtualenvs.create false
