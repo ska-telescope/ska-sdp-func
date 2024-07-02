@@ -442,3 +442,6 @@ def test_hogbom_clean():
         )
 
         print("Hogbom CLEAN float precision on GPU: Test passed")
+
+
+test_hogbom_clean()
