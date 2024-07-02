@@ -40,7 +40,7 @@ include:
   - rm /etc/apt/sources.list.d/cuda.list
   - apt-key del 7fa2af80
   - apt-get update && apt-get install -y --no-install-recommends wget
-  - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+  - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
   - dpkg -i cuda-keyring_1.0-1_all.deb
 
 .install-cuda-packages-centos: &cuda_packages_centos
@@ -51,10 +51,12 @@ include:
 
 .build-manylinux-wheels: &build_wheels
   - yum install -y zip
+  - export CMAKE_BUILD_PARALLEL_LEVEL=16
   - for PYBIN in /opt/python/cp*/bin; do
       ln -s $PYBIN/python3 /usr/local/bin/python3;
       python3 --version;
-      make python-build PYTHON_BUILD_TYPE="tag_setup";
+      $PYBIN/pip3 install poetry;
+      python3 -m poetry build --format=wheel;
       rm -f /usr/local/bin/python3;
     done
   - for whl in ./dist/*.whl; do
@@ -63,7 +65,7 @@ include:
 
 cpp-lint:
   stage: lint
-  image: ubuntu:20.04
+  image: ubuntu:22.04
   before_script:
     - *ready_reports
     - apt-get -y update
@@ -90,18 +92,9 @@ cpp-format:
   script:
     - find src tests -iname '*.h' -o -iname '*.cpp' -o -iname '*.c' -o -iname '*.cu' | xargs uncrustify -c uncrustify.cfg -l CPP --check
 
-# Need to override the template as it doesn't appear to work with this repo.
-python-gemnasium-scan:
-  rules:
-    - when: never
-
-python-gemnasium-scan-legacy:
-  rules:
-    - when: never
-
 build-test-debug:
   stage: test
-  image: nvidia/cuda:12.2.0-devel-ubuntu20.04
+  image: nvidia/cuda:12.5.0-devel-ubuntu22.04
   tags: [ska-gpu-a100]
   before_script:
     - *ready_reports
@@ -109,8 +102,7 @@ build-test-debug:
     - apt-get -y update
     - apt-get -y install build-essential cmake lcov python3
     - nvidia-smi
-    - mkdir debug
-    - cd debug/
+    - mkdir debug && cd debug/
     - cmake ../ -DCOVERAGE_REPORT=ON -DCUDA_ARCH=$CUDA_ARCH
   script:
     - make -j
@@ -129,24 +121,16 @@ build-test-debug:
 
 build-test-release:
   stage: test
-  image: nvidia/cuda:12.2.0-devel-ubuntu20.04
+  image: nvidia/cuda:12.5.0-devel-ubuntu22.04
   tags: [ska-gpu-a100]
   before_script:
     - *ready_reports
     - *cuda_key
-    # We need CMake >= 3.21.0 for the --output-junit option on CTest.
     - apt-get -y update
-    - apt-get -y install build-essential gpg wget
-    - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-    - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
-    - apt-get -y update
-    - rm /usr/share/keyrings/kitware-archive-keyring.gpg
-    - apt-get -y install kitware-archive-keyring
-    - apt-get -y install cmake
+    - apt-get -y install build-essential cmake
     - cmake --version
     - nvidia-smi
-    - mkdir release
-    - cd release/
+    - mkdir release && cd release/
     - cmake ../ -DCUDA_ARCH=$CUDA_ARCH
   script:
     - make -j
@@ -159,26 +143,21 @@ build-test-release:
     reports:
       junit: build/reports/unit-tests.xml
 
-# Need to override the template as we have to use setup.py instead of poetry
-# to build the package.
-# This is handled by "python-build-for-development-legacy"
-# instead of the stage below.
-python-build-for-development:
-  rules:
-    - when: never
-
 # Need to override the template stage because we want to run this on a GPU.
 python-test:
   stage: test
-  image: nvidia/cuda:12.2.0-devel-ubuntu20.04
+  image: nvidia/cuda:12.5.0-devel-ubuntu22.04
   tags: [ska-gpu-a100]
   before_script:
     - echo "Running Python test stage"
     - *cuda_key
     - apt-get -y update
     - apt-get -y install build-essential cmake python3 python3-pip
-    - pip3 install numpy scipy pytest pytest-benchmark cupy-cuda12x
-    - CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}" pip3 install .
+    - pip3 install numpy scipy pytest pytest-benchmark poetry cupy-cuda12x
+    - export CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}"
+    - export CMAKE_BUILD_PARALLEL_LEVEL=16
+    - python3 -m poetry build
+    - pip3 install dist/ska_sdp_func*.whl
   script:
     - pytest --junitxml=build/reports/unit-tests.xml tests/
 
@@ -196,9 +175,9 @@ pages:
       - public
 
 # Need to override the template stage because of auditwheel repair.
-# We can't use Poetry either, as setup.py is used to build the library.
 python-publish-to-car:
   stage: publish
+  tags: [ska-default]
   image: quay.io/pypa/manylinux2014_x86_64
   allow_failure: true
   before_script:
@@ -209,13 +188,11 @@ python-publish-to-car:
     - python3.10 -m twine upload --username ${CAR_PYPI_USERNAME} --password ${CAR_PYPI_PASSWORD} --repository-url ${CAR_PYPI_REPOSITORY_URL} wheelhouse/*
   rules:
     - if: '$CI_COMMIT_TAG'
-      exists:
-        - setup.py
 
 # Need to override the template stage because of auditwheel repair.
-# We can't use Poetry either, as setup.py is used to build the library.
 python-publish-to-gitlab:
   stage: publish
+  tags: [ska-default]
   image: quay.io/pypa/manylinux2014_x86_64
   allow_failure: true
   before_script:
@@ -226,5 +203,3 @@ python-publish-to-gitlab:
     - python3.10 -m twine upload --username gitlab-ci-token --password ${CI_JOB_TOKEN} --repository-url https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/pypi wheelhouse/*
   rules:
     - if: '$CI_COMMIT_TAG'
-      exists:
-        - setup.py
