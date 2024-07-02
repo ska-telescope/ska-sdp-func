@@ -417,16 +417,18 @@ def test_ms_clean_cornwell():
     skymodel = skymodel.astype(np.float64)
 
     print("Creating reference data on CPU from ska-sdp-func...")
-    skymodel_reference, clean_comp_reference, residual_reference = (
-        reference_ms_clean_cornwell(
-            dirty_img,
-            psf,
-            cbeam_details,
-            loop_gain,
-            threshold,
-            cycle_limit,
-            scales,
-        )
+    (
+        skymodel_reference,
+        clean_comp_reference,
+        residual_reference,
+    ) = reference_ms_clean_cornwell(
+        dirty_img,
+        psf,
+        cbeam_details,
+        loop_gain,
+        threshold,
+        cycle_limit,
+        scales,
     )
 
     print("Testing msCLEAN from Cornwell on CPU from ska-sdp-func...")

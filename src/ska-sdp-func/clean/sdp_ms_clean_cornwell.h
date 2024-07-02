@@ -10,7 +10,8 @@
 #include "ska-sdp-func/utility/sdp_mem.h"
 
 #ifdef __cplusplus
-extern "C"{
+extern "C"
+{
 #endif
 
 /**
