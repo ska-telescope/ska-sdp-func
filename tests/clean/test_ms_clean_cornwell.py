@@ -453,7 +453,7 @@ def test_ms_clean_cornwell():
     np.testing.assert_array_almost_equal(
         residual, residual_reference, decimal=2
     )
-    print("msCLEAN from Cornwell at double precision on CPU: Test passed")
+    print("msCLEAN from Cornwell double precision on CPU: Test passed")
 
     dirty_img_float = dirty_img.astype(np.float32)
     psf_float = psf.astype(np.float32)
@@ -485,4 +485,4 @@ def test_ms_clean_cornwell():
         residual_float, residual_reference, decimal=2
     )
 
-    print("msCLEAN from Cornwell at float precision on CPU: Test passed")
+    print("msCLEAN from Cornwell float precision on CPU: Test passed")
