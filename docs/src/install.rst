@@ -17,7 +17,7 @@ install the library:
      mkdir build
      cd build
      cmake .. [OPTIONS]
-     make -j8
+     make -j16
      make install
 
 The CMake options are as follows:
@@ -39,20 +39,45 @@ The C unit tests can then be run from the same build directory:
 The Python library
 ==================
 
-From the top-level directory, run the following commands to install
-the Python package:
+Since it is now SKA policy to enforce the use of poetry to build SKA Python
+packages, the processing function library has to be built and installed
+in separate steps. Make sure you have a recent version of poetry installed
+(poetry 1.8.3 works) before attempting to install the Python package.
+
+To control the build, first set the following environment variables:
+
+- Use ``CMAKE_BUILD_PARALLEL_LEVEL`` to specify the maximum number of
+  simultaneous jobs to launch during the build.
+  To utilise all cores of a 16-core CPU when building the package, use:
 
   .. code-block:: bash
 
-     pip3 install .
+     export CMAKE_BUILD_PARALLEL_LEVEL=16
 
-The compiled library will be built as part of this step, so it does not need to
-be installed separately. If extra CMake arguments need to be specified, set the
-environment variable ``CMAKE_ARGS`` first, for example:
+- Use ``CMAKE_ARGS`` to pass down extra arguments to the CMake step,
+  like the CUDA architecture as described above.
+  For example, to build GPU code only for the Ampere A100 architecture, use:
 
   .. code-block:: bash
 
-     CMAKE_ARGS="-DCUDA_ARCH=8.0" pip3 install .
+     export CMAKE_ARGS="-DCUDA_ARCH=8.0"
+
+The Python wheel (which includes the compiled code) is then built using:
+
+  .. code-block:: bash
+
+     poetry build
+
+or if ``poetry`` is not in your path, you may need ``python3 -m poetry build``
+instead.
+
+Once the wheel has been built, it needs to be installed.
+Locate the ``.whl`` file in the ``dist`` subdirectory and install it,
+for example using ``pip``:
+
+  .. code-block:: bash
+
+     pip3 install dist/ska_sdp_func*.whl
 
 The Python unit tests can then be run using `pytest <https://pytest.org>`_,
 from the top-level directory:
