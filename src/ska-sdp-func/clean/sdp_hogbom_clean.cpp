@@ -287,7 +287,9 @@ static void hogbom_clean(
     }
 
     // convert residual to real for output
-    sdp_create_copy_real<T>(clean_comp_complex_ptr, dirty_img_size, clean_model);
+    sdp_create_copy_real<T>(clean_comp_complex_ptr, dirty_img_size,
+            clean_model
+    );
 
     // free memory
     sdp_mem_ref_dec(cbeam_mem);
