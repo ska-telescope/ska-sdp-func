@@ -3,8 +3,11 @@ and gridder functions."""
 
 try:
     import cupy
+
+    print("cupy imported")
 except ImportError:
     cupy = None
+    print("cupy not imported")
 
 import numpy as np
 import scipy.signal as sig
