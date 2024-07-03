@@ -1,6 +1,6 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#define NUM_THREADS 32
+#define NUM_THREADS 256
 
 #include "ska-sdp-func/numeric_functions/sdp_fft_convolution.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
@@ -98,8 +98,6 @@ __global__ void create_cbeam<double, cuDoubleComplex>(
         y0 = cbeam_dim / 2 - 1;
     }
 
-    // double sigma_X = cbeam_details[0];
-    // double sigma_Y = cbeam_details[1];
     double theta = (M_PI / 180) * rotation;
 
     double a =
@@ -129,7 +127,7 @@ __global__ void create_cbeam<double, cuDoubleComplex>(
                 2
                 ) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0, 2))
                 );
-        cbeam[i] = make_cuDoubleComplex(component, 0);
+        cbeam[i] = make_cuDoubleComplex(component, 0.0);
     }
 }
 
@@ -160,8 +158,7 @@ __global__ void create_cbeam<float, cuFloatComplex>(
         x0 = cbeam_dim / 2 - 1;
         y0 = cbeam_dim / 2 - 1;
     }
-    // float sigma_X = cbeam_details[0];
-    // float sigma_Y = cbeam_details[1];
+
     float theta = (M_PI / 180) * rotation;
 
     float a =
@@ -191,7 +188,7 @@ __global__ void create_cbeam<float, cuFloatComplex>(
                 2
                 ) + 2 * b * (x - x0) * (y - y0) + c * pow(y - y0, 2))
                 );
-        cbeam[i] = make_cuFloatComplex(component, 0);
+        cbeam[i] = make_cuFloatComplex(component, 0.0);
     }
 }
 
@@ -270,7 +267,6 @@ __global__ void find_maximum_value(
         I* index_in,
         T* output,
         I* index_out,
-        const int elements_per_thread,
         const int num_elements,
         bool init_idx
 )
@@ -284,67 +280,47 @@ __global__ void find_maximum_value<double, int>(
         int* index_in,
         double* output,
         int* index_out,
-        const int elements_per_thread,
         const int num_elements,
         bool init_idx
 )
 {
-    __shared__ double max_values[NUM_THREADS];
-    __shared__ int max_indices[NUM_THREADS];
+    __shared__ double max_values[256];
+    __shared__ int max_indices[256];
 
-    // thread index
     int64_t tid = threadIdx.x;
-    // index of block of values being worked on by this thread
-    int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
+    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
-    // initialise max_values to zero
+    // initialise max_values to lowest possible value
     max_values[tid] = -__DBL_MAX__;
     max_indices[tid] = -1;
 
-    if (super_idx + tid < num_elements)
+    // Load input elements into shared memory
+    max_values[tid] = input[i];
+    // if index array has already been initialised then load it
+    if (init_idx == true)
     {
-        // load input to shared mem
-        max_values[tid] = input[super_idx + tid];
-        // check if idx was initalised in a previous kernel
-        max_indices[tid] =
-                (init_idx ==
-                true) ? index_in[super_idx + tid] : super_idx + tid;
+        max_indices[tid] = index_in[i];
     }
-
-    #pragma unroll
-    for (int i = 1; i < elements_per_thread; i++)
+    // if it hasn't, initialise it.
+    else
     {
-        // current index being compared to value in shared mem
-        int64_t curr_idx = super_idx + i * blockDim.x + tid;
-        if (curr_idx < num_elements)
-        {
-            double val = max_values[tid];
-            double next_val = input[curr_idx];
-            if (next_val > val)
-            {
-                max_values[tid] = next_val;
-                max_indices[tid] =
-                        (init_idx == true) ? index_in[curr_idx] : curr_idx;
-            }
-        }
+        max_indices[tid] = i;
     }
     __syncthreads();
 
-    #pragma unroll
-    for (int s = blockDim.x / 2; s > 16; s >>= 1)
+    // Perform reduction in shared memory
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
     {
-        if (tid < s)
+        if (tid < stride)
         {
-            if (max_values[tid] < max_values[tid + s])
+            if (max_values[tid] < max_values[tid + stride])
             {
-                max_values[tid] = max_values[tid + s];
-                max_indices[tid] = max_indices[tid + s];
+                max_values[tid] = max_values[tid + stride];
+                max_indices[tid] = max_indices[tid + stride];
             }
         }
         __syncthreads();
     }
-
-    if (tid < 16) {warpReduce<double, int>(max_values, max_indices, tid);}
 
     // Write the final result to output
     if (tid == 0)
@@ -361,67 +337,47 @@ __global__ void find_maximum_value<float, int>(
         int* index_in,
         float* output,
         int* index_out,
-        const int elements_per_thread,
         const int num_elements,
         bool init_idx
 )
 {
-    __shared__ float max_values[NUM_THREADS];
-    __shared__ int max_indices[NUM_THREADS];
+    __shared__ double max_values[256];
+    __shared__ int max_indices[256];
 
-    // thread index
     int64_t tid = threadIdx.x;
-    // index of block of values being worked on by this thread
-    int64_t super_idx = blockIdx.x * elements_per_thread * blockDim.x;
+    int64_t i = blockIdx.x * (blockDim.x) + threadIdx.x;
 
-    // initialise max_values to zero
+    // initialise max_values to lowest possible value
     max_values[tid] = -__FLT_MAX__;
     max_indices[tid] = -1;
 
-    if (super_idx + tid < num_elements)
+    // Load input elements into shared memory
+    max_values[tid] = input[i];
+    // if index array has already been initialised then load it
+    if (init_idx == true)
     {
-        // load input to shared mem
-        max_values[tid] = input[super_idx + tid];
-        // check if idx was initalised in a previous kernel
-        max_indices[tid] =
-                (init_idx ==
-                true) ? index_in[super_idx + tid] : super_idx + tid;
+        max_indices[tid] = index_in[i];
     }
-
-    #pragma unroll
-    for (int i = 1; i < elements_per_thread; i++)
+    // if it hasn't, initialise it.
+    else
     {
-        // current index being compared to value in shared mem
-        int64_t curr_idx = super_idx + i * blockDim.x + tid;
-        if (curr_idx < num_elements)
-        {
-            float val = max_values[tid];
-            float next_val = input[curr_idx];
-            if (next_val > val)
-            {
-                max_values[tid] = next_val;
-                max_indices[tid] =
-                        (init_idx == true) ? index_in[curr_idx] : curr_idx;
-            }
-        }
+        max_indices[tid] = i;
     }
     __syncthreads();
 
-    #pragma unroll
-    for (int s = blockDim.x / 2; s > 16; s >>= 1)
+    // Perform reduction in shared memory
+    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
     {
-        if (tid < s)
+        if (tid < stride)
         {
-            if (max_values[tid] < max_values[tid + s])
+            if (max_values[tid] < max_values[tid + stride])
             {
-                max_values[tid] = max_values[tid + s];
-                max_indices[tid] = max_indices[tid + s];
+                max_values[tid] = max_values[tid + stride];
+                max_indices[tid] = max_indices[tid + stride];
             }
         }
         __syncthreads();
     }
-
-    if (tid < 16) {warpReduce<float, int>(max_values, max_indices, tid);}
 
     // Write the final result to output
     if (tid == 0)
@@ -712,7 +668,7 @@ __global__ void create_copy_complex<double, cuDoubleComplex>(
 
     if (i < size)
     {
-        out[i] = make_cuDoubleComplex(in[i], 0);
+        out[i] = make_cuDoubleComplex(in[i], 0.0);
     }
 }
 
