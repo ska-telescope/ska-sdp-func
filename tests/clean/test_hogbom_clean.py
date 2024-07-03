@@ -201,14 +201,14 @@ def create_cbeam(coeffs, size):
     X = np.arange(0, size, 1)
     Y = np.arange(0, size, 1)
 
-    a = np.cos(theta) ** 2 / (2 * sigma_X**2) + np.sin(theta) ** 2 / (
-        2 * sigma_Y**2
+    a = np.cos(theta) ** 2 / (2 * sigma_X ** 2) + np.sin(theta) ** 2 / (
+        2 * sigma_Y ** 2
     )
-    b = np.sin(2 * theta) / (4 * sigma_X**2) - np.sin(2 * theta) / (
-        4 * sigma_Y**2
+    b = np.sin(2 * theta) / (4 * sigma_X ** 2) - np.sin(2 * theta) / (
+        4 * sigma_Y ** 2
     )
-    c = np.sin(theta) ** 2 / (2 * sigma_X**2) + np.cos(theta) ** 2 / (
-        2 * sigma_Y**2
+    c = np.sin(theta) ** 2 / (2 * sigma_X ** 2) + np.cos(theta) ** 2 / (
+        2 * sigma_Y ** 2
     )
 
     for x in X:
@@ -334,9 +334,16 @@ def test_hogbom_clean():
         skymodel,
     )
 
-    np.testing.assert_array_almost_equal(clean_model, clean_model_reference)
-    np.testing.assert_array_almost_equal(residual, residual_reference)
-    np.testing.assert_array_almost_equal(skymodel, skymodel_reference)
+    np.testing.assert_array_almost_equal(
+        clean_model, clean_model_reference, decimal=6
+    )
+    np.testing.assert_array_almost_equal(
+        residual, residual_reference, decimal=6
+    )
+    np.testing.assert_array_almost_equal(
+        skymodel, skymodel_reference, decimal=6
+    )
+
     print("Hogbom CLEAN double precision on CPU: Test passed")
 
     dirty_img_float = dirty_img.astype(np.float32)
@@ -442,6 +449,3 @@ def test_hogbom_clean():
         )
 
         print("Hogbom CLEAN float precision on GPU: Test passed")
-
-
-test_hogbom_clean()

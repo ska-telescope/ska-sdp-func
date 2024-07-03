@@ -11,8 +11,8 @@ Deconvolution Tutorial, December 1996, T. Cornwell and A.H. Bridle, page 6
 https://www.researchgate.net/publication/2336887_Deconvolution_Tutorial
 
 */
-#define PIXELS_PER_THREAD 10
-#define NUM_THREADS 32
+#define PIXELS_PER_THREAD 1
+#define NUM_THREADS 256
 
 #include "ska-sdp-func/clean/sdp_hogbom_clean.h"
 #include "ska-sdp-func/numeric_functions/sdp_fft_convolution.h"
@@ -197,7 +197,7 @@ static void hogbom_clean(
     sdp_create_cbeam<T>(cbeam_details, cbeam_details[3], cbeam_ptr);
 
     // CLEAN loop executes while the stop conditions (threashold and cycle limit) are not met
-    while (cur_cycle < cycle_limit && stop == 0)
+    while (cur_cycle < cycle_limit)
     {
         // Find index and value of the maximum value in residual
         double highest_value = residual[0];
@@ -218,7 +218,6 @@ static void hogbom_clean(
         // check maximum value against threshold
         if (residual[max_idx_flat] < threshold)
         {
-            stop = 1;
             break;
         }
 
@@ -336,7 +335,7 @@ void sdp_hogbom_clean_gpu(
     const char* kernel_name = 0;
 
     // select correct complex variable to use
-    sdp_MemType complex_data_type = SDP_MEM_COMPLEX_DOUBLE;
+    sdp_MemType complex_data_type = SDP_MEM_VOID;
 
     if (data_type == SDP_MEM_DOUBLE)
     {
@@ -353,7 +352,7 @@ void sdp_hogbom_clean_gpu(
     }
 
     // Create intermediate data arrays
-    // to hold loop gain, threshold flag and threshold value in GPU memory, allowing conversion to bfloat16
+    // to hold loop gain, threshold flag and threshold value in GPU memory
     sdp_Mem* loop_gain_mem = sdp_mem_create(data_type,
             SDP_MEM_GPU,
             1,
@@ -392,7 +391,6 @@ void sdp_hogbom_clean_gpu(
     sdp_mem_clear_contents(cbeam_complex_mem, status);
 
     // for CLEAN components
-    // sdp_Mem* clean_model = sdp_mem_create(data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
     sdp_Mem* clean_comp_complex_mem = sdp_mem_create(complex_data_type,
             SDP_MEM_GPU,
             2,
@@ -410,10 +408,6 @@ void sdp_hogbom_clean_gpu(
             status
     );
     sdp_mem_clear_contents(working_psf_mem, status);
-
-    // for residual image
-    // sdp_Mem* residual = sdp_mem_create(data_type, SDP_MEM_GPU, 2, dirty_img_shape, status);
-    // sdp_mem_clear_contents(residual, status);
 
     // copy variables to GPU
     sdp_mem_copy_contents(residual, dirty_img, 0, 0, dirty_img_size, status);
@@ -482,11 +476,10 @@ void sdp_hogbom_clean_gpu(
     int elements_per_thread = PIXELS_PER_THREAD;
 
     // get size for number of reductions to perform
-    // int64_t reduction_size = (int64_t)dirty_img_size;
-    int64_t reduction_size = (int64_t)(dirty_img_size / elements_per_thread);
+    int64_t reduction_size = (int64_t)dirty_img_size;
 
     // set number of threads and block for the reduction
-    uint64_t num_threads_reduce[] = {NUM_THREADS, 1, 1};
+    uint64_t num_threads_reduce[] = {256, 1, 1};
     uint64_t num_blocks_reduce[] = {
         ((reduction_size + num_threads_reduce[0] - 1) / num_threads_reduce[0]),
         1, 1
@@ -494,7 +487,6 @@ void sdp_hogbom_clean_gpu(
 
     // size and shape for array of maximums used in the reduction
     int64_t max_size = (int64_t)num_blocks_reduce[0];
-    // int64_t max_size = (int64_t)num_blocks_reduce[0];
     int64_t max_shape[] = {max_size};
 
     // to store image maximum value and index
@@ -516,7 +508,7 @@ void sdp_hogbom_clean_gpu(
     bool stop = 0;
 
     // CLEAN loop executes while the stop conditions (threshold and cycle limit) are not met
-    while (cur_cycle < cycle_limit && !stop)
+    while (cur_cycle < cycle_limit)
     {
         // reset maximum values for new loop
         sdp_mem_clear_contents(max_val_mem, status);
@@ -529,7 +521,6 @@ void sdp_hogbom_clean_gpu(
             sdp_mem_gpu_buffer(max_idx_mem, status),
             sdp_mem_gpu_buffer(max_val_mem, status),
             sdp_mem_gpu_buffer(max_idx_mem, status),
-            &elements_per_thread,
             &dirty_img_size,
             &init_idx
         };
@@ -557,7 +548,7 @@ void sdp_hogbom_clean_gpu(
                     num_blocks_reduce, num_threads_reduce, 0, 0, args, status
             );
 
-            args[5] = &max_size;
+            args[4] = &max_size;
 
             num_blocks_reduce[0] =
                     ((num_blocks_reduce[0] + num_threads_reduce[0] - 1) /
@@ -589,8 +580,7 @@ void sdp_hogbom_clean_gpu(
 
             if (*thresh_reached_ptr > 0)
             {
-                // break;
-                stop = true;
+                break;
             }
         }
 
@@ -662,13 +652,10 @@ void sdp_hogbom_clean_gpu(
             sdp_mem_gpu_buffer(threshold_mem, status),
         };
 
-        int64_t multi_element_size =
-                (int64_t)(dirty_img_size / elements_per_thread);
-
         // set number of threads and block for the psf subtraction
-        uint64_t num_threads_subtract_psf[] = {NUM_THREADS, 1, 1};
+        uint64_t num_threads_subtract_psf[] = {256, 1, 1};
         uint64_t num_blocks_subtract_psf[] = {
-            ((multi_element_size + num_threads_subtract_psf[0] - 1) /
+            ((dirty_img_size + num_threads_subtract_psf[0] - 1) /
             num_threads_subtract_psf[0]), 1, 1
         };
 
