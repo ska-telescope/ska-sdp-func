@@ -181,13 +181,7 @@ def create_test_data(dirty_size, psf_size):
 def create_cbeam(coeffs, size):
     # create clean beam
 
-    # size = 512
-    # center = size / 2
-
-    if size % 2 == 1:
-        center = size / 2
-    else:
-        center = size / 2 - 1
+    center = size // 2
 
     cbeam = np.zeros([size, size])
 

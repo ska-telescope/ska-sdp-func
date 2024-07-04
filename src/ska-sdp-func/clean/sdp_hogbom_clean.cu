@@ -83,20 +83,11 @@ __global__ void create_cbeam<double, cuDoubleComplex>(
     // Fit a Gaussian to the main lobe of the PSF based on the parameters passed
 
     double A = 1;
-    double x0 = 0;
-    double y0 = 0;
+    int16_t x0 = 0;
+    int16_t y0 = 0;
 
-    // Check if the number of rows and columns is odd
-    if (cbeam_dim % 2 == 1)
-    {
-        x0 = cbeam_dim / 2;
-        y0 = cbeam_dim / 2;
-    }
-    else
-    {
-        x0 = cbeam_dim / 2 - 1;
-        y0 = cbeam_dim / 2 - 1;
-    }
+    x0 = cbeam_dim / 2;
+    y0 = cbeam_dim / 2;
 
     double theta = (M_PI / 180) * rotation;
 
@@ -144,20 +135,11 @@ __global__ void create_cbeam<float, cuFloatComplex>(
     // Fit a Gaussian to the main lobe of the PSF based on the parameters passed
 
     float A = 1;
-    float x0 = 0;
-    float y0 = 0;
+    int16_t x0 = 0;
+    int16_t y0 = 0;
 
-    // Check if the number of rows and columns is odd
-    if (cbeam_dim % 2 == 1)
-    {
-        x0 = cbeam_dim / 2;
-        y0 = cbeam_dim / 2;
-    }
-    else
-    {
-        x0 = cbeam_dim / 2 - 1;
-        y0 = cbeam_dim / 2 - 1;
-    }
+    x0 = cbeam_dim / 2;
+    y0 = cbeam_dim / 2;
 
     float theta = (M_PI / 180) * rotation;
 
