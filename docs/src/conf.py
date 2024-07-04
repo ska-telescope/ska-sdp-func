@@ -25,7 +25,7 @@ def setup(app):
 # -- Project information -----------------------------------------------------
 
 project = 'SKA SDP Processing Function Library'
-copyright = '2022, The SKA SDP Processing Function Library Developers'
+copyright = '2022-2024, The SKA SDP Processing Function Library Developers'
 author = 'The SKA SDP Processing Function Library Developers'
 version = '1.0.1'
 release = '1.0.1'
@@ -69,9 +69,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #
 html_theme = 'sphinx_rtd_theme'
 
+html_logo = "_static/img/logo.png"
+html_favicon = "_static/img/favicon_mono.ico"
+
 html_context = {
-    "favicon": "img/favicon_mono.ico",
-    "logo": "img/logo.png",
     "theme_logo_only" : True,
     "conf_py_path": "/src/",  # Path in the checkout to the docs root
 }
