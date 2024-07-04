@@ -210,10 +210,7 @@ def create_cbeam(coeffs):
     A = 1
     sigma_X, sigma_Y, theta, size = coeffs
 
-    if size % 2 == 1:
-        center = size / 2
-    else:
-        center = size / 2 - 1
+    center = size // 2
 
     theta = np.radians(theta)  # Convert degrees to radians
 

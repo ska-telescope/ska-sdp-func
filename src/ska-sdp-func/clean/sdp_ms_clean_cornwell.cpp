@@ -38,20 +38,11 @@ inline void sdp_create_cbeam(
     // fit a guassian to the main lobe of the psf
 
     T A = 1;
-    T x0 = 0;
-    T y0 = 0;
+    int16_t x0 = 0;
+    int16_t y0 = 0;
 
-    // If the dimension is even, adjust the center to be in the middle of the array
-    if (cbeam_dim % 2 == 1)
-    {
-        x0 = cbeam_dim / 2;
-        y0 = cbeam_dim / 2;
-    }
-    else
-    {
-        x0 = cbeam_dim / 2 - 1;
-        y0 = cbeam_dim / 2 - 1;
-    }
+    x0 = cbeam_dim / 2;
+    y0 = cbeam_dim / 2;
 
     T sigma_X = cbeam_details[0];
     T sigma_Y = cbeam_details[1];
