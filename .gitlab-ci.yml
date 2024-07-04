@@ -99,7 +99,7 @@ python-lint:
     - apt-get -y update
     - apt-get -y install make python3 python3-pip
     - 'make help | grep python-lint'
-    - pip3 install poetry
+    - pip3 install --upgrade pip poetry
     - poetry config virtualenvs.in-project true
     - poetry config virtualenvs.create false
     - |
@@ -188,7 +188,9 @@ python-test:
     - *cuda_key
     - apt-get -y update
     - apt-get -y install build-essential cmake python3 python3-pip
-    - pip3 install numpy scipy pytest pytest-benchmark cupy-cuda12x
+    - pip3 install --upgrade pip poetry
+    - poetry config virtualenvs.create false
+    - poetry install --no-root --with dev,test --without docs --extras "cuda"
     - export CMAKE_ARGS="-DCUDA_ARCH=${CUDA_ARCH}"
     - export CMAKE_BUILD_PARALLEL_LEVEL=16
     - pip3 install .
