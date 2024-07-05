@@ -195,22 +195,30 @@ __device__ void warpReduce<double, int>(
         int tid
 )
 {
-    double shfl_val;
-    int shfl_idx;
-
-    // unsigned mask = __ballot_sync(0xffffffff, tid < 32); // warpSize is 32
-
-    for (int offset = 16; offset > 0; offset >>= 1)
+    if (max_values[tid] < max_values[tid + 16])
     {
-        shfl_val = __shfl_down_sync(0xFFFFFFFF, max_values[tid], offset);
-        shfl_idx = __shfl_down_sync(0xFFFFFFFF, max_indices[tid], offset);
-        __syncwarp();
-
-        if (shfl_val > max_values[tid])
-        {
-            max_values[tid] = shfl_val;
-            max_indices[tid] = shfl_idx;
-        }
+        max_values[tid] = max_values[tid + 16];
+        max_indices[tid] = max_indices[tid + 16];
+    }
+    if (max_values[tid] < max_values[tid + 8])
+    {
+        max_values[tid] = max_values[tid + 8];
+        max_indices[tid] = max_indices[tid + 8];
+    }
+    if (max_values[tid] < max_values[tid + 4])
+    {
+        max_values[tid] = max_values[tid + 4];
+        max_indices[tid] = max_indices[tid + 4];
+    }
+    if (max_values[tid] < max_values[tid + 2])
+    {
+        max_values[tid] = max_values[tid + 2];
+        max_indices[tid] = max_indices[tid + 2];
+    }
+    if (max_values[tid] < max_values[tid + 1])
+    {
+        max_values[tid] = max_values[tid + 1];
+        max_indices[tid] = max_indices[tid + 1];
     }
 }
 
@@ -222,22 +230,30 @@ __device__ void warpReduce<float, int>(
         int tid
 )
 {
-    float shfl_val;
-    int shfl_idx;
-
-    // unsigned mask = __ballot_sync(0xffffffff, tid < 32); // warpSize is 32
-
-    for (int offset = 16; offset > 0; offset >>= 1)
+    if (max_values[tid] < max_values[tid + 16])
     {
-        shfl_val = __shfl_down_sync(0xFFFFFFFF, max_values[tid], offset);
-        shfl_idx = __shfl_down_sync(0xFFFFFFFF, max_indices[tid], offset);
-        __syncwarp();
-
-        if (shfl_val > max_values[tid])
-        {
-            max_values[tid] = shfl_val;
-            max_indices[tid] = shfl_idx;
-        }
+        max_values[tid] = max_values[tid + 16];
+        max_indices[tid] = max_indices[tid + 16];
+    }
+    if (max_values[tid] < max_values[tid + 8])
+    {
+        max_values[tid] = max_values[tid + 8];
+        max_indices[tid] = max_indices[tid + 8];
+    }
+    if (max_values[tid] < max_values[tid + 4])
+    {
+        max_values[tid] = max_values[tid + 4];
+        max_indices[tid] = max_indices[tid + 4];
+    }
+    if (max_values[tid] < max_values[tid + 2])
+    {
+        max_values[tid] = max_values[tid + 2];
+        max_indices[tid] = max_indices[tid + 2];
+    }
+    if (max_values[tid] < max_values[tid + 1])
+    {
+        max_values[tid] = max_values[tid + 1];
+        max_indices[tid] = max_indices[tid + 1];
     }
 }
 
@@ -291,7 +307,7 @@ __global__ void find_maximum_value<double, int>(
     __syncthreads();
 
     // Perform reduction in shared memory
-    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+    for (unsigned int stride = blockDim.x / 2; stride > 16; stride >>= 1)
     {
         if (tid < stride)
         {
@@ -303,6 +319,8 @@ __global__ void find_maximum_value<double, int>(
         }
         __syncthreads();
     }
+
+    if (tid < 16) warpReduce<double, int>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0)
@@ -323,7 +341,7 @@ __global__ void find_maximum_value<float, int>(
         bool init_idx
 )
 {
-    __shared__ double max_values[256];
+    __shared__ float max_values[256];
     __shared__ int max_indices[256];
 
     int64_t tid = threadIdx.x;
@@ -348,7 +366,7 @@ __global__ void find_maximum_value<float, int>(
     __syncthreads();
 
     // Perform reduction in shared memory
-    for (unsigned int stride = blockDim.x / 2; stride > 0; stride >>= 1)
+    for (unsigned int stride = blockDim.x / 2; stride > 16; stride >>= 1)
     {
         if (tid < stride)
         {
@@ -360,6 +378,8 @@ __global__ void find_maximum_value<float, int>(
         }
         __syncthreads();
     }
+
+    if (tid < 16) warpReduce<float, int>(max_values, max_indices, tid);
 
     // Write the final result to output
     if (tid == 0)
