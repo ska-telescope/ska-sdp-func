@@ -122,7 +122,7 @@ class CMakeBuild(build_ext):
 setup(
     ext_modules=[CMakeExtension("ska_sdp_func")],
     cmdclass={"build_ext": CMakeBuild},
-    packages=setuptools.find_packages(where="src", include=["ska_sdp_func"]),
+    packages=setuptools.find_packages(where="src", include=["ska_sdp_func", "ska_sdp_func/*"]),
     package_dir={"": "src"},
     include_package_data=True,
 )
