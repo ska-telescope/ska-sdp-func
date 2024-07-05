@@ -244,8 +244,7 @@ void degrid_gpu(
         is_dbl = 1;
         sdp_mem_check_and_view(uvws, &uvws_dbl, status);
         sdp_mem_check_and_view(vis, &vis_dbl, status);
-        kernel_name = "sdp_gridder_wtower_degrid"
-                "<double, thrust::complex<double> >";
+        kernel_name = "sdp_gridder_wtower_degrid<double, complex<double> >";
     }
     else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
@@ -253,8 +252,7 @@ void degrid_gpu(
         is_dbl = 0;
         sdp_mem_check_and_view(uvws, &uvws_flt, status);
         sdp_mem_check_and_view(vis, &vis_flt, status);
-        kernel_name = "sdp_gridder_wtower_degrid"
-                "<float, thrust::complex<float> >";
+        kernel_name = "sdp_gridder_wtower_degrid<float, complex<float> >";
     }
     else
     {
@@ -389,7 +387,7 @@ void grid(
             w_off *= plan->w_support;
 
             // Grid visibility.
-            const VIS_TYPE local_vis = vis(i_row, c);
+            const complex<double> local_vis = vis(i_row, c);
             for (int iw = 0; iw < plan->w_support; ++iw)
             {
                 const double kern_w = w_kernel[w_off + iw];
@@ -406,7 +404,10 @@ void grid(
                         const int64_t idx = (
                             iw * subgrid_square + ix_u * subgrid_size + ix_v
                         );
-                        subgrids[idx] += ((VIS_TYPE) kern_wuv * local_vis);
+                        const complex<double> grid_val = (
+                            (complex<double>) kern_wuv * local_vis
+                        );
+                        subgrids[idx] += (VIS_TYPE) grid_val;
                     }
                 }
             }
@@ -466,6 +467,85 @@ void grid_cpu(
     {
         *status = SDP_ERR_DATA_TYPE;
     }
+}
+
+
+// Local function to call the GPU gridding kernel.
+void grid_gpu(
+        const sdp_GridderWtowerUVW* plan,
+        sdp_Mem* subgrids,
+        int w_plane,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double freq0_hz,
+        double dfreq_hz,
+        const sdp_Mem* uvws,
+        const sdp_Mem* start_chs,
+        const sdp_Mem* end_chs,
+        const sdp_Mem* vis,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
+    const char* kernel_name = 0;
+    int is_dbl = 0;
+    const int64_t num_rows = sdp_mem_shape_dim(vis, 0);
+    sdp_MemViewGpu<const double, 2> uvws_dbl;
+    sdp_MemViewGpu<const float, 2> uvws_flt;
+    sdp_MemViewGpu<const complex<double>, 2> vis_dbl;
+    sdp_MemViewGpu<const complex<float>, 2> vis_flt;
+    sdp_MemViewGpu<const int, 1> start_chs_, end_chs_;
+    sdp_mem_check_and_view(start_chs, &start_chs_, status);
+    sdp_mem_check_and_view(end_chs, &end_chs_, status);
+    if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        is_dbl = 1;
+        sdp_mem_check_and_view(uvws, &uvws_dbl, status);
+        sdp_mem_check_and_view(vis, &vis_dbl, status);
+        kernel_name = "sdp_gridder_wtower_grid<double, double>";
+    }
+    else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        is_dbl = 0;
+        sdp_mem_check_and_view(uvws, &uvws_flt, status);
+        sdp_mem_check_and_view(vis, &vis_flt, status);
+        kernel_name = "sdp_gridder_wtower_grid<float, float>";
+    }
+    else
+    {
+        *status = SDP_ERR_DATA_TYPE;
+    }
+    const void* arg[] = {
+        sdp_mem_gpu_buffer(subgrids, status),
+        &w_plane,
+        &subgrid_offset_u,
+        &subgrid_offset_v,
+        &subgrid_offset_w,
+        (const void*) &freq0_hz,
+        (const void*) &dfreq_hz,
+        is_dbl ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
+        (const void*) &start_chs_,
+        (const void*) &end_chs_,
+        sdp_mem_gpu_buffer_const(plan->uv_kernel_gpu, status),
+        sdp_mem_gpu_buffer_const(plan->w_kernel_gpu, status),
+        &plan->subgrid_size,
+        &plan->vr_size,
+        &plan->support,
+        &plan->w_support,
+        &plan->oversampling,
+        &plan->w_oversampling,
+        (const void*) &plan->theta,
+        (const void*) &plan->w_step,
+        is_dbl ? (const void*) &vis_dbl : (const void*) &vis_flt
+    };
+    num_blocks[0] = (num_rows + num_threads[0] - 1) / num_threads[0];
+    sdp_launch_cuda_kernel(kernel_name,
+            num_blocks, num_threads, 0, 0, arg, status
+    );
 }
 
 
@@ -624,12 +704,21 @@ void sdp_gridder_wtower_uvw_degrid(
     }
 
     sdp_Mem* w_pattern_ptr = plan->w_pattern;
-    if (loc == SDP_MEM_GPU && !plan->w_pattern_gpu)
+    if (loc == SDP_MEM_GPU)
     {
-        // Copy required internal arrays to GPU memory.
-        plan->w_kernel_gpu = sdp_mem_create_copy(plan->w_kernel, loc, status);
-        plan->uv_kernel_gpu = sdp_mem_create_copy(plan->uv_kernel, loc, status);
-        plan->w_pattern_gpu = sdp_mem_create_copy(plan->w_pattern, loc, status);
+        // Copy internal arrays to GPU memory as required.
+        if (!plan->w_pattern_gpu)
+        {
+            plan->w_kernel_gpu = sdp_mem_create_copy(
+                    plan->w_kernel, loc, status
+            );
+            plan->uv_kernel_gpu = sdp_mem_create_copy(
+                    plan->uv_kernel, loc, status
+            );
+            plan->w_pattern_gpu = sdp_mem_create_copy(
+                    plan->w_pattern, loc, status
+            );
+        }
         w_pattern_ptr = plan->w_pattern_gpu;
     }
 
@@ -864,6 +953,25 @@ void sdp_gridder_wtower_uvw_grid(
         return;
     }
 
+    sdp_Mem* w_pattern_ptr = plan->w_pattern;
+    if (loc == SDP_MEM_GPU)
+    {
+        // Copy internal arrays to GPU memory as required.
+        if (!plan->w_pattern_gpu)
+        {
+            plan->w_kernel_gpu = sdp_mem_create_copy(
+                    plan->w_kernel, loc, status
+            );
+            plan->uv_kernel_gpu = sdp_mem_create_copy(
+                    plan->uv_kernel, loc, status
+            );
+            plan->w_pattern_gpu = sdp_mem_create_copy(
+                    plan->w_pattern, loc, status
+            );
+        }
+        w_pattern_ptr = plan->w_pattern_gpu;
+    }
+
     // Determine w-range.
     double c_min[] = {0, 0, 0}, c_max[] = {0, 0, 0};
     sdp_gridder_uvw_bounds_all(
@@ -884,7 +992,7 @@ void sdp_gridder_wtower_uvw_grid(
         plan->w_support, plan->subgrid_size, plan->subgrid_size
     };
     sdp_Mem* w_subgrid_image = sdp_mem_create(
-            sdp_mem_type(vis), loc, 2, subgrid_shape, status
+            SDP_MEM_COMPLEX_DOUBLE, loc, 2, subgrid_shape, status
     );
     sdp_Mem* subgrids = sdp_mem_create(
             sdp_mem_type(vis), loc, 3, subgrids_shape, status
@@ -907,7 +1015,7 @@ void sdp_gridder_wtower_uvw_grid(
             // Accumulate zero-th subgrid, shift, clear upper subgrid.
             // w_subgrid_image /= plan->w_pattern
             sdp_gridder_scale_inv_array(
-                    w_subgrid_image, w_subgrid_image, plan->w_pattern, 1, status
+                    w_subgrid_image, w_subgrid_image, w_pattern_ptr, 1, status
             );
 
             // w_subgrid_image += ifft(subgrids[0])
@@ -950,9 +1058,10 @@ void sdp_gridder_wtower_uvw_grid(
         }
         else if (loc == SDP_MEM_GPU)
         {
-            *status = SDP_ERR_MEM_LOCATION;
-            SDP_LOG_CRITICAL("w-towers GPU gridder not yet implemented");
-            break;
+            grid_gpu(plan, subgrids, w_plane, subgrid_offset_u,
+                    subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
+                    uvws, start_chs, end_chs, vis, status
+            );
         }
     }
 
@@ -961,7 +1070,7 @@ void sdp_gridder_wtower_uvw_grid(
     {
         // Perform w_subgrid_image /= plan->w_pattern
         sdp_gridder_scale_inv_array(
-                w_subgrid_image, w_subgrid_image, plan->w_pattern, 1, status
+                w_subgrid_image, w_subgrid_image, w_pattern_ptr, 1, status
         );
 
         // Perform w_subgrid_image += ifft(subgrids[i])
@@ -991,7 +1100,7 @@ void sdp_gridder_wtower_uvw_grid(
     // because the iFFT output is already scaled by this.
     int exponent = last_w_plane + plan->w_support / 2 - 1;
     sdp_gridder_accumulate_scaled_arrays(
-            subgrid_image, w_subgrid_image, plan->w_pattern, exponent, status
+            subgrid_image, w_subgrid_image, w_pattern_ptr, exponent, status
     );
 
     sdp_mem_free(w_subgrid_image);

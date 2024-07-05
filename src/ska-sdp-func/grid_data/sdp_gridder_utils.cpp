@@ -23,30 +23,40 @@ void accum_scale_array(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        int exponent
+        int exponent,
+        sdp_Error* status
 )
 {
-    const int64_t num_elements = sdp_mem_num_elements(out);
-    OUT_TYPE* out_ = (OUT_TYPE*) sdp_mem_data(out);
-    const IN1_TYPE* in1_ = (const IN1_TYPE*) sdp_mem_data_const(in1);
-    const IN2_TYPE* in2_ = in2 ? (const IN2_TYPE*) sdp_mem_data_const(in2) : 0;
-    if (in2_)
+    sdp_MemViewCpu<OUT_TYPE, 2> out_;
+    sdp_MemViewCpu<const IN1_TYPE, 2> in1_;
+    sdp_mem_check_and_view(out, &out_, status);
+    sdp_mem_check_and_view(in1, &in1_, status);
+    const int64_t shape0 = out_.shape[0];
+    const int64_t shape1 = out_.shape[1];
+    if (in2)
     {
+        sdp_MemViewCpu<const IN2_TYPE, 2> in2_;
+        sdp_mem_check_and_view(in2, &in2_, status);
         if (exponent == 1)
         {
-            for (int64_t i = 0; i < num_elements; ++i)
-                out_[i] += (IN2_TYPE) in1_[i] * in2_[i];
+            for (int64_t i = 0; i < shape0; ++i)
+                for (int64_t j = 0; j < shape1; ++j)
+                    out_(i, j) += (IN2_TYPE) in1_(i, j) * in2_(i, j);
         }
         else
         {
-            for (int64_t i = 0; i < num_elements; ++i)
-                out_[i] += (IN2_TYPE) in1_[i] * pow(in2_[i], exponent);
+            for (int64_t i = 0; i < shape0; ++i)
+                for (int64_t j = 0; j < shape1; ++j)
+                    out_(i, j) += (IN2_TYPE) in1_(i, j) * pow(
+                            in2_(i, j), exponent
+                    );
         }
     }
     else
     {
-        for (int64_t i = 0; i < num_elements; ++i)
-            out_[i] += (OUT_TYPE) in1_[i];
+        for (int64_t i = 0; i < shape0; ++i)
+            for (int64_t j = 0; j < shape1; ++j)
+                out_(i, j) += in1_(i, j);
     }
 }
 
@@ -103,22 +113,29 @@ void scale_inv_array(
         sdp_Mem* out,
         const sdp_Mem* in1,
         const sdp_Mem* in2,
-        int exponent
+        int exponent,
+        sdp_Error* status
 )
 {
-    const int64_t num_elements = sdp_mem_num_elements(out);
-    OUT_TYPE* out_ = (OUT_TYPE*) sdp_mem_data(out);
-    const IN1_TYPE* in1_ = (const IN1_TYPE*) sdp_mem_data_const(in1);
-    const IN2_TYPE* in2_ = (const IN2_TYPE*) sdp_mem_data_const(in2);
+    sdp_MemViewCpu<OUT_TYPE, 2> out_;
+    sdp_MemViewCpu<const IN1_TYPE, 2> in1_;
+    sdp_MemViewCpu<const IN2_TYPE, 2> in2_;
+    sdp_mem_check_and_view(out, &out_, status);
+    sdp_mem_check_and_view(in1, &in1_, status);
+    sdp_mem_check_and_view(in2, &in2_, status);
+    const int64_t shape0 = out_.shape[0];
+    const int64_t shape1 = out_.shape[1];
     if (exponent == 1)
     {
-        for (int64_t i = 0; i < num_elements; ++i)
-            out_[i] = (IN2_TYPE) in1_[i] / in2_[i];
+        for (int64_t i = 0; i < shape0; ++i)
+            for (int64_t j = 0; j < shape1; ++j)
+                out_(i, j) = (IN2_TYPE) in1_(i, j) / in2_(i, j);
     }
     else
     {
-        for (int64_t i = 0; i < num_elements; ++i)
-            out_[i] = (IN2_TYPE) in1_[i] / pow(in2_[i], exponent);
+        for (int64_t i = 0; i < shape0; ++i)
+            for (int64_t j = 0; j < shape1; ++j)
+                out_(i, j) = (IN2_TYPE) in1_(i, j) / pow(in2_(i, j), exponent);
     }
 }
 
@@ -174,40 +191,164 @@ void sdp_gridder_accumulate_scaled_arrays(
 )
 {
     if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(out);
+    if (sdp_mem_location(in1) != loc)
+    {
+        SDP_LOG_ERROR("Arrays must be co-located");
+        *status = SDP_ERR_MEM_LOCATION;
+        return;
+    }
     sdp_MemType type_out = sdp_mem_type(out);
     sdp_MemType type1 = sdp_mem_type(in1);
     sdp_MemType type2 = in2 ? sdp_mem_type(in2) : SDP_MEM_COMPLEX_DOUBLE;
-    if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
-            type1 == SDP_MEM_DOUBLE && type2 == SDP_MEM_COMPLEX_DOUBLE)
+    if (loc == SDP_MEM_CPU)
     {
-        accum_scale_array<complex<double>, double, complex<double> >(
-                out, in1, in2, exponent
-        );
+        if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
+                type1 == SDP_MEM_COMPLEX_DOUBLE &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            accum_scale_array<
+                    complex<double>, complex<double>, complex<double>
+            >(out, in1, in2, exponent, status);
+        }
+        else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
+                type1 == SDP_MEM_COMPLEX_FLOAT &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            accum_scale_array<
+                    complex<float>, complex<float>, complex<double>
+            >(out, in1, in2, exponent, status);
+        }
+        else if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
+                type1 == SDP_MEM_COMPLEX_FLOAT &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            accum_scale_array<
+                    complex<double>, complex<float>, complex<double>
+            >(out, in1, in2, exponent, status);
+        }
+        else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
+                type1 == SDP_MEM_COMPLEX_DOUBLE &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            accum_scale_array<
+                    complex<float>, complex<double>, complex<double>
+            >(out, in1, in2, exponent, status);
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
     }
-    else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
-            type1 == SDP_MEM_FLOAT && type2 == SDP_MEM_COMPLEX_DOUBLE)
+    else if (loc == SDP_MEM_GPU)
     {
-        accum_scale_array<complex<float>, float, complex<double> >(
-                out, in1, in2, exponent
-        );
-    }
-    else if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
-            type1 == SDP_MEM_COMPLEX_DOUBLE && type2 == SDP_MEM_COMPLEX_DOUBLE)
-    {
-        accum_scale_array<complex<double>, complex<double>, complex<double> >(
-                out, in1, in2, exponent
-        );
-    }
-    else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
-            type1 == SDP_MEM_COMPLEX_FLOAT && type2 == SDP_MEM_COMPLEX_DOUBLE)
-    {
-        accum_scale_array<complex<float>, complex<float>, complex<double> >(
-                out, in1, in2, exponent
-        );
-    }
-    else
-    {
-        *status = SDP_ERR_DATA_TYPE;
+        uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
+        const uint64_t shape0 = (uint64_t) sdp_mem_shape_dim(out, 0);
+        const uint64_t shape1 = (uint64_t) sdp_mem_shape_dim(out, 1);
+        num_blocks[0] = (shape0 + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (shape1 + num_threads[1] - 1) / num_threads[1];
+        const int use_in2 = in2 ? 1 : 0;
+        if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
+                type1 == SDP_MEM_COMPLEX_DOUBLE &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            sdp_MemViewGpu<complex<double>, 2> out_;
+            sdp_MemViewGpu<const complex<double>, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            if (in2) sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_accum_scale_array<"
+                    "complex<double>, complex<double>, complex<double> "
+                    ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent,
+                (const void*) &use_in2
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
+        }
+        else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
+                type1 == SDP_MEM_COMPLEX_FLOAT &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            sdp_MemViewGpu<complex<float>, 2> out_;
+            sdp_MemViewGpu<const complex<float>, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            if (in2) sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_accum_scale_array<"
+                    "complex<float>, complex<float>, complex<double> "
+                    ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent,
+                (const void*) &use_in2
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
+        }
+        else if (type_out == SDP_MEM_COMPLEX_DOUBLE &&
+                type1 == SDP_MEM_COMPLEX_FLOAT &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            sdp_MemViewGpu<complex<double>, 2> out_;
+            sdp_MemViewGpu<const complex<float>, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            if (in2) sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_accum_scale_array<"
+                    "complex<double>, complex<float>, complex<double> "
+                    ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent,
+                (const void*) &use_in2
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
+        }
+        else if (type_out == SDP_MEM_COMPLEX_FLOAT &&
+                type1 == SDP_MEM_COMPLEX_DOUBLE &&
+                type2 == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            sdp_MemViewGpu<complex<float>, 2> out_;
+            sdp_MemViewGpu<const complex<double>, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            if (in2) sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_accum_scale_array<"
+                    "complex<float>, complex<double>, complex<double> "
+                    ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent,
+                (const void*) &use_in2
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            return;
+        }
     }
 }
 
@@ -302,6 +443,7 @@ void sdp_gridder_scale_inv_array(
     const sdp_MemLocation loc = sdp_mem_location(out);
     if (sdp_mem_location(in1) != loc || sdp_mem_location(in2) != loc)
     {
+        SDP_LOG_ERROR("Arrays must be co-located");
         *status = SDP_ERR_MEM_LOCATION;
         return;
     }
@@ -312,7 +454,7 @@ void sdp_gridder_scale_inv_array(
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
             scale_inv_array<complex<double>, double, complex<double> >(
-                    out, in1, in2, exponent
+                    out, in1, in2, exponent, status
             );
         }
         else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
@@ -320,7 +462,7 @@ void sdp_gridder_scale_inv_array(
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
             scale_inv_array<complex<float>, float, complex<double> >(
-                    out, in1, in2, exponent
+                    out, in1, in2, exponent, status
             );
         }
         else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
@@ -328,7 +470,7 @@ void sdp_gridder_scale_inv_array(
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
             scale_inv_array<complex<double>, complex<double>, complex<double> >(
-                    out, in1, in2, exponent
+                    out, in1, in2, exponent, status
             );
         }
         else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
@@ -336,7 +478,7 @@ void sdp_gridder_scale_inv_array(
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
             scale_inv_array<complex<float>, complex<float>, complex<double> >(
-                    out, in1, in2, exponent
+                    out, in1, in2, exponent, status
             );
         }
         else
@@ -344,62 +486,110 @@ void sdp_gridder_scale_inv_array(
             *status = SDP_ERR_DATA_TYPE;
         }
     }
-    else
+    else if (loc == SDP_MEM_GPU)
     {
-        uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
-        const char* kernel_name = 0;
-        const int64_t num_elements = sdp_mem_num_elements(out);
+        uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
+        const uint64_t shape0 = (uint64_t) sdp_mem_shape_dim(out, 0);
+        const uint64_t shape1 = (uint64_t) sdp_mem_shape_dim(out, 1);
+        num_blocks[0] = (shape0 + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (shape1 + num_threads[1] - 1) / num_threads[1];
         if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(in1) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "sdp_gridder_scale_inv_array<"
-                    "thrust::complex<double>, double, "
-                    "thrust::complex<double> "
+            sdp_MemViewGpu<complex<double>, 2> out_;
+            sdp_MemViewGpu<const double, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_scale_inv_array<"
+                    "complex<double>, double, complex<double> "
                     ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
         }
         else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
                 sdp_mem_type(in1) == SDP_MEM_FLOAT &&
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "sdp_gridder_scale_inv_array<"
-                    "thrust::complex<float>, float, thrust::complex<double> "
+            sdp_MemViewGpu<complex<float>, 2> out_;
+            sdp_MemViewGpu<const float, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_scale_inv_array<"
+                    "complex<float>, float, complex<double> "
                     ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
         }
         else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(in1) == SDP_MEM_COMPLEX_DOUBLE &&
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "sdp_gridder_scale_inv_array<"
-                    "thrust::complex<double>, thrust::complex<double>, "
-                    "thrust::complex<double> "
+            sdp_MemViewGpu<complex<double>, 2> out_;
+            sdp_MemViewGpu<const complex<double>, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_scale_inv_array<"
+                    "complex<double>, complex<double>, complex<double> "
                     ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
         }
         else if (sdp_mem_type(out) == SDP_MEM_COMPLEX_FLOAT &&
                 sdp_mem_type(in1) == SDP_MEM_COMPLEX_FLOAT &&
                 sdp_mem_type(in2) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "sdp_gridder_scale_inv_array<"
-                    "thrust::complex<float>, thrust::complex<float>, "
-                    "thrust::complex<double> "
+            sdp_MemViewGpu<complex<float>, 2> out_;
+            sdp_MemViewGpu<const complex<float>, 2> in1_;
+            sdp_MemViewGpu<const complex<double>, 2> in2_;
+            sdp_mem_check_and_view(out, &out_, status);
+            sdp_mem_check_and_view(in1, &in1_, status);
+            sdp_mem_check_and_view(in2, &in2_, status);
+            const char* kernel_name = "sdp_gridder_scale_inv_array<"
+                    "complex<float>, complex<float>, complex<double> "
                     ">";
+            const void* arg[] = {
+                (const void*) &out_,
+                (const void*) &in1_,
+                (const void*) &in2_,
+                (const void*) &exponent
+            };
+            sdp_launch_cuda_kernel(kernel_name,
+                    num_blocks, num_threads, 0, 0, arg, status
+            );
         }
         else
         {
             *status = SDP_ERR_DATA_TYPE;
             return;
         }
-        const void* arg[] = {
-            &num_elements,
-            sdp_mem_gpu_buffer(out, status),
-            sdp_mem_gpu_buffer_const(in1, status),
-            sdp_mem_gpu_buffer_const(in2, status),
-            &exponent
-        };
-        num_blocks[0] = (num_elements + num_threads[0] - 1) / num_threads[0];
-        sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, arg, status
-        );
     }
 }
 

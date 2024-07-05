@@ -1064,13 +1064,15 @@ def test_gridder_wtower_uvw_gpu():
     dfreq_hz = 1e3
 
     # Create an image for input to degridding.
+    float_type = numpy.float64
+    complex_type = numpy.complex128
     numpy.random.seed(123)
-    image = numpy.zeros((subgrid_size, subgrid_size), dtype=numpy.float32)
+    image = numpy.zeros((subgrid_size, subgrid_size), dtype=float_type)
     image[subgrid_size // 4, subgrid_size // 4] = 1.0
     image[5 * subgrid_size // 6, 2 * subgrid_size // 6] = 0.5
-    num_uvw = 30000
+    num_uvw = 3000
     uvw = numpy.random.random_sample((num_uvw, 3)) * 100
-    uvw = uvw.astype(numpy.float32)
+    uvw = uvw.astype(float_type)
     start_chs = numpy.zeros((num_uvw), dtype=numpy.int32)
     end_chs = numpy.ones((num_uvw), dtype=numpy.int32) * (ch_count)
 
@@ -1089,7 +1091,7 @@ def test_gridder_wtower_uvw_gpu():
     )
 
     # Call the degridder with data in CPU memory.
-    vis0 = numpy.zeros((num_uvw, ch_count), dtype=numpy.complex64)
+    vis0 = numpy.zeros((num_uvw, ch_count), dtype=complex_type)
     t0 = time.time()
     gridder.degrid(
         image, idu, idv, idw, freq0_hz, dfreq_hz, uvw, start_chs, end_chs, vis0
@@ -1097,15 +1099,33 @@ def test_gridder_wtower_uvw_gpu():
     t1_r = time.time() - t0
     print(f"PFL CPU degrid took {t1_r:.4f} s.")
 
+    # Call the gridder with data in CPU memory.
+    img0 = numpy.zeros((subgrid_size, subgrid_size), dtype=complex_type)
+    t0 = time.time()
+    gridder.grid(
+        vis0,
+        uvw,
+        start_chs,
+        end_chs,
+        freq0_hz,
+        dfreq_hz,
+        img0,
+        idu,
+        idv,
+        idw,
+    )
+    t1_r = time.time() - t0
+    print(f"PFL CPU grid took {t1_r:.4f} s.")
+
     if cupy:
         # Copy data to GPU memory.
         image_gpu = cupy.asarray(image)
         uvw_gpu = cupy.asarray(uvw)
         start_chs_gpu = cupy.asarray(start_chs)
         end_chs_gpu = cupy.asarray(end_chs)
-        vis_gpu = cupy.zeros((num_uvw, ch_count), dtype=cupy.complex64)
 
         # Call the degridder with data in GPU memory.
+        vis_gpu = cupy.zeros((num_uvw, ch_count), dtype=complex_type)
         t0 = time.time()
         gridder.degrid(
             image_gpu,
@@ -1124,7 +1144,29 @@ def test_gridder_wtower_uvw_gpu():
 
         # Check results from both are the same.
         vis = cupy.asnumpy(vis_gpu)
-        numpy.testing.assert_allclose(vis, vis0, atol=1e-6, rtol=1e-5)
+        numpy.testing.assert_allclose(vis, vis0, atol=1e-7)
+
+        # Call the gridder with data in GPU memory.
+        img_gpu = cupy.zeros((subgrid_size, subgrid_size), dtype=complex_type)
+        t0 = time.time()
+        gridder.grid(
+            vis_gpu,
+            uvw_gpu,
+            start_chs_gpu,
+            end_chs_gpu,
+            freq0_hz,
+            dfreq_hz,
+            img_gpu,
+            idu,
+            idv,
+            idw,
+        )
+        t1 = time.time() - t0
+        print(f"PFL GPU grid took {t1:.4f} s.")
+
+        # Check results from both are the same.
+        img = cupy.asnumpy(img_gpu)
+        numpy.testing.assert_allclose(img, img0, atol=1e-7)
 
 
 def test_gridder_wtower_uvw_degrid_correct():
