@@ -17,7 +17,7 @@ install the library:
      mkdir build
      cd build
      cmake .. [OPTIONS]
-     make -j8
+     make -j16
      make install
 
 The CMake options are as follows:
@@ -39,6 +39,24 @@ The C unit tests can then be run from the same build directory:
 The Python library
 ==================
 
+To control the build, the following environment variables can be used.
+
+- Use ``CMAKE_BUILD_PARALLEL_LEVEL`` to specify the maximum number of
+  simultaneous jobs to launch during the build.
+  To utilise all cores of a 16-core CPU when building the package, use:
+
+  .. code-block:: bash
+
+     export CMAKE_BUILD_PARALLEL_LEVEL=16
+
+- Use ``CMAKE_ARGS`` to pass down extra arguments to the CMake step,
+  like the CUDA architecture as described above.
+  For example, to build GPU code only for the Ampere A100 architecture, use:
+
+  .. code-block:: bash
+
+     export CMAKE_ARGS="-DCUDA_ARCH=8.0"
+
 From the top-level directory, run the following commands to install
 the Python package:
 
@@ -47,12 +65,7 @@ the Python package:
      pip3 install .
 
 The compiled library will be built as part of this step, so it does not need to
-be installed separately. If extra CMake arguments need to be specified, set the
-environment variable ``CMAKE_ARGS`` first, for example:
-
-  .. code-block:: bash
-
-     CMAKE_ARGS="-DCUDA_ARCH=8.0" pip3 install .
+be installed separately.
 
 The Python unit tests can then be run using `pytest <https://pytest.org>`_,
 from the top-level directory:
