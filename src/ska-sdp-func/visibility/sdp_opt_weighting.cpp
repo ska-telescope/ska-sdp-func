@@ -81,17 +81,13 @@ static void sdp_tile_count_simple(
                         (grid_v + support < grid_size) &&
                         (grid_v - support >= 0))
                 {
-                    int tile_u_min = 0; int tile_u_max = 0; int tile_v_min = 0; int tile_v_max = 0;
-                    const int rel_u = grid_u - top_left_u;
-                    const int rel_v = grid_v - top_left_v;
-                    const float u1 = (float)(rel_u - support) * inv_tile_size_u;
-                    const float u2 = (float)(rel_u + support + 1) *
-                            inv_tile_size_u;
-                    const float v1 = (float)(rel_v - support) * inv_tile_size_v;
-                    const float v2 = (float)(rel_v + support + 1) *
-                            inv_tile_size_v;
-                    tile_u_min = (int)(floor(u1)); tile_u_max = (int)(ceil(u2));
-                    tile_v_min = (int)(floor(v1)); tile_v_max = (int)(ceil(v2));
+                    int tile_u_min = 0, tile_u_max = 0, tile_v_min = 0, tile_v_max = 0;
+                    TILE_RANGES(support,
+                            tile_v_min,
+                            tile_u_max,
+                            tile_v_min,
+                            tile_v_max
+                    );
 
                     for (int pv = tile_v_min; pv < tile_v_max; pv++)
                     {
