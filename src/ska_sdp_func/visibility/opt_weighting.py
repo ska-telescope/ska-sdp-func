@@ -131,8 +131,8 @@ def tile_and_prefix_sum(
     num_points_in_tiles,
     num_skipped,
 ):
-    """ Function that separates the grid into tiles
-    and performs a prefix sum """
+    """Function that separates the grid into tiles
+    and performs a prefix sum"""
     Lib.sdp_tile_and_prefix_sum(
         Mem(uvw),
         Mem(freqs),
@@ -166,8 +166,8 @@ def optimized_weighting(
     num_points_in_tiles,
     output_weights,
 ):
-    """ Optimised briggs weighting algorithm
-    that performs weighting after a bucket sort """
+    """Optimised briggs weighting algorithm
+    that performs weighting after a bucket sort"""
     Lib.sdp_optimized_weighting(
         Mem(uvw),
         Mem(freqs),
@@ -208,7 +208,7 @@ def bucket_sort(
     num_points_in_tiles,
     output_weights,
 ):
-    """ Performs a bucket sort per tile in the grid,
+    """Performs a bucket sort per tile in the grid,
     duplicates visibilities in overlapping regions"""
     Lib.sdp_bucket_sort(
         Mem(uvw),
@@ -247,8 +247,8 @@ def tiled_indexing(
     sorted_vis_index,
     tile_offsets,
 ):
-    """ Performs a bucket sort pert tile on the grid,
-    doesn't duplicate visibilities themselves only it's indices """
+    """Performs a bucket sort pert tile on the grid,
+    doesn't duplicate visibilities themselves only it's indices"""
     Lib.sdp_tiled_indexing(
         Mem(uvw),
         Mem(freqs),
@@ -259,9 +259,9 @@ def tiled_indexing(
         cell_size_rad,
         support,
         ctypes.byref(num_visibilties),
+        Mem(sorted_tile),
         Mem(sorted_uu),
         Mem(sorted_vv),
-        Mem(sorted_tile),
         Mem(sorted_vis_index),
         Mem(tile_offsets),
     )
@@ -284,8 +284,8 @@ def optimised_indexed_weighting(
     num_points_in_tiles,
     output_weights,
 ):
-    """ Utilises the indexed visibiliies/weights
-    to better optimise performance for briggs weighting """
+    """Utilises the indexed visibiliies/weights
+    to better optimise performance for briggs weighting"""
     Lib.sdp_optimised_indexed_weighting(
         Mem(uvw),
         Mem(vis),
