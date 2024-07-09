@@ -926,7 +926,7 @@ void sdp_optimized_weighting(
     {
         // Define hyperparameters for weighting
 
-        int n_threads  = tile_size_u * tile_size_v;
+        const uint64_t n_threads  = tile_size_u * tile_size_v;
         const uint64_t num_threads_briggs[] = {n_threads, 1, 1};
         const uint64_t num_blocks_briggs[] = {(uint64_t)num_tiles - 1, 1, 1};
 
@@ -1079,7 +1079,7 @@ void sdp_optimised_indexed_weighting(
     {
         // Define hyperparameters for weighting
 
-        int n_threads  = tile_size_u * tile_size_v;
+        const uint64_t n_threads  = tile_size_u * tile_size_v;
         const uint64_t num_threads_briggs[] = {n_threads, 1, 1};
         const uint64_t num_blocks_briggs[] = {(uint64_t)num_tiles - 1, 1, 1};
 
