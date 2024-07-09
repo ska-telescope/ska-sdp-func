@@ -81,7 +81,7 @@ static void sdp_tile_count_simple(
                         (grid_v + support < grid_size) &&
                         (grid_v - support >= 0))
                 {
-                    int tile_u_min = 0, tile_u_max = 0, tile_v_min = 0, tile_v_max = 0;
+                    int tile_u_min,tile_u_max,tile_v_min,tile_v_max;
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
@@ -182,7 +182,7 @@ static void sdp_bucket_sort_simple(
                         (grid_v + support < grid_size) &&
                         (grid_v - support) >= 0)
                 {
-                    int tile_u_min = 0, tile_u_max = 0, tile_v_min = 0, tile_v_max = 0;
+                    int tile_u_min,tile_u_max,tile_v_min,tile_v_max;
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
@@ -268,7 +268,7 @@ static void tiled_indexing(
                         (grid_v + support < grid_size) &&
                         (grid_v - support) >= 0)
                 {
-                    int tile_u_min = 0, tile_u_max = 0, tile_v_min = 0, tile_v_max = 0;
+                    int tile_u_min,tile_u_max,tile_v_min,tile_v_max;
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
