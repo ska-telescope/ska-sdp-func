@@ -786,9 +786,6 @@ void sdp_tiled_indexing(
         };
 
         // Define hyperparameters for weighting
-
-        printf("Number of tiles = %d \n", num_tiles);
-
         const char* kernel_name2 = 0;
         if (uvw_type == SDP_MEM_DOUBLE &&
                 weight_type == SDP_MEM_DOUBLE &&
@@ -1037,6 +1034,7 @@ void sdp_optimised_indexed_weighting(
     int64_t num_tiles = num_tiles_u * num_tiles_v;
     int64_t top_left_u = grid_centre - ctile_u * tile_size_u - tile_size_u / 2;
     int64_t top_left_v = grid_centre - ctile_v * tile_size_v - tile_size_v / 2;
+    int num_vis = *num_visibilites;
 
     // Check parameters
     sdp_data_model_get_vis_metadata(
@@ -1122,6 +1120,7 @@ void sdp_optimised_indexed_weighting(
             (const void*)&num_tiles,
             (const void*)&support,
             (const void*)&robust_param,
+            (const void*)&num_vis,
             (const void*)&num_channels,
             (const void*)&tile_size_u,
             (const void*)&tile_size_v,

@@ -439,6 +439,7 @@ __global__ void sdp_opt_briggs_index_gpu(
         const int num_tiles,
         const int support,
         const int robust_param,
+        const int num_vis,
         const int64_t num_channels,
         const int64_t tile_size_u,
         const int64_t tile_size_v,
@@ -530,7 +531,7 @@ __global__ void sdp_opt_briggs_index_gpu(
     __syncthreads();
 
     const size_t i_thread = threadIdx.x;
-
+    if (i_thread >= num_vis) return;
     const double grid_scale = grid_size * cell_size_rad;
     const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
     int i_vis = sorted_index[i_thread];

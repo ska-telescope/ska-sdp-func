@@ -1,7 +1,7 @@
 """Test the optimised briggs weighting function"""
 
 import ctypes
-import time
+from math import floor
 
 import cupy
 import numpy as np
@@ -15,7 +15,101 @@ from ska_sdp_func.visibility.opt_weighting import (
 )
 
 
+def reference_briggs_weights(
+    uvw,
+    freq_hz,
+    max_abs_uv,
+    weights_grid_uv,
+    grid_size,
+    robust_param,
+    input_weight,
+    output_weight,
+    num_channels,
+    num_baselines,
+    num_pol,
+    num_times,
+):
+    """
+    Reference briggs weighting function implemented in python and
+    checked against DDFacet/WSClean
+    """
+    sum_weight = 0
+    sum_weight2 = 0
+    c_0 = 299792458.0
+
+    # Generate grid of weights
+    for i_time in range(num_times):
+        for i_baseline in range(num_baselines):
+            for i_channel in range(num_channels):
+                grid_u = uvw[i_time, i_baseline, 0] * freq_hz[i_channel] / c_0
+                grid_v = uvw[i_time, i_baseline, 1] * freq_hz[i_channel] / c_0
+                idx_u = int(
+                    floor(grid_u / max_abs_uv * grid_size / 2) + grid_size / 2
+                )
+                idx_v = int(
+                    floor(grid_v / max_abs_uv * grid_size / 2) + grid_size / 2
+                )
+                if idx_u >= grid_size or idx_v >= grid_size:
+                    continue
+                for i_pol in range(num_pol):
+                    w = input_weight[i_time, i_baseline, i_channel, i_pol]
+                    weights_grid_uv[idx_u, idx_v, i_pol] += w
+
+    # Calculate the sum of weights and sum of the gridded weights squared
+    for i_time in range(num_times):
+        for i_baseline in range(num_baselines):
+            for i_channel in range(num_channels):
+                grid_u = uvw[i_time, i_baseline, 0] * freq_hz[i_channel] / c_0
+                grid_v = uvw[i_time, i_baseline, 1] * freq_hz[i_channel] / c_0
+                idx_u = int(
+                    floor(grid_u / max_abs_uv * grid_size / 2) + grid_size / 2
+                )
+                idx_v = int(
+                    floor(grid_v / max_abs_uv * grid_size / 2) + grid_size / 2
+                )
+                if idx_u >= grid_size or idx_v >= grid_size:
+                    continue
+                for i_pol in range(num_pol):
+                    sum_weight += weights_grid_uv[idx_u, idx_v, i_pol]
+                    sum_weight2 += (
+                        weights_grid_uv[idx_u, idx_v, i_pol]
+                        * weights_grid_uv[idx_u, idx_v, i_pol]
+                    )
+
+    # Calculate the robustness function
+    numerator = (5.0 * (1 / (10.0**robust_param))) ** 2
+    division_param = sum_weight2 / sum_weight
+    robustness = numerator / division_param
+
+    # Read from the grid of weights according to the enum type
+    for i_time in range(num_times):
+        for i_baseline in range(num_baselines):
+            for i_channel in range(num_channels):
+                grid_u = uvw[i_time, i_baseline, 0] * freq_hz[i_channel] / c_0
+                grid_v = uvw[i_time, i_baseline, 1] * freq_hz[i_channel] / c_0
+                idx_u = int(
+                    floor(grid_u / max_abs_uv * grid_size / 2) + grid_size / 2
+                )
+                idx_v = int(
+                    floor(grid_v / max_abs_uv * grid_size / 2) + grid_size / 2
+                )
+                for i_pol in range(num_pol):
+                    if idx_u >= grid_size or idx_v >= grid_size:
+                        weight_g = 1.0
+                    else:
+                        weight_g = weights_grid_uv[idx_u, idx_v, i_pol]
+                        w = input_weight[i_time, i_baseline, i_channel, i_pol]
+                        weight_x = w / (1 + (robustness * weight_g))
+                        output_weight[
+                            i_time, i_baseline, i_channel, i_pol
+                        ] = weight_x
+
+
 def bucket_sort_params(grid_size):
+    """
+    Prepares the parameters for the bucket sort such as tile size and
+    other arrays like the number of points in each tile
+    """
     # Prepare parameters for bucket sort
     tile_size_u = cupy.int64(32)
     tile_size_v = cupy.int64(16)
@@ -30,6 +124,10 @@ def bucket_sort_params(grid_size):
 
 
 def gen_gpu_arrays(num_visibilities, indexed):
+    """
+    Generates arrays to be processed on the gpu with cupy,
+    takes in an indexed parameter to decide what arrays to return
+    """
     sorted_uu = np.zeros(num_visibilities.value, dtype=np.float64)
     sorted_vv = np.zeros(num_visibilities.value, dtype=np.float64)
     sorted_vis = np.zeros(num_visibilities.value, dtype=np.float64)
@@ -59,7 +157,6 @@ def gen_gpu_arrays(num_visibilities, indexed):
         return (
             sorted_tile_gpu,
             sorted_vis_index_gpu,
-            output_weights,
             sorted_uu_gpu,
             sorted_vv_gpu,
         )
@@ -67,7 +164,8 @@ def gen_gpu_arrays(num_visibilities, indexed):
 
 def input_gen():
     """
-    Generate data for testing optimised and indexed weighting
+    Generate data and input parameters
+    for testing optimised and indexed briggs weighting
     """
     freqs_np = np.array([1e9, 1.1e9, 1.2e9, 1.3e9, 1.4e9, 1.5e9])
 
@@ -161,7 +259,7 @@ def input_gen():
     vis_np = np.full((times, baselines, len(freqs_np), pol), 1j, dtype=complex)
     weights_np = np.ones_like(vis_np, dtype=np.float64)
     robust_param = -2
-    grid_size = 500
+    grid_size = 40
     cell_size_rad = 4.06e-5
     support = 4
 
@@ -171,12 +269,12 @@ def input_gen():
     weights = cupy.asarray(weights_np)
 
     return (
+        uvw_np,
+        freqs_np,
+        weights_np,
         freqs,
         uvw,
         vis,
-        baselines,
-        pol,
-        times,
         weights,
         robust_param,
         grid_size,
@@ -185,18 +283,22 @@ def input_gen():
     )
 
 
+# This function currently gives inaccurate results
+# due to some bugs and is thus not tested only timed
 def test_optmised_weighting():
     """
-    Test optimised weighting
+    Test for the briggs weighting function which
+    bucket sorts the weights,the output weight array is
+    of a different shape than the input weights array
     """
     indexed = 0
     (
+        uvw_np,
+        freqs_np,
+        weights_np,
         freqs,
         uvw,
         vis,
-        baselines,
-        pol,
-        times,
         weights,
         robust_param,
         grid_size,
@@ -270,21 +372,23 @@ def test_optmised_weighting():
         output_weights,
     )
 
-    return output_weights
-
 
 def test_indexed_weighting():
     """
-    Test indexed weighting
+    Tests the briggs weighting function that only
+    bucket sorts the indices for the weights and visibilites,
+    the output weight array has the same shape as the input weight
     """
+
+    # Prepare the data and run the indexed weighting function
     indexed = 1
     (
+        uvw_np,
+        freqs_np,
+        weights_np,
         freqs,
         uvw,
         vis,
-        baselines,
-        pol,
-        times,
         weights,
         robust_param,
         grid_size,
@@ -312,10 +416,12 @@ def test_indexed_weighting():
     (
         sorted_tile,
         sorted_vis_index,
-        output_weights,
         sorted_uu,
         sorted_vv,
     ) = gen_gpu_arrays(num_visibilities, indexed)
+
+    output_weights_cpu = np.zeros_like(weights)
+    output_weights = cupy.asarray(output_weights_cpu)
 
     tiled_indexing(
         uvw,
@@ -352,19 +458,34 @@ def test_indexed_weighting():
         output_weights,
     )
 
-    return output_weights
+    # Prepare the data and run the reference weighting function
+    max_abs_uv = 16011.076569511299
+    num_pols = 1
+    num_baselines = uvw.shape[1]
+    num_times = uvw.shape[0]
+    num_channels = freqs.shape[0]
+    weights_grid_uv = np.zeros(
+        (grid_size, grid_size, num_pols), dtype=np.float64
+    )
 
+    reference_briggs_weights(
+        uvw_np,
+        freqs_np,
+        max_abs_uv,
+        weights_grid_uv,
+        grid_size,
+        robust_param,
+        weights_np,
+        output_weights_cpu,
+        num_channels,
+        num_baselines,
+        num_pols,
+        num_times,
+    )
+
+    # Test results
+    assert np.allclose(output_weights_cpu, output_weights)
 
 if __name__ == "__main__":
-    n_indexed_start = time.time()
-    n_indexed_w = test_optmised_weighting()
-    n_indexed_end = time.time()
-
-    indexed_start = time.time()
-    indexed_w = test_indexed_weighting()
-    indexed_end = time.time()
-
-    print("Bucket sorted weighting time")
-    print(n_indexed_end - n_indexed_start)
-    print("Indexed weighting time")
-    print(indexed_end - indexed_start)
+    test_optmised_weighting()
+    test_indexed_weighting()
