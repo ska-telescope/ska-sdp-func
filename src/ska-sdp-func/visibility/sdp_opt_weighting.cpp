@@ -1,7 +1,6 @@
 #include <cmath>
 #include <complex>
 #include <ctime>
-#include <cuda_runtime.h>
 #include <iostream>
 #include <vector>
 #include "ska-sdp-func/utility/sdp_data_model_checks.h"
@@ -457,8 +456,6 @@ void sdp_tile_and_prefix_sum(
                 args_prefix,
                 status
         );
-
-        cudaDeviceSynchronize();
 
         // Copy back tile offsets and get number of visiibilites
         sdp_Mem* tile_offsets_cpy = sdp_mem_create_copy(tile_offsets,
@@ -977,8 +974,6 @@ void sdp_optimized_weighting(
                 status
         );
 
-        cudaDeviceSynchronize();
-
         clock_t end_time = clock();
 
         double duration = double(end_time - start_time) / CLOCKS_PER_SEC;
@@ -1135,8 +1130,6 @@ void sdp_optimised_indexed_weighting(
                 weighting_args,
                 status
         );
-
-        cudaDeviceSynchronize();
 
         clock_t end_time = clock();
 
