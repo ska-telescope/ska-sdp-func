@@ -186,7 +186,7 @@ static void sdp_bucket_sort_simple(
                         (grid_v + support < grid_size) &&
                         (grid_v - support) >= 0)
                 {
-                    int tile_u_min, tile_u_max, tile_v_min, tile_v_max;
+                    int tile_u_min = 0, tile_u_max = 0, tile_v_min = 0, tile_v_max = 0;
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
@@ -272,7 +272,7 @@ static void tiled_indexing(
                         (grid_v + support < grid_size) &&
                         (grid_v - support) >= 0)
                 {
-                    int tile_u_min, tile_u_max, tile_v_min, tile_v_max;
+                    int tile_u_min = 0, tile_u_max = 0, tile_v_min = 0, tile_v_max = 0;
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
@@ -610,7 +610,7 @@ void sdp_bucket_sort(
 
         // Define hyperparameters for weighting
 
-        printf("Number of tiles = %d \n", num_tiles);
+        printf("Number of tiles = %ld \n", num_tiles);
 
         // Launch bucket sort kernel
 
@@ -1000,7 +1000,7 @@ void sdp_optimised_indexed_weighting(
         const int grid_size,
         const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites,
+        const int* num_visibilites,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,
