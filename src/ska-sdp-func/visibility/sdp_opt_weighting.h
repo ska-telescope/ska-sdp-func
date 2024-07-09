@@ -128,7 +128,7 @@ void sdp_optimised_indexed_weighting(
         const int grid_size,
         const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites,
+        const int* num_visibilites,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,
