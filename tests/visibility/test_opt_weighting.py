@@ -486,6 +486,7 @@ def test_indexed_weighting():
     # Test results
     assert np.allclose(output_weights_cpu, output_weights)
 
+
 if __name__ == "__main__":
     test_optmised_weighting()
     test_indexed_weighting()
