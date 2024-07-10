@@ -27,7 +27,7 @@ void sdp_gridder_clamp_channels_single(
     for (int64_t i = 0; i < uvws_.shape[0]; ++i)
     {
         const double u = uvws_(i, dim);
-        if (abs(u) > eta * C_0 / dfreq_hz)
+        if (fabs(u) > eta * C_0 / dfreq_hz)
         {
             const double u0 = u * freq0_hz / C_0;
             const double du = u * dfreq_hz / C_0;

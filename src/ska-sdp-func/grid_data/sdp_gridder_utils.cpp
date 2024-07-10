@@ -290,7 +290,7 @@ void uvw_bounds_all(
         const sdp_MemViewCpu<const int, 1>& end_chs,
         double uvw_min[3],
         double uvw_max[3],
-        sdp_Error* status
+        const sdp_Error* status
 )
 {
     const int64_t num_uvw = uvws.shape[0];
@@ -298,8 +298,7 @@ void uvw_bounds_all(
     for (int64_t i = 0; i < num_uvw; ++i)
     {
         const int start_ch = start_chs(i), end_ch = end_chs(i);
-        if (start_ch >= end_ch)
-            continue;
+        if (start_ch >= end_ch) continue;
         const double uvw[] = {uvws(i, 0), uvws(i, 1), uvws(i, 2)};
         for (int j = 0; j < 3; ++j)
         {

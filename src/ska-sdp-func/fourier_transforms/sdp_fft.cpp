@@ -631,7 +631,7 @@ void sdp_fft_free(sdp_Fft* fft)
 
 
 template<typename DATA_TYPE>
-void fft_norm(sdp_Mem* data, sdp_Error* status)
+static void fft_norm(sdp_Mem* data, sdp_Error* status)
 {
     if (*status) return;
     sdp_MemViewCpu<DATA_TYPE, 2> data_;
@@ -675,7 +675,7 @@ void sdp_fft_norm(sdp_Mem* data, sdp_Error* status)
 
 
 template<typename T>
-void fft_phase(int num_x, int num_y, complex<T>* data)
+static void fft_phase(int num_x, int num_y, complex<T>* data)
 {
     #pragma omp parallel for collapse(2)
     for (int iy = 0; iy < num_y; ++iy)

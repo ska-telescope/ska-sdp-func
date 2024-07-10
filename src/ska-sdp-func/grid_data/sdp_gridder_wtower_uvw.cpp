@@ -55,7 +55,7 @@ void degrid(
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
         sdp_MemViewCpu<VIS_TYPE, 2>& vis,
-        sdp_Error* status
+        const sdp_Error* status
 )
 {
     if (*status) return;
@@ -79,8 +79,7 @@ void degrid(
     {
         // Skip if there's no visibility to degrid.
         int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
-        if (start_ch >= end_ch)
-            continue;
+        if (start_ch >= end_ch) continue;
 
         // Select only visibilities on this w-plane.
         const UVW_TYPE uvw[] = {uvws(i_row, 0), uvws(i_row, 1), uvws(i_row, 2)};
@@ -89,8 +88,7 @@ void degrid(
         sdp_gridder_clamp_channels_inline(
                 uvw[2], freq0_hz, dfreq_hz, &start_ch, &end_ch, min_w, max_w
         );
-        if (start_ch >= end_ch)
-            continue;
+        if (start_ch >= end_ch) continue;
 
         // Scale + shift UVWs.
         const double s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
@@ -303,7 +301,7 @@ void grid(
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
         const sdp_MemViewCpu<const VIS_TYPE, 2>& vis,
-        sdp_Error* status
+        const sdp_Error* status
 )
 {
     if (*status) return;
@@ -326,8 +324,7 @@ void grid(
     {
         // Skip if there's no visibility to grid.
         int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
-        if (start_ch >= end_ch)
-            continue;
+        if (start_ch >= end_ch) continue;
 
         // Select only visibilities on this w-plane.
         const UVW_TYPE uvw[] = {uvws(i_row, 0), uvws(i_row, 1), uvws(i_row, 2)};
@@ -336,8 +333,7 @@ void grid(
         sdp_gridder_clamp_channels_inline(
                 uvw[2], freq0_hz, dfreq_hz, &start_ch, &end_ch, min_w, max_w
         );
-        if (start_ch >= end_ch)
-            continue;
+        if (start_ch >= end_ch) continue;
 
         // Scale + shift UVWs.
         const double s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
@@ -873,6 +869,7 @@ void sdp_gridder_wtower_uvw_degrid(
             // Shift subgrids, add new w-plane.
             // subgrids[:-1] = subgrids[1:]
             for (int i = 0; i < plan->w_support - 1; ++i)
+            {
                 sdp_mem_copy_contents(
                         subgrids,
                         subgrids,
@@ -881,6 +878,7 @@ void sdp_gridder_wtower_uvw_degrid(
                         num_elements_sg,
                         status
                 );
+            }
 
             // subgrids[-1] = fft(w_subgrid_image)
             // Copy w_subgrid_image to last subgrid, and then do FFT in-place.
@@ -1074,6 +1072,7 @@ void sdp_gridder_wtower_uvw_grid(
 
             // subgrids[:-1] = subgrids[1:]
             for (int i = 0; i < plan->w_support - 1; ++i)
+            {
                 sdp_mem_copy_contents(
                         subgrids,
                         subgrids,
@@ -1082,6 +1081,7 @@ void sdp_gridder_wtower_uvw_grid(
                         num_elements_sg,
                         status
                 );
+            }
 
             // subgrids[-1] = 0
             sdp_mem_clear_portion(
