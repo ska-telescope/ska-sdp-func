@@ -8,6 +8,7 @@
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cufft.h>
@@ -629,13 +630,61 @@ void sdp_fft_free(sdp_Fft* fft)
 }
 
 
+template<typename DATA_TYPE>
+void fft_norm(sdp_Mem* data, sdp_Error* status)
+{
+    if (*status) return;
+    sdp_MemViewCpu<DATA_TYPE, 2> data_;
+    sdp_mem_check_and_view(data, &data_, status);
+    const int num_x = data_.shape[0];
+    const int num_y = data_.shape[1];
+    const double factor = 1.0 / (num_x * num_y);
+    for (int ix = 0; ix < num_x; ++ix)
+    {
+        for (int iy = 0; iy < num_y; ++iy)
+        {
+            data_(ix, iy) *= factor;
+        }
+    }
+}
+
+
+void sdp_fft_norm(sdp_Mem* data, sdp_Error* status)
+{
+    if (*status || !data) return;
+    if (sdp_mem_location(data) == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            fft_norm<complex<double> >(data, status);
+        }
+        else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            fft_norm<complex<float> >(data, status);
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+    }
+}
+
+
 template<typename T>
 void fft_phase(int num_x, int num_y, complex<T>* data)
 {
     #pragma omp parallel for collapse(2)
     for (int iy = 0; iy < num_y; ++iy)
+    {
         for (int ix = 0; ix < num_x; ++ix)
+        {
             data[iy * num_x + ix] *= (T) (1 - (((ix + iy) & 1) << 1));
+        }
+    }
 }
 
 

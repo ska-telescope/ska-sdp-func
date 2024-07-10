@@ -85,6 +85,7 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
  * @param start_chs ``int[uvw_count]`` First channel to degrid for every uvw.
  * @param end_chs ``int[uvw_count]`` Channel at which to stop degridding for every uvw.
  * @param vis ``complex[uvw_count, ch_count]`` Output degridded visibilities.
+ * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_degrid(
         sdp_GridderWtowerUVW* plan,
@@ -108,6 +109,7 @@ void sdp_gridder_wtower_uvw_degrid(
  * @param facet ``complex[facet_size, facet_size]`` Facet.
  * @param facet_offset_l Offset of facet centre in l, relative to image centre.
  * @param facet_offset_m Offset of facet centre in m, relative to image centre.
+ * @param w_offset Offset in w, to allow for w-stacking.
  * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_degrid_correct(
@@ -115,6 +117,7 @@ void sdp_gridder_wtower_uvw_degrid_correct(
         sdp_Mem* facet,
         int facet_offset_l,
         int facet_offset_m,
+        int w_offset,
         sdp_Error* status
 );
 
@@ -136,6 +139,7 @@ void sdp_gridder_wtower_uvw_degrid_correct(
  * @param subgrid_offset_u Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_v Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
+ * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_grid(
         sdp_GridderWtowerUVW* plan,
@@ -159,6 +163,7 @@ void sdp_gridder_wtower_uvw_grid(
  * @param facet ``complex[facet_size, facet_size]`` Facet.
  * @param facet_offset_l Offset of facet centre in l, relative to image centre.
  * @param facet_offset_m Offset of facet centre in m, relative to image centre.
+ * @param w_offset Offset in w, to allow for w-stacking.
  * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_grid_correct(
@@ -166,6 +171,7 @@ void sdp_gridder_wtower_uvw_grid_correct(
         sdp_Mem* facet,
         int facet_offset_l,
         int facet_offset_m,
+        int w_offset,
         sdp_Error* status
 );
 

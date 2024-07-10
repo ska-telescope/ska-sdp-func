@@ -102,3 +102,28 @@ Lib.wrap_func(
     ],
     check_errcode=True,
 )
+
+Lib.wrap_func(
+    "sdp_gridder_subgrid_add",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        ctypes.c_int,
+        ctypes.c_int,
+        Mem.handle_type(),
+        ctypes.c_double,
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_subgrid_cut_out",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        ctypes.c_int,
+        ctypes.c_int,
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)

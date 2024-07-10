@@ -3,6 +3,10 @@
 """Import functions that we want to expose under ska_sdp_func.grid_data"""
 
 from .degrid_uvw_custom import degrid_uvw_custom
+from .grid_wstack_wtower import (
+    wstack_wtower_degrid_all,
+    wstack_wtower_grid_all,
+)
 from .gridder_direct import GridderDirect
 from .gridder_utils import make_kernel, make_pswf_kernel, make_w_pattern
 from .gridder_uvw_es_fft import GridderUvwEsFft

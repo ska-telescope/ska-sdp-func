@@ -40,23 +40,35 @@ void accum_scale_array(
         if (exponent == 1)
         {
             for (int64_t i = 0; i < shape0; ++i)
+            {
                 for (int64_t j = 0; j < shape1; ++j)
+                {
                     out_(i, j) += (IN2_TYPE) in1_(i, j) * in2_(i, j);
+                }
+            }
         }
         else
         {
             for (int64_t i = 0; i < shape0; ++i)
+            {
                 for (int64_t j = 0; j < shape1; ++j)
+                {
                     out_(i, j) += (IN2_TYPE) in1_(i, j) * pow(
                             in2_(i, j), exponent
                     );
+                }
+            }
         }
     }
     else
     {
         for (int64_t i = 0; i < shape0; ++i)
+        {
             for (int64_t j = 0; j < shape1; ++j)
+            {
                 out_(i, j) += in1_(i, j);
+            }
+        }
     }
 }
 
@@ -128,14 +140,142 @@ void scale_inv_array(
     if (exponent == 1)
     {
         for (int64_t i = 0; i < shape0; ++i)
+        {
             for (int64_t j = 0; j < shape1; ++j)
+            {
                 out_(i, j) = (IN2_TYPE) in1_(i, j) / in2_(i, j);
+            }
+        }
     }
     else
     {
         for (int64_t i = 0; i < shape0; ++i)
+        {
             for (int64_t j = 0; j < shape1; ++j)
+            {
                 out_(i, j) = (IN2_TYPE) in1_(i, j) / pow(in2_(i, j), exponent);
+            }
+        }
+    }
+}
+
+
+// Add the supplied sub-grid to the grid.
+template<typename GRID_TYPE, typename SUBGRID_TYPE, typename FACTOR_TYPE>
+void subgrid_add(
+        sdp_Mem* grid,
+        int offset_u,
+        int offset_v,
+        const sdp_Mem* subgrid,
+        FACTOR_TYPE factor,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_MemViewCpu<GRID_TYPE, 2> grid_;
+    sdp_MemViewCpu<const SUBGRID_TYPE, 2> sub_;
+    sdp_mem_check_and_view(grid, &grid_, status);
+    sdp_mem_check_and_view(subgrid, &sub_, status);
+    if (*status) return;
+    // This does the equivalent of numpy.roll and a shift in two dimensions.
+    const int64_t sub_size_u = sub_.shape[0], sub_size_v = sub_.shape[1];
+    const int64_t grid_size_u = grid_.shape[0], grid_size_v = grid_.shape[1];
+    for (int64_t i = 0; i < sub_size_u; ++i)
+    {
+        int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
+        while (i1 < 0)
+        {
+            i1 += grid_size_u;
+        }
+        while (i1 >= grid_size_u)
+        {
+            i1 -= grid_size_u;
+        }
+        for (int64_t j = 0; j < sub_size_v; ++j)
+        {
+            int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 - offset_v;
+            while (j1 < 0)
+            {
+                j1 += grid_size_v;
+            }
+            while (j1 >= grid_size_v)
+            {
+                j1 -= grid_size_v;
+            }
+            grid_(i1, j1) += sub_(i, j) * factor;
+        }
+    }
+}
+
+
+// Cut out a sub-grid from the supplied grid.
+template<typename GRID_TYPE, typename SUBGRID_TYPE>
+void subgrid_cut_out(
+        const sdp_Mem* grid,
+        int offset_u,
+        int offset_v,
+        sdp_Mem* subgrid,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_MemViewCpu<const GRID_TYPE, 2> grid_;
+    sdp_MemViewCpu<SUBGRID_TYPE, 2> sub_;
+    sdp_mem_check_and_view(grid, &grid_, status);
+    sdp_mem_check_and_view(subgrid, &sub_, status);
+    if (*status) return;
+    // This does the equivalent of numpy.roll and a shift in two dimensions.
+    const int64_t sub_size_u = sub_.shape[0], sub_size_v = sub_.shape[1];
+    const int64_t grid_size_u = grid_.shape[0], grid_size_v = grid_.shape[1];
+    for (int64_t i = 0; i < sub_size_u; ++i)
+    {
+        int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
+        while (i1 < 0)
+        {
+            i1 += grid_size_u;
+        }
+        while (i1 >= grid_size_u)
+        {
+            i1 -= grid_size_u;
+        }
+        for (int64_t j = 0; j < sub_size_v; ++j)
+        {
+            int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 + offset_v;
+            while (j1 < 0)
+            {
+                j1 += grid_size_v;
+            }
+            while (j1 >= grid_size_v)
+            {
+                j1 -= grid_size_v;
+            }
+            sub_(i, j) = grid_(i1, j1);
+        }
+    }
+}
+
+
+// Determine sum of element-wise difference: result = sum(a - b).
+template<typename A_TYPE, typename B_TYPE>
+void sum_diff(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        double* result,
+        sdp_Error* status
+)
+{
+    sdp_MemViewCpu<const A_TYPE, 1> a_;
+    sdp_MemViewCpu<const B_TYPE, 1> b_;
+    sdp_mem_check_and_view(a, &a_, status);
+    sdp_mem_check_and_view(b, &b_, status);
+    if (a_.shape[0] != b_.shape[0])
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    for (int64_t i = 0; i < a_.shape[0]; ++i)
+    {
+        *result += (double) (a_(i) - b_(i));
     }
 }
 
@@ -590,6 +730,111 @@ void sdp_gridder_scale_inv_array(
             *status = SDP_ERR_DATA_TYPE;
             return;
         }
+    }
+}
+
+
+void sdp_gridder_subgrid_add(
+        sdp_Mem* grid,
+        int offset_u,
+        int offset_v,
+        const sdp_Mem* subgrid,
+        double factor,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(grid);
+    if (loc == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            subgrid_add<complex<double>, complex<double>, double>(
+                    grid, offset_u, offset_v, subgrid, factor, status
+            );
+        }
+        else if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            subgrid_add<complex<float>, complex<float>, float>(
+                    grid, offset_u, offset_v, subgrid, (float) factor, status
+            );
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+    }
+}
+
+
+void sdp_gridder_subgrid_cut_out(
+        const sdp_Mem* grid,
+        int offset_u,
+        int offset_v,
+        sdp_Mem* subgrid,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(grid);
+    if (loc == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            subgrid_cut_out<complex<double>, complex<double> >(
+                    grid, offset_u, offset_v, subgrid, status
+            );
+        }
+        else if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            subgrid_cut_out<complex<float>, complex<float> >(
+                    grid, offset_u, offset_v, subgrid, status
+            );
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+    }
+}
+
+
+void sdp_gridder_sum_diff(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        double* result,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(a);
+    *result = 0.0;
+    if (loc == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(a) == SDP_MEM_INT && sdp_mem_type(b) == SDP_MEM_INT)
+        {
+            sum_diff<int, int>(a, b, result, status);
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
     }
 }
 

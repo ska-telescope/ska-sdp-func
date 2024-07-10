@@ -149,7 +149,7 @@ void degrid(
                     }
                 }
             }
-            vis(i_row, c) = local_vis;
+            vis(i_row, c) += local_vis;
         }
     }
 }
@@ -556,12 +556,30 @@ void grid_corr(
         sdp_Mem* facet,
         int facet_offset_l,
         int facet_offset_m,
-        const double* pswf_l,
-        const double* pswf_m,
         sdp_Error* status
 )
 {
     if (*status) return;
+
+    // Shift PSWF by facet offsets.
+    sdp_Mem* pswf_l = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
+    sdp_Mem* pswf_m = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
+    if (*status) return;
+    const double* pswf = (const double*) sdp_mem_data_const(plan->pswf);
+    double* pswf_l_ = (double*) sdp_mem_data(pswf_l);
+    double* pswf_m_ = (double*) sdp_mem_data(pswf_m);
+    const int64_t pswf_size = sdp_mem_shape_dim(plan->pswf, 0);
+    for (int64_t i = 0; i < pswf_size; ++i)
+    {
+        int64_t il = i + facet_offset_l;
+        int64_t im = i + facet_offset_m;
+        if (il >= pswf_size) il -= pswf_size;
+        if (im >= pswf_size) im -= pswf_size;
+        if (il < 0) il += pswf_size;
+        if (im < 0) im += pswf_size;
+        pswf_l_[i] = pswf[il];
+        pswf_m_[i] = pswf[im];
+    }
 
     // Apply portion of shifted PSWF to facet.
     sdp_MemViewCpu<T, 2> facet_;
@@ -572,6 +590,7 @@ void grid_corr(
     const int image_size = plan->image_size;
     const int half_image_size = image_size / 2;
     const double theta = plan->theta;
+    #pragma omp parallel for
     for (int il = 0; il < num_l; ++il)
     {
         const int pl = il + (half_image_size - num_l / 2);
@@ -589,7 +608,56 @@ void grid_corr(
                     plan->pswf_n_func, n_ * 2.0 * plan->w_step
             );
             if (pswf_n_val == 0.0) pswf_n_val = 1.0;
-            facet_(il, im) /= (T) (pswf_l[pl] * pswf_m[pm] * pswf_n_val);
+            facet_(il, im) /= (T) (pswf_l_[pl] * pswf_m_[pm] * pswf_n_val);
+        }
+    }
+    sdp_mem_free(pswf_l);
+    sdp_mem_free(pswf_m);
+}
+
+
+// Local function to apply w-correction.
+template<typename T>
+void grid_corr_w_stack(
+        const sdp_GridderWtowerUVW* plan,
+        sdp_Mem* facet,
+        int facet_offset_l,
+        int facet_offset_m,
+        int w_offset,
+        bool inverse,
+        sdp_Error* status
+)
+{
+    if (*status || w_offset == 0) return;
+
+    // Apply w-correction.
+    sdp_MemViewCpu<T, 2> facet_;
+    sdp_mem_check_and_view(facet, &facet_, status);
+    if (*status) return;
+    const int num_l = (int) sdp_mem_shape_dim(facet, 0);
+    const int num_m = (int) sdp_mem_shape_dim(facet, 1);
+    const int image_size = plan->image_size;
+    const int half_image_size = image_size / 2;
+    const double theta = plan->theta;
+    #pragma omp parallel for
+    for (int il = 0; il < num_l; ++il)
+    {
+        const int pl = il + (half_image_size - num_l / 2);
+        const double l_ = (
+            (pl + facet_offset_l - half_image_size) * theta / image_size
+        );
+        for (int im = 0; im < num_m; ++im)
+        {
+            const int pm = im + (half_image_size - num_m / 2);
+            const double m_ = (
+                (pm + facet_offset_m - half_image_size) * theta / image_size
+            );
+            const double n_ = lm_to_n(l_, m_, plan->shear_u, plan->shear_v);
+            const double phase = 2.0 * M_PI * plan->w_step * n_;
+            complex<double> w = complex<double>(cos(phase), sin(phase));
+            w = std::pow(w, w_offset);
+            w = !inverse ? 1.0 / w : w;
+            facet_(il, im) *= (T) w;
         }
     }
 }
@@ -860,69 +928,44 @@ void sdp_gridder_wtower_uvw_degrid_correct(
         sdp_Mem* facet,
         int facet_offset_l,
         int facet_offset_m,
+        int w_offset,
         sdp_Error* status
 )
 {
-    if (*status) return;
-    if (sdp_mem_num_dims(facet) < 2)
-    {
-        *status = SDP_ERR_INVALID_ARGUMENT;
-        return;
-    }
-
-    // Shift PSWF by facet offsets.
-    sdp_Mem* pswf_l = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
-    sdp_Mem* pswf_m = sdp_mem_create_copy(plan->pswf, SDP_MEM_CPU, status);
-    if (*status) return;
-    const double* pswf = (const double*) sdp_mem_data_const(plan->pswf);
-    double* pswf_l_ = (double*) sdp_mem_data(pswf_l);
-    double* pswf_m_ = (double*) sdp_mem_data(pswf_m);
-    const int64_t pswf_size = sdp_mem_shape_dim(plan->pswf, 0);
-    for (int64_t i = 0; i < pswf_size; ++i)
-    {
-        int64_t il = i + facet_offset_l;
-        int64_t im = i + facet_offset_m;
-        if (il >= pswf_size) il -= pswf_size;
-        if (im >= pswf_size) im -= pswf_size;
-        if (il < 0) il += pswf_size;
-        if (im < 0) im += pswf_size;
-        pswf_l_[i] = pswf[il];
-        pswf_m_[i] = pswf[im];
-    }
-
-    // Apply grid correction for the appropriate data type.
     switch (sdp_mem_type(facet))
     {
     case SDP_MEM_DOUBLE:
         grid_corr<double>(
-                plan, facet, facet_offset_l, facet_offset_m,
-                pswf_l_, pswf_m_, status
+                plan, facet, facet_offset_l, facet_offset_m, status
         );
         break;
     case SDP_MEM_COMPLEX_DOUBLE:
         grid_corr<complex<double> >(
+                plan, facet, facet_offset_l, facet_offset_m, status
+        );
+        grid_corr_w_stack<complex<double> >(
                 plan, facet, facet_offset_l, facet_offset_m,
-                pswf_l_, pswf_m_, status
+                w_offset, false, status
         );
         break;
     case SDP_MEM_FLOAT:
         grid_corr<float>(
-                plan, facet, facet_offset_l, facet_offset_m,
-                pswf_l_, pswf_m_, status
+                plan, facet, facet_offset_l, facet_offset_m, status
         );
         break;
     case SDP_MEM_COMPLEX_FLOAT:
         grid_corr<complex<float> >(
+                plan, facet, facet_offset_l, facet_offset_m, status
+        );
+        grid_corr_w_stack<complex<float> >(
                 plan, facet, facet_offset_l, facet_offset_m,
-                pswf_l_, pswf_m_, status
+                w_offset, false, status
         );
         break;
     default:
         *status = SDP_ERR_DATA_TYPE;
         break;
     }
-    sdp_mem_free(pswf_l);
-    sdp_mem_free(pswf_m);
 }
 
 
@@ -1115,13 +1158,44 @@ void sdp_gridder_wtower_uvw_grid_correct(
         sdp_Mem* facet,
         int facet_offset_l,
         int facet_offset_m,
+        int w_offset,
         sdp_Error* status
 )
 {
-    // Grid correction and degrid correction are the same in the notebook.
-    sdp_gridder_wtower_uvw_degrid_correct(
-            plan, facet, facet_offset_l, facet_offset_m, status
-    );
+    switch (sdp_mem_type(facet))
+    {
+    case SDP_MEM_DOUBLE:
+        grid_corr<double>(
+                plan, facet, facet_offset_l, facet_offset_m, status
+        );
+        break;
+    case SDP_MEM_COMPLEX_DOUBLE:
+        grid_corr<complex<double> >(
+                plan, facet, facet_offset_l, facet_offset_m, status
+        );
+        grid_corr_w_stack<complex<double> >(
+                plan, facet, facet_offset_l, facet_offset_m,
+                w_offset, true, status
+        );
+        break;
+    case SDP_MEM_FLOAT:
+        grid_corr<float>(
+                plan, facet, facet_offset_l, facet_offset_m, status
+        );
+        break;
+    case SDP_MEM_COMPLEX_FLOAT:
+        grid_corr<complex<float> >(
+                plan, facet, facet_offset_l, facet_offset_m, status
+        );
+        grid_corr_w_stack<complex<float> >(
+                plan, facet, facet_offset_l, facet_offset_m,
+                w_offset, true, status
+        );
+        break;
+    default:
+        *status = SDP_ERR_DATA_TYPE;
+        break;
+    }
 }
 
 

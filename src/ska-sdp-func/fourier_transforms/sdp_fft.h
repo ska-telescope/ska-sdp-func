@@ -72,6 +72,16 @@ void sdp_fft_exec(
 void sdp_fft_free(sdp_Fft* fft);
 
 /**
+ * @brief Normalises the supplied array by dividing by the number of elements.
+ *
+ * This is to provide compatibility with numpy's ifft.
+ *
+ * @param data Array to normalise.
+ * @param status Error status.
+ */
+void sdp_fft_norm(sdp_Mem* data, sdp_Error* status);
+
+/**
  * @brief Provide fftshift() behaviour for complex data.
  *
  * The data are multiplied by a checker-board pattern to achieve the same
