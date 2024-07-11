@@ -258,7 +258,7 @@ def input_gen():
     uvw_np = np.asarray(uvw_general, dtype=np.float64)
     vis_np = np.full((times, baselines, len(freqs_np), pol), 1j, dtype=complex)
     weights_np = np.ones_like(vis_np, dtype=np.float64)
-    robust_param = -2
+    robust_param = 2
     grid_size = 40
     cell_size_rad = 4.06e-5
     support = 4
@@ -420,8 +420,8 @@ def test_indexed_weighting():
         sorted_vv,
     ) = gen_gpu_arrays(num_visibilities, indexed)
 
-    output_weights_cpu = np.zeros_like(weights)
-    output_weights = cupy.asarray(output_weights_cpu)
+    output_weights_cpu = np.zeros_like(weights, dtype=np.float64)
+    output_weights = cupy.asarray(output_weights_cpu, dtype=np.float64)
 
     tiled_indexing(
         uvw,
@@ -482,7 +482,6 @@ def test_indexed_weighting():
         num_pols,
         num_times,
     )
-
     # Test results
     assert np.allclose(output_weights_cpu, output_weights)
 
