@@ -926,14 +926,12 @@ void sdp_optimized_weighting(
     {
         // Define hyperparameters for weighting
 
-        const uint64_t n_threads  = tile_size_u * tile_size_v;
+        int64_t n_threads  = tile_size_u * tile_size_v;
         const uint64_t num_threads_briggs[] = {n_threads, 1, 1};
-        const uint64_t num_blocks_briggs[] = {(uint64_t)num_tiles - 1, 1, 1};
+        const uint64_t num_blocks_briggs[] = {(int64_t)num_tiles - 1, 1, 1};
 
         // Make sure weights are on the gpu
         sdp_mem_check_location(output_weights, SDP_MEM_GPU, status);
-
-        clock_t start_time = clock();
 
         const char* kernel_name_weights_update = 0;
 
@@ -973,12 +971,6 @@ void sdp_optimized_weighting(
                 weighting_args,
                 status
         );
-
-        clock_t end_time = clock();
-
-        double duration = double(end_time - start_time) / CLOCKS_PER_SEC;
-
-        printf("Briggs Time: %e \n", duration);
     }
 }
 
@@ -1079,14 +1071,12 @@ void sdp_optimised_indexed_weighting(
     {
         // Define hyperparameters for weighting
 
-        const uint64_t n_threads  = tile_size_u * tile_size_v;
+        int64_t n_threads  = tile_size_u * tile_size_v;
         const uint64_t num_threads_briggs[] = {n_threads, 1, 1};
-        const uint64_t num_blocks_briggs[] = {(uint64_t)num_tiles - 1, 1, 1};
+        const uint64_t num_blocks_briggs[] = {(int64_t)num_tiles - 1, 1, 1};
 
         // Make sure weights are on the gpu
         sdp_mem_check_location(output_weights, SDP_MEM_GPU, status);
-
-        clock_t start_time = clock();
 
         const char* kernel_name_weights_update = 0;
 
@@ -1119,7 +1109,8 @@ void sdp_optimised_indexed_weighting(
             sdp_mem_gpu_buffer(output_weights, status)
         };
 
-        size_t shared_mem_size = tile_size_u * tile_size_v * sizeof(double);
+        size_t shared_mem_size = (tile_size_u * tile_size_v * sizeof(double)) +
+                (sizeof(double) * 2);
 
         sdp_launch_cuda_kernel(
                 kernel_name_weights_update,
@@ -1130,11 +1121,5 @@ void sdp_optimised_indexed_weighting(
                 weighting_args,
                 status
         );
-
-        clock_t end_time = clock();
-
-        double duration = double(end_time - start_time) / CLOCKS_PER_SEC;
-
-        printf("Briggs Time: %e \n", duration);
     }
 }
