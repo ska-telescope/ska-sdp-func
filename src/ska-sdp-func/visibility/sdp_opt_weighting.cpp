@@ -926,9 +926,9 @@ void sdp_optimized_weighting(
     {
         // Define hyperparameters for weighting
 
-        int64_t n_threads  = tile_size_u * tile_size_v;
+        uint64_t n_threads  = tile_size_u * tile_size_v;
         const uint64_t num_threads_briggs[] = {n_threads, 1, 1};
-        const uint64_t num_blocks_briggs[] = {(int64_t)num_tiles - 1, 1, 1};
+        const uint64_t num_blocks_briggs[] = {(uint64_t)num_tiles - 1, 1, 1};
 
         // Make sure weights are on the gpu
         sdp_mem_check_location(output_weights, SDP_MEM_GPU, status);
@@ -1071,9 +1071,9 @@ void sdp_optimised_indexed_weighting(
     {
         // Define hyperparameters for weighting
 
-        int64_t n_threads  = tile_size_u * tile_size_v;
+        uint64_t n_threads  = tile_size_u * tile_size_v;
         const uint64_t num_threads_briggs[] = {n_threads, 1, 1};
-        const uint64_t num_blocks_briggs[] = {(int64_t)num_tiles - 1, 1, 1};
+        const uint64_t num_blocks_briggs[] = {(uint64_t)num_tiles - 1, 1, 1};
 
         // Make sure weights are on the gpu
         sdp_mem_check_location(output_weights, SDP_MEM_GPU, status);
