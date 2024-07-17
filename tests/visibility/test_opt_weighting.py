@@ -7,10 +7,12 @@ import cupy
 import numpy as np
 
 from ska_sdp_func.visibility.opt_weighting import (
-    bucket_sort,
     optimised_indexed_weighting,
     optimized_weighting,
-    tile_and_prefix_sum,
+)
+from ska_sdp_func.visibility.tiled_functions import (
+    bucket_sort,
+    count_and_prefix_sum,
     tiled_indexing,
 )
 
@@ -310,7 +312,7 @@ def test_optmised_weighting():
         grid_size
     )
 
-    tile_and_prefix_sum(
+    count_and_prefix_sum(
         uvw,
         freqs,
         vis,
@@ -337,7 +339,6 @@ def test_optmised_weighting():
         freqs,
         vis,
         weights,
-        robust_param,
         grid_size,
         cell_size_rad,
         support,
@@ -349,7 +350,6 @@ def test_optmised_weighting():
         sorted_vis,
         tile_offsets,
         num_points_in_tiles,
-        output_weights,
     )
 
     optimized_weighting(
@@ -400,7 +400,7 @@ def test_indexed_weighting():
         grid_size
     )
 
-    tile_and_prefix_sum(
+    count_and_prefix_sum(
         uvw,
         freqs,
         vis,
@@ -428,7 +428,6 @@ def test_indexed_weighting():
         freqs,
         vis,
         weights,
-        robust_param,
         grid_size,
         cell_size_rad,
         support,
