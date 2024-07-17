@@ -7,4 +7,6 @@ SKA_SDP_FUNC_SRC(
     sdp_weighting.cu
     sdp_opt_weighting.cpp
     sdp_opt_weighting.cu
+    sdp_tiled_functions.cpp
+    sdp_tiled_functions.cu 
 )
