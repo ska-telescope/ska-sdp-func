@@ -16,17 +16,11 @@ def visibility_data():
     num_pols = 4
 
     vis = numpy.zeros(shape=(num_times, num_baselines, num_freqs, num_pols), dtype=numpy.complex128)
-    
-    for t in range(num_times):
-        for b in range(num_baselines):
-            for c in range(num_freqs):
-                vis[t, b, c, 0] = numpy.complex(1 + 0.01 * t + 0.01 * numpy.mod(c, 2) + b * 0.1 , 0.01 * t)
-                vis[t, b, c, 1] = numpy.complex(0.1 * (1 + 0.01 * t +  b * 0.1) + 0.01 * t)
-                vis[t, b, c, 2] = numpy.complex(0.1 * (1 + 0.01 * t +  b * 0.1) + 0.01 * t)
-                vis[t, b, c, 3] = numpy.complex(1 + 0.01 * t + 0.01 * numpy.mod(c, 2) + b * 0.1 , 0.01 * t)
+    vis[:, :, :, :] = numpy.complex(1,1)
     
     vis[10, 0, 28, :] = 20 + 4j
     vis[36, 0, 14, 0] = vis[36, 0, 14, 0] + 0.08 + 0.08j
+    vis[27, 1, :, 2] = 20 + 30j
     
     return vis
 
@@ -48,12 +42,39 @@ def test_fixed_flagger(visibility_data):
     expected_flags[36, 0, 14, 0] = 1
     
     flagger_fixed_threshold(visibility_data, parameters, flags)
-    for t in range(visibility_data.shape[0]):
-        for b in range(visibility_data.shape[1]):
-            for c in range(visibility_data.shape[2]):
-                for p in range(visibility_data.shape[3]):
-                    if expected_flags[t, b, c, p] != flags[t, b, c, p]:
-                        print("expected_flags: ", expected_flags[t, b, c, p], " at  ", t, ",",b, ",", c, ",",p)
-                        print("flags: ", flags[t, b, c, p], " at  ", t, ",",b, ",", c, ",",p)
-    
     assert (expected_flags == flags).all()
+
+def test_dynamic_flagger(visibility_data):
+    """Test dynamic RFI flagger"""
+
+    # below line is added to consider broadband RFI
+    
+    alpha = 0.5
+    threshold_magnitudes = 3.5
+    threshold_variations = 3.5
+    threshold_broadband = 3.5
+    sampling_step = 1
+    window = 0
+    window_median_history = 20
+
+    parameters = numpy.array([alpha, threshold_magnitudes, threshold_variations, threshold_broadband, sampling_step, window, window_median_history])
+
+    flags =  numpy.zeros(visibility_data.shape, dtype=numpy.int32)
+    expected_flags =  numpy.zeros(visibility_data.shape, dtype=numpy.int32)
+
+    expected_flags[9, 0, 28, :] = 1
+    expected_flags[10, 0, 28, :] = 1
+    expected_flags[11, 0, 28, :] = 1
+    expected_flags[36, 0, 14, 0] = 1
+    expected_flags[27, 1, :, 2] = 1
+
+    flagger_dynamic_threshold(visibility_data, parameters, flags)
+    assert (expected_flags == flags).all()
+
+
+
+
+
+
+
+

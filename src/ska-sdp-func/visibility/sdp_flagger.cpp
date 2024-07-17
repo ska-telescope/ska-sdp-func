@@ -308,12 +308,6 @@ printf("Work took %f seconds\n", end - start);
 
 
 
-
-
-
-
-
-
 template<typename FP>
 static void flagger_dynamic_threshold(
         const std::complex<FP>* visibilities,
@@ -364,6 +358,7 @@ static void flagger_dynamic_threshold(
                     int medwindow = std::min(t + 1, window_median_history);
                     double *medarray = new double[medwindow];
                     
+                    
                     // method 1 only operating on absolute values:
                     
                    
@@ -392,7 +387,7 @@ static void flagger_dynamic_threshold(
                     double medmeddev = median_dev_calc(medarray, medwindow, medmed);
                     double zscore_med = modified_zscore(medmed, medmeddev, median);
                     
-                    if (zscore_med > threshold_broadband || zscore_med < -threshold_broadband){
+                    if ((zscore_med > threshold_broadband || zscore_med < -threshold_broadband) && t != 0){
                         situation = 1;
                     }
                     
@@ -501,18 +496,6 @@ static void flagger_dynamic_threshold(
 end = omp_get_wtime(); 
 printf("Work took %f seconds\n", end - start);
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
