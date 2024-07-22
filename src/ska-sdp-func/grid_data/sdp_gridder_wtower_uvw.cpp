@@ -763,7 +763,7 @@ void sdp_gridder_wtower_uvw_degrid(
             sdp_mem_location(end_chs) != loc)
     {
         *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("All arrays must be co-located");
+        SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
     }
 
@@ -990,7 +990,7 @@ void sdp_gridder_wtower_uvw_grid(
             sdp_mem_location(end_chs) != loc)
     {
         *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("All arrays must be co-located");
+        SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
     }
 
