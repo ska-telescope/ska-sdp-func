@@ -110,16 +110,24 @@ class GridderWtowerUVW(StructWrapper):
         )
 
     def degrid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
+        w_offset: int = 0,
     ):
         """Do degrid correction to enable degridding from the FT of the image.
 
         :param facet: ``complex[facet_size,facet_size]`` Facet.
-        :param facet_offset_l, facet_offset_m:
-            Offset of facet centre relative to image centre
+        :param facet_offset_l:
+            Offset of facet centre relative to image centre.
+        :param facet_offset_m:
+            Offset of facet centre relative to image centre.
+        :param w_offset:
+            Offset in w, to allow for w-stacking.
         """
         Lib.sdp_gridder_wtower_uvw_degrid_correct(
-            self, Mem(facet), facet_offset_l, facet_offset_m
+            self, Mem(facet), facet_offset_l, facet_offset_m, w_offset
         )
 
     def grid(
@@ -173,16 +181,24 @@ class GridderWtowerUVW(StructWrapper):
         )
 
     def grid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
+        w_offset: int = 0,
     ):
         """Do grid correction after gridding.
 
         :param facet: ``complex[facet_size,facet_size]`` Facet.
-        :param facet_offset_l, facet_offset_m:
-            Offset of facet centre relative to image centre
+        :param facet_offset_l:
+            Offset of facet centre relative to image centre.
+        :param facet_offset_m:
+            Offset of facet centre relative to image centre.
+        :param w_offset:
+            Offset in w, to allow for w-stacking.
         """
         Lib.sdp_gridder_wtower_uvw_grid_correct(
-            self, Mem(facet), facet_offset_l, facet_offset_m
+            self, Mem(facet), facet_offset_l, facet_offset_m, w_offset
         )
 
 
@@ -231,6 +247,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_int,
     ],
     check_errcode=True,
 )
@@ -260,6 +277,7 @@ Lib.wrap_func(
     argtypes=[
         GridderWtowerUVW.handle_type(),
         Mem.handle_type(),
+        ctypes.c_int,
         ctypes.c_int,
         ctypes.c_int,
     ],

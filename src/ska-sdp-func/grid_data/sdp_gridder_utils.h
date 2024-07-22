@@ -120,6 +120,57 @@ void sdp_gridder_scale_inv_array(
 );
 
 /**
+ * @brief Add the supplied sub-grid to the grid.
+ *
+ * @param grid Output grid.
+ * @param offset_u Offset in u.
+ * @param offset_v Offset in v.
+ * @param subgrid Input sub-grid.
+ * @param factor Factor by which to multiply elements of sub-grid before adding.
+ * @param status Error status.
+ */
+void sdp_gridder_subgrid_add(
+        sdp_Mem* grid,
+        int offset_u,
+        int offset_v,
+        const sdp_Mem* subgrid,
+        double factor,
+        sdp_Error* status
+);
+
+/**
+ * @brief Cut out a sub-grid from the supplied grid.
+ *
+ * @param grid Input grid.
+ * @param offset_u Offset in u.
+ * @param offset_v Offset in v.
+ * @param subgrid Output sub-grid.
+ * @param status Error status.
+ */
+void sdp_gridder_subgrid_cut_out(
+        const sdp_Mem* grid,
+        int offset_u,
+        int offset_v,
+        sdp_Mem* subgrid,
+        sdp_Error* status
+);
+
+/**
+ * @brief Determine sum of element-wise difference: result = sum(a - b).
+ *
+ * @param a First input array.
+ * @param b Second input array.
+ * @param result Sum of a - b.
+ * @param status Error status.
+ */
+void sdp_gridder_sum_diff(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        double* result,
+        sdp_Error* status
+);
+
+/**
  * @brief Determine (scaled) min and max values in uvw coordinates.
  *
  * @param uvws ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).

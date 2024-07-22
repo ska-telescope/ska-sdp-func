@@ -169,12 +169,14 @@ sdp_Mem* sdp_mem_create_wrapper_for_slice(
     }
     for (int32_t i = 0; i < src->num_dims; ++i)
     {
-        if (slice_offsets[i] >= src->shape[i])
+        if (slice_offsets[i] >= src->shape[i] || slice_offsets[i] < 0)
         {
             *status = SDP_ERR_INVALID_ARGUMENT;
             SDP_LOG_CRITICAL(
-                    "Slice offset in dimension %d is out of bounds: %d >= %d",
-                    i, slice_offsets[i], src->shape[i]
+                    "Slice offset in dimension %d is out of bounds: %d (max is %d)",
+                    i,
+                    slice_offsets[i],
+                    src->shape[i]
             );
             return 0;
         }

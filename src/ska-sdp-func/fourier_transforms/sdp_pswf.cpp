@@ -720,7 +720,8 @@ sdp_PSWF* sdp_pswf_create(int m, double c)
 double sdp_pswf_evaluate(const sdp_PSWF* plan, double x)
 {
     const int m = plan->m, n = plan->m;
-    return fabs(x) < 1 ? pswf_aswfa(m, n, plan->c, plan->coeffs, x) : 0;
+    const double abs_x = fabs(x);
+    return abs_x < 1 ? pswf_aswfa(m, n, plan->c, plan->coeffs, abs_x) : 0;
 }
 
 

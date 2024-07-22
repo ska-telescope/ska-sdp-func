@@ -118,7 +118,7 @@ __global__ void sdp_gridder_wtower_degrid(
                 }
             }
         }
-        vis(i_row, c) = local_vis;
+        vis(i_row, c) += local_vis;
     }
 }
 
