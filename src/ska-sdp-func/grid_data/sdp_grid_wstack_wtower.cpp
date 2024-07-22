@@ -38,7 +38,7 @@ void sdp_grid_wstack_wtower_degrid_all(
     if (sdp_mem_location(image) != loc || sdp_mem_location(uvw) != loc)
     {
         *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("All arrays must be co-located");
+        SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
     }
     if (loc != SDP_MEM_CPU)
@@ -265,7 +265,7 @@ void sdp_grid_wstack_wtower_grid_all(
     if (sdp_mem_location(image) != loc || sdp_mem_location(uvw) != loc)
     {
         *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("All arrays must be co-located");
+        SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
     }
     if (loc != SDP_MEM_CPU)
