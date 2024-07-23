@@ -1201,23 +1201,23 @@ void pass2 (
 }
 
 #define POCKETFFT_PREP3(idx) \
-    T t0 = CC(idx, 0, k), t1, t2; \
-    PM (t1, t2, CC(idx, 1, k), CC(idx, 2, k)); \
-    CH(idx, k, 0) = t0 + t1;
+        T t0 = CC(idx, 0, k), t1, t2; \
+        PM (t1, t2, CC(idx, 1, k), CC(idx, 2, k)); \
+        CH(idx, k, 0) = t0 + t1;
 #define POCKETFFT_PARTSTEP3a(u1, u2, twr, twi) \
-    { \
-        T ca = t0 + t1 * twr; \
-        T cb{-t2.i * twi, t2.r * twi \
-        }; \
-        PM(CH(0, k, u1), CH(0, k, u2), ca, cb); \
-    }
+        { \
+            T ca = t0 + t1 * twr; \
+            T cb{-t2.i * twi, t2.r * twi \
+            }; \
+            PM(CH(0, k, u1), CH(0, k, u2), ca, cb); \
+        }
 #define POCKETFFT_PARTSTEP3b(u1, u2, twr, twi) \
-    { \
-        T ca = t0 + t1 * twr; \
-        T cb{-t2.i * twi, t2.r * twi}; \
-        special_mul<fwd>(ca + cb, WA(u1 - 1, i), CH(i, k, u1)); \
-        special_mul<fwd>(ca - cb, WA(u2 - 1, i), CH(i, k, u2)); \
-    }
+        { \
+            T ca = t0 + t1 * twr; \
+            T cb{-t2.i * twi, t2.r * twi}; \
+            special_mul<fwd>(ca + cb, WA(u1 - 1, i), CH(i, k, u1)); \
+            special_mul<fwd>(ca - cb, WA(u2 - 1, i), CH(i, k, u2)); \
+        }
 
 
 template<bool fwd, typename T>
@@ -1339,32 +1339,32 @@ void pass4 (
 }
 
 #define POCKETFFT_PREP5(idx) \
-    T t0 = CC(idx, 0, k), t1, t2, t3, t4; \
-    PM (t1, t4, CC(idx, 1, k), CC(idx, 4, k)); \
-    PM (t2, t3, CC(idx, 2, k), CC(idx, 3, k)); \
-    CH(idx, k, 0).r = t0.r + t1.r + t2.r; \
-    CH(idx, k, 0).i = t0.i + t1.i + t2.i;
+        T t0 = CC(idx, 0, k), t1, t2, t3, t4; \
+        PM (t1, t4, CC(idx, 1, k), CC(idx, 4, k)); \
+        PM (t2, t3, CC(idx, 2, k), CC(idx, 3, k)); \
+        CH(idx, k, 0).r = t0.r + t1.r + t2.r; \
+        CH(idx, k, 0).i = t0.i + t1.i + t2.i;
 
 #define POCKETFFT_PARTSTEP5a(u1, u2, twar, twbr, twai, twbi) \
-    { \
-        T ca, cb; \
-        ca.r = t0.r + twar * t1.r + twbr * t2.r; \
-        ca.i = t0.i + twar * t1.i + twbr * t2.i; \
-        cb.i = twai * t4.r twbi * t3.r; \
-        cb.r = -(twai * t4.i twbi * t3.i); \
-        PM(CH(0, k, u1), CH(0, k, u2), ca, cb); \
-    }
+        { \
+            T ca, cb; \
+            ca.r = t0.r + twar * t1.r + twbr * t2.r; \
+            ca.i = t0.i + twar * t1.i + twbr * t2.i; \
+            cb.i = twai * t4.r twbi * t3.r; \
+            cb.r = -(twai * t4.i twbi * t3.i); \
+            PM(CH(0, k, u1), CH(0, k, u2), ca, cb); \
+        }
 
 #define POCKETFFT_PARTSTEP5b(u1, u2, twar, twbr, twai, twbi) \
-    { \
-        T ca, cb, da, db; \
-        ca.r = t0.r + twar * t1.r + twbr * t2.r; \
-        ca.i = t0.i + twar * t1.i + twbr * t2.i; \
-        cb.i = twai * t4.r twbi * t3.r; \
-        cb.r = -(twai * t4.i twbi * t3.i); \
-        special_mul<fwd>(ca + cb, WA(u1 - 1, i), CH(i, k, u1)); \
-        special_mul<fwd>(ca - cb, WA(u2 - 1, i), CH(i, k, u2)); \
-    }
+        { \
+            T ca, cb, da, db; \
+            ca.r = t0.r + twar * t1.r + twbr * t2.r; \
+            ca.i = t0.i + twar * t1.i + twbr * t2.i; \
+            cb.i = twai * t4.r twbi * t3.r; \
+            cb.r = -(twai * t4.i twbi * t3.i); \
+            special_mul<fwd>(ca + cb, WA(u1 - 1, i), CH(i, k, u1)); \
+            special_mul<fwd>(ca - cb, WA(u2 - 1, i), CH(i, k, u2)); \
+        }
 
 
 template<bool fwd, typename T>
@@ -1427,33 +1427,33 @@ void pass5 (
 #undef POCKETFFT_PREP5
 
 #define POCKETFFT_PREP7(idx) \
-    T t1 = CC(idx, 0, k), t2, t3, t4, t5, t6, t7; \
-    PM (t2, t7, CC(idx, 1, k), CC(idx, 6, k)); \
-    PM (t3, t6, CC(idx, 2, k), CC(idx, 5, k)); \
-    PM (t4, t5, CC(idx, 3, k), CC(idx, 4, k)); \
-    CH(idx, k, 0).r = t1.r + t2.r + t3.r + t4.r; \
-    CH(idx, k, 0).i = t1.i + t2.i + t3.i + t4.i;
+        T t1 = CC(idx, 0, k), t2, t3, t4, t5, t6, t7; \
+        PM (t2, t7, CC(idx, 1, k), CC(idx, 6, k)); \
+        PM (t3, t6, CC(idx, 2, k), CC(idx, 5, k)); \
+        PM (t4, t5, CC(idx, 3, k), CC(idx, 4, k)); \
+        CH(idx, k, 0).r = t1.r + t2.r + t3.r + t4.r; \
+        CH(idx, k, 0).i = t1.i + t2.i + t3.i + t4.i;
 
 #define POCKETFFT_PARTSTEP7a0(u1, u2, x1, x2, x3, y1, y2, y3, out1, out2) \
-    { \
-        T ca, cb; \
-        ca.r = t1.r + x1 * t2.r + x2 * t3.r + x3 * t4.r; \
-        ca.i = t1.i + x1 * t2.i + x2 * t3.i + x3 * t4.i; \
-        cb.i = y1 * t7.r y2 * t6.r y3 * t5.r; \
-        cb.r = -(y1 * t7.i y2 * t6.i y3 * t5.i); \
-        PM(out1, out2, ca, cb); \
-    }
+        { \
+            T ca, cb; \
+            ca.r = t1.r + x1 * t2.r + x2 * t3.r + x3 * t4.r; \
+            ca.i = t1.i + x1 * t2.i + x2 * t3.i + x3 * t4.i; \
+            cb.i = y1 * t7.r y2 * t6.r y3 * t5.r; \
+            cb.r = -(y1 * t7.i y2 * t6.i y3 * t5.i); \
+            PM(out1, out2, ca, cb); \
+        }
 #define POCKETFFT_PARTSTEP7a(u1, u2, x1, x2, x3, y1, y2, y3) \
-    POCKETFFT_PARTSTEP7a0(u1, u2, x1, x2, x3, y1, y2, y3, CH(0, k, u1), \
+        POCKETFFT_PARTSTEP7a0(u1, u2, x1, x2, x3, y1, y2, y3, CH(0, k, u1), \
         CH(0, k, u2) \
-    )
+        )
 #define POCKETFFT_PARTSTEP7(u1, u2, x1, x2, x3, y1, y2, y3) \
-    { \
-        T da, db; \
-        POCKETFFT_PARTSTEP7a0(u1, u2, x1, x2, x3, y1, y2, y3, da, db) \
-        special_mul<fwd>(da, WA(u1 - 1, i), CH(i, k, u1)); \
-        special_mul<fwd>(db, WA(u2 - 1, i), CH(i, k, u2)); \
-    }
+        { \
+            T da, db; \
+            POCKETFFT_PARTSTEP7a0(u1, u2, x1, x2, x3, y1, y2, y3, da, db) \
+            special_mul<fwd>(da, WA(u1 - 1, i), CH(i, k, u1)); \
+            special_mul<fwd>(db, WA(u2 - 1, i), CH(i, k, u2)); \
+        }
 
 
 template<bool fwd, typename T>
@@ -1651,38 +1651,38 @@ void pass8 (
 
 
 #define POCKETFFT_PREP11(idx) \
-    T t1 = CC(idx, 0, k), t2, t3, t4, t5, t6, t7, t8, t9, t10, t11; \
-    PM (t2, t11, CC(idx, 1, k), CC(idx, 10, k)); \
-    PM (t3, t10, CC(idx, 2, k), CC(idx, 9, k)); \
-    PM (t4, t9, CC(idx, 3, k), CC(idx, 8, k)); \
-    PM (t5, t8, CC(idx, 4, k), CC(idx, 7, k)); \
-    PM (t6, t7, CC(idx, 5, k), CC(idx, 6, k)); \
-    CH(idx, k, 0).r = t1.r + t2.r + t3.r + t4.r + t5.r + t6.r; \
-    CH(idx, k, 0).i = t1.i + t2.i + t3.i + t4.i + t5.i + t6.i;
+        T t1 = CC(idx, 0, k), t2, t3, t4, t5, t6, t7, t8, t9, t10, t11; \
+        PM (t2, t11, CC(idx, 1, k), CC(idx, 10, k)); \
+        PM (t3, t10, CC(idx, 2, k), CC(idx, 9, k)); \
+        PM (t4, t9, CC(idx, 3, k), CC(idx, 8, k)); \
+        PM (t5, t8, CC(idx, 4, k), CC(idx, 7, k)); \
+        PM (t6, t7, CC(idx, 5, k), CC(idx, 6, k)); \
+        CH(idx, k, 0).r = t1.r + t2.r + t3.r + t4.r + t5.r + t6.r; \
+        CH(idx, k, 0).i = t1.i + t2.i + t3.i + t4.i + t5.i + t6.i;
 
 #define POCKETFFT_PARTSTEP11a0(u1, \
-            u2, \
-            x1, \
-            x2, \
-            x3, \
-            x4, \
-            x5, \
-            y1, \
-            y2, \
-            y3, \
-            y4, \
-            y5, \
-            out1, \
-            out2) \
-    { \
-        T ca = t1 + t2 * x1 + t3 * x2 + t4 * x3 + t5 * x4 + t6 * x5, \
-                cb; \
-        cb.i = y1 * t11.r y2 * t10.r y3 * t9.r y4 * t8.r y5 * t7.r; \
-        cb.r = -(y1 * t11.i y2 * t10.i y3 * t9.i y4 * t8.i y5 * t7.i); \
-        PM(out1, out2, ca, cb); \
-    }
+                u2, \
+                x1, \
+                x2, \
+                x3, \
+                x4, \
+                x5, \
+                y1, \
+                y2, \
+                y3, \
+                y4, \
+                y5, \
+                out1, \
+                out2) \
+        { \
+            T ca = t1 + t2 * x1 + t3 * x2 + t4 * x3 + t5 * x4 + t6 * x5, \
+                    cb; \
+            cb.i = y1 * t11.r y2 * t10.r y3 * t9.r y4 * t8.r y5 * t7.r; \
+            cb.r = -(y1 * t11.i y2 * t10.i y3 * t9.i y4 * t8.i y5 * t7.i); \
+            PM(out1, out2, ca, cb); \
+        }
 #define POCKETFFT_PARTSTEP11a(u1, u2, x1, x2, x3, x4, x5, y1, y2, y3, y4, y5) \
-    POCKETFFT_PARTSTEP11a0(u1, \
+        POCKETFFT_PARTSTEP11a0(u1, \
         u2, \
         x1, \
         x2, \
@@ -1696,15 +1696,15 @@ void pass8 (
         y5, \
         CH(0, k, u1), \
         CH(0, k, u2) \
-    )
+        )
 #define POCKETFFT_PARTSTEP11(u1, u2, x1, x2, x3, x4, x5, y1, y2, y3, y4, y5) \
-    { \
-        T da, db; \
-        POCKETFFT_PARTSTEP11a0(u1, u2, x1, x2, x3, x4, x5, y1, y2, y3, y4, \
-                y5, da, db) \
-        special_mul<fwd>(da, WA(u1 - 1, i), CH(i, k, u1)); \
-        special_mul<fwd>(db, WA(u2 - 1, i), CH(i, k, u2)); \
-    }
+        { \
+            T da, db; \
+            POCKETFFT_PARTSTEP11a0(u1, u2, x1, x2, x3, x4, x5, y1, y2, y3, y4, \
+                    y5, da, db) \
+            special_mul<fwd>(da, WA(u1 - 1, i), CH(i, k, u1)); \
+            special_mul<fwd>(db, WA(u2 - 1, i), CH(i, k, u2)); \
+        }
 
 
 template<bool fwd, typename T>
@@ -2377,10 +2377,10 @@ void radf2 (
 
 // a2=a+b; b2=i*(b-a);
 #define POCKETFFT_REARRANGE(rx, ix, ry, iy) \
-    { \
-        auto t1 = rx + ry, t2 = ry - rx, t3 = ix + iy, t4 = ix - iy; \
-        rx = t1; ix = t3; ry = t4; iy = t2; \
-    }
+        { \
+            auto t1 = rx + ry, t2 = ry - rx, t3 = ix + iy, t4 = ix - iy; \
+            rx = t1; ix = t3; ry = t4; iy = t2; \
+        }
 
 
 template<typename T>

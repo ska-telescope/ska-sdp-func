@@ -24,8 +24,8 @@ static void run_and_check(
         bool read_only_output,
         sdp_MemType input_type,
         sdp_MemType output_type,
-        sdp_MemLocation input_location,
-        sdp_MemLocation output_location,
+        // sdp_MemLocation input_location,
+        // sdp_MemLocation output_location,
         sdp_Error* status
 )
 {
@@ -63,17 +63,13 @@ static void run_and_check(
             ptr[i] = complex<float>(1.0f, 0.0f);
         }
     }
-
-    // Copy inputs to specified location.
-//    sdp_Mem* input = sdp_mem_create_copy(input_cpu, input_location, status);
-//    sdp_mem_ref_dec(input_cpu);
-
+#ifdef SDP_HAVE_CUDA
     const int num_streams = 4;
     const int batch_size = 32;
-    int64_t data_1d_shape[] = {num_points*batch_size*num_streams};
+    int64_t data_1d_shape[] = {num_points* batch_size* num_streams};
     sdp_MemType data_1d_type = input_type;
 
-    status[0] = SDP_SUCCESS;
+    // status[0] = SDP_SUCCESS;
     sdp_Mem* idata_1d =
             sdp_mem_create(data_1d_type,
             SDP_MEM_GPU,
@@ -92,34 +88,32 @@ static void run_and_check(
             );
     sdp_mem_clear_contents(odata_1d, status);
 
-    int is_forward = 0;
+    int is_forward = 1;
 
     // Call the function to test.
     SDP_LOG_INFO("Running test: %s", test_name);
     sdp_Fft_extended* fft_extended = sdp_fft_extended_create(
-                        idata_1d,
-                        odata_1d,
-                        1,
-			is_forward,
-                        num_streams,
-                        batch_size,
-                        status
-                        );
-    status[0] = SDP_SUCCESS;
+            idata_1d,
+            odata_1d,
+            1,
+            is_forward,
+            num_streams,
+            batch_size,
+            status
+    );
+
     sdp_fft_extended_exec(
             fft_extended,
             input,  // Input grid
             output, // Output dirty image
-            status);
+            status
+    );
 
     sdp_fft_extended_free(
             fft_extended,
-            status);
-
-
-    sdp_Fft* fft = sdp_fft_create(input, output, num_dims, 1, status);
-    sdp_fft_exec(fft, input, output, status);
-    sdp_fft_free(fft);
+            status
+    );
+#endif
     sdp_mem_ref_dec(input);
 
     // Copy the output for checking.
@@ -160,7 +154,8 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU, double precision", true, false,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status
+                // SDP_MEM_GPU, SDP_MEM_GPU,
+                &status
         );
         assert(status == SDP_SUCCESS);
     }
@@ -168,63 +163,12 @@ int main()
         sdp_Error status = SDP_SUCCESS;
         run_and_check("GPU, single precision", true, false,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status
+                // SDP_MEM_GPU, SDP_MEM_GPU,
+                &status
         );
         assert(status == SDP_SUCCESS);
     }
-
-/*    // Unhappy paths.
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Read-only output", false, true,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status
-        );
-        assert(status != SDP_SUCCESS);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Inconsistent data types", false, false,
-                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status
-        );
-        assert(status == SDP_ERR_DATA_TYPE);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Inconsistent locations", false, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_GPU, &status
-        );
-        assert(status == SDP_ERR_MEM_LOCATION);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("Wrong data type", false, false,
-                SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-                SDP_MEM_GPU, SDP_MEM_GPU, &status
-        );
-        assert(status == SDP_ERR_DATA_TYPE);
-    }*/
 #endif
 
-    // Happy paths.
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, float precision", true, false,
-                SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status
-        );
-        assert(status == SDP_SUCCESS);
-    }
-    {
-        sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, double precision", true, false,
-                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
-                SDP_MEM_CPU, SDP_MEM_CPU, &status
-        );
-        assert(status == SDP_SUCCESS);
-    }
     return 0;
 }
-

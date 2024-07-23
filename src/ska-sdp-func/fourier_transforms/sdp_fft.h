@@ -112,8 +112,8 @@ sdp_Fft_extended* sdp_fft_extended_create(
         const sdp_Mem* output,
         int32_t num_dims_fft,
         int32_t is_forward,
-		int32_t num_streams,
-		int32_t batch_size,
+        int32_t num_streams,
+        int32_t batch_size,
         sdp_Error* status
 );
 
@@ -137,8 +137,9 @@ void sdp_fft_extended_exec(
  *
  * @param fft Handle to FFT plans and streams.
  */void sdp_fft_extended_free(
-		sdp_Fft_extended* fft,
-		sdp_Error* status);
+        sdp_Fft_extended* fft,
+        sdp_Error* status
+);
 
 /** @} */ /* End group fft_func. */
 
