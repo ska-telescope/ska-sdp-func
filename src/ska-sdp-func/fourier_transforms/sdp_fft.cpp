@@ -7,6 +7,7 @@
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
+#include "ska-sdp-func/utility/private_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 
 #ifdef SDP_HAVE_CUDA
@@ -270,6 +271,20 @@ struct sdp_Fft
     int cufft_plan;
 };
 
+struct sdp_Fft_extended
+{
+    sdp_Mem* input;
+    sdp_Mem* output;
+    sdp_Mem* temp;
+    int num_dims;
+    int num_x;
+    int num_y;
+    int batch_size;
+    int num_streams;
+    int is_forward;
+    int* cufft_plan;
+    sdp_CudaStream* cufft_stream;
+};
 
 static void check_params(
         const sdp_Mem* input,
@@ -629,6 +644,220 @@ void sdp_fft_free(sdp_Fft* fft)
     free(fft);
 }
 
+sdp_Fft_extended* sdp_fft_extended_create(
+        const sdp_Mem* input,  // idata_1d_all, created outside
+        const sdp_Mem* output, // odata_1d_all, created outside
+        int32_t num_dims_fft,  // 1
+        int32_t is_forward,    // 0 or 1
+		int32_t num_streams,   // number of streams
+		int32_t batch_size,    // batch size (default should be 1024)
+        sdp_Error* status
+)
+{
+    sdp_Fft_extended* fft = 0;
+    sdp_Mem* temp = NULL;
+    sdp_CudaStream* streams = NULL;
+    int* plan_1d = NULL;
+
+    int num_x = 0;
+    int num_y = 0;
+    check_params(input, output, num_dims_fft, status);
+    if (*status) return fft;
+
+    const int32_t num_dims = sdp_mem_num_dims(input);
+    const int32_t last_dim = num_dims - 1;
+
+    if (sdp_mem_location(input) == SDP_MEM_GPU)
+    {
+#ifdef SDP_HAVE_CUDA
+    	// Create CUDA streams
+        cudaError_t	cudaStatus;
+        cufftResult cufftStatus;
+        //size_t i,j,k;
+
+        streams = (sdp_CudaStream*) malloc(sizeof(sdp_CudaStream)*num_streams);
+
+        for (int i = 0; i < num_streams; i++) {
+        	cudaStatus = cudaStreamCreate(&streams[i].stream);
+            if (cudaStatus != cudaSuccess)
+            {
+            	SDP_LOG_ERROR("cudaStreamCreate failed! Can't create a stream %d", i);
+            	*status=SDP_ERR_MEM_ALLOC_FAILURE;
+            	return fft;
+            }
+        }
+
+        cufftType cufft_type = CUFFT_C2C;
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            cufft_type = CUFFT_Z2Z;
+        }
+        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            cufft_type = CUFFT_C2C;
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data types");
+            return fft;
+        }
+
+        // Find out grid_size
+        int grid_size = sdp_mem_num_elements(input);
+        grid_size /= (batch_size*num_streams);
+
+        int rank = 1;                           // --- 1D FFTs
+        int n[] = { (int)grid_size };           // --- Size of the Fourier transform
+        int istride = 1, ostride = 1;           // --- Distance between two successive input/output elements
+        int idist = grid_size, odist = grid_size; // --- Distance between batches
+        int inembed[] = { 0 };                  // --- Input size with pitch (ignored for 1D transforms)
+        int onembed[] = { 0 };                  // --- Output size with pitch (ignored for 1D transforms)
+        int batch = batch_size;                 // --- Number of batched executions
+
+        // Allocate cuFFT plans
+        plan_1d = (int*) malloc(sizeof(int)*num_streams);
+
+        // --- Creates cuFFT plans and sets them in streams
+         for (int i = 0; i < num_streams; i++) {
+            cufftStatus = cufftPlanMany(&plan_1d[i], rank, n,
+                          inembed, istride, idist,
+                          onembed, ostride, odist, cufft_type, batch);
+        	if (cufftStatus != CUFFT_SUCCESS){
+        		SDP_LOG_ERROR("cufftPlanMany error (code %d) in plan %d", cufftStatus, i);
+        		*status = SDP_ERR_RUNTIME;
+        		return fft;
+        	}
+        	SDP_LOG_INFO("cufftPlanMany %d %s", i, cufftStatus);
+        	cufftStatus = cufftSetStream(plan_1d[i], streams[i].stream);
+        	if (cufftStatus != CUFFT_SUCCESS){
+        		SDP_LOG_ERROR("cufftSetStream error (code %d) in stream %d", cufftStatus, i);
+        		*status = SDP_ERR_RUNTIME;
+        		return fft;
+        	}
+        }
+#else
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("The processing function library was compiled "
+                "without CUDA support"
+        );
+        return fft;
+#endif
+    }
+    else if (sdp_mem_location(input) == SDP_MEM_CPU)
+    {
+        int64_t num_x_stride = 0, num_y_stride = 0, batch_stride = 0;
+        if (num_dims_fft == 1)
+        {
+            num_x = sdp_mem_shape_dim(input, last_dim);
+            num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
+            num_y = 1;
+            num_y_stride = num_x;
+        }
+        if (num_dims_fft == 2)
+        {
+            num_x = sdp_mem_shape_dim(input, last_dim - 1);
+            num_y = sdp_mem_shape_dim(input, last_dim);
+            num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
+            num_y_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
+        }
+        if (num_dims_fft > 2)
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported FFT dimension");
+        }
+        batch_stride = num_x * num_y;
+        if (num_dims != num_dims_fft)
+        {
+            batch_size = sdp_mem_shape_dim(input, 0);
+            batch_stride = sdp_mem_stride_elements_dim(input, 0);
+        }
+
+        if (num_x_stride != 1
+                && num_y_stride != num_x
+                && batch_stride != num_x * num_y)
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data strides");
+        }
+
+        if (!*status)
+        {
+            int64_t* shape = (int64_t*) calloc(num_dims, sizeof(int64_t));
+            for (int f = 0; f < num_dims; f++)
+            {
+                shape[f] = sdp_mem_shape_dim(input, f);
+            }
+            temp = sdp_mem_create(
+                    sdp_mem_type(input), SDP_MEM_CPU, num_dims, shape, status
+            );
+            free(shape);
+        }
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+        SDP_LOG_ERROR("Unsupported FFT location");
+        return fft;
+    }
+    if (!*status)
+    {
+        fft = (sdp_Fft_extended*) calloc(1, sizeof(sdp_Fft_extended));
+        fft->input = sdp_mem_create_alias(input);
+        fft->output = sdp_mem_create_alias(output);
+        fft->temp = temp;
+        fft->num_dims = num_dims_fft;
+        fft->num_x = num_x;
+        fft->num_y = num_y;
+        fft->batch_size = batch_size;
+        fft->num_streams = num_streams;
+        fft->is_forward = is_forward;
+        fft->cufft_plan = plan_1d;
+        fft->cufft_stream = streams;
+    }
+    return fft;
+}
+
+void sdp_fft_extended_free(
+		sdp_Fft_extended* fft,
+		sdp_Error* status)
+{
+    if (!fft) return;
+#ifdef SDP_HAVE_CUDA
+    cudaError_t	cudaStatus;
+    cufftResult cufftStatus;
+    if (sdp_mem_location(fft->input) == SDP_MEM_GPU)
+    {
+        for(int i = 0; i < fft->num_streams; i++)
+        {
+        	cudaStatus = cudaStreamDestroy(fft->cufft_stream[i].stream);
+            if (cudaStatus != cudaSuccess)
+            {
+            	SDP_LOG_ERROR("cudaStreamDestroy failed! Can't can't destroy stream %d", i);
+            	*status=SDP_ERR_MEM_ALLOC_FAILURE;
+            	return;
+            }
+
+            cufftStatus= cufftDestroy(fft->cufft_plan[i]);
+            if (cufftStatus != CUFFT_SUCCESS)
+            {
+            	SDP_LOG_ERROR("cufftDestroy failed! Can't destroy a plan %d", fft->cufft_plan[i]);
+            	*status = SDP_ERR_RUNTIME;
+            	return;
+            }
+        }
+    }
+#endif
+    sdp_mem_ref_dec(fft->input);
+    sdp_mem_ref_dec(fft->output);
+    if (fft->temp != NULL)
+    {
+        sdp_mem_free(fft->temp);
+    }
+    free(fft);
+}
 
 template<typename T>
 void fft_phase(int num_x, int num_y, complex<T>* data)
@@ -810,7 +1039,7 @@ void sdp_transpose_inplace_accelerated(
 {
 	int64_t i, j;
 	int64_t r = n % block, m = n - r;
-    sdp_Double2 temp;
+    T temp;
     // if dimension of matrix is less than block size just do naive
     if (n < block){
         return sdp_transpose_inplace_simple(inout, n);
@@ -929,10 +1158,12 @@ void sdp_1d_cufft_accelerated(
 	}
 
     if(sizeof(cudaT) == 16){
+    	SDP_LOG_INFO("Stream %d, plan %d, cufftExecZ2Z", stream_number, plan_1d[stream_number]);
     	cufftStatus = cufftExecZ2Z(plan_1d[stream_number], (cufftDoubleComplex*)(idata_1d_all+idx_d), (cufftDoubleComplex*)(odata_1d_all+idx_d), do_inverse);
     }
     else if(sizeof(cudaT) == 8){
-    	cufftStatus = cufftExecC2C(plan_1d[stream_number], (cufftComplex*)(idata_1d_all+idx_d), (cufftComplex*)(odata_1d_all+idx_d), do_inverse);
+     	SDP_LOG_INFO("Stream %d, plan %d, cufftExecC2C", stream_number, plan_1d[stream_number]);
+   	cufftStatus = cufftExecC2C(plan_1d[stream_number], (cufftComplex*)(idata_1d_all+idx_d), (cufftComplex*)(odata_1d_all+idx_d), do_inverse);
     }
     else {
     	SDP_LOG_ERROR("Wrong size of the grid array elements, should be 8 (complex) or 16 (double complex), having %d", sizeof(cudaT));
@@ -1113,4 +1344,306 @@ void sdp_2d_cufft_accelerated(
 
 }
 #endif
+
+void sdp_fft_extended_exec(
+        sdp_Fft_extended* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        sdp_Error* status
+)
+{
+    if (*status || !fft || !input || !output) return;
+    //check_params(input, output, fft->num_dims, status);
+    //if (*status) return;
+/*
+    if (!sdp_mem_is_matching(fft->input, input, 1) ||
+            !sdp_mem_is_matching(fft->output, output, 1))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Arrays do not match those used for FFT plan creation");
+        return;
+    }
+*/
+    if (sdp_mem_location(fft->input) == SDP_MEM_GPU)
+    {
+#ifdef SDP_HAVE_CUDA
+        cufftResult error = CUFFT_SUCCESS;
+        cudaError_t	cudaStatus;
+        //cufftResult cufftStatus;
+
+        int i,j,k;
+        int64_t block_size = 8;
+        int do_inverse = (fft->is_forward == 1 ? 0 : 1);
+
+        // Find out grid_size
+        int64_t grid_size = sdp_mem_shape_dim(input, 0);
+
+        // Copy content from input to output
+        int64_t num_elements = sdp_mem_num_elements(input);
+        sdp_mem_copy_contents(
+                output,
+                input,
+                0,
+                0,
+                num_elements,
+                status
+        );
+
+        //void* inout = sdp_mem_data(output);
+
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+        {
+          	SDP_LOG_INFO("Doing FFT for SDP_MEM_COMPLEX_FLOAT");
+          	cudaStatus = cudaHostRegister((sdp_Float2*) sdp_mem_data(output), sizeof(sdp_Float2)*grid_size*grid_size, cudaHostRegisterPortable);
+              if (cudaStatus != cudaSuccess)
+              {
+                  	SDP_LOG_ERROR("cudaHostRegister failed! Can't pin a memory! %d", cudaStatus);
+                   	*status=SDP_ERR_MEM_ALLOC_FAILURE;
+                   	return;
+              }
+        	// Corner rotate (transpose)
+        	sdp_transpose_inplace_accelerated((sdp_Float2*) sdp_mem_data(output), grid_size, block_size);
+            // Working through columns
+            for(j=0;j<grid_size; j+=fft->num_streams*fft->batch_size)
+        	{
+                for (k = 0; k < fft->num_streams; ++k)
+                	sdp_1d_cufft_accelerated(
+                    	(cufftComplex*) sdp_mem_data(fft->input),
+    					(cufftComplex*) sdp_mem_data(fft->output),
+						(sdp_Float2*) sdp_mem_data(output),
+                		grid_size,
+                		fft->batch_size,
+                		fft->cufft_plan,
+						(cudaStream_t*)(fft->cufft_stream),
+                		k,
+                		j,
+        				do_inverse,
+        				status
+                		);
+
+        	    for(i = 0; i < fft->num_streams; i++)
+        	    {
+        	    	cudaStatus = cudaStreamSynchronize(fft->cufft_stream[i].stream);
+        	        if (cudaStatus != cudaSuccess)
+        	        {
+        	        	SDP_LOG_ERROR("cudaStreamSynchronize in columns failed! Can't synchronize stream %d", i);
+        	        	*status = SDP_ERR_RUNTIME;
+        	        	return;
+        	        }
+        	    }
+        	}
+        	cudaStatus = cudaDeviceSynchronize();
+            if (cudaStatus != cudaSuccess)
+            {
+            	SDP_LOG_ERROR("cudaDeviceSynchronize failed! Can't synchronize the device");
+            	*status = SDP_ERR_RUNTIME;
+            	return;
+            }
+
+        	// Corner rotate (transpose)
+        	sdp_transpose_inplace_accelerated((sdp_Float2*) sdp_mem_data(output), grid_size, block_size);
+
+            // Working through rows
+        	for(j=0;j<grid_size; j+=fft->num_streams*fft->batch_size)
+        	{
+                for (k = 0; k < fft->num_streams; ++k)
+                	sdp_1d_cufft_accelerated(
+                        	(cufftComplex*) sdp_mem_data(fft->input),
+        					(cufftComplex*) sdp_mem_data(fft->output),
+							(sdp_Float2*)sdp_mem_data(output),
+                    		grid_size,
+                    		fft->batch_size,
+                    		fft->cufft_plan,
+							(cudaStream_t*)fft->cufft_stream,
+                    		k,
+                    		j,
+            				do_inverse,
+            				status
+                		);
+
+        	}
+            cudaStatus = cudaHostUnregister((sdp_Float2*) sdp_mem_data(output));
+            if (cudaStatus != cudaSuccess)
+            {
+            	SDP_LOG_ERROR("cudaHostUnregister failed! Can't unregister a memory! %d", cudaStatus);
+            	*status=SDP_ERR_MEM_ALLOC_FAILURE;
+            	return;
+            }
+
+        }
+        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+        	SDP_LOG_INFO("Doing FFT for SDP_MEM_COMPLEX_DOUBLE");
+        	cudaStatus = cudaHostRegister((sdp_Double2*) sdp_mem_data(output), sizeof(sdp_Double2)*grid_size*grid_size, cudaHostRegisterPortable);
+                  if (cudaStatus != cudaSuccess)
+                  {
+                      	SDP_LOG_ERROR("cudaHostRegister failed! Can't pin a memory! %s", cudaStatus);
+                       	*status=SDP_ERR_MEM_ALLOC_FAILURE;
+                       	return;
+                  }
+        	// Corner rotate (transpose)
+        	sdp_transpose_inplace_accelerated((sdp_Double2*) sdp_mem_data(output), grid_size, block_size);
+            // Working through columns
+            for(j=0;j<grid_size; j+=fft->num_streams*fft->batch_size)
+        	{
+                for (k = 0; k < fft->num_streams; ++k)
+                	sdp_1d_cufft_accelerated(
+                		(cufftDoubleComplex*) sdp_mem_data(fft->input),
+						(cufftDoubleComplex*) sdp_mem_data(fft->output),
+						(sdp_Double2*) sdp_mem_data(output),
+                		grid_size,
+                		fft->batch_size,
+                		fft->cufft_plan,
+						(cudaStream_t*)fft->cufft_stream,
+                		k,
+                		j,
+        				do_inverse,
+        				status
+                		);
+
+        	    for(i = 0; i < fft->num_streams; i++)
+        	    {
+        	    	cudaStatus = cudaStreamSynchronize(fft->cufft_stream[i].stream);
+        	        if (cudaStatus != cudaSuccess)
+        	        {
+        	        	SDP_LOG_ERROR("cudaStreamSynchronize in columns failed! Can't synchronize stream %d", i);
+        	        	*status = SDP_ERR_RUNTIME;
+        	        	return;
+        	        }
+        	    }
+        	}
+        	cudaStatus = cudaDeviceSynchronize();
+            if (cudaStatus != cudaSuccess)
+            {
+            	SDP_LOG_ERROR("cudaDeviceSynchronize failed! Can't synchronize the device");
+            	*status = SDP_ERR_RUNTIME;
+            	return;
+            }
+
+        	// Corner rotate (transpose)
+        	sdp_transpose_inplace_accelerated((sdp_Double2*) sdp_mem_data(output), grid_size, block_size);
+
+            // Working through rows
+        	for(j=0;j<grid_size; j+=fft->num_streams*fft->batch_size)
+        	{
+                for (k = 0; k < fft->num_streams; ++k)
+                	sdp_1d_cufft_accelerated(
+                    		(cufftDoubleComplex*) sdp_mem_data(fft->input),
+    						(cufftDoubleComplex*) sdp_mem_data(fft->output),
+							(sdp_Double2*)sdp_mem_data(output),
+                    		grid_size,
+                    		fft->batch_size,
+                    		fft->cufft_plan,
+							(cudaStream_t*)fft->cufft_stream,
+                    		k,
+                    		j,
+            				do_inverse,
+            				status
+                		);
+
+        	}
+            cudaStatus = cudaHostUnregister((sdp_Double2*) sdp_mem_data(output));
+            if (cudaStatus != cudaSuccess)
+            {
+            	SDP_LOG_ERROR("cudaHostUnregister failed! Can't unregister a memory! %d", cudaStatus);
+            	*status=SDP_ERR_MEM_ALLOC_FAILURE;
+            	return;
+            }
+
+        }
+        else
+        {
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Inconsistent input/output data type", error);
+        }
+
+
+    	cudaStatus = cudaDeviceSynchronize();
+    	if (cudaStatus != cudaSuccess)
+    	{
+    	    SDP_LOG_ERROR("cudaDeviceSynchronize failed! Can't synchronize the device %d", 0);
+    	    *status = SDP_ERR_RUNTIME;
+    	    return;
+    	}
+    	SDP_LOG_INFO("cufftExec finished");
+
+#else
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("The processing function library was compiled "
+                "without CUDA support"
+        );
+#endif
+    }
+    else if (sdp_mem_location(input) == SDP_MEM_CPU)
+    {
+        int do_inverse = (fft->is_forward == 1 ? 0 : 1);
+
+
+        if (fft->num_dims == 1)
+        {
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT
+                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+            {
+            	sdp_1d_fft(
+                        (sdp_Float2*) sdp_mem_data(output),
+                        (sdp_Float2*) sdp_mem_data(input),
+                        (sdp_Float2*) sdp_mem_data(fft->temp),
+                        fft->num_x,
+                        fft->batch_size,
+                        do_inverse
+                );
+            }
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
+                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+            {
+                sdp_1d_fft(
+                        (sdp_Double2*) sdp_mem_data(output),
+                        (sdp_Double2*) sdp_mem_data(input),
+                        (sdp_Double2*) sdp_mem_data(fft->temp),
+                        fft->num_x,
+                        fft->batch_size,
+                        do_inverse
+                );
+            }
+        }
+        if (fft->num_dims == 2)
+        {
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT
+                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+            {
+                sdp_2d_fft(
+                        (sdp_Float2*) sdp_mem_data(output),
+                        (sdp_Float2*) sdp_mem_data(input),
+                        (sdp_Float2*) sdp_mem_data(fft->temp),
+                        fft->num_x,
+                        fft->num_y,
+                        fft->batch_size,
+                        do_inverse
+                );
+            }
+            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
+                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+            {
+                sdp_2d_fft(
+                        (sdp_Double2*) sdp_mem_data(output),
+                        (sdp_Double2*) sdp_mem_data(input),
+                        (sdp_Double2*) sdp_mem_data(fft->temp),
+                        fft->num_x,
+                        fft->num_y,
+                        fft->batch_size,
+                        do_inverse
+                );
+            }
+        }
+
+        if (fft->num_dims > 2)
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_ERROR("3D FFT is not supported on host memory.");
+            return;
+        }
+    }
+}
 
