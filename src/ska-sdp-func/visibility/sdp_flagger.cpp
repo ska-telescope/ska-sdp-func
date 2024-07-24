@@ -122,7 +122,15 @@ double median_dev_calc(double* arr, int n, double median){
 }
 
 double modified_zscore(double median, double mediandev, double val){
-    double zscore = 0.6795 * (val - median)/ mediandev;
+    double zscore = 0;
+    if (mediandev == 0 && val == median){
+        double zscore = 0;
+    } else if (mediandev == 0 && val != median){
+        double zscore = 10000000;
+        cout << "branch 2" << endl;
+    } else{
+        double zscore = 0.6795 * (val - median)/ mediandev;
+    }   
     return zscore;
 }
 
@@ -386,6 +394,7 @@ static void flagger_dynamic_threshold(
                                   
                     double medmeddev = median_dev_calc(medarray, medwindow, medmed);
                     double zscore_med = modified_zscore(medmed, medmeddev, median);
+
                     
                     if ((zscore_med > threshold_broadband || zscore_med < -threshold_broadband) && t != 0){
                         situation = 1;
@@ -398,6 +407,13 @@ static void flagger_dynamic_threshold(
                         int pos = baseline_pos + c * num_pols + p;
                         double vis1 = abs(visibilities[pos]);
                         double zscore_mags = modified_zscore(median, mediandev, vis1);
+                        if (t == 17 && b == 14 && c == 8){
+                                cout << "vis1: " << vis1 << endl; 
+                                cout << "median: " << median << endl; 
+                                cout << "mediandev: " << mediandev << endl; 
+                                cout << "zscore:" << zscore_mags << endl;
+                            }
+
 
                         if (zscore_mags > threshold_magnitudes || zscore_mags < -threshold_magnitudes || situation == 1){      
                             flags[pos] = 1;
@@ -457,7 +473,7 @@ static void flagger_dynamic_threshold(
                             int pos_minus_one = baseline_pos_minus_one + c * num_pols + p;
                             double ts = abs(transit_score[c]);
                             double zscore_vars = modified_zscore(medianvar, mediandevvar, ts);
-                      
+                            
                             if (zscore_vars > threshold_variations || zscore_vars < -threshold_variations) {
                                flags[pos] = 1;
                                flags[pos_minus_one] = 1;
