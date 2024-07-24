@@ -103,19 +103,70 @@ void sdp_cuda_stream_destroy(sdp_CudaStream* stream);
 
 #ifdef __cplusplus
 
-#include <map>
-#include <string>
+#include <stdlib.h>
+
+/*
+ * Note:
+ * Don't use any STL containers here - doing so causes problems if using the
+ * Intel compiler for host code, and nvcc (which requires GCC) for GPU code,
+ * as both compilers link their own versions of the C++ standard library.
+ * Use custom containers here instead, and create the kernel map on first use.
+ */
 
 struct sdp_CudaKernelRegistrar
 {
-    static std::map<std::string, const void*>& kernels()
+    struct Pair
     {
-        static std::map<std::string, const void*> kernels_;
-        return kernels_;
+        const char* first; // Name of kernel.
+        const void* second; // Pointer to kernel.
+
+        Pair(const char* name, const void* ptr) : first(name), second(ptr)
+        {
+        }
+    };
+    struct List
+    {
+        Pair* list_;
+        int size_;
+
+        List() : list_(0), size_(0)
+        {
+        }
+
+        virtual ~List()
+        {
+            free(list_);
+        }
+
+        int size() const
+        {
+            return size_;
+        }
+
+        void push_back(const Pair& value)
+        {
+            size_++;
+            list_ = (Pair*) realloc(list_, size_ * sizeof(Pair));
+            list_[size_ - 1].first = value.first;
+            list_[size_ - 1].second = value.second;
+        }
+
+        const Pair& operator[](int i) const
+        {
+            return list_[i];
+        }
+    };
+
+
+    static List& kernels()
+    {
+        static List k;
+        return k;
     }
+
     sdp_CudaKernelRegistrar(const char* name, const void* ptr)
     {
-        kernels().insert(std::make_pair(std::string(name), ptr));
+        kernels().push_back(Pair(name, ptr));
     }
 };
 

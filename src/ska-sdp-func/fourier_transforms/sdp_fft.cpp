@@ -667,6 +667,43 @@ void sdp_fft_norm(sdp_Mem* data, sdp_Error* status)
             *status = SDP_ERR_DATA_TYPE;
         }
     }
+    else if (sdp_mem_location(data) == SDP_MEM_GPU)
+    {
+        uint64_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        const int num_x = sdp_mem_shape_dim(data, 0);
+        const int num_y = sdp_mem_shape_dim(data, 1);
+        num_blocks[0] = (num_x + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (num_y + num_threads[1] - 1) / num_threads[1];
+        const double factor = 1.0 / (num_x * num_y);
+        sdp_MemViewGpu<complex<double>, 2> data_dbl;
+        sdp_MemViewGpu<complex<float>, 2> data_flt;
+        const char* kernel_name = 0;
+        int is_dbl = 0;
+        if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            is_dbl = 0;
+            sdp_mem_check_and_view(data, &data_flt, status);
+            kernel_name = "sdp_fft_norm<complex<float> >";
+        }
+        else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            is_dbl = 1;
+            sdp_mem_check_and_view(data, &data_dbl, status);
+            kernel_name = "sdp_fft_norm<complex<double> >";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            return;
+        }
+        const void* arg[] = {
+            is_dbl ? (const void*)&data_dbl : (const void*)&data_flt,
+            (const void*)&factor
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+    }
     else
     {
         *status = SDP_ERR_MEM_LOCATION;
@@ -711,15 +748,15 @@ void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
     }
     else if (sdp_mem_location(data) == SDP_MEM_GPU)
     {
-        size_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        uint64_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
         const char* kernel_name = 0;
         if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
         {
-            kernel_name = "fft_phase<float>";
+            kernel_name = "sdp_fft_phase<float>";
         }
         else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "fft_phase<double>";
+            kernel_name = "sdp_fft_phase<double>";
         }
         else
         {

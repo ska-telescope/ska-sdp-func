@@ -266,6 +266,7 @@ struct sdp_MemView
         return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
                        stride[3] * i3 + stride[4] * i4];
     }
+
     /**
      * @brief Operator for accessing data via 5-dimensional array views.
      */
@@ -487,6 +488,7 @@ void sdp_mem_check_and_view_at(
         view->stride[dim] = *status ? 0 : sdp_mem_stride_elements_dim(mem, dim);
     }
 }
+
 
 /**
  * @brief Attempts to generate view of memory object

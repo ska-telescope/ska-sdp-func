@@ -3,6 +3,7 @@ SKA_SDP_FUNC_SRC(
     sdp_degrid_uvw_custom.cu
     sdp_grid_wstack_wtower.cpp
     sdp_gridder_clamp_channels.cpp
+    sdp_gridder_clamp_channels.cu
     sdp_gridder_direct.cpp
     sdp_gridder_utils.cpp
     sdp_gridder_utils.cu

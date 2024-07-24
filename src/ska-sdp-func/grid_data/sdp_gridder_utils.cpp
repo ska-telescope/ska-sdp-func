@@ -767,7 +767,48 @@ void sdp_gridder_subgrid_add(
     }
     else
     {
-        *status = SDP_ERR_MEM_LOCATION;
+        // Call the kernel.
+        uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
+        const int64_t sub_size_u = sdp_mem_shape_dim(subgrid, 0);
+        const int64_t sub_size_v = sdp_mem_shape_dim(subgrid, 1);
+        num_blocks[0] = (sub_size_u + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (sub_size_v + num_threads[1] - 1) / num_threads[1];
+        sdp_MemViewGpu<const complex<double>, 2> grid_dbl, sub_dbl;
+        sdp_MemViewGpu<const complex<float>, 2> grid_flt, sub_flt;
+        const char* kernel_name = 0;
+        int is_dbl = 0;
+        if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            is_dbl = 1;
+            sdp_mem_check_and_view(grid, &grid_dbl, status);
+            sdp_mem_check_and_view(subgrid, &sub_dbl, status);
+            kernel_name = "sdp_gridder_subgrid_add<"
+                    "complex<double>, complex<double>, double>";
+        }
+        else if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            is_dbl = 0;
+            sdp_mem_check_and_view(grid, &grid_flt, status);
+            sdp_mem_check_and_view(subgrid, &sub_flt, status);
+            kernel_name = "sdp_gridder_subgrid_add<"
+                    "complex<float>, complex<float>, double>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+        const void* arg[] = {
+            is_dbl ? (const void*)&grid_dbl : (const void*)&grid_flt,
+            (const void*)&offset_u,
+            (const void*)&offset_v,
+            is_dbl ? (const void*)&sub_dbl : (const void*)&sub_flt,
+            (const void*)&factor
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
     }
 }
 
@@ -805,7 +846,47 @@ void sdp_gridder_subgrid_cut_out(
     }
     else
     {
-        *status = SDP_ERR_MEM_LOCATION;
+        // Call the kernel.
+        uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
+        const int64_t sub_size_u = sdp_mem_shape_dim(subgrid, 0);
+        const int64_t sub_size_v = sdp_mem_shape_dim(subgrid, 1);
+        num_blocks[0] = (sub_size_u + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (sub_size_v + num_threads[1] - 1) / num_threads[1];
+        sdp_MemViewGpu<const complex<double>, 2> grid_dbl, sub_dbl;
+        sdp_MemViewGpu<const complex<float>, 2> grid_flt, sub_flt;
+        const char* kernel_name = 0;
+        int is_dbl = 0;
+        if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            is_dbl = 1;
+            sdp_mem_check_and_view(grid, &grid_dbl, status);
+            sdp_mem_check_and_view(subgrid, &sub_dbl, status);
+            kernel_name = "sdp_gridder_subgrid_cut_out<"
+                    "complex<double>, complex<double> >";
+        }
+        else if (sdp_mem_type(grid) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(subgrid) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            is_dbl = 0;
+            sdp_mem_check_and_view(grid, &grid_flt, status);
+            sdp_mem_check_and_view(subgrid, &sub_flt, status);
+            kernel_name = "sdp_gridder_subgrid_cut_out<"
+                    "complex<float>, complex<float> >";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+        const void* arg[] = {
+            is_dbl ? (const void*)&grid_dbl : (const void*)&grid_flt,
+            (const void*)&offset_u,
+            (const void*)&offset_v,
+            is_dbl ? (const void*)&sub_dbl : (const void*)&sub_flt
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
     }
 }
 
@@ -833,7 +914,41 @@ void sdp_gridder_sum_diff(
     }
     else
     {
-        *status = SDP_ERR_MEM_LOCATION;
+        // Allocate space for the result.
+        const int64_t shape[] = {1};
+        sdp_Mem* result_gpu = sdp_mem_create(
+                SDP_MEM_INT, SDP_MEM_GPU, 1, shape, status
+        );
+
+        // Call the kernel.
+        uint64_t num_threads[] = {512, 1, 1}, num_blocks[] = {8, 1, 1};
+        sdp_MemViewGpu<const int, 1> a_int, b_int;
+        sdp_mem_check_and_view(a, &a_int, status);
+        sdp_mem_check_and_view(b, &b_int, status);
+        const char* kernel_name = 0;
+        if (sdp_mem_type(a) == SDP_MEM_INT && sdp_mem_type(b) == SDP_MEM_INT)
+        {
+            kernel_name = "sdp_gridder_sum_diff<int, 512>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+        const void* arg[] = {
+            (const void*)&a_int,
+            (const void*)&b_int,
+            sdp_mem_gpu_buffer(result_gpu, status)
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+
+        sdp_Mem* result_cpu = sdp_mem_create_copy(
+                result_gpu, SDP_MEM_CPU, status
+        );
+        *result = *((int*) sdp_mem_data(result_cpu));
+        sdp_mem_free(result_cpu);
+        sdp_mem_free(result_gpu);
     }
 }
 
