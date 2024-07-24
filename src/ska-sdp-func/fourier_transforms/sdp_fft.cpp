@@ -697,8 +697,8 @@ void sdp_fft_norm(sdp_Mem* data, sdp_Error* status)
             return;
         }
         const void* arg[] = {
-                is_dbl ? (const void*)&data_dbl : (const void*)&data_flt,
-                (const void*)&factor
+            is_dbl ? (const void*)&data_dbl : (const void*)&data_flt,
+            (const void*)&factor
         };
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, arg, status

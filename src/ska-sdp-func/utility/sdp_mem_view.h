@@ -489,6 +489,7 @@ void sdp_mem_check_and_view_at(
     }
 }
 
+
 /**
  * @brief Attempts to generate view of memory object
  *
