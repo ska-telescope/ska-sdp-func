@@ -14,6 +14,10 @@
 #include <cufft.h>
 #endif
 
+#ifdef SDP_HAVE_MKL
+#include "mkl.h"
+#endif
+
 using std::complex;
 
 struct sdp_Float2
@@ -268,6 +272,9 @@ struct sdp_Fft
     int batch_size;
     int is_forward;
     int cufft_plan;
+#ifdef SDP_HAVE_MKL
+    DFTI_DESCRIPTOR_HANDLE mkl_plan;
+#endif
 };
 
 
@@ -343,17 +350,23 @@ sdp_Fft* sdp_fft_create(
         sdp_Error* status
 )
 {
-    sdp_Fft* fft = 0;
-    sdp_Mem* temp = NULL;
-    int cufft_plan = 0;
-    int batch_size = 1;
-    int num_x = 0;
-    int num_y = 0;
     check_params(input, output, num_dims_fft, status);
-    if (*status) return fft;
+    if (*status) return NULL;
+
+    // Allocate space for a plan.
+    sdp_Fft* fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
+    fft->input = sdp_mem_create_alias(input);
+    fft->output = sdp_mem_create_alias(output);
+    fft->num_dims = num_dims_fft;
+    fft->batch_size = 1;
+    fft->is_forward = is_forward;
 
     const int32_t num_dims = sdp_mem_num_dims(input);
     const int32_t last_dim = num_dims - 1;
+    if (num_dims != num_dims_fft)
+    {
+        fft->batch_size = sdp_mem_shape_dim(input, 0);
+    }
 
     if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
@@ -388,18 +401,14 @@ sdp_Fft* sdp_fft_create(
             inembed[i] = dim_size[i];
             onembed[i] = dim_size[i];
         }
-        if (num_dims != num_dims_fft)
-        {
-            batch_size = sdp_mem_shape_dim(input, 0);
-        }
         istride = sdp_mem_stride_elements_dim(input, last_dim);
         ostride = sdp_mem_stride_elements_dim(output, last_dim);
         idist = sdp_mem_stride_elements_dim(input, 0);
         odist = sdp_mem_stride_elements_dim(output, 0);
         const cufftResult error = cufftPlanMany(
-                &cufft_plan, num_dims_fft, dim_size,
+                &fft->cufft_plan, num_dims_fft, dim_size,
                 inembed, istride, idist, onembed, ostride, odist,
-                cufft_type, batch_size
+                cufft_type, fft->batch_size
         );
         free(onembed);
         free(inembed);
@@ -420,18 +429,75 @@ sdp_Fft* sdp_fft_create(
     }
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
     {
+#ifdef SDP_HAVE_MKL
+        // Use MKL if available.
+        MKL_LONG mkl_status = 0;
+        DFTI_CONFIG_VALUE precision = DFTI_DOUBLE;
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            precision = DFTI_DOUBLE;
+        }
+        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            precision = DFTI_SINGLE;
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data types");
+            return fft;
+        }
+
+        // Create descriptor.
+        MKL_LONG* dim_size = (MKL_LONG*) calloc(
+                num_dims_fft, sizeof(MKL_LONG)
+        );
+        MKL_LONG num_elem_fft = 1;
+        for (int i = 0; i < num_dims_fft; ++i)
+        {
+            dim_size[i] = sdp_mem_shape_dim(
+                    input, i + num_dims - num_dims_fft
+            );
+            num_elem_fft *= dim_size[i];
+        }
+        if (num_dims_fft == 1)
+        {
+            mkl_status = DftiCreateDescriptor(
+                    &fft->mkl_plan, precision, DFTI_COMPLEX,
+                    1, (MKL_LONG) sdp_mem_shape_dim(input, last_dim)
+            );
+        }
+        else
+        {
+            mkl_status = DftiCreateDescriptor(
+                    &fft->mkl_plan, precision, DFTI_COMPLEX,
+                    num_dims_fft, dim_size
+            );
+        }
+        free(dim_size);
+
+        // Set descriptor parameters.
+        DftiSetValue(fft->mkl_plan, DFTI_NUMBER_OF_TRANSFORMS,
+                (MKL_LONG) fft->batch_size
+        );
+        DftiSetValue(fft->mkl_plan, DFTI_INPUT_DISTANCE, num_elem_fft);
+        DftiSetValue(fft->mkl_plan, DFTI_OUTPUT_DISTANCE, num_elem_fft);
+#else
+        // No MKL available.
         int64_t num_x_stride = 0, num_y_stride = 0, batch_stride = 0;
         if (num_dims_fft == 1)
         {
-            num_x = sdp_mem_shape_dim(input, last_dim);
+            fft->num_x = sdp_mem_shape_dim(input, last_dim);
             num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
-            num_y = 1;
-            num_y_stride = num_x;
+            fft->num_y = 1;
+            num_y_stride = fft->num_x;
         }
         if (num_dims_fft == 2)
         {
-            num_x = sdp_mem_shape_dim(input, last_dim - 1);
-            num_y = sdp_mem_shape_dim(input, last_dim);
+            fft->num_x = sdp_mem_shape_dim(input, last_dim - 1);
+            fft->num_y = sdp_mem_shape_dim(input, last_dim);
             num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
             num_y_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
         }
@@ -440,16 +506,15 @@ sdp_Fft* sdp_fft_create(
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported FFT dimension");
         }
-        batch_stride = num_x * num_y;
+        batch_stride = fft->num_x * fft->num_y;
         if (num_dims != num_dims_fft)
         {
-            batch_size = sdp_mem_shape_dim(input, 0);
             batch_stride = sdp_mem_stride_elements_dim(input, 0);
         }
 
         if (num_x_stride != 1
-                && num_y_stride != num_x
-                && batch_stride != num_x * num_y)
+                && num_y_stride != fft->num_x
+                && batch_stride != fft->num_x * fft->num_y)
         {
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported data strides");
@@ -462,30 +527,17 @@ sdp_Fft* sdp_fft_create(
             {
                 shape[f] = sdp_mem_shape_dim(input, f);
             }
-            temp = sdp_mem_create(
+            fft->temp = sdp_mem_create(
                     sdp_mem_type(input), SDP_MEM_CPU, num_dims, shape, status
             );
             free(shape);
         }
+#endif
     }
     else
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Unsupported FFT location");
-        return fft;
-    }
-    if (!*status)
-    {
-        fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
-        fft->input = sdp_mem_create_alias(input);
-        fft->output = sdp_mem_create_alias(output);
-        fft->temp = temp;
-        fft->num_dims = num_dims_fft;
-        fft->num_x = num_x;
-        fft->num_y = num_y;
-        fft->batch_size = batch_size;
-        fft->is_forward = is_forward;
-        fft->cufft_plan = cufft_plan;
     }
     return fft;
 }
@@ -543,6 +595,36 @@ void sdp_fft_exec(
     }
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
     {
+#ifdef SDP_HAVE_MKL
+        // Use MKL if available.
+        MKL_LONG mkl_status = 0;
+
+        // Check if transform should be in-place or out-of-place.
+        DFTI_CONFIG_VALUE placement = DFTI_NOT_INPLACE;
+        if (sdp_mem_data(output) == sdp_mem_data(input))
+        {
+            placement = DFTI_INPLACE;
+        }
+        mkl_status = DftiSetValue(fft->mkl_plan, DFTI_PLACEMENT, placement);
+
+        // Commit descriptor.
+        mkl_status = DftiCommitDescriptor(fft->mkl_plan);
+
+        // Compute FFT.
+        if (fft->is_forward)
+        {
+            mkl_status = DftiComputeForward(
+                    fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
+            );
+        }
+        else
+        {
+            mkl_status = DftiComputeBackward(
+                    fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
+            );
+        }
+#else
+        // No MKL available.
         int do_inverse = (fft->is_forward == 1 ? 0 : 1);
 
         if (fft->num_dims == 1)
@@ -607,6 +689,7 @@ void sdp_fft_exec(
             SDP_LOG_ERROR("3D FFT is not supported on host memory.");
             return;
         }
+#endif
     }
 }
 
@@ -619,6 +702,9 @@ void sdp_fft_free(sdp_Fft* fft)
     {
         cufftDestroy(fft->cufft_plan);
     }
+#endif
+#ifdef SDP_HAVE_MKL
+    (void) DftiFreeDescriptor(&fft->mkl_plan);
 #endif
     sdp_mem_ref_dec(fft->input);
     sdp_mem_ref_dec(fft->output);
