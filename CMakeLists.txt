@@ -51,6 +51,12 @@ if (CUDA_FOUND)
     add_definitions(-DSDP_HAVE_CUDA)
 endif()
 find_package(OpenMP QUIET)
+if (FIND_MKL OR NOT DEFINED FIND_MKL)
+    find_package(MKL CONFIG QUIET PATHS $ENV{MKLROOT})
+endif()
+if (MKL_FOUND)
+    add_definitions(-DSDP_HAVE_MKL)
+endif()
 
 # Set compiler options.
 include(compiler_options)
@@ -99,6 +105,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
+
+# Link with MKL if found.
+if (MKL_FOUND)
+    target_link_libraries(${PROJECT_NAME} MKL::MKL)
+endif()
 
 # Add OpenMP compiler flags if found.
 if (OpenMP_CXX_FOUND)
