@@ -64,7 +64,7 @@ include:
 
 .build-manylinux-wheels: &build_wheels
   - dnf -y install zip
-  - export CMAKE_BUILD_PARALLEL_LEVEL=16
+  - export CMAKE_BUILD_PARALLEL_LEVEL=4
   - export CMAKE_ARGS="-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++"
   - export PYVERS=("cp39" "cp310" "cp311" "cp312" "cp313")
   - for PYVER in ${PYVERS[@]}; do
@@ -73,6 +73,7 @@ include:
       python3 -m pip install --upgrade setuptools;
       make python-build PYTHON_BUILD_TYPE="tag_setup";
       rm -f /usr/local/bin/python3;
+      rm -rf build/;
     done
   - for whl in ./dist/*.whl; do
       auditwheel repair "$whl" -w wheelhouse;
