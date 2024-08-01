@@ -4,6 +4,13 @@ SDP Processing Function Library
 
 .. toctree::
   :maxdepth: 1
+  :caption: Releases
+
+  changelog
+
+.. toctree::
+  :maxdepth: 1
+  :caption: Installation
 
   install
 
