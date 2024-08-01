@@ -5,10 +5,10 @@ endif()
 project(ska_sdp_func CXX C)
 
 # Project version.
-set(SDP_FUNC_VERSION_ID "0x010101")
+set(SDP_FUNC_VERSION_ID "0x010102")
 set(SDP_FUNC_VERSION_MAJOR 1)
 set(SDP_FUNC_VERSION_MINOR 1)
-set(SDP_FUNC_VERSION_PATCH 1)
+set(SDP_FUNC_VERSION_PATCH 2)
 set(SDP_FUNC_VERSION_SUFFIX "")
 
 # Add local CMake module path.
