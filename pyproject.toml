@@ -28,6 +28,15 @@ build-backend = "setuptools.build_meta"
 
 [tool.poetry]
 package-mode = false
+name = "ska_sdp_func"
+version = "1.0.1"
+description = "SKA SDP Processing Function Library"
+authors = [
+    "The SKA SDP Processing Function Library Developers <someone@skao.int>",
+]
+license = "BSD-3-Clause"
+repository = "https://gitlab.com/ska-telescope/sdp/ska-sdp-func/"
+documentation = "https://developer.skao.int/projects/ska-sdp-func/en/latest/"
 
 [tool.poetry.dependencies]
 python = "^3.9"
