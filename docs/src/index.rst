@@ -39,6 +39,12 @@ SDP Processing Function Library
   module_visibility/index
   module_examples/index
 
+.. toctree::
+  :caption: Licenses
+  :maxdepth: 1
+
+  license
+
 
 Indices and tables
 ==================
