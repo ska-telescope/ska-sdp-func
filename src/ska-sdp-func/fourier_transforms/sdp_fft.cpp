@@ -478,6 +478,16 @@ sdp_Fft* sdp_fft_create(
         }
         free(dim_size);
 
+        // Check for any errors from MKL.
+        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+        {
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Error in DftiCreateDescriptor (code %lld): %s",
+                    mkl_status, DftiErrorMessage(mkl_status)
+            );
+            return fft;
+        }
+
         // Set descriptor parameters.
         DftiSetValue(fft->mkl_plan, DFTI_NUMBER_OF_TRANSFORMS,
                 (MKL_LONG) fft->batch_size
@@ -616,12 +626,26 @@ void sdp_fft_exec(
             mkl_status = DftiComputeForward(
                     fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
             );
+            if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+            {
+                *status = SDP_ERR_RUNTIME;
+                SDP_LOG_ERROR("Error in DftiComputeForward (code %lld): %s",
+                        mkl_status, DftiErrorMessage(mkl_status)
+                );
+            }
         }
         else
         {
             mkl_status = DftiComputeBackward(
                     fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
             );
+            if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+            {
+                *status = SDP_ERR_RUNTIME;
+                SDP_LOG_ERROR("Error in DftiComputeBackward (code %lld): %s",
+                        mkl_status, DftiErrorMessage(mkl_status)
+                );
+            }
         }
 #else
         // No MKL available.
