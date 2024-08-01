@@ -781,6 +781,29 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                 )
                 uvw_shifted -= [0, 0, w_plane * self.w_step]
 
+                # Bounds check.
+                duvw = uvw * dfreq / C_0
+                half_subgrid = self.subgrid_size // 2
+                u_min = numpy.floor(
+                    self.theta * (uvw_shifted[0][0] + start_ch * duvw[0])
+                )
+                u_max = numpy.ceil(
+                    self.theta * (uvw_shifted[0][0] + (end_ch - 1) * duvw[0])
+                )
+                v_min = numpy.floor(
+                    self.theta * (uvw_shifted[0][1] + start_ch * duvw[1])
+                )
+                v_max = numpy.ceil(
+                    self.theta * (uvw_shifted[0][1] + (end_ch - 1) * duvw[1])
+                )
+                if (
+                    u_min < -half_subgrid
+                    or u_max >= half_subgrid
+                    or v_min < -half_subgrid
+                    or v_max >= half_subgrid
+                ):
+                    continue
+
                 self._degrid_vis_uvw(
                     vis_out[i][start_ch:end_ch],
                     uvw_shifted[start_ch:end_ch],
@@ -896,6 +919,29 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                     uvw_scaled, subgrid_offsets, self.theta, self.w_step
                 )
                 uvw_shifted -= [0, 0, w_plane * self.w_step]
+
+                # Bounds check.
+                duvw = uvw * dfreq / C_0
+                half_subgrid = self.subgrid_size // 2
+                u_min = numpy.floor(
+                    self.theta * (uvw_shifted[0][0] + start_ch * duvw[0])
+                )
+                u_max = numpy.ceil(
+                    self.theta * (uvw_shifted[0][0] + (end_ch - 1) * duvw[0])
+                )
+                v_min = numpy.floor(
+                    self.theta * (uvw_shifted[0][1] + start_ch * duvw[1])
+                )
+                v_max = numpy.ceil(
+                    self.theta * (uvw_shifted[0][1] + (end_ch - 1) * duvw[1])
+                )
+                if (
+                    u_min < -half_subgrid
+                    or u_max >= half_subgrid
+                    or v_min < -half_subgrid
+                    or v_max >= half_subgrid
+                ):
+                    continue
 
                 # Grid local visibilities
                 self._grid_vis_uvw(
@@ -1497,7 +1543,7 @@ def test_gridder_wtower_uvw():
     # Common parameters
     image_size = 256  # Total image size in pixels
     subgrid_size = image_size // 4  # Needs to be even.
-    theta = 0.02  # Total image size in directional cosines.
+    theta = 0.0008  # Total image size in directional cosines.
     shear_u = 0.2
     shear_v = 0.1
     support = 10
@@ -1509,17 +1555,24 @@ def test_gridder_wtower_uvw():
     idu = 80
     idv = 90
     idw = 12
-    ch_count = 100
-    freq0_hz = 1e6
-    dfreq_hz = 1e3
 
     # Create an image for input to degridding.
     numpy.random.seed(123)
     image = numpy.zeros((subgrid_size, subgrid_size))
     image[subgrid_size // 4, subgrid_size // 4] = 1.0
     image[5 * subgrid_size // 6, 2 * subgrid_size // 6] = 0.5
-    num_uvw = 300
-    uvw = numpy.random.random_sample((num_uvw, 3)) * 100
+
+    # Create some (u,v,w) coordinates.
+    # ch_count = 100
+    # freq0_hz = 1e6
+    # dfreq_hz = 1e3
+    # num_uvw = 300
+    # uvw = numpy.random.random_sample((num_uvw, 3)) * 100
+    ch_count = 2
+    freq0_hz = C_0
+    dfreq_hz = C_0 / 100
+    uvw = generate_uvw()
+    num_uvw = uvw.shape[0]
     start_chs = numpy.zeros((num_uvw), dtype=numpy.int32)
     end_chs = numpy.ones((num_uvw), dtype=numpy.int32) * (ch_count)
 
@@ -1683,7 +1736,7 @@ def test_gridder_wtower_uvw_gpu():
     # Common parameters
     image_size = 2048  # Total image size in pixels
     subgrid_size = image_size // 4  # Needs to be even.
-    theta = 0.02  # Total image size in directional cosines.
+    theta = 0.002  # Total image size in directional cosines.
     shear_u = 0.2
     shear_v = 0.1
     support = 10
@@ -1695,9 +1748,6 @@ def test_gridder_wtower_uvw_gpu():
     idu = 80
     idv = 90
     idw = 0
-    ch_count = 100
-    freq0_hz = 1e6
-    dfreq_hz = 1e3
 
     # Create an image for input to degridding.
     float_type = numpy.float64
@@ -1706,8 +1756,18 @@ def test_gridder_wtower_uvw_gpu():
     image = numpy.zeros((subgrid_size, subgrid_size), dtype=float_type)
     image[subgrid_size // 4, subgrid_size // 4] = 1.0
     image[5 * subgrid_size // 6, 2 * subgrid_size // 6] = 0.5
-    num_uvw = 3000
-    uvw = numpy.random.random_sample((num_uvw, 3)) * 100
+
+    # Create some (u,v,w) coordinates.
+    # ch_count = 100
+    # freq0_hz = 1e6
+    # dfreq_hz = 1e3
+    # num_uvw = 3000
+    # uvw = numpy.random.random_sample((num_uvw, 3)) * 100
+    ch_count = 10
+    freq0_hz = C_0
+    dfreq_hz = C_0 / 100
+    uvw = generate_uvw()
+    num_uvw = uvw.shape[0]
     uvw = uvw.astype(float_type)
     start_chs = numpy.zeros((num_uvw), dtype=numpy.int32)
     end_chs = numpy.ones((num_uvw), dtype=numpy.int32) * (ch_count)
@@ -2102,8 +2162,8 @@ def test_gridder_wstack():
     print(f"PFL wstack_wtower_grid_all took {t1:.4f} s.")
 
     # Check they are the same, but ignore the pixels around the border.
-    left = 20
-    right = -20
+    left = 30
+    right = -30
     im_ref = numpy.real(image_ref[left:right, left:right])
     im_pfl = numpy.real(image_out[left:right, left:right])
     numpy.testing.assert_allclose(im_pfl, im_ref, atol=1e-5)
