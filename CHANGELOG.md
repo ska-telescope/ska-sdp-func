@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+
+- Re-issue release of previous version.
+
 ## 1.1.2
 
 - Attempt to fix build of Python wheels in CI/CD pipeline.
