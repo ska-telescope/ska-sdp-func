@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.4
+
+- Re-issue release of previous version.
+
 ## 1.1.3
 
 - Re-issue release of previous version.
