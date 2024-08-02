@@ -64,16 +64,19 @@ include:
 
 .build-manylinux-wheels: &build_wheels
   - dnf -y install zip
-  - export CMAKE_BUILD_PARALLEL_LEVEL=4
+  - export CMAKE_BUILD_PARALLEL_LEVEL=16
   - export CMAKE_ARGS="-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++"
   - export PYVERS=("cp39" "cp310" "cp311" "cp312" "cp313")
   - for PYVER in ${PYVERS[@]}; do
       ln -s /opt/python/$PYVER-$PYVER/bin/python3 /usr/local/bin/python3;
+      ln -s /opt/python/$PYVER-$PYVER/bin/pip /usr/local/bin/pip;
+      ln -s /opt/python/$PYVER-$PYVER/bin/pip3 /usr/local/bin/pip3;
       python3 --version;
-      python3 -m pip install --upgrade setuptools;
-      make python-build PYTHON_BUILD_TYPE="tag_setup";
+      pip install --upgrade build setuptools;
+      make python-build PYTHON_BUILD_TYPE="tag_pyproject";
       rm -f /usr/local/bin/python3;
-      rm -rf build/;
+      rm -f /usr/local/bin/pip;
+      rm -f /usr/local/bin/pip3;
     done
   - for whl in ./dist/*.whl; do
       auditwheel repair "$whl" -w wheelhouse;
@@ -113,25 +116,15 @@ python-lint:
   stage: lint
   tags: [ska-default]
   before_script:
-    - '[ -f .make/python.mk ] || (echo "File python.mk not included in Makefile"; exit 1;)'
     - apt-get -y update
     - apt-get -y install make python3 python3-pip
     - 'make help | grep python-lint'
     - pip3 install --upgrade pip poetry
     - poetry config virtualenvs.in-project true
     - poetry config virtualenvs.create false
-    - |
-      if [[ -f pyproject.toml ]]; then
-        echo "python-lint: Installing with poetry";
-        time poetry install --no-root;
-      else
-        if  [[ -f requirements.txt ]]; then
-          echo "python-lint: Installing with pip";
-          time pip3 install -r requirements.txt;
-        fi;
-      fi;
+    - poetry install --no-root
   script:
-    - make python-lint;
+    - make python-lint
   artifacts:
     paths:
       - build/
@@ -188,11 +181,40 @@ build-test-release:
     reports:
       junit: build/reports/unit-tests.xml
 
-# Need to override the template as we have to use setup.py instead of poetry
-# to build the package.
-# This is handled by "python-build-for-development-legacy"
-# instead of the stage below.
+# The "python-gemnasium-scan" stage needs to be disabled, as it doesn't
+# work for projects built with "package-mode = false".
+ python-gemnasium-scan:
+  rules:
+    - when: never
+
+# The "python-gemnasium-scan-legacy" stage needs to be disabled.
+# It will try to run because we have a "setup.py" file.
+ python-gemnasium-scan-legacy:
+  rules:
+    - when: never
+
+# The "python-build-for-development" stage is done as part of "python-test".
 python-build-for-development:
+  rules:
+    - when: never
+
+# The "python-build-for-development-legacy" stage needs to be disabled.
+# It will try to run because we have a "setup.py" file.
+python-build-for-development-legacy:
+  rules:
+    - when: never
+
+# The "python-build-for-publication" stage needs to be disabled.
+# We have to build the wheels when we publish them, since they are too large
+# to share as artifacts between stages on GitLab.
+# This is done in the "python-publish" stage.
+python-build-for-publication:
+  rules:
+    - when: never
+
+# The "python-build-for-publication-legacy" stage needs to be disabled.
+# It will try to run because we have a "setup.py" file.
+python-build-for-publication-legacy:
   rules:
     - when: never
 
@@ -228,9 +250,10 @@ pages:
     paths:
       - public
 
-# Need to override the template stage because of auditwheel repair.
-# We can't use Poetry either, as setup.py is used to build the library.
-python-publish-to-car:
+# We have to build and publish the wheels in a single stage, since
+# the artifacts would be too large to share between stages in GitLab.
+# We also have to run "auditwheel repair" on each of the generated wheels.
+python-publish:
   stage: publish
   tags: [ska-default]
   image: quay.io/pypa/manylinux_2_28_x86_64
@@ -241,21 +264,20 @@ python-publish-to-car:
   script:
     - *build_wheels
     - python3.12 -m twine upload --username ${CAR_PYPI_USERNAME} --password ${CAR_PYPI_PASSWORD} --repository-url ${CAR_PYPI_REPOSITORY_URL} wheelhouse/*
-  rules:
-    - if: '$CI_COMMIT_TAG'
-
-# Need to override the template stage because of auditwheel repair.
-# We can't use Poetry either, as setup.py is used to build the library.
-python-publish-to-gitlab:
-  stage: publish
-  tags: [ska-default]
-  image: quay.io/pypa/manylinux_2_28_x86_64
-  before_script:
-    - *cuda_packages_rocky
-    - *mkl_packages_rocky
-    - python3.12 -m pip install twine
-  script:
-    - *build_wheels
     - python3.12 -m twine upload --username gitlab-ci-token --password ${CI_JOB_TOKEN} --repository-url https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/pypi wheelhouse/*
   rules:
     - if: '$CI_COMMIT_TAG'
+
+# The "python-publish-to-car" stage is disabled, since the wheels are built
+# in "python-publish" and uploaded to both the CAR and GitLab there.
+# This avoids having to build the wheels twice.
+python-publish-to-car:
+  rules:
+    - when: never
+
+# The "python-publish-to-gitlab" stage is disabled, since the wheels are built
+# in "python-publish" and uploaded to both the CAR and GitLab there.
+# This avoids having to build the wheels twice.
+python-publish-to-gitlab:
+  rules:
+    - when: never
