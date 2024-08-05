@@ -75,7 +75,45 @@ def optimized_weighting(
     output_weights,
 ):
     """Optimised briggs weighting algorithm
-    that performs weighting after a bucket sort"""
+    that performs weighting after a bucket sort
+
+    :param: uvw : List of UVW coordinates in metres, real-valued.
+    Dimensions are [num_times, num_baselines, 3]
+    :param freqs: List of frequencies in Hz, real-valued.
+    Dimension is [num_channels]
+    :param vis: Array of complex valued visibilities.
+    Dimensions are [num_times, num_baselines, num_channels, num_pols]
+    :param weights: A real-valued 4D array, returns the weights.
+    Dimensions are [num_times, num_baselines, num_channels, num_pols]
+    :param robust_param: Parameter given by the user to gauge the robustness
+    of the weighting function.
+    A value of -2 would be closer to uniform weighting and
+    2 would be closer to natural weighting.
+    :param grid_size: Size of the grid,
+    the grid is assumed to be square,
+    so only one dimensional size is expected.
+    :param cell_size_rad: Cell size, in radians.
+    :param support: Number of grid points a visibility contributes to.
+    :param num_visibilities: Number of visibilities that needs to be processed,
+    this will be calculated by count_and_prefix_sum(),expects a ctypes integer.
+    :param sorted_uu: Array that stores the sorted u-coordiantes
+    for each visibility. Dimensions are [num_visibilities]
+    :param sorted_vv: Array that stores the sorted v-coordiantes
+    for each visibility. Dimensions are [num_visibilities]
+    :param sorted_weights: Array that stores the sorted weights
+    for each visibility. Dimensions are [num_visibilities]
+    :param sorted_tile: Array that stores the sorted tile coordinates
+    for each visibility. Dimensions are [num_visibilities]
+    :param sorted_vis: Array that stores the sorted visibilities.
+    Dimensions are [num_visibilities]
+    :param tile_offsets: Array that results in the prefix summed
+    number of visibilities, dimensions are [num_tiles + 1]
+    :param num_points_in_tiles: Array that stores how many visibilities
+    contribute to each tile, dimensions are [ num_tiles ]
+    :param output_weights: A real-valued 4D array, returns the
+    calculated weights.
+    Dimensions are [num_times, num_baselines, num_channels, num_pols]
+    """
     Lib.sdp_optimized_weighting(
         Mem(uvw),
         Mem(freqs),
@@ -115,7 +153,40 @@ def optimised_indexed_weighting(
     output_weights,
 ):
     """Utilises the indexed visibiliies/weights
-    to better optimise performance for briggs weighting"""
+    to better optimise performance for briggs weighting
+
+    :param: uvw : List of UVW coordinates in metres, real-valued.
+    Dimensions are [num_times, num_baselines, 3]
+    :param vis: Array of complex valued visibilities.
+    Dimensions are [num_times, num_baselines, num_channels, num_pols]
+    :param weights: A real-valued 4D array, returns the weights.
+    Dimensions are [num_times, num_baselines, num_channels, num_pols]
+    :param robust_param: Parameter given by the user to gauge the robustness
+    of the weighting function.
+    :param grid_size: Size of the grid,
+    the grid is assumed to be square,
+    so only one dimensional size is expected.
+    :param cell_size_rad: Cell size, in radians.
+    :param support: Number of grid points a visibility contributes to.
+    :param num_visibilities: Number of visibilities that needs to be processed,
+    this will be calculated by count_and_prefix_sum(),expects a ctypes integer.
+    :param sorted_tile: Array that stores the sorted tile coordinates
+    for each visibility. Dimensions are [num_visibilities]
+    :param sorted_uu: Array that stores the sorted u-coordiantes
+    for each visibility. Dimensions are [num_visibilities]
+    :param sorted_vv: Array that stores the sorted v-coordiantes
+    for each visibility. Dimensions are [num_visibilities]
+    :param sorted_vis_index: Array that stores the sorted indices
+    for each visibility. Dimensions are [num_visibilities]
+    :param tile_offsets: Array that results in the prefix summed
+    number of visibilities, dimensions are [num_tiles + 1]
+    :param num_points_in_tiles: Array that stores how many visibilities
+    contribute to each tile, dimensions are [ num_tiles ]
+    :param output_weights: A real-valued 4D array, returns the
+    calculated weights.
+    Dimensions are [num_times, num_baselines, num_channels, num_pols]
+
+    """
     Lib.sdp_optimised_indexed_weighting(
         Mem(uvw),
         Mem(vis),

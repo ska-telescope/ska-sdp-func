@@ -312,11 +312,16 @@ def test_optmised_weighting():
         grid_size
     )
 
+    tile_size_u = 32
+    tile_size_v = 16
+
     count_and_prefix_sum(
         uvw,
         freqs,
         vis,
         grid_size,
+        tile_size_u,
+        tile_size_v,
         cell_size_rad,
         support,
         num_visibilities,
@@ -340,6 +345,8 @@ def test_optmised_weighting():
         vis,
         weights,
         grid_size,
+        tile_size_u,
+        tile_size_v,
         cell_size_rad,
         support,
         num_visibilities,
@@ -399,12 +406,16 @@ def test_indexed_weighting():
     num_points_in_tiles, num_skipped, tile_offsets = bucket_sort_params(
         grid_size
     )
+    tile_size_u = 32
+    tile_size_v = 16
 
     count_and_prefix_sum(
         uvw,
         freqs,
         vis,
         grid_size,
+        tile_size_u,
+        tile_size_v,
         cell_size_rad,
         support,
         num_visibilities,
@@ -429,6 +440,8 @@ def test_indexed_weighting():
         vis,
         weights,
         grid_size,
+        tile_size_u,
+        tile_size_v,
         cell_size_rad,
         support,
         num_visibilities,

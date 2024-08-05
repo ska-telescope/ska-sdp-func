@@ -119,7 +119,7 @@ static void sdp_prefix_sum(
 
 
 template<typename UVW_TYPE, typename FREQ_TYPE, typename VIS_TYPE,
-        typename WEIGHT_TYPE, int NUM_POL>
+        typename WEIGHT_TYPE>
 static void sdp_bucket_sort_simple(
         const int64_t support,
         const int64_t num_times,
@@ -144,6 +144,7 @@ static void sdp_bucket_sort_simple(
         const double cell_size_rad
 )
 {
+    int num_pol = 1;
     const int64_t grid_centre = grid_size / 2;
     const double grid_scale =  grid_size * cell_size_rad;
     for (int i_time = 0; i_time < num_times; i_time++)
@@ -158,7 +159,7 @@ static void sdp_bucket_sort_simple(
             for (int i_channel = 0; i_channel < num_channels; i_channel++)
             {
                 const int i_vis = INDEX_4D(
-                        num_times, num_baselines, num_channels, NUM_POL,
+                        num_times, num_baselines, num_channels, num_pol,
                         i_time, i_baseline, i_channel, 0
                 );
 
@@ -192,7 +193,7 @@ static void sdp_bucket_sort_simple(
                             tile_offsets[pu + pv * num_tiles_u] += 1;
                             sorted_uu[off] = pos_u;
                             sorted_vv[off] = pos_v;
-                            for (int i = 0; i < NUM_POL; i++)
+                            for (int i = 0; i < num_pol ; i++)
                             {
                                 sorted_vis[off] = vis[i_vis + i];
                                 sorted_weight[off] = weight[i_vis + i];
@@ -208,7 +209,7 @@ static void sdp_bucket_sort_simple(
 
 
 template<typename UVW_TYPE, typename FREQ_TYPE, typename VIS_TYPE,
-        typename WEIGHT_TYPE, int NUM_POL>
+        typename WEIGHT_TYPE>
 static void tiled_indexing(
         const int64_t support,
         const int64_t num_times,
@@ -219,7 +220,6 @@ static void tiled_indexing(
         const float inv_tile_size_v,
         const UVW_TYPE* uvw,
         const FREQ_TYPE* freqs,
-        const VIS_TYPE* vis,
         const WEIGHT_TYPE* weight,
         const int64_t num_tiles_u,
         const int64_t top_left_u,
@@ -230,6 +230,7 @@ static void tiled_indexing(
         const double cell_size_rad
 )
 {
+    int num_pol = 1;
     const int64_t grid_centre = grid_size / 2;
     const double grid_scale =  grid_size * cell_size_rad;
     for (int i_time = 0; i_time < num_times; i_time++)
@@ -244,7 +245,7 @@ static void tiled_indexing(
             for (int i_channel = 0; i_channel < num_channels; i_channel++)
             {
                 const int i_vis = INDEX_4D(
-                        num_times, num_baselines, num_channels, NUM_POL,
+                        num_times, num_baselines, num_channels, num_pol,
                         i_time, i_baseline, i_channel, 0
                 );
 
@@ -276,7 +277,7 @@ static void tiled_indexing(
                         {
                             int off = tile_offsets[pu + pv * num_tiles_u];
                             tile_offsets[pu + pv * num_tiles_u] += 1;
-                            for (int i = 0; i < NUM_POL; i++)
+                            for (int i = 0; i < num_pol; i++)
                             {
                                 sorted_vis_index[off] = i_vis + i;
                             }
@@ -295,6 +296,8 @@ void sdp_count_and_prefix_sum(
         const sdp_Mem* freqs,
         const sdp_Mem* vis,
         const int grid_size,
+        const int64_t tile_size_u,
+        const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
         int* num_visibilites,
@@ -304,6 +307,11 @@ void sdp_count_and_prefix_sum(
         sdp_Error* status
 )
 {
+    // Initialise arrays to zero
+    sdp_mem_clear_contents(tile_offsets, status);
+    sdp_mem_clear_contents(num_points_in_tiles, status);
+    sdp_mem_clear_contents(num_skipped, status);
+
     sdp_MemLocation vis_location = sdp_mem_location(vis);
     sdp_MemType vis_type = sdp_mem_type(vis);
     sdp_MemType uvw_type = sdp_mem_type(uvw);
@@ -315,8 +323,6 @@ void sdp_count_and_prefix_sum(
 
     // Calculate parameters for tiling
     int64_t grid_centre = grid_size / 2;
-    int64_t tile_size_u = 32;
-    int64_t tile_size_v = 16;
     int64_t ctile_u = grid_centre / tile_size_u;
     int64_t ctile_v = grid_centre / tile_size_v;
     const float inv_tile_size_u = 1.0 / tile_size_u;
@@ -436,7 +442,7 @@ void sdp_count_and_prefix_sum(
         );
 
         const char* kernel_name_prefix = 0;
-        kernel_name_prefix = "sdp_preifx_sum_gpu<int>";
+        kernel_name_prefix = "sdp_prefix_sum_gpu<int>";
 
         const void* args_prefix[]{
             (const void*)&num_tiles,
@@ -477,6 +483,8 @@ void sdp_bucket_sort(
         const sdp_Mem* vis,
         const sdp_Mem* weights,
         const int grid_size,
+        const int64_t tile_size_u,
+        const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
         int* num_visibilites,
@@ -491,6 +499,13 @@ void sdp_bucket_sort(
 )
 {
     if (*status) return;
+    // Initialise arrays to zero
+    sdp_mem_clear_contents(sorted_uu, status);
+    sdp_mem_clear_contents(sorted_tile, status);
+    sdp_mem_clear_contents(sorted_vv, status);
+    sdp_mem_clear_contents(sorted_weight, status);
+    sdp_mem_clear_contents(sorted_vis, status);
+
     sdp_MemLocation vis_location = sdp_mem_location(vis);
     sdp_MemType vis_type = sdp_mem_type(vis);
     sdp_MemType uvw_type = sdp_mem_type(uvw);
@@ -503,8 +518,6 @@ void sdp_bucket_sort(
 
     // Calculate parameters for tiling
     int64_t grid_centre = grid_size / 2;
-    const int64_t tile_size_u = 32;
-    const int64_t tile_size_v = 16;
     int64_t ctile_u = grid_centre / tile_size_u;
     int64_t ctile_v = grid_centre / tile_size_v;
     const float inv_tile_size_u = 1.0 / tile_size_u;
@@ -547,15 +560,13 @@ void sdp_bucket_sort(
             status
     );
 
-    constexpr int NUM_POL = 1;
-
     if (vis_location == SDP_MEM_CPU)
     {
         if (uvw_type == SDP_MEM_DOUBLE &&
                 weight_type == SDP_MEM_DOUBLE &&
                 freq_type == SDP_MEM_DOUBLE)
         {
-            sdp_bucket_sort_simple<double, double, double, double, NUM_POL>(
+            sdp_bucket_sort_simple<double, double, double, double>(
                     support,
                     num_times,
                     num_baselines,
@@ -575,6 +586,34 @@ void sdp_bucket_sort(
                     (double*)sdp_mem_data(sorted_vv),
                     (double*)sdp_mem_data(sorted_vis),
                     (double*)sdp_mem_data(sorted_weight),
+                    (int*)sdp_mem_data(sorted_tile),
+                    cell_size_rad
+            );
+        }
+        else if (uvw_type == SDP_MEM_FLOAT &&
+                weight_type == SDP_MEM_FLOAT &&
+                freq_type == SDP_MEM_FLOAT)
+        {
+            sdp_bucket_sort_simple<float, float, float, float>(
+                    support,
+                    num_times,
+                    num_baselines,
+                    num_channels,
+                    grid_size,
+                    inv_tile_size_u,
+                    inv_tile_size_v,
+                    (const float*) sdp_mem_data_const(uvw),
+                    (const float*)sdp_mem_data_const(freqs),
+                    (const float*)sdp_mem_data_const(vis),
+                    (const float*)sdp_mem_data_const(weights),
+                    num_tiles_u,
+                    top_left_u,
+                    top_left_v,
+                    (int*)sdp_mem_data(tile_offsets),
+                    (float*)sdp_mem_data(sorted_uu),
+                    (float*)sdp_mem_data(sorted_vv),
+                    (float*)sdp_mem_data(sorted_vis),
+                    (float*)sdp_mem_data(sorted_weight),
                     (int*)sdp_mem_data(sorted_tile),
                     cell_size_rad
             );
@@ -658,6 +697,8 @@ void sdp_tiled_indexing(
         const sdp_Mem* vis,
         const sdp_Mem* weights,
         const int grid_size,
+        const int64_t tile_size_u,
+        const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
         int* num_visibilites,
@@ -670,6 +711,12 @@ void sdp_tiled_indexing(
 )
 {
     if (*status) return;
+    // Initialise arrays to zero
+    sdp_mem_clear_contents(sorted_tile, status);
+    sdp_mem_clear_contents(sorted_vis_index, status);
+    sdp_mem_clear_contents(sorted_vv, status);
+    sdp_mem_clear_contents(sorted_uu, status);
+
     sdp_MemLocation vis_location = sdp_mem_location(vis);
     sdp_MemType vis_type = sdp_mem_type(vis);
     sdp_MemType uvw_type = sdp_mem_type(uvw);
@@ -682,8 +729,6 @@ void sdp_tiled_indexing(
 
     // Calculate parameters for tiling
     int64_t grid_centre = grid_size / 2;
-    const int64_t tile_size_u = 32;
-    const int64_t tile_size_v = 16;
     int64_t ctile_u = grid_centre / tile_size_u;
     int64_t ctile_v = grid_centre / tile_size_v;
     const float inv_tile_size_u = 1.0 / tile_size_u;
@@ -726,15 +771,13 @@ void sdp_tiled_indexing(
             status
     );
 
-    constexpr int NUM_POL = 1;
-
     if (vis_location == SDP_MEM_CPU)
     {
         if (uvw_type == SDP_MEM_DOUBLE &&
                 weight_type == SDP_MEM_DOUBLE &&
                 freq_type == SDP_MEM_DOUBLE)
         {
-            tiled_indexing<double, double, double, double, NUM_POL>(
+            tiled_indexing<double, double, double, double>(
                     support,
                     num_times,
                     num_baselines,
@@ -744,8 +787,31 @@ void sdp_tiled_indexing(
                     inv_tile_size_v,
                     (const double*) sdp_mem_data_const(uvw),
                     (const double*)sdp_mem_data_const(freqs),
-                    (const double*)sdp_mem_data_const(vis),
                     (const double*)sdp_mem_data_const(weights),
+                    num_tiles_u,
+                    top_left_u,
+                    top_left_v,
+                    (int*)sdp_mem_data(tile_offsets),
+                    (int*)sdp_mem_data(sorted_vis_index),
+                    (int*)sdp_mem_data(sorted_tile),
+                    cell_size_rad
+            );
+        }
+        else if (uvw_type == SDP_MEM_FLOAT &&
+                weight_type == SDP_MEM_FLOAT &&
+                freq_type == SDP_MEM_FLOAT)
+        {
+            tiled_indexing<float, float, float, float>(
+                    support,
+                    num_times,
+                    num_baselines,
+                    num_channels,
+                    grid_size,
+                    inv_tile_size_u,
+                    inv_tile_size_v,
+                    (const float*) sdp_mem_data_const(uvw),
+                    (const float*)sdp_mem_data_const(freqs),
+                    (const float*)sdp_mem_data_const(weights),
                     num_tiles_u,
                     top_left_u,
                     top_left_v,
@@ -797,7 +863,6 @@ void sdp_tiled_indexing(
             (const void*)&inv_tile_size_v,
             sdp_mem_gpu_buffer_const(uvw, status),
             sdp_mem_gpu_buffer_const(freqs, status),
-            sdp_mem_gpu_buffer_const(vis, status),
             (const void*)&num_tiles_u,
             (const void*)&top_left_u,
             (const void*)&top_left_v,

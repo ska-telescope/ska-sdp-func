@@ -14,6 +14,8 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         ctypes.c_int,
+        ctypes.c_int64,
+        ctypes.c_int64,
         ctypes.c_double,
         ctypes.c_int64,
         ctypes.POINTER(ctypes.c_int),
@@ -33,6 +35,8 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         ctypes.c_int,
+        ctypes.c_int64,
+        ctypes.c_int64,
         ctypes.c_double,
         ctypes.c_int64,
         ctypes.POINTER(ctypes.c_int),
@@ -56,6 +60,8 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         ctypes.c_int,
+        ctypes.c_int64,
+        ctypes.c_int64,
         ctypes.c_double,
         ctypes.c_int64,
         ctypes.POINTER(ctypes.c_int),
@@ -74,6 +80,8 @@ def count_and_prefix_sum(
     freqs,
     vis,
     grid_size,
+    tile_size_u,
+    tile_size_v,
     cell_size_rad,
     support,
     num_visibilities,
@@ -93,11 +101,13 @@ def count_and_prefix_sum(
     :param grid_size: Size of the grid,
     the grid is assumed to be square,
     so only one dimensional size is expected.
+    :param tile_size_u: Size of an individual tile in the u-direction.
+    :param tile_size_v: Size of an individual tile in the v-direction.
     :param cell_size_rad: Cell size, in radians.
     :param support: Number of grid points a visibility contributes to.
     :param num_visibilities: Number of visibilities that needs to be processed,
     this will be calculated by this function and expects a ctypes integer.
-    :param tile_offsets: Array that results in the prefix summed
+    :param tile_offsets: Array that contains the prefix summed
     number of visibilities, dimensions are [num_tiles + 1]
     :param num_points_in_tiles: Array that stores how many visibilities
     contribute to each tile, dimensions are [ num_tiles ]
@@ -110,6 +120,8 @@ def count_and_prefix_sum(
         Mem(freqs),
         Mem(vis),
         grid_size,
+        tile_size_u,
+        tile_size_v,
         cell_size_rad,
         support,
         ctypes.byref(num_visibilities),
@@ -125,6 +137,8 @@ def bucket_sort(
     vis,
     weights,
     grid_size,
+    tile_size_u,
+    tile_size_v,
     cell_size_rad,
     support,
     num_visibilities,
@@ -149,21 +163,23 @@ def bucket_sort(
     Dimensions are [num_times, num_baselines, num_channels, num_pols]
     :param grid_size: Size of the grid, the grid is assumed to be square,
     so only one dimensional size is expected.
+    :param tile_size_u: Size of an individual tile in the u-direction.
+    :param tile_size_v: Size of an individual tile in the v-direction.
     :param cell_size_rad: Cell size, in radians.
     :param support: Number of grid points a visibility contributes to.
     :param num_visibilities: Number of visibilities that needs to be processed,
     this will be calculated by count_and_prefix_sum(),expects a ctypes integer.
-    :param sorted_uu: Array that stores the sorted u-coordiantes
+    :param sorted_uu: Output array that stores the sorted u-coordiantes
     for each visibility. Dimensions are [num_visibilities]
-    :param sorted_vv: Array that stores the sorted v-coordiantes
+    :param sorted_vv: Output array that stores the sorted v-coordiantes
     for each visibility. Dimensions are [num_visibilities]
-    :param sorted_weights: Array that stores the sorted weights
+    :param sorted_weights: Output array that stores the sorted weights
     for each visibility. Dimensions are [num_visibilities]
-    :param sorted_tiles: Array that stores the sorted tile coordinates
+    :param sorted_tiles: Output array that stores the sorted tile coordinates
     for each visibility. Dimensions are [num_visibilities]
-    :param sorted_vis: Array that stores the sorted visibilities.
+    :param sorted_vis: Output array that stores the sorted visibilities.
     Dimensions are [num_visibilities]
-    :param tile_offsets: Array that results in the prefix summed
+    :param tile_offsets: Array that contains the prefix summed
     number of visibilities, dimensions are [num_tiles + 1]
     :param num_points_in_tiles: Array that stores how many visibilities
     contribute to each tile, dimensions are [ num_tiles ]
@@ -174,6 +190,8 @@ def bucket_sort(
         Mem(vis),
         Mem(weights),
         grid_size,
+        tile_size_u,
+        tile_size_v,
         cell_size_rad,
         support,
         ctypes.byref(num_visibilities),
@@ -193,6 +211,8 @@ def tiled_indexing(
     vis,
     weights,
     grid_size,
+    tile_size_u,
+    tile_size_v,
     cell_size_rad,
     support,
     num_visibilties,
@@ -215,19 +235,21 @@ def tiled_indexing(
     Dimensions are [num_times, num_baselines, num_channels, num_pols]
     :param grid_size: Size of the grid, the grid is assumed to be square,
     so only one dimensional size is expected.
+    :param tile_size_u: Size of an individual tile in the u-direction.
+    :param tile_size_v: Size of an individual tile in the v-direction.
     :param cell_size_rad: Cell size, in radians.
     :param support: Number of grid points a visibility contributes to.
     :param num_visibilities: Number of visibilities that needs to be processed,
     this will be calculated by count_and_prefix_sum(),expects a ctypes integer.
-    :param sorted_tiles: Array that stores the sorted tile coordinates
+    :param sorted_tiles: Output array that stores the sorted tile coordinates
     for each visibility. Dimensions are [num_visibilities]
-    :param sorted_uu: Array that stores the sorted u-coordinates
+    :param sorted_uu: Output array that stores the sorted u-coordinates
     for each visibility. Dimensions are [num_visibilities]
-    :param sorted_vv: Array that stores the sorted v-coordiantes
+    :param sorted_vv: Output array that stores the sorted v-coordiantes
     for each visibility. Dimensions are [num_visibilities]
-    :param sorted_vis: Array that stores the sorted indices
+    :param sorted_vis_index: Output array that stores the sorted indices
     for each visibility. Dimensions are [num_visibilities]
-    :param tile_offsets: Array that results in the prefix summed
+    :param tile_offsets: Array that contains the prefix summed
     number of visibilities, dimensions are [num_tiles + 1]
     """
     Lib.sdp_tiled_indexing(
@@ -236,6 +258,8 @@ def tiled_indexing(
         Mem(vis),
         Mem(weights),
         grid_size,
+        tile_size_u,
+        tile_size_v,
         cell_size_rad,
         support,
         ctypes.byref(num_visibilties),
