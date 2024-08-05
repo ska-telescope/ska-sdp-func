@@ -35,19 +35,21 @@ extern "C" {
  * - @p vis is 4D and complex-valued, with shape:
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
- * - @p tile_offsets is 1D and real-valued [should be zero initialized], with shape:
+ * - @p tile_offsets is 1D and real-valued with shape:
  *   - [ num_tiles + 1 ]
  *
- * - @p num_points_in_tiles is 1D and real-valued [should be zero initialized], with shape:
+ * - @p num_points_in_tiles is 1D and real-valued with shape:
  *   - [ num_tiles ]
  *
- * - @p num_skipped is 1D and real valued [should be zero initialized], with shape:
+ * - @p num_skipped is 1D and real valued with shape:
  *   - [ 1 ]
  *
  * @param uvw Baseline (u,v,w) coordinates, in metres. Dimensions as above.
  * @param freqs Channel frequencies, in Hz. Dimensions as above.
  * @param vis Complex-valued visibilities. Dimensions as above.
  * @param grid_size Size of the grid in one dimension. Assumed to be square.
+ * @param tile_size_u Size of the individual tile, in the u-direction.
+ * @param tile_size_v Size of the individual tile, in the v-direction.
  * @param cell_size_rad Size of the cell, in radians.
  * @param support Number of cells a visibility contributes to during gridding.
  * @param num_visibilites Number of total visibilities after prefix sum.
@@ -62,6 +64,8 @@ void sdp_count_and_prefix_sum(
         const sdp_Mem* freqs,
         const sdp_Mem* vis,
         const int grid_size,
+        const int64_t tile_size_u,
+        const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
         int* num_visibilites,
@@ -70,10 +74,6 @@ void sdp_count_and_prefix_sum(
         sdp_Mem* num_skipped,
         sdp_Error* status
 );
-/**
- * @defgroup tiled_func
- * @{
- */
 
 /**
  * @brief Performs a bucket sort on the visibilities and associated properties
@@ -95,25 +95,25 @@ void sdp_count_and_prefix_sum(
  * - @p weights is 4D and real-valued, with shape:
  *   - [ num_times, num_baselines, num_channels, num_pols ]
 
- * - @p tile_offsets is 1D and real-valued [should be zero initialized], with shape:
+ * - @p tile_offsets is 1D and real-valued with shape:
  *   - [ num_tiles + 1 ]
  *
- * - @p num_points_in_tiles is 1D and real-valued [should be zero initialized], with shape:
+ * - @p num_points_in_tiles is 1D and real-valued with shape:
  *   - [ num_tiles ]
  *
- * - @p sorted_uu is 1D and real valued [should be zero initialized], with shape:
+ * - @p sorted_uu is 1D and real valued with shape:
  *   - [ num_visibilities ]
  *
- * - @p sorted_vv is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_vv is 1D and real valued with shape:
  *   - [ num_visibilties ]
  *
- * - @p sorted_vis is 1D and complex valued [should be zero intialized], with shape:
+ * - @p sorted_vis is 1D and complex valued with shape:
  *   - [ num_visiblities ]
  *
- * - @p sorted_weight is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_weight is 1D and real valued with shape:
  *   - [ num_visiblities ]
  *
- * - @p sorted_tile is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_tile is 1D and real valued with shape:
  *   - [ num_visiblities ]
  *
  * @param uvw Baseline (u,v,w) coordinates, in metres. Dimensions as above.
@@ -121,6 +121,8 @@ void sdp_count_and_prefix_sum(
  * @param vis Complex-valued visibilities. Dimensions as above.
  * @param weights Weights for each visibility, as available in the input data. Dimensions as above.
  * @param grid_size Size of the grid in one dimension. Assumed to be square.
+ * @param tile_size_u Size of the individual tile, in the u-direction.
+ * @param tile_size_v Size of the individual tile, in the v-direction.
  * @param cell_size_rad Size of the cell, in radians.
  * @param support Number of cells a visibility contributes to during gridding.
  * @param num_visibilites Number of total visibilities after prefix sum.
@@ -139,6 +141,8 @@ void sdp_bucket_sort(
         const sdp_Mem* vis,
         const sdp_Mem* weights,
         const int grid_size,
+        const int64_t tile_size_u,
+        const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
         int* num_visibilites,
@@ -151,10 +155,6 @@ void sdp_bucket_sort(
         sdp_Mem* num_points_in_tiles,
         sdp_Error* status
 );
-/**
- * @defgroup tiled_func
- * @{
- */
 
 /**
  * @brief The functions divide the grid into tiles and bucket sort the visibility indices
@@ -176,16 +176,16 @@ void sdp_bucket_sort(
  * - @p weights is 4D and real-valued, with shape:
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
- * - @p sorted_uu is 1D and real valued [should be zero initialized], with shape:
+ * - @p sorted_uu is 1D and real valued with shape:
  *   - [ num_visibilities ]
  *
- * - @p sorted_vv is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_vv is 1D and real valued, with shape:
  *   - [ num_visibilties ]
  *
- * - @p sorted_vis_index is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_vis_index is 1D and real valued, with shape:
  *   - [ num_visiblities ]
  *
- * - @p sorted_tile is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_tile is 1D and real valued, with shape:
  *   - [ num_visiblities ]
  *
  * @param uvw Baseline (u,v,w) coordinates, in metres. Dimensions as above.
@@ -193,6 +193,8 @@ void sdp_bucket_sort(
  * @param vis Complex-valued visibilities. Dimensions as above.
  * @param weights Weights for each visibility, as available in the input data. Dimensions as above.
  * @param grid_size Size of the grid in one dimension. Assumed to be square.
+ * @param tile_size_u Size of the individual tile, in the u-direction.
+ * @param tile_size_v Size of the individual tile, in the v-direction.
  * @param cell_size_rad Size of the cell, in radians.
  * @param support Number of cells a visibility contributes to during gridding.
  * @param num_visibilites Number of total visibilities after prefix sum.
@@ -209,6 +211,8 @@ void sdp_tiled_indexing(
         const sdp_Mem* vis,
         const sdp_Mem* weights,
         const int grid_size,
+        const int64_t tile_size_u,
+        const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
         int* num_visibilites,

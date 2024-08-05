@@ -38,25 +38,25 @@ extern "C" {
  * - @p weights is 4D and real-valued, with shape:
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
- * - @p sorted_uu is 1D and real valued [should be zero initialized], with shape:
+ * - @p sorted_uu is 1D and real valued with shape:
  *   - [ num_visibilities ]
  *
- * - @p sorted_vv is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_vv is 1D and real valued with shape:
  *   - [ num_visibilties ]
  *
- * - @p sorted_weight is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_weight is 1D and real valued with shape:
  *   - [ num_visiblities ]
  *
- * - @p sorted_tile is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_tile is 1D and real valued with shape:
  *   - [ num_visiblities ]
  *
- * - @p tile_offsets is 1D and real-valued [should be zero initialized], with shape:
+ * - @p tile_offsets is 1D and real-valued with shape:
  *   - [ num_tiles + 1 ]
  *
- * - @p num_points_in_tiles is 1D and real-valued [should be zero initialized], with shape:
+ * - @p num_points_in_tiles is 1D and real-valued with shape:
  *   - [ num_tiles ]
  *
- * - @p output_weights is 1D and real-valued [should be zero initialized], with shape:
+ * - @p output_weights is 1D and real-valued with shape:
  *   - [ num_visibilities ]
  *
  * @param uvw Baseline (u,v,w) coordinates, in metres. Dimensions as above.
@@ -100,10 +100,6 @@ void sdp_optimized_weighting(
 );
 
 /**
- * @defgroup weight_func
- * @{
- */
-
 /**
  * @brief Calculate the number of hits per UV cell and use the inverse of this
  * as the weight, calculate the sum of these weights and the sum of these weights squared
@@ -121,25 +117,25 @@ void sdp_optimized_weighting(
  * - @p weights is 4D and real-valued, with shape:
  *   - [ num_times, num_baselines, num_channels, num_pols ]
  *
- * - @p sorted_uu is 1D and real valued [should be zero initialized], with shape:
+ * - @p sorted_uu is 1D and real valued with shape:
  *   - [ num_visibilities ]
  *
- * - @p sorted_vv is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_vv is 1D and real valued with shape:
  *   - [ num_visibilties ]
  *
- * - @p sorted_vis_index is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_vis_index is 1D and real valued with shape:
  *   - [ num_visiblities ]
  *
- * - @p sorted_tile is 1D and real valued [should be zero intialized], with shape:
+ * - @p sorted_tile is 1D and real valued with shape:
  *   - [ num_visiblities ]
  *
- * - @p tile_offsets is 1D and real-valued [should be zero initialized], with shape:
+ * - @p tile_offsets is 1D and real-valued with shape:
  *   - [ num_tiles + 1 ]
  *
- * - @p num_points_in_tiles is 1D and real-valued [should be zero initialized], with shape:
+ * - @p num_points_in_tiles is 1D and real-valued with shape:
  *   - [ num_tiles ]
  *
- * - @p output_weights is 1D and real-valued [should be zero initialized], with shape:
+ * - @p output_weights is 1D and real-valued with shape:
  *   - [ num_visibilities ]
  *
  * @param uvw Baseline (u,v,w) coordinates, in metres. Dimensions as above.

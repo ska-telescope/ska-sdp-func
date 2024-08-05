@@ -4,17 +4,6 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/visibility/sdp_opt_weighting.h"
 
-#define TILE_RANGES(SUPPORT, U_MIN, U_MAX, V_MIN, V_MAX) \
-    const int rel_u = grid_u - top_left_u; \
-    const int rel_v = grid_v - top_left_v; \
-    const float u1 = (float)(rel_u - SUPPORT) * inv_tile_size_u; \
-    const float u2 = (float)(rel_u + SUPPORT + 1) * inv_tile_size_u; \
-    const float v1 = (float)(rel_v - SUPPORT) * inv_tile_size_v; \
-    const float v2 = (float)(rel_v + SUPPORT + 1) * inv_tile_size_v; \
-    U_MIN = (int)(floor(u1)); U_MAX = (int)(ceil(u2)); \
-    V_MIN = (int)(floor(v1)); V_MAX = (int)(ceil(v2)); \
-
-
 #define C_0 299792458.0
 
 #define INDEX_5D(N5, N4, N3, N2, N1, I5, I4, I3, I2, I1) \
@@ -26,9 +15,6 @@
 #define INDEX_3D(N3, N2, N1, I3, I2, I1)         (N1 * (N2 * I3 + I2) + I1)
 
 #define INDEX_2D(N2, N1, I2, I1)                 (N1 * I2 + I1)
-
-#define TILE_SIZE_U 32
-#define TILE_SIZE_V 16
 
 
 template<typename UVW_TYPE, typename WEIGHT_TYPE>
