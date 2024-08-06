@@ -125,6 +125,7 @@ __global__ void sdp_tile_count_simple_gpu(
 }
 
 SDP_CUDA_KERNEL(sdp_tile_count_simple_gpu<double, double>)
+SDP_CUDA_KERNEL(sdp_tile_count_simple_gpu<float, float>)
 
 
 template<typename UVW_TYPE, typename FREQ_TYPE, typename VIS_TYPE,
@@ -208,6 +209,7 @@ __global__ void sdp_bucket_sort_simple_gpu(
 }
 
 SDP_CUDA_KERNEL(sdp_bucket_sort_simple_gpu<double, double, double, double, 1>)
+SDP_CUDA_KERNEL(sdp_bucket_sort_simple_gpu<float, float, float, float, 1>)
 
 
 template<typename UVW_TYPE, typename FREQ_TYPE, typename VIS_TYPE,
@@ -250,7 +252,6 @@ __global__ void sdp_tiled_indexing_gpu(
     const UVW_TYPE inv_wavelength = freqs[i_channel] / C_0;
     const UVW_TYPE pos_u = uvw[i_uvw + 0] * inv_wavelength * grid_scale;
     const UVW_TYPE pos_v = uvw[i_uvw + 1] * inv_wavelength * grid_scale;
-
     const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
     const int64_t grid_v = (int64_t)round(pos_v) + grid_centre;
 
@@ -287,3 +288,4 @@ __global__ void sdp_tiled_indexing_gpu(
 }
 
 SDP_CUDA_KERNEL(sdp_tiled_indexing_gpu<double, double, double, double, 1>)
+SDP_CUDA_KERNEL(sdp_tiled_indexing_gpu<float, float, float, float, 1>)

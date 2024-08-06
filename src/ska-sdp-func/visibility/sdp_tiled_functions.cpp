@@ -208,8 +208,7 @@ static void sdp_bucket_sort_simple(
 }
 
 
-template<typename UVW_TYPE, typename FREQ_TYPE, typename VIS_TYPE,
-        typename WEIGHT_TYPE>
+template<typename UVW_TYPE, typename FREQ_TYPE, typename VIS_TYPE>
 static void tiled_indexing(
         const int64_t support,
         const int64_t num_times,
@@ -220,7 +219,6 @@ static void tiled_indexing(
         const float inv_tile_size_v,
         const UVW_TYPE* uvw,
         const FREQ_TYPE* freqs,
-        const WEIGHT_TYPE* weight,
         const int64_t num_tiles_u,
         const int64_t top_left_u,
         const int64_t top_left_v,
@@ -407,6 +405,11 @@ void sdp_count_and_prefix_sum(
                 freq_type == SDP_MEM_DOUBLE)
         {
             kernel_name = "sdp_tile_count_simple_gpu<double, double>";
+        }
+        else if (uvw_type == SDP_MEM_FLOAT &&
+                freq_type == SDP_MEM_FLOAT)
+        {
+            kernel_name = "sdp_tile_count_simple_gpu<float, float>";
         }
         else
         {
@@ -649,6 +652,13 @@ void sdp_bucket_sort(
             kernel_name2 =
                     "sdp_bucket_sort_simple_gpu<double, double, double, double, 1>";
         }
+        else if (uvw_type == SDP_MEM_FLOAT &&
+                weight_type == SDP_MEM_FLOAT &&
+                freq_type == SDP_MEM_FLOAT)
+        {
+            kernel_name2 =
+                    "sdp_bucket_sort_simple_gpu<float, float, float, float, 1>";
+        }
         else
         {
             *status = SDP_ERR_DATA_TYPE;
@@ -694,13 +704,15 @@ void sdp_bucket_sort(
 void sdp_tiled_indexing(
         const sdp_Mem* uvw,
         const sdp_Mem* freqs,
-        const sdp_Mem* vis,
-        const sdp_Mem* weights,
         const int grid_size,
         const int64_t tile_size_u,
         const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
+        const int64_t num_channels,
+        const int64_t num_baselines,
+        const int64_t num_times,
+        const int64_t num_pol,
         int* num_visibilites,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_uu,
@@ -717,15 +729,9 @@ void sdp_tiled_indexing(
     sdp_mem_clear_contents(sorted_vv, status);
     sdp_mem_clear_contents(sorted_uu, status);
 
-    sdp_MemLocation vis_location = sdp_mem_location(vis);
-    sdp_MemType vis_type = sdp_mem_type(vis);
+    sdp_MemLocation uvw_loc = sdp_mem_location(uvw);
     sdp_MemType uvw_type = sdp_mem_type(uvw);
     sdp_MemType freq_type = sdp_mem_type(freqs);
-    sdp_MemType weight_type = sdp_mem_type(weights);
-    int64_t num_times = 0;
-    int64_t num_baselines = 0;
-    int64_t num_channels = 0;
-    int64_t num_pols = 0;
 
     // Calculate parameters for tiling
     int64_t grid_centre = grid_size / 2;
@@ -740,44 +746,21 @@ void sdp_tiled_indexing(
     int64_t top_left_v = grid_centre - ctile_v * tile_size_v - tile_size_v / 2;
 
     // Check parameters
-    sdp_data_model_get_vis_metadata(
-            vis,
-            &vis_type,
-            &vis_location,
-            &num_times,
-            &num_baselines,
-            &num_channels,
-            &num_pols,
-            status
-    );
-
     sdp_data_model_check_uvw(
             uvw,
             SDP_MEM_VOID,
-            vis_location,
+            uvw_loc,
             num_times,
             num_baselines,
             status
     );
 
-    sdp_data_model_check_weights(
-            weights,
-            SDP_MEM_VOID,
-            vis_location,
-            num_times,
-            num_baselines,
-            num_channels,
-            num_pols,
-            status
-    );
-
-    if (vis_location == SDP_MEM_CPU)
+    if (uvw_loc == SDP_MEM_CPU)
     {
         if (uvw_type == SDP_MEM_DOUBLE &&
-                weight_type == SDP_MEM_DOUBLE &&
                 freq_type == SDP_MEM_DOUBLE)
         {
-            tiled_indexing<double, double, double, double>(
+            tiled_indexing<double, double, double>(
                     support,
                     num_times,
                     num_baselines,
@@ -787,7 +770,6 @@ void sdp_tiled_indexing(
                     inv_tile_size_v,
                     (const double*) sdp_mem_data_const(uvw),
                     (const double*)sdp_mem_data_const(freqs),
-                    (const double*)sdp_mem_data_const(weights),
                     num_tiles_u,
                     top_left_u,
                     top_left_v,
@@ -798,10 +780,9 @@ void sdp_tiled_indexing(
             );
         }
         else if (uvw_type == SDP_MEM_FLOAT &&
-                weight_type == SDP_MEM_FLOAT &&
                 freq_type == SDP_MEM_FLOAT)
         {
-            tiled_indexing<float, float, float, float>(
+            tiled_indexing<float, float, float>(
                     support,
                     num_times,
                     num_baselines,
@@ -811,7 +792,6 @@ void sdp_tiled_indexing(
                     inv_tile_size_v,
                     (const float*) sdp_mem_data_const(uvw),
                     (const float*)sdp_mem_data_const(freqs),
-                    (const float*)sdp_mem_data_const(weights),
                     num_tiles_u,
                     top_left_u,
                     top_left_v,
@@ -827,7 +807,7 @@ void sdp_tiled_indexing(
             SDP_LOG_ERROR("Unsupported data type(s)");
         }
     }
-    else if (vis_location == SDP_MEM_GPU)
+    else if (uvw_loc == SDP_MEM_GPU)
     {
         // Define hyperparameters for tiling and bucket sort
 
@@ -841,11 +821,16 @@ void sdp_tiled_indexing(
         // Define hyperparameters for weighting
         const char* kernel_name2 = 0;
         if (uvw_type == SDP_MEM_DOUBLE &&
-                weight_type == SDP_MEM_DOUBLE &&
                 freq_type == SDP_MEM_DOUBLE)
         {
             kernel_name2 =
                     "sdp_tiled_indexing_gpu<double, double, double, double, 1>";
+        }
+        else if (uvw_type == SDP_MEM_FLOAT &&
+                freq_type == SDP_MEM_FLOAT)
+        {
+            kernel_name2 =
+                    "sdp_tiled_indexing_gpu<float, float, float, float, 1>";
         }
         else
         {

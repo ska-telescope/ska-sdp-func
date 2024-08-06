@@ -57,12 +57,14 @@ Lib.wrap_func(
     argtypes=[
         Mem.handle_type(),
         Mem.handle_type(),
-        Mem.handle_type(),
-        Mem.handle_type(),
         ctypes.c_int,
         ctypes.c_int64,
         ctypes.c_int64,
         ctypes.c_double,
+        ctypes.c_int64,
+        ctypes.c_int64,
+        ctypes.c_int64,
+        ctypes.c_int64,
         ctypes.c_int64,
         ctypes.POINTER(ctypes.c_int),
         Mem.handle_type(),
@@ -208,13 +210,15 @@ def bucket_sort(
 def tiled_indexing(
     uvw,
     freqs,
-    vis,
-    weights,
     grid_size,
     tile_size_u,
     tile_size_v,
     cell_size_rad,
     support,
+    num_channels,
+    num_baselines,
+    num_times,
+    num_pol,
     num_visibilties,
     sorted_tile,
     sorted_uu,
@@ -239,6 +243,10 @@ def tiled_indexing(
     :param tile_size_v: Size of an individual tile in the v-direction.
     :param cell_size_rad: Cell size, in radians.
     :param support: Number of grid points a visibility contributes to.
+    :param num_channels: Number of frequency channels.
+    :param num_baselines: Number of baselines.
+    :param num_times: Number of time samples.
+    :param num_pol: Number of polarizations.
     :param num_visibilities: Number of visibilities that needs to be processed,
     this will be calculated by count_and_prefix_sum(),expects a ctypes integer.
     :param sorted_tiles: Output array that stores the sorted tile coordinates
@@ -255,13 +263,15 @@ def tiled_indexing(
     Lib.sdp_tiled_indexing(
         Mem(uvw),
         Mem(freqs),
-        Mem(vis),
-        Mem(weights),
         grid_size,
         tile_size_u,
         tile_size_v,
         cell_size_rad,
         support,
+        num_channels,
+        num_baselines,
+        num_times,
+        num_pol,
         ctypes.byref(num_visibilties),
         Mem(sorted_tile),
         Mem(sorted_uu),
