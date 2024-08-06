@@ -170,12 +170,6 @@ void sdp_bucket_sort(
  * - @p freqs is 1D and real-valued, with shape:
  *   - [ num_channels ]
  *
- * - @p vis is 4D and complex-valued, with shape:
- *   - [ num_times, num_baselines, num_channels, num_pols ]
- *
- * - @p weights is 4D and real-valued, with shape:
- *   - [ num_times, num_baselines, num_channels, num_pols ]
- *
  * - @p sorted_uu is 1D and real valued with shape:
  *   - [ num_visibilities ]
  *
@@ -190,13 +184,15 @@ void sdp_bucket_sort(
  *
  * @param uvw Baseline (u,v,w) coordinates, in metres. Dimensions as above.
  * @param freqs Channel frequencies, in Hz. Dimensions as above.
- * @param vis Complex-valued visibilities. Dimensions as above.
- * @param weights Weights for each visibility, as available in the input data. Dimensions as above.
  * @param grid_size Size of the grid in one dimension. Assumed to be square.
  * @param tile_size_u Size of the individual tile, in the u-direction.
  * @param tile_size_v Size of the individual tile, in the v-direction.
  * @param cell_size_rad Size of the cell, in radians.
  * @param support Number of cells a visibility contributes to during gridding.
+ * @param num_channels Number of frequency channels.
+ * @param num_baselines Number of baselines.
+ * @param num_times Number of time samples.
+ * @param num_pol Number of polarizations.
  * @param num_visibilites Number of total visibilities after prefix sum.
  * @param sorted_tile Sorted visibilities in tile positions after bucket sort. Dimensions as above.
  * @param sorted_uu Sorted u coordinates after bucket sort. Dimensions as above.
@@ -208,13 +204,15 @@ void sdp_bucket_sort(
 void sdp_tiled_indexing(
         const sdp_Mem* uvw,
         const sdp_Mem* freqs,
-        const sdp_Mem* vis,
-        const sdp_Mem* weights,
         const int grid_size,
         const int64_t tile_size_u,
         const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
+        const int64_t num_channels,
+        const int64_t num_baselines,
+        const int64_t num_times,
+        const int64_t num_pol,
         int* num_visibilites,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_uu,
