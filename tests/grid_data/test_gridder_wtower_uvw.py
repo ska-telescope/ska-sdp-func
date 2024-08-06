@@ -1881,7 +1881,7 @@ def test_gridder_wtower_uvw_degrid_correct():
     # Create a test image.
     image = numpy.random.random_sample((subgrid_size, subgrid_size))
     facet_offset_l = 5
-    facet_offset_m = 15
+    facet_offset_m = -15
 
     # Generate reference data.
     gridder_ref = WtowerUVWGridKernel(
@@ -1935,7 +1935,7 @@ def test_gridder_degrid_correct_wstack():
     # Create a test image.
     image = numpy.random.random_sample((subgrid_size, subgrid_size)) + 0j
     facet_offset_l = 5
-    facet_offset_m = 15
+    facet_offset_m = -15
 
     # Generate reference data.
     gridder_ref = WtowerUVWGridKernelWStack(
@@ -2175,10 +2175,10 @@ def test_gridder_wstack():
             2, 2, figsize=(12, 9), dpi=300
         )
         im = ax1.imshow(im_ref)
-        ax1.set_title("Reference Python gridder")
+        ax1.set_title("Reference w-towers Python gridder")
         fig.colorbar(im, ax=ax1)
         im = ax2.imshow(im_pfl)
-        ax2.set_title("PFL gridder")
+        ax2.set_title("PFL w-towers gridder (CPU version)")
         fig.colorbar(im, ax=ax2)
         im = ax3.imshow(im_ratio)
         ax3.set_title("Ratio (PFL / ref)")
@@ -2186,4 +2186,92 @@ def test_gridder_wstack():
         im = ax4.imshow(im_diff)
         ax4.set_title("Diff (PFL - ref)")
         fig.colorbar(im, ax=ax4)
-        plt.savefig("test_verify_gridder.png")
+        plt.savefig("test_verify_gridder_cpu.png")
+
+    # Test GPU version.
+    if cupy:
+        # Copy data to GPU memory.
+        vis_gpu = cupy.zeros(vis_dft.shape, dtype=numpy.complex128)
+        image_gpu = cupy.asarray(image)
+        uvw_gpu = cupy.asarray(uvw)
+
+        # Call the PFL degridding function.
+        t0 = time.time()
+        sdp_grid_func.wstack_wtower_degrid_all(
+            image_gpu,
+            freq0_hz,
+            dfreq_hz,
+            uvw_gpu,
+            subgrid_size,
+            theta,
+            w_step,
+            shear_u,
+            shear_v,
+            support,
+            oversampling,
+            w_support,
+            w_oversampling,
+            subgrid_frac,
+            w_tower_height,
+            2,
+            vis_gpu,
+        )
+        t1 = time.time() - t0
+        print(f"PFL wstack_wtower_degrid_all (GPU) took {t1:.4f} s.")
+
+        # Check they are the same.
+        vis_cpu = cupy.asnumpy(vis_gpu)
+        numpy.testing.assert_allclose(vis_cpu, vis, atol=1e1)
+
+        # Call the PFL gridding function.
+        vis_dft_gpu = cupy.asarray(vis_dft)
+        img_gpu = cupy.zeros_like(image_gpu)
+        t0 = time.time()
+        sdp_grid_func.wstack_wtower_grid_all(
+            vis_dft_gpu,
+            freq0_hz,
+            dfreq_hz,
+            uvw_gpu,
+            subgrid_size,
+            theta,
+            w_step,
+            shear_u,
+            shear_v,
+            support,
+            oversampling,
+            w_support,
+            w_oversampling,
+            subgrid_frac,
+            w_tower_height,
+            1,
+            img_gpu,
+        )
+        t1 = time.time() - t0
+        print(f"PFL wstack_wtower_grid_all (GPU) took {t1:.4f} s.")
+
+        # Check they are the same, but ignore the pixels around the border.
+        img_cpu = cupy.asnumpy(img_gpu)
+        left = 30
+        right = -30
+        im_pfl_gpu = numpy.real(img_cpu[left:right, left:right])
+        numpy.testing.assert_allclose(im_pfl_gpu, im_pfl, atol=1e0)
+
+        if plt:
+            im_ratio = im_pfl_gpu / im_ref
+            im_diff = im_pfl_gpu - im_ref
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
+                2, 2, figsize=(12, 9), dpi=300
+            )
+            im = ax1.imshow(im_ref)
+            ax1.set_title("Reference w-towers Python gridder")
+            fig.colorbar(im, ax=ax1)
+            im = ax2.imshow(im_pfl_gpu)
+            ax2.set_title("PFL w-towers gridder (GPU version)")
+            fig.colorbar(im, ax=ax2)
+            im = ax3.imshow(im_ratio)
+            ax3.set_title("Ratio (PFL / ref)")
+            fig.colorbar(im, ax=ax3)
+            im = ax4.imshow(im_diff)
+            ax4.set_title("Diff (PFL - ref)")
+            fig.colorbar(im, ax=ax4)
+            plt.savefig("test_verify_gridder_gpu.png")

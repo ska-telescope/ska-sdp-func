@@ -13,8 +13,38 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup fft_struct
+ * @{
+ */
+
+/**
+ * @struct sdp_Fft
+ *
+ * @brief
+ * Wrapper for FFT functionality, using either NVIDIA's cuFFT, Intel's MKL,
+ * or a stand-alone CPU version as appropriate.
+ */
 struct sdp_Fft;
+
+/** @} */ /* End group fft_struct. */
+
+/**
+ * @defgroup fft_enum
+ * @{
+ */
+
+enum sdp_FftTimer
+{
+    SDP_FFT_TMR_EXEC,
+    SDP_FFT_TMR_PLAN
+};
+
+/** @} */ /* End group fft_enum. */
+
+/* Typedefs. */
 typedef struct sdp_Fft sdp_Fft;
+typedef enum sdp_FftTimer sdp_FftTimer;
 
 /**
  * @defgroup fft_func
@@ -48,6 +78,14 @@ sdp_Fft* sdp_fft_create(
         int32_t is_forward,
         sdp_Error* status
 );
+
+/**
+ * @brief Report elapsed time taken in the specified part of the FFT.
+ *
+ * @param fft Handle to FFT plan.
+ * @param timer Timer enumeration to return.
+ */
+double sdp_fft_elapsed_time(sdp_Fft* fft, sdp_FftTimer timer);
 
 /**
  * @brief Executes FFT using plan and supplied data.

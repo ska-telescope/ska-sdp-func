@@ -7,6 +7,7 @@
  * @file sdp_gridder_utils.h
  */
 
+#include "ska-sdp-func/math/sdp_math_macros.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
 #ifdef __cplusplus
@@ -198,12 +199,8 @@ void sdp_gridder_uvw_bounds_all(
 
 
 // Convert (l, m) to (n) directions, allowing for shear.
-#ifdef __CUDACC__
-__host__ __device__
-#endif
-
-
 template<typename T>
+SDP_INLINE
 T lm_to_n(const T& l, const T& m, const T& h_u, const T& h_v)
 {
     // Easy case.
