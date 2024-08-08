@@ -2338,7 +2338,7 @@ def test_gpu_gridder_wstack():
 
     # Check they are the same.
     vis_gpu_copy = cupy.asnumpy(vis_gpu)
-    # numpy.testing.assert_allclose(vis_gpu_copy, vis_ref, atol=1e1)
+    numpy.testing.assert_allclose(vis_gpu_copy, vis_ref, atol=1e1)
 
     # Call the GPU PFL gridding function.
     vis_dft_gpu = cupy.asarray(vis_dft)

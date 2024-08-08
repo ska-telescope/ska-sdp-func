@@ -1459,6 +1459,7 @@ double sdp_gridder_wtower_uvw_elapsed_time(
     }
 }
 
+
 double sdp_gridder_wtower_uvw_num_w_planes(
         const sdp_GridderWtowerUVW* plan,
         int gridding
