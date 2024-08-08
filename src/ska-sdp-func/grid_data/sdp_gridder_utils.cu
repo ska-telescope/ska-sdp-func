@@ -49,9 +49,9 @@ __global__ void sdp_gridder_grid_correct_pswf(
         double w_step,
         double shear_u,
         double shear_v,
-        double w_support,
         const sdp_MemViewGpu<const double, 1> pswf,
         const double* const __restrict__ pswf_n_coeff,
+        double pswf_n_c,
         sdp_MemViewGpu<T, 2> facet,
         int facet_offset_l,
         int facet_offset_m
@@ -69,7 +69,6 @@ __global__ void sdp_gridder_grid_correct_pswf(
     const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
     const double pswf_l = pswf(pl + image_size / 2);
     const double pswf_m = pswf(pm + image_size / 2);
-    const double pswf_n_c = w_support * (M_PI / 2);
     const double pswf_n_x = fabs(n_ * 2.0 * w_step);
     const double pswf_n = (pswf_n_x < 1.0) ?
                 sdp_pswf_aswfa(0, 0, pswf_n_c, pswf_n_coeff, pswf_n_x) : 1.0;

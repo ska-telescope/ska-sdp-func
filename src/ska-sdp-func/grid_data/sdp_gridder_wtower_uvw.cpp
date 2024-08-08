@@ -33,6 +33,7 @@ struct sdp_GridderWtowerUVW
     double tmr_fft[2];
     double tmr_kernel[2];
     double tmr_total[2];
+    int num_w_planes[2];
     sdp_Mem* uv_kernel;
     sdp_Mem* uv_kernel_gpu;
     sdp_Mem* w_kernel;
@@ -691,6 +692,7 @@ void sdp_gridder_grid_correct_pswf(
                 sdp_pswf_values(pswf_lm, SDP_MEM_GPU, status), &pswf_, status
         );
         const sdp_Mem* pswf_n_coe = sdp_pswf_coeff(pswf_n, SDP_MEM_GPU, status);
+        const double pswf_n_c = sdp_pswf_par_c(pswf_n);
         switch (sdp_mem_type(facet))
         {
         case SDP_MEM_FLOAT:
@@ -727,9 +729,9 @@ void sdp_gridder_grid_correct_pswf(
             (const void*) &w_step,
             (const void*) &shear_u,
             (const void*) &shear_v,
-            (const void*) &w_support,
             (const void*) &pswf_,
             sdp_mem_gpu_buffer_const(pswf_n_coe, status),
+            (const void*) &pswf_n_c,
             is_cplx ?
                 (is_dbl ? (const void*) &fct_cdbl : (const void*) &fct_cflt) :
                 (is_dbl ? (const void*) &fct_dbl : (const void*) &fct_flt),
@@ -1070,8 +1072,14 @@ void sdp_gridder_wtower_uvw_degrid(
     }
 
     // Loop over w-planes.
+    const int num_w_planes = 1 + last_w_plane - first_w_plane;
     for (int w_plane = first_w_plane; w_plane <= last_w_plane; ++w_plane)
     {
+        if (*status) break;
+        SDP_LOG_DEBUG("Degridding w-plane %d (%d/%d)",
+                w_plane, 1 + w_plane - first_w_plane, num_w_planes
+        );
+
         // Move to next w-plane.
         if (w_plane != first_w_plane)
         {
@@ -1131,6 +1139,7 @@ void sdp_gridder_wtower_uvw_degrid(
         plan->tmr_kernel[0] += sdp_timer_elapsed(tmr_degrid);
         plan->tmr_fft[0] += sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
         plan->tmr_total[0] += sdp_timer_elapsed(tmr_total);
+        plan->num_w_planes[0] += num_w_planes;
     }
 
     sdp_mem_free(w_subgrid_image);
@@ -1262,8 +1271,14 @@ void sdp_gridder_wtower_uvw_grid(
     sdp_Fft* fft = sdp_fft_create(fft_buffer, fft_buffer, 2, false, status);
 
     // Loop over w-planes.
+    const int num_w_planes = 1 + last_w_plane - first_w_plane;
     for (int w_plane = first_w_plane; w_plane <= last_w_plane; ++w_plane)
     {
+        if (*status) break;
+        SDP_LOG_DEBUG("Gridding w-plane %d (%d/%d)",
+                w_plane, 1 + w_plane - first_w_plane, num_w_planes
+        );
+
         // Move to next w-plane.
         if (w_plane != first_w_plane)
         {
@@ -1368,6 +1383,7 @@ void sdp_gridder_wtower_uvw_grid(
         plan->tmr_kernel[1] += sdp_timer_elapsed(tmr_grid);
         plan->tmr_fft[1] += sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
         plan->tmr_total[1] += sdp_timer_elapsed(tmr_total);
+        plan->num_w_planes[1] += num_w_planes;
     }
 
     sdp_mem_free(w_subgrid_image);
@@ -1425,20 +1441,28 @@ void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan)
 double sdp_gridder_wtower_uvw_elapsed_time(
         const sdp_GridderWtowerUVW* plan,
         sdp_GridderWtowerUVWTimer timer,
-        int grid
+        int gridding
 )
 {
     switch (timer)
     {
     case SDP_WTOWER_TMR_GRID_CORRECT:
-        return plan->tmr_grid_correct[grid];
+        return plan->tmr_grid_correct[gridding];
     case SDP_WTOWER_TMR_FFT:
-        return plan->tmr_fft[grid];
+        return plan->tmr_fft[gridding];
     case SDP_WTOWER_TMR_KERNEL:
-        return plan->tmr_kernel[grid];
+        return plan->tmr_kernel[gridding];
     case SDP_WTOWER_TMR_TOTAL:
-        return plan->tmr_total[grid];
+        return plan->tmr_total[gridding];
     default:
         return 0.0;
     }
+}
+
+double sdp_gridder_wtower_uvw_num_w_planes(
+        const sdp_GridderWtowerUVW* plan,
+        int gridding
+)
+{
+    return (gridding >= 0 && gridding < 2) ? plan->num_w_planes[gridding] : 0;
 }

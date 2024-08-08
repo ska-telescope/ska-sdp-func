@@ -204,12 +204,23 @@ void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan);
  *
  * @param plan Handle to gridder plan.
  * @param timer Timer enumeration to return.
- * @param grid 0 for degridding time, 1 for gridding time.
+ * @param gridding 0 for degridding time, 1 for gridding time.
  */
 double sdp_gridder_wtower_uvw_elapsed_time(
         const sdp_GridderWtowerUVW* plan,
         sdp_GridderWtowerUVWTimer timer,
-        int grid
+        int gridding
+);
+
+/**
+ * @brief Report total number of w-planes processed in the sub-grid stack.
+ *
+ * @param plan Handle to gridder plan.
+ * @param gridding 0 for w-planes in degridding, 1 for w-planes in gridding.
+ */
+double sdp_gridder_wtower_uvw_num_w_planes(
+        const sdp_GridderWtowerUVW* plan,
+        int gridding
 );
 
 /** @} */ /* End group GridderWtowerUVW_func. */

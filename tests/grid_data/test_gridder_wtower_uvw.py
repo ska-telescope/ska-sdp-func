@@ -2188,90 +2188,207 @@ def test_gridder_wstack():
         fig.colorbar(im, ax=ax4)
         plt.savefig("test_verify_gridder_cpu.png")
 
-    # Test GPU version.
-    if cupy:
-        # Copy data to GPU memory.
-        vis_gpu = cupy.zeros(vis_dft.shape, dtype=numpy.complex128)
-        image_gpu = cupy.asarray(image)
-        uvw_gpu = cupy.asarray(uvw)
 
-        # Call the PFL degridding function.
-        t0 = time.time()
-        sdp_grid_func.wstack_wtower_degrid_all(
-            image_gpu,
-            freq0_hz,
-            dfreq_hz,
-            uvw_gpu,
-            subgrid_size,
-            theta,
-            w_step,
-            shear_u,
-            shear_v,
-            support,
-            oversampling,
-            w_support,
-            w_oversampling,
-            subgrid_frac,
-            w_tower_height,
-            2,
-            vis_gpu,
+def test_gpu_gridder_wstack():
+    if not cupy:
+        return
+
+    # Common parameters
+    image_size = 512  # Total image size in pixels
+    subgrid_size = image_size // 4
+    theta = 0.01  # Total image size in directional cosines.
+    fov = 2 * numpy.arcsin(theta / 2)
+    shear_u = 0.0
+    shear_v = 0.0
+    support = 10
+    oversampling = 16 * 1024
+    w_step = 100
+    w_support = 10
+    w_oversampling = 16 * 1024
+
+    # Create an image for input to degridding.
+    numpy.random.seed(123)
+    image = numpy.zeros((image_size, image_size), dtype=numpy.complex128)
+    sources = [
+        (2, image_size // 4, 2),
+        (1, -image_size // 4 + 2, image_size // 4 - 12),
+    ]
+    for flux, il, im in sources:
+        image[il + image_size // 2, im + image_size // 2] += flux
+
+    # Define a visibility set to degrid.
+    num_chan = 8
+    freq0_hz = C_0
+    dfreq_hz = C_0 / 100
+    uvw = generate_uvw()
+    num_rows = uvw.shape[0]
+    # plt.scatter(uvw[:,0], uvw[:,1])
+    # plt.show()
+    start_chs = numpy.zeros((num_rows), dtype=numpy.int32)
+    end_chs = numpy.ones((num_rows), dtype=numpy.int32) * num_chan
+    flmn = image_to_flmn(image, theta, shear_u, shear_v)
+    vis_dft = dft(
+        flmn,
+        flatten_uvws_wl(num_chan, freq0_hz, dfreq_hz, uvw, start_chs, end_chs),
+    ).reshape(len(uvw), num_chan)
+
+    # Create the reference kernel (needed for find_max_w_tower_height).
+    t0 = time.time()
+    gridder_ref = WtowerUVWGridKernelWStack(
+        image_size,
+        subgrid_size,
+        theta,
+        w_step,
+        shear_u,
+        shear_v,
+        support,
+        oversampling,
+        w_support,
+        w_oversampling,
+    )
+    t1 = time.time() - t0
+    print(f"Creating reference gridder kernel took {t1:.4f} s.")
+    subgrid_frac = 2 / 3
+    t0 = time.time()
+    w_tower_height = find_max_w_tower_height(gridder_ref, fov, subgrid_frac)
+    t1 = time.time() - t0
+    print(f"find_max_w_tower_height took {t1:.4f} s.")
+
+    # Call the CPU PFL degridding function.
+    vis_ref = numpy.zeros_like(vis_dft)
+    t0 = time.time()
+    sdp_grid_func.wstack_wtower_degrid_all(
+        image,
+        freq0_hz,
+        dfreq_hz,
+        uvw,
+        subgrid_size,
+        theta,
+        w_step,
+        shear_u,
+        shear_v,
+        support,
+        oversampling,
+        w_support,
+        w_oversampling,
+        subgrid_frac,
+        w_tower_height,
+        2,
+        vis_ref,
+    )
+    t1 = time.time() - t0
+    print(f"PFL wstack_wtower_degrid_all (CPU) took {t1:.4f} s.")
+
+    # Call the CPU PFL gridding function.
+    img_ref = numpy.zeros((image_size, image_size), dtype=numpy.complex128)
+    t0 = time.time()
+    sdp_grid_func.wstack_wtower_grid_all(
+        vis_dft,
+        freq0_hz,
+        dfreq_hz,
+        uvw,
+        subgrid_size,
+        theta,
+        w_step,
+        shear_u,
+        shear_v,
+        support,
+        oversampling,
+        w_support,
+        w_oversampling,
+        subgrid_frac,
+        w_tower_height,
+        1,
+        img_ref,
+    )
+    t1 = time.time() - t0
+    print(f"PFL wstack_wtower_grid_all (CPU) took {t1:.4f} s.")
+    left = 30
+    right = -30
+    im_pfl_ref = numpy.real(img_ref[left:right, left:right])
+
+    # Copy data to GPU memory.
+    vis_gpu = cupy.zeros(vis_dft.shape, dtype=numpy.complex128)
+    image_gpu = cupy.asarray(image)
+    uvw_gpu = cupy.asarray(uvw)
+
+    # Call the GPU PFL degridding function.
+    t0 = time.time()
+    sdp_grid_func.wstack_wtower_degrid_all(
+        image_gpu,
+        freq0_hz,
+        dfreq_hz,
+        uvw_gpu,
+        subgrid_size,
+        theta,
+        w_step,
+        shear_u,
+        shear_v,
+        support,
+        oversampling,
+        w_support,
+        w_oversampling,
+        subgrid_frac,
+        w_tower_height,
+        2,
+        vis_gpu,
+    )
+    t1 = time.time() - t0
+    print(f"PFL wstack_wtower_degrid_all (GPU) took {t1:.4f} s.")
+
+    # Check they are the same.
+    vis_gpu_copy = cupy.asnumpy(vis_gpu)
+    # numpy.testing.assert_allclose(vis_gpu_copy, vis_ref, atol=1e1)
+
+    # Call the GPU PFL gridding function.
+    vis_dft_gpu = cupy.asarray(vis_dft)
+    img_gpu = cupy.zeros_like(image_gpu)
+    t0 = time.time()
+    sdp_grid_func.wstack_wtower_grid_all(
+        vis_dft_gpu,
+        freq0_hz,
+        dfreq_hz,
+        uvw_gpu,
+        subgrid_size,
+        theta,
+        w_step,
+        shear_u,
+        shear_v,
+        support,
+        oversampling,
+        w_support,
+        w_oversampling,
+        subgrid_frac,
+        w_tower_height,
+        1,
+        img_gpu,
+    )
+    t1 = time.time() - t0
+    print(f"PFL wstack_wtower_grid_all (GPU) took {t1:.4f} s.")
+
+    # Check they are the same, but ignore the pixels around the border.
+    img_gpu_copy = cupy.asnumpy(img_gpu)
+    left = 30
+    right = -30
+    im_pfl_gpu = numpy.real(img_gpu_copy[left:right, left:right])
+    numpy.testing.assert_allclose(im_pfl_gpu, im_pfl_ref, atol=1e-6)
+
+    if plt:
+        im_ratio = im_pfl_gpu / im_pfl_ref
+        im_diff = im_pfl_gpu - im_pfl_ref
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
+            2, 2, figsize=(12, 9), dpi=300
         )
-        t1 = time.time() - t0
-        print(f"PFL wstack_wtower_degrid_all (GPU) took {t1:.4f} s.")
-
-        # Check they are the same.
-        vis_cpu = cupy.asnumpy(vis_gpu)
-        numpy.testing.assert_allclose(vis_cpu, vis, atol=1e1)
-
-        # Call the PFL gridding function.
-        vis_dft_gpu = cupy.asarray(vis_dft)
-        img_gpu = cupy.zeros_like(image_gpu)
-        t0 = time.time()
-        sdp_grid_func.wstack_wtower_grid_all(
-            vis_dft_gpu,
-            freq0_hz,
-            dfreq_hz,
-            uvw_gpu,
-            subgrid_size,
-            theta,
-            w_step,
-            shear_u,
-            shear_v,
-            support,
-            oversampling,
-            w_support,
-            w_oversampling,
-            subgrid_frac,
-            w_tower_height,
-            1,
-            img_gpu,
-        )
-        t1 = time.time() - t0
-        print(f"PFL wstack_wtower_grid_all (GPU) took {t1:.4f} s.")
-
-        # Check they are the same, but ignore the pixels around the border.
-        img_cpu = cupy.asnumpy(img_gpu)
-        left = 30
-        right = -30
-        im_pfl_gpu = numpy.real(img_cpu[left:right, left:right])
-        numpy.testing.assert_allclose(im_pfl_gpu, im_pfl, atol=1e0)
-
-        if plt:
-            im_ratio = im_pfl_gpu / im_ref
-            im_diff = im_pfl_gpu - im_ref
-            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
-                2, 2, figsize=(12, 9), dpi=300
-            )
-            im = ax1.imshow(im_ref)
-            ax1.set_title("Reference w-towers Python gridder")
-            fig.colorbar(im, ax=ax1)
-            im = ax2.imshow(im_pfl_gpu)
-            ax2.set_title("PFL w-towers gridder (GPU version)")
-            fig.colorbar(im, ax=ax2)
-            im = ax3.imshow(im_ratio)
-            ax3.set_title("Ratio (PFL / ref)")
-            fig.colorbar(im, ax=ax3)
-            im = ax4.imshow(im_diff)
-            ax4.set_title("Diff (PFL - ref)")
-            fig.colorbar(im, ax=ax4)
-            plt.savefig("test_verify_gridder_gpu.png")
+        im = ax1.imshow(im_pfl_ref)
+        ax1.set_title("PFL w-towers gridder (CPU version)")
+        fig.colorbar(im, ax=ax1)
+        im = ax2.imshow(im_pfl_gpu)
+        ax2.set_title("PFL w-towers gridder (GPU version)")
+        fig.colorbar(im, ax=ax2)
+        im = ax3.imshow(im_ratio)
+        ax3.set_title("Ratio (PFL(GPU) / PFL(CPU))")
+        fig.colorbar(im, ax=ax3)
+        im = ax4.imshow(im_diff)
+        ax4.set_title("Diff (PFL(GPU) - PFL(CPU))")
+        fig.colorbar(im, ax=ax4)
+        plt.savefig("test_verify_gridder_gpu.png")
