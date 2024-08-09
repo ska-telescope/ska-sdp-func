@@ -351,6 +351,8 @@ void sdp_mem_copy_contents_async(
 {
 #ifdef SDP_HAVE_CUDA
     cudaError_t cuda_error = cudaSuccess;
+    cudaStream_t cuda_stream = 0;
+    if (stream) cuda_stream = stream->stream;
 #endif
     if (*status || !dst || !src || !dst->data || !src->data) return;
     if (src->num_elements == 0 || num_elements == 0) return;
@@ -371,19 +373,19 @@ void sdp_mem_copy_contents_async(
     else if (location_src == SDP_MEM_CPU && location_dst == SDP_MEM_GPU)
     {
         cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
-                cudaMemcpyHostToDevice, stream->stream
+                cudaMemcpyHostToDevice, cuda_stream
         );
     }
     else if (location_src == SDP_MEM_GPU && location_dst == SDP_MEM_CPU)
     {
         cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
-                cudaMemcpyDeviceToHost, stream->stream
+                cudaMemcpyDeviceToHost, cuda_stream
         );
     }
     else if (location_src == SDP_MEM_GPU && location_dst == SDP_MEM_GPU)
     {
         cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
-                cudaMemcpyDeviceToDevice, stream->stream
+                cudaMemcpyDeviceToDevice, cuda_stream
         );
     }
 #endif
