@@ -112,3 +112,11 @@ void sdp_cuda_stream_destroy(sdp_CudaStream* stream)
 #endif
     free(stream);
 }
+
+
+void sdp_cuda_stream_synchronize(sdp_CudaStream* stream)
+{
+#ifdef SDP_HAVE_CUDA
+    cudaStreamSynchronize(stream->stream);
+#endif
+}

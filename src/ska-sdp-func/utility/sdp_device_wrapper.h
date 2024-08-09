@@ -93,6 +93,16 @@ sdp_CudaStream* sdp_cuda_stream_create();
  */
 void sdp_cuda_stream_destroy(sdp_CudaStream* stream);
 
+/**
+ * @brief Synchronize a CUDA stream.
+ *
+ * Blocks until operations in a CUDA stream complete.
+ * This is a wrapper for cudaStreamSynchronize().
+ * It exists to allow the processing function library
+ * to be compiled independently of CUDA, if required.
+ */
+void sdp_cuda_stream_synchronize(sdp_CudaStream* stream);
+
 /** @} */ /* End group device_func. */
 
 #ifdef __cplusplus
