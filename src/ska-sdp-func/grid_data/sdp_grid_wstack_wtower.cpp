@@ -643,7 +643,7 @@ static void report_timing(
     {
         total_w_planes += sdp_gridder_wtower_uvw_num_w_planes(
                 kernel[i], gridding
-                ) / num_threads;
+                );
         t_fft_subgrid += sdp_fft_elapsed_time(
                 fft_subgrid[i], SDP_FFT_TMR_EXEC
                 ) / num_threads;
