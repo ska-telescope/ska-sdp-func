@@ -14,7 +14,6 @@
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 #include "ska-sdp-func/utility/sdp_timer.h"
 
-
 static void report_timing(
         int num_w_planes,
         int num_subgrids_u,
