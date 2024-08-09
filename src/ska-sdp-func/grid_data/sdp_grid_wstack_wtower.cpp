@@ -28,74 +28,7 @@ static void report_timing(
         sdp_GridderWtowerUVW** kernel,
         sdp_Fft** fft_subgrid,
         int gridding
-)
-{
-    int total_w_planes = 0;
-    double t_total = sdp_timer_elapsed(tmr_total);
-    double t_fft_grid = sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
-    double t_fft_subgrid = 0;
-    double t_kernel_fft = 0, t_kernel_grid = 0, t_kernel_total = 0;
-    double t_kernel_grid_correct = sdp_gridder_wtower_uvw_elapsed_time(
-            kernel[0], SDP_WTOWER_TMR_GRID_CORRECT, gridding
-    );
-    for (int i = 0; i < num_threads; ++i)
-    {
-        total_w_planes += sdp_gridder_wtower_uvw_num_w_planes(
-                kernel[i], gridding
-                ) / num_threads;
-        t_fft_subgrid += sdp_fft_elapsed_time(
-                fft_subgrid[i], SDP_FFT_TMR_EXEC
-                ) / num_threads;
-        t_kernel_fft += sdp_gridder_wtower_uvw_elapsed_time(
-                kernel[i], SDP_WTOWER_TMR_FFT, gridding
-                ) / num_threads;
-        t_kernel_grid += sdp_gridder_wtower_uvw_elapsed_time(
-                kernel[i], SDP_WTOWER_TMR_KERNEL, gridding
-                ) / num_threads;
-        t_kernel_total += sdp_gridder_wtower_uvw_elapsed_time(
-                kernel[i], SDP_WTOWER_TMR_TOTAL, gridding
-                ) / num_threads;
-    }
-    const char* name = gridding ? "Gridding,  " : "Degridding,";
-    SDP_LOG_INFO("Timing report for w-stacking with w-towers");
-    SDP_LOG_INFO("| Number of large w-planes : %d", num_w_planes);
-    SDP_LOG_INFO("| Number of small w-planes : %d (in gridder kernel)",
-            total_w_planes
-    );
-    SDP_LOG_INFO("| Number of sub-grids (u,v): (%d, %d)",
-            num_subgrids_u, num_subgrids_v
-    );
-    SDP_LOG_INFO("| Image size (pixels)      : (%d, %d)",
-            image_size, image_size
-    );
-    SDP_LOG_INFO("| Subgrid size (pixels)    : (%d, %d)",
-            subgrid_size, subgrid_size
-    );
-    SDP_LOG_INFO("| Vis shape (rows, chans)  : (%d, %d)",
-            sdp_mem_shape_dim(vis, 0), sdp_mem_shape_dim(vis, 1)
-    );
-    SDP_LOG_INFO("| %s % 3d threads  : %.3f sec",
-            name, num_threads, t_total
-    );
-    SDP_LOG_INFO("|   + (De)grid correct     : %.3f sec (%.1f%%)",
-            t_kernel_grid_correct, 100 * t_kernel_grid_correct / t_total
-    );
-    SDP_LOG_INFO("|   + FFT(grid)            : %.3f sec (%.1f%%)",
-            t_fft_grid, 100 * t_fft_grid / t_total
-    );
-    SDP_LOG_INFO("|   + FFT(subgrid)         : %.3f sec (%.1f%%)",
-            t_fft_subgrid, 100 * t_fft_subgrid / t_total
-    );
-    SDP_LOG_INFO("|   + Kernel               : %.3f sec (%.1f%%)",
-            t_kernel_total, 100 * t_kernel_total / t_total
-    );
-    SDP_LOG_INFO("|     - Kernel FFT(subgrid): %.3f sec (%.1f%%)",
-            t_kernel_fft, 100 * t_kernel_fft / t_kernel_total
-    );
-    SDP_LOG_INFO("|     - Kernel (de)grid    : %.3f sec (%.1f%%)",
-            t_kernel_grid, 100 * t_kernel_grid / t_kernel_total
-    );
-}
+);
 
 
 void sdp_grid_wstack_wtower_degrid_all(
@@ -680,4 +613,100 @@ void sdp_grid_wstack_wtower_grid_all(
     }
     sdp_fft_free(ifft);
     sdp_timer_free(tmr_total);
+}
+
+
+static void report_timing(
+        int num_w_planes,
+        int num_subgrids_u,
+        int num_subgrids_v,
+        int image_size,
+        int subgrid_size,
+        const sdp_Mem* vis,
+        sdp_Timer* tmr_total,
+        sdp_Fft* fft,
+        int num_threads,
+        sdp_GridderWtowerUVW** kernel,
+        sdp_Fft** fft_subgrid,
+        int gridding
+)
+{
+    int total_w_planes = 0;
+    double t_total = sdp_timer_elapsed(tmr_total);
+    double t_fft_grid = sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
+    double t_fft_subgrid = 0;
+    double t_kernel_fft = 0, t_kernel_grid = 0, t_kernel_total = 0;
+    double t_kernel_fft_shift = 0, t_kernel_sg_shift = 0;
+    double t_kernel_grid_correct = sdp_gridder_wtower_uvw_elapsed_time(
+            kernel[0], SDP_WTOWER_TMR_GRID_CORRECT, gridding
+    );
+    for (int i = 0; i < num_threads; ++i)
+    {
+        total_w_planes += sdp_gridder_wtower_uvw_num_w_planes(
+                kernel[i], gridding
+                ) / num_threads;
+        t_fft_subgrid += sdp_fft_elapsed_time(
+                fft_subgrid[i], SDP_FFT_TMR_EXEC
+                ) / num_threads;
+        t_kernel_fft += sdp_gridder_wtower_uvw_elapsed_time(
+                kernel[i], SDP_WTOWER_TMR_FFT, gridding
+                ) / num_threads;
+        t_kernel_fft_shift += sdp_gridder_wtower_uvw_elapsed_time(
+                kernel[i], SDP_WTOWER_TMR_FFT_SHIFT, gridding
+                ) / num_threads;
+        t_kernel_grid += sdp_gridder_wtower_uvw_elapsed_time(
+                kernel[i], SDP_WTOWER_TMR_KERNEL, gridding
+                ) / num_threads;
+        t_kernel_sg_shift += sdp_gridder_wtower_uvw_elapsed_time(
+                kernel[i], SDP_WTOWER_TMR_SUBGRID_SHIFT, gridding
+                ) / num_threads;
+        t_kernel_total += sdp_gridder_wtower_uvw_elapsed_time(
+                kernel[i], SDP_WTOWER_TMR_TOTAL, gridding
+                ) / num_threads;
+    }
+    const char* name = gridding ? "Gridding,  " : "Degridding,";
+    SDP_LOG_INFO("Timing report for w-stacking with w-towers");
+    SDP_LOG_INFO("| Number of large w-planes  : %d", num_w_planes);
+    SDP_LOG_INFO("| Number of small w-planes  : %d (in gridder kernel)",
+            total_w_planes
+    );
+    SDP_LOG_INFO("| Number of sub-grids (u, v): (%d, %d)",
+            num_subgrids_u, num_subgrids_v
+    );
+    SDP_LOG_INFO("| Image size (pixels)       : (%d, %d)",
+            image_size, image_size
+    );
+    SDP_LOG_INFO("| Subgrid size (pixels)     : (%d, %d)",
+            subgrid_size, subgrid_size
+    );
+    SDP_LOG_INFO("| Vis shape (rows, chans)   : (%d, %d)",
+            sdp_mem_shape_dim(vis, 0), sdp_mem_shape_dim(vis, 1)
+    );
+    SDP_LOG_INFO("| %s % 3d threads   : %.3f sec",
+            name, num_threads, t_total
+    );
+    SDP_LOG_INFO("|   + (De)grid correct      : %.3f sec (%.1f%%)",
+            t_kernel_grid_correct, 100 * t_kernel_grid_correct / t_total
+    );
+    SDP_LOG_INFO("|   + FFT(grid)             : %.3f sec (%.1f%%)",
+            t_fft_grid, 100 * t_fft_grid / t_total
+    );
+    SDP_LOG_INFO("|   + FFT(subgrid)          : %.3f sec (%.1f%%)",
+            t_fft_subgrid, 100 * t_fft_subgrid / t_total
+    );
+    SDP_LOG_INFO("|   + Kernel                : %.3f sec (%.1f%%)",
+            t_kernel_total, 100 * t_kernel_total / t_total
+    );
+    SDP_LOG_INFO("|     - FFT(subgrid)        : %.3f sec (%.1f%%)",
+            t_kernel_fft, 100 * t_kernel_fft / t_kernel_total
+    );
+    SDP_LOG_INFO("|     - FFT shift           : %.3f sec (%.1f%%)",
+            t_kernel_fft_shift, 100 * t_kernel_fft_shift / t_kernel_total
+    );
+    SDP_LOG_INFO("|     - Subgrid shift       : %.3f sec (%.1f%%)",
+            t_kernel_sg_shift, 100 * t_kernel_sg_shift / t_kernel_total
+    );
+    SDP_LOG_INFO("|     - (De)grid            : %.3f sec (%.1f%%)",
+            t_kernel_grid, 100 * t_kernel_grid / t_kernel_total
+    );
 }

@@ -31,7 +31,9 @@ struct sdp_GridderWtowerUVW
     int w_oversampling;
     double tmr_grid_correct[2];
     double tmr_fft[2];
+    double tmr_fft_shift[2];
     double tmr_kernel[2];
+    double tmr_subgrid_shift[2];
     double tmr_total[2];
     int num_w_planes[2];
     sdp_Mem* uv_kernel;
@@ -975,6 +977,8 @@ void sdp_gridder_wtower_uvw_degrid(
         loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
     );
     sdp_Timer* tmr_degrid = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_fft_shift = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_subgrid_shift = sdp_timer_create(tmr_type);
     sdp_Timer* tmr_total = sdp_timer_create(tmr_type);
     sdp_timer_resume(tmr_total);
 
@@ -1060,9 +1064,13 @@ void sdp_gridder_wtower_uvw_degrid(
                 current_subgrid_ptr, w_subgrid_image,
                 0, 0, num_elements_sg, status
         );
+        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(current_subgrid_ptr, status);
+        sdp_timer_pause(tmr_fft_shift);
         sdp_fft_exec(fft, current_subgrid_ptr, current_subgrid_ptr, status);
+        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(current_subgrid_ptr, status);
+        sdp_timer_pause(tmr_fft_shift);
         sdp_mem_free(current_subgrid_ptr);
 
         // Perform w_subgrid_image /= plan->w_pattern
@@ -1085,6 +1093,7 @@ void sdp_gridder_wtower_uvw_degrid(
         {
             // Shift subgrids, add new w-plane.
             // subgrids[:-1] = subgrids[1:]
+            sdp_timer_resume(tmr_subgrid_shift);
             for (int i = 0; i < plan->w_support - 1; ++i)
             {
                 sdp_mem_copy_contents(
@@ -1096,6 +1105,7 @@ void sdp_gridder_wtower_uvw_degrid(
                         status
                 );
             }
+            sdp_timer_pause(tmr_subgrid_shift);
 
             // subgrids[-1] = fft(w_subgrid_image)
             // Copy w_subgrid_image to last subgrid, and then do FFT in-place.
@@ -1103,9 +1113,13 @@ void sdp_gridder_wtower_uvw_degrid(
                     last_subgrid_ptr, w_subgrid_image,
                     0, 0, num_elements_sg, status
             );
+            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(last_subgrid_ptr, status);
+            sdp_timer_pause(tmr_fft_shift);
             sdp_fft_exec(fft, last_subgrid_ptr, last_subgrid_ptr, status);
+            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(last_subgrid_ptr, status);
+            sdp_timer_pause(tmr_fft_shift);
 
             // w_subgrid_image /= plan->w_pattern
             sdp_gridder_scale_inv_array(
@@ -1138,6 +1152,8 @@ void sdp_gridder_wtower_uvw_degrid(
     {
         plan->tmr_kernel[0] += sdp_timer_elapsed(tmr_degrid);
         plan->tmr_fft[0] += sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
+        plan->tmr_fft_shift[0] += sdp_timer_elapsed(tmr_fft_shift);
+        plan->tmr_subgrid_shift[0] += sdp_timer_elapsed(tmr_subgrid_shift);
         plan->tmr_total[0] += sdp_timer_elapsed(tmr_total);
         plan->num_w_planes[0] += num_w_planes;
     }
@@ -1147,6 +1163,8 @@ void sdp_gridder_wtower_uvw_degrid(
     sdp_mem_free(last_subgrid_ptr);
     sdp_fft_free(fft);
     sdp_timer_free(tmr_degrid);
+    sdp_timer_free(tmr_fft_shift);
+    sdp_timer_free(tmr_subgrid_shift);
     sdp_timer_free(tmr_total);
 }
 
@@ -1214,6 +1232,8 @@ void sdp_gridder_wtower_uvw_grid(
         loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
     );
     sdp_Timer* tmr_grid = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_fft_shift = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_subgrid_shift = sdp_timer_create(tmr_type);
     sdp_Timer* tmr_total = sdp_timer_create(tmr_type);
     sdp_timer_resume(tmr_total);
 
@@ -1292,14 +1312,19 @@ void sdp_gridder_wtower_uvw_grid(
             sdp_mem_copy_contents(
                     fft_buffer, subgrids, 0, 0, num_elements_sg, status
             );
+            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(fft_buffer, status);
+            sdp_timer_pause(tmr_fft_shift);
             sdp_fft_exec(fft, fft_buffer, fft_buffer, status);
+            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(fft_buffer, status);
+            sdp_timer_pause(tmr_fft_shift);
             sdp_gridder_accumulate_scaled_arrays(
                     w_subgrid_image, fft_buffer, 0, 0.0, status
             );
 
             // subgrids[:-1] = subgrids[1:]
+            sdp_timer_resume(tmr_subgrid_shift);
             for (int i = 0; i < plan->w_support - 1; ++i)
             {
                 sdp_mem_copy_contents(
@@ -1311,6 +1336,7 @@ void sdp_gridder_wtower_uvw_grid(
                         status
                 );
             }
+            sdp_timer_pause(tmr_subgrid_shift);
 
             // subgrids[-1] = 0
             sdp_mem_clear_portion(
@@ -1356,9 +1382,13 @@ void sdp_gridder_wtower_uvw_grid(
                 num_elements_sg,
                 status
         );
+        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(fft_buffer, status);
+        sdp_timer_pause(tmr_fft_shift);
         sdp_fft_exec(fft, fft_buffer, fft_buffer, status);
+        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(fft_buffer, status);
+        sdp_timer_pause(tmr_fft_shift);
         sdp_gridder_accumulate_scaled_arrays(
                 w_subgrid_image, fft_buffer, 0, 0.0, status
         );
@@ -1382,6 +1412,8 @@ void sdp_gridder_wtower_uvw_grid(
     {
         plan->tmr_kernel[1] += sdp_timer_elapsed(tmr_grid);
         plan->tmr_fft[1] += sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
+        plan->tmr_fft_shift[1] += sdp_timer_elapsed(tmr_fft_shift);
+        plan->tmr_subgrid_shift[1] += sdp_timer_elapsed(tmr_subgrid_shift);
         plan->tmr_total[1] += sdp_timer_elapsed(tmr_total);
         plan->num_w_planes[1] += num_w_planes;
     }
@@ -1391,6 +1423,8 @@ void sdp_gridder_wtower_uvw_grid(
     sdp_mem_free(fft_buffer);
     sdp_fft_free(fft);
     sdp_timer_free(tmr_grid);
+    sdp_timer_free(tmr_fft_shift);
+    sdp_timer_free(tmr_subgrid_shift);
     sdp_timer_free(tmr_total);
 }
 
@@ -1450,8 +1484,12 @@ double sdp_gridder_wtower_uvw_elapsed_time(
         return plan->tmr_grid_correct[gridding];
     case SDP_WTOWER_TMR_FFT:
         return plan->tmr_fft[gridding];
+    case SDP_WTOWER_TMR_FFT_SHIFT:
+        return plan->tmr_fft_shift[gridding];
     case SDP_WTOWER_TMR_KERNEL:
         return plan->tmr_kernel[gridding];
+    case SDP_WTOWER_TMR_SUBGRID_SHIFT:
+        return plan->tmr_subgrid_shift[gridding];
     case SDP_WTOWER_TMR_TOTAL:
         return plan->tmr_total[gridding];
     default:
