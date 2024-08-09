@@ -42,28 +42,26 @@ static void report_timing(
     {
         total_w_planes += sdp_gridder_wtower_uvw_num_w_planes(
                 kernel[i], gridding
-        );
+                ) / num_threads;
         t_fft_subgrid += sdp_fft_elapsed_time(
                 fft_subgrid[i], SDP_FFT_TMR_EXEC
-        );
+                ) / num_threads;
         t_kernel_fft += sdp_gridder_wtower_uvw_elapsed_time(
                 kernel[i], SDP_WTOWER_TMR_FFT, gridding
-        );
+                ) / num_threads;
         t_kernel_grid += sdp_gridder_wtower_uvw_elapsed_time(
                 kernel[i], SDP_WTOWER_TMR_KERNEL, gridding
-        );
+                ) / num_threads;
         t_kernel_total += sdp_gridder_wtower_uvw_elapsed_time(
                 kernel[i], SDP_WTOWER_TMR_TOTAL, gridding
-        );
+                ) / num_threads;
     }
-    t_fft_subgrid /= num_threads;
-    t_kernel_fft /= num_threads;
-    t_kernel_grid /= num_threads;
-    t_kernel_total /= num_threads;
     const char* name = gridding ? "Gridding,  " : "Degridding,";
     SDP_LOG_INFO("Timing report for w-stacking with w-towers");
     SDP_LOG_INFO("| Number of large w-planes : %d", num_w_planes);
-    SDP_LOG_INFO("| Number of small w-planes : %d", total_w_planes);
+    SDP_LOG_INFO("| Number of small w-planes : %d (in gridder kernel)",
+            total_w_planes
+    );
     SDP_LOG_INFO("| Number of sub-grids (u,v): (%d, %d)",
             num_subgrids_u, num_subgrids_v
     );
@@ -91,7 +89,7 @@ static void report_timing(
     SDP_LOG_INFO("|   + Kernel               : %.3f sec (%.1f%%)",
             t_kernel_total, 100 * t_kernel_total / t_total
     );
-    SDP_LOG_INFO("|     - Kernel FFT         : %.3f sec (%.1f%%)",
+    SDP_LOG_INFO("|     - Kernel FFT(subgrid): %.3f sec (%.1f%%)",
             t_kernel_fft, 100 * t_kernel_fft / t_kernel_total
     );
     SDP_LOG_INFO("|     - Kernel (de)grid    : %.3f sec (%.1f%%)",
