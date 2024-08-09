@@ -180,8 +180,8 @@ __global__ void sdp_gridder_subgrid_cut_out(
     const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
     const int64_t j = blockDim.y * blockIdx.y + threadIdx.y;
     if (i >= sub_size_u || j >= sub_size_v) return;
-    int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
-    int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 - offset_v;
+    int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
+    int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 + offset_v;
     while (i1 < 0)
     {
         i1 += grid_size_u;

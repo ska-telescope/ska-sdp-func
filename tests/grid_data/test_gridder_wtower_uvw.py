@@ -1992,6 +1992,18 @@ def test_subgrid_cut_out():
     # Check they are the same.
     numpy.testing.assert_allclose(subgrid, subgrid_ref)
 
+    # Test GPU version.
+    if cupy:
+        grid_gpu = cupy.asarray(grid)
+        subgrid_gpu = cupy.zeros(subgrid.shape, dtype=cupy.complex128)
+        Lib.sdp_gridder_subgrid_cut_out(
+            Mem(grid_gpu), offset_u, offset_v, Mem(subgrid_gpu)
+        )
+        subgrid_gpu_copy = cupy.asnumpy(subgrid_gpu)
+
+        # Check they are the same.
+        numpy.testing.assert_allclose(subgrid_gpu_copy, subgrid_ref)
+
 
 def test_subgrid_add():
     image_size = 512
@@ -2012,6 +2024,18 @@ def test_subgrid_add():
 
     # Check they are the same.
     numpy.testing.assert_allclose(grid, grid_ref)
+
+    # Test GPU version.
+    if cupy:
+        grid_gpu = cupy.zeros(grid.shape, dtype=cupy.complex128)
+        subgrid_gpu = cupy.asarray(subgrid)
+        Lib.sdp_gridder_subgrid_add(
+            Mem(grid_gpu), -offset_u, -offset_v, Mem(subgrid_gpu), factor
+        )
+        grid_gpu_copy = cupy.asnumpy(grid_gpu)
+
+        # Check they are the same.
+        numpy.testing.assert_allclose(grid_gpu_copy, grid_ref)
 
 
 def test_gridder_wstack():
@@ -2273,7 +2297,7 @@ def test_gpu_gridder_wstack():
         w_oversampling,
         subgrid_frac,
         w_tower_height,
-        2,
+        1,
         vis_ref,
     )
     t1 = time.time() - t0
@@ -2330,7 +2354,7 @@ def test_gpu_gridder_wstack():
         w_oversampling,
         subgrid_frac,
         w_tower_height,
-        2,
+        1,
         vis_gpu,
     )
     t1 = time.time() - t0
@@ -2338,7 +2362,7 @@ def test_gpu_gridder_wstack():
 
     # Check they are the same.
     vis_gpu_copy = cupy.asnumpy(vis_gpu)
-    numpy.testing.assert_allclose(vis_gpu_copy, vis_ref, atol=1e1)
+    numpy.testing.assert_allclose(vis_gpu_copy, vis_ref, atol=1e-7)
 
     # Call the GPU PFL gridding function.
     vis_dft_gpu = cupy.asarray(vis_dft)
