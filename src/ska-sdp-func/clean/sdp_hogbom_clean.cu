@@ -493,7 +493,6 @@ __global__ void subtract_psf<double, double>(
     if (highest_value[0] > threshold[0])
     {
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
-        // int64_t psf_size = psf_dim * psf_dim;
 
         // get x and y from flat index
         int max_idx_x = max_idx_flat[0] / dirty_img_dim;

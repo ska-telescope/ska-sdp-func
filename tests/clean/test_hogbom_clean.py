@@ -240,11 +240,6 @@ def reference_hogbom_clean(
     # begin CLEAN while thereshold and number of iterations not exceded
     while cur_cycle < cycle_limit and stop is False:
 
-        # print(
-        #     f"Current Cycle: {cur_cycle} of {cycle_limit} Cycles Limit",
-        #     end="\r",
-        # )
-
         # Find index of the maximum value in residual
         max_idx_flat = residual.argmax()
         max_idx = np.unravel_index(max_idx_flat, residual.shape)

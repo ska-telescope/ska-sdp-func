@@ -40,10 +40,6 @@ static void create_test_data(
     const double channel_step_hz = 100e3;
 
     // // calculate useful shapes and sizes
-    // const int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
-    // const int64_t psf_size = psf_dim * psf_dim;
-    // const int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
-    // const int64_t psf_shape[] = {psf_dim, psf_dim};
     const int64_t vis_shape[] =
     {num_times, num_baselines, num_channels, num_pols};
     const int64_t fluxes_shape[] = {num_components, num_channels, num_pols};
