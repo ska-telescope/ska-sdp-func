@@ -33,8 +33,8 @@ def hogbom_clean(
     residual,
     skymodel,
 ):
-    """Implimentation of Hogbom CLEAN, requires dirty image, psf and
-    detals of the CLEAN beam
+    """Implementation of Hogbom CLEAN, requires dirty image, psf and
+    details of the CLEAN beam
 
     Parameters can be either numpy or cupy arrays, but must all be consistent.
     Computation is performed either on the CPU or GPU as appropriate.

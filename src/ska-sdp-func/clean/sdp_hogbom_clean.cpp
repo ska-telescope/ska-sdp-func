@@ -171,14 +171,6 @@ static void hogbom_clean(
             clean_comp_complex_mem
     );
     sdp_mem_clear_contents(clean_comp_complex_mem, status);
-    // sdp_Mem* residual_complex_mem = sdp_mem_create(complex_data_type, SDP_MEM_CPU, 2, dirty_img_shape, status);
-    // complex<T>* residual_complex_ptr = (complex<T>*)sdp_mem_data(residual_complex_mem);
-
-    // // Convolution code only works with complex input, so make residual complex
-    // sdp_create_copy_complex<T>(dirty_img, dirty_img_size, residual_complex_ptr);
-
-    // // copy dirty image to starting residual
-    // sdp_mem_copy_contents(residual, dirty_img, 0, 0, dirty_img_size, status);
 
     // set up some loop variables
     int cur_cycle = 0;
@@ -188,7 +180,7 @@ static void hogbom_clean(
     sdp_mem_clear_contents(cbeam_mem, status);
     sdp_create_cbeam<T>(cbeam_details, cbeam_details[3], cbeam_ptr);
 
-    // CLEAN loop executes while the stop conditions (threashold and cycle limit) are not met
+    // CLEAN loop executes while the stop conditions (threshold and cycle limit) are not met
     while (cur_cycle < cycle_limit)
     {
         // Find index and value of the maximum value in residual
@@ -203,9 +195,6 @@ static void hogbom_clean(
                 max_idx_flat = i;
             }
         }
-
-        // SDP_LOG_DEBUG("peak %f", std::real(residual_ptr[max_idx_flat]));
-        // SDP_LOG_DEBUG("cycle %d", cur_cycle);
 
         // check maximum value against threshold
         if (residual[max_idx_flat] < threshold)
@@ -532,7 +521,7 @@ void sdp_hogbom_clean_gpu(
             SDP_LOG_ERROR("Unsupported data type");
         }
 
-        // launch mulitple kernels to perform reduction
+        // launch multiple kernels to perform reduction
         // scale the number of blocks according to the size of the reduction
         while (num_blocks_reduce[0] > 1)
         {

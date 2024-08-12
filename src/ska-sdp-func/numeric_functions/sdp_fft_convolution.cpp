@@ -145,11 +145,6 @@ static void fft_convolution(
         pad_dim += 1;
     }
 
-    // while (ceil(log2(pad_dim)) != floor(log2(pad_dim))){
-
-    //     pad_dim += 1;
-    // }
-
     int64_t pad_shape[] = {pad_dim, pad_dim};
     int64_t pad_size = pad_dim * pad_dim;
 
@@ -184,14 +179,6 @@ static void fft_convolution(
 
     // pad in2
     sdp_pad_2d<T>(in2, in2_pad_ptr, in2_dim, in2_dim, extra_in2, extra_in2);
-
-    // // create variables for FFT results
-    // sdp_Mem* in1_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
-    // complex<T>* in1_fft_result_ptr = (complex<T>*)sdp_mem_data(in1_fft_result_mem);
-    // sdp_mem_clear_contents(in1_fft_result_mem, status);
-    // sdp_Mem* in2_fft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
-    // complex<T>* in2_fft_result_ptr = (complex<T>*)sdp_mem_data(in2_fft_result_mem);
-    // sdp_mem_clear_contents(in2_fft_result_mem, status);
 
     // get FFT of padded in1
     sdp_Fft* in1_fft_plan = sdp_fft_create(in1_pad_mem,
@@ -229,10 +216,6 @@ static void fft_convolution(
         multiply_ptr[i] = in1_pad_ptr[i] * in2_pad_ptr[i];
     }
 
-    // inverse FFT of result
-    // sdp_Mem* multiply_ifft_result_mem = sdp_mem_create(data_type, SDP_MEM_CPU, 2, pad_shape, status);
-    // complex<T>* multiply_ifft_result_ptr = (complex<T>*)sdp_mem_data(multiply_ifft_result_mem);
-
     sdp_Fft* result_ifft_plan = sdp_fft_create(multiply_mem,
             multiply_mem,
             2,
@@ -257,10 +240,7 @@ static void fft_convolution(
 
     sdp_mem_ref_dec(in1_pad_mem);
     sdp_mem_ref_dec(in2_pad_mem);
-    // sdp_mem_ref_dec(in1_fft_result_mem);
-    // sdp_mem_ref_dec(in2_fft_result_mem);
     sdp_mem_ref_dec(multiply_mem);
-    // sdp_mem_ref_dec(multiply_ifft_result_mem);
 }
 
 

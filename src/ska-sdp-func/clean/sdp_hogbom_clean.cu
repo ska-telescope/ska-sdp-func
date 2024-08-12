@@ -9,9 +9,6 @@
 #include <cuComplex.h>
 
 
-// #define INDEX_2D(N2, N1, I2, I1)    (N1 * I2 + I1)
-
-
 // create a copy of a complex number using only its real part
 template<typename CT, typename T>
 __global__ void create_copy_real(
@@ -425,7 +422,6 @@ __global__ void add_clean_comp<double, double>(
         clean_comp[max_idx_flat[0]] = __dadd_rn(clean_comp[max_idx_flat[0]],
                 inter
         );
-        // clean_comp[max_idx_flat[0]] = clean_comp[max_idx_flat[0]] + (loop_gain[0] * highest_value[0]);
     }
     // if threshold reached, set flag
     else
@@ -451,7 +447,6 @@ __global__ void add_clean_comp<float, float>(
         // Add fraction of maximum to clean components list
         float inter = __fmul_rn(*loop_gain, *highest_value);
         clean_comp[*max_idx_flat] = __fadd_rn(clean_comp[*max_idx_flat], inter);
-        // clean_comp[max_idx_flat[0]] = clean_comp[max_idx_flat[0]] + (loop_gain[0] * highest_value[0]);
     }
     // if threshold reached, set flag
     else
@@ -508,8 +503,6 @@ __global__ void subtract_psf<double, double>(
         int64_t psf_x_start = dirty_img_dim - max_idx_x;
         int64_t psf_y_start = dirty_img_dim - max_idx_y;
 
-        // int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
         // thread index
         int64_t tid = threadIdx.x;
         // index of block of values being worked on by this thread
@@ -531,9 +524,6 @@ __global__ void subtract_psf<double, double>(
                 int64_t x_psf = x_dirty + psf_x_start;
                 int64_t y_psf = y_dirty + psf_y_start;
 
-                // // get flat index for dirty image
-                // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
-
                 // get flat index for psf
                 int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
@@ -542,7 +532,6 @@ __global__ void subtract_psf<double, double>(
                 inter = __dmul_rn(inter, psf[psf_flat_idx]);
                 residual[curr_idx] =  __dsub_rn(residual[curr_idx], inter);
 
-                // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
             }
         }
     }
@@ -580,8 +569,6 @@ __global__ void subtract_psf<float, float>(
         int64_t psf_x_start = dirty_img_dim - max_idx_x;
         int64_t psf_y_start = dirty_img_dim - max_idx_y;
 
-        // int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
-
         // thread index
         int64_t tid = threadIdx.x;
         // index of block of values being worked on by this thread
@@ -603,9 +590,6 @@ __global__ void subtract_psf<float, float>(
                 int64_t x_psf = x_dirty + psf_x_start;
                 int64_t y_psf = y_dirty + psf_y_start;
 
-                // // get flat index for dirty image
-                // int64_t dirty_img_flat_idx = x_dirty * dirty_img_dim + y_dirty;
-
                 // get flat index for psf
                 int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
@@ -614,7 +598,6 @@ __global__ void subtract_psf<float, float>(
                 inter = __fmul_rn(inter, psf[psf_flat_idx]);
                 residual[curr_idx] =  __fsub_rn(residual[curr_idx], inter);
 
-                // residual[i] = residual[i] - (loop_gain[0] * highest_value[0] * psf[psf_flat_idx]);
             }
         }
     }
