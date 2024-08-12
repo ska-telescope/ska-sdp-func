@@ -19,7 +19,6 @@ except ImportError:
     plt = None
 
 import ska_sdp_func.grid_data as sdp_grid_func
-from ska_sdp_func.utility import Lib, Mem
 
 C_0 = 299792458.0
 
@@ -703,6 +702,11 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
         uvw_min, uvw_max = uvw_bounds_all(
             uvws, freq0, dfreq, start_chs, end_chs
         )
+        uvw_min2, uvw_max2 = sdp_grid_func.uvw_bounds_all(
+            uvws, freq0, dfreq, start_chs, end_chs
+        )
+        numpy.testing.assert_allclose(uvw_min2, uvw_min)
+        numpy.testing.assert_allclose(uvw_max2, uvw_max)
 
         # Get subgrid at first w-plane
         eta = 1e-5
@@ -1237,8 +1241,8 @@ def find_gridder_accuracy(
         C_0,
         C_0,
         uvws,
-        numpy.zeros(len(uvws), dtype=int),
-        numpy.ones(len(uvws), dtype=int),
+        numpy.zeros(len(uvws), dtype=numpy.int32),
+        numpy.ones(len(uvws), dtype=numpy.int32),
     )
     ref = dft(sources_lmn, uvws)
 
@@ -1985,9 +1989,7 @@ def test_subgrid_cut_out():
     subgrid_ref = subgrid_cut_out(
         shift_grid(grid, offset_u, offset_v), subgrid_size
     )
-    Lib.sdp_gridder_subgrid_cut_out(
-        Mem(grid), offset_u, offset_v, Mem(subgrid)
-    )
+    sdp_grid_func.subgrid_cut_out(grid, offset_u, offset_v, subgrid)
 
     # Check they are the same.
     numpy.testing.assert_allclose(subgrid, subgrid_ref)
@@ -1996,8 +1998,8 @@ def test_subgrid_cut_out():
     if cupy:
         grid_gpu = cupy.asarray(grid)
         subgrid_gpu = cupy.zeros(subgrid.shape, dtype=cupy.complex128)
-        Lib.sdp_gridder_subgrid_cut_out(
-            Mem(grid_gpu), offset_u, offset_v, Mem(subgrid_gpu)
+        sdp_grid_func.subgrid_cut_out(
+            grid_gpu, offset_u, offset_v, subgrid_gpu
         )
         subgrid_gpu_copy = cupy.asnumpy(subgrid_gpu)
 
@@ -2018,9 +2020,7 @@ def test_subgrid_add():
 
     grid = numpy.zeros((image_size, image_size), dtype=numpy.complex128)
     factor = (image_size / subgrid.shape[0]) ** 2
-    Lib.sdp_gridder_subgrid_add(
-        Mem(grid), -offset_u, -offset_v, Mem(subgrid), factor
-    )
+    sdp_grid_func.subgrid_add(grid, -offset_u, -offset_v, subgrid, factor)
 
     # Check they are the same.
     numpy.testing.assert_allclose(grid, grid_ref)
@@ -2029,8 +2029,8 @@ def test_subgrid_add():
     if cupy:
         grid_gpu = cupy.zeros(grid.shape, dtype=cupy.complex128)
         subgrid_gpu = cupy.asarray(subgrid)
-        Lib.sdp_gridder_subgrid_add(
-            Mem(grid_gpu), -offset_u, -offset_v, Mem(subgrid_gpu), factor
+        sdp_grid_func.subgrid_add(
+            grid_gpu, -offset_u, -offset_v, subgrid_gpu, factor
         )
         grid_gpu_copy = cupy.asnumpy(grid_gpu)
 
