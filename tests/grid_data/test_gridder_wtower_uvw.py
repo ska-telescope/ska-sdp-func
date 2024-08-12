@@ -1315,8 +1315,8 @@ def degrid_all(
     verbose: bool = False,
 ):
     # Assume we're using all visibilities
-    start_chs = numpy.zeros(len(uvw), dtype=int)
-    end_chs = ch_count * numpy.ones(len(uvw), dtype=int)
+    start_chs = numpy.zeros(len(uvw), dtype=numpy.int32)
+    end_chs = ch_count * numpy.ones(len(uvw), dtype=numpy.int32)
 
     # Determine effective size of subgrids and w-tower height
     # (both depend critically on how much we want to "use" of the subgrid)
@@ -1431,8 +1431,8 @@ def grid_all(
     verbose: bool = False,
 ):
     # Assume we're using all visibilities
-    start_chs = numpy.zeros(len(uvw), dtype=int)
-    end_chs = ch_count * numpy.ones(len(uvw), dtype=int)
+    start_chs = numpy.zeros(len(uvw), dtype=numpy.int32)
+    end_chs = ch_count * numpy.ones(len(uvw), dtype=numpy.int32)
 
     # Determine effective size of subgrids and w-tower height
     # (both depend critically on how much we want to "use" of the subgrid)
