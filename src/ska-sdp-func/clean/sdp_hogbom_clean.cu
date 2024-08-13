@@ -529,7 +529,6 @@ __global__ void subtract_psf<double, double>(
                 double inter = __dmul_rn(loop_gain[0], highest_value[0]);
                 inter = __dmul_rn(inter, psf[psf_flat_idx]);
                 residual[curr_idx] =  __dsub_rn(residual[curr_idx], inter);
-
             }
         }
     }
@@ -595,7 +594,6 @@ __global__ void subtract_psf<float, float>(
                 float inter = __fmul_rn(loop_gain[0], highest_value[0]);
                 inter = __fmul_rn(inter, psf[psf_flat_idx]);
                 residual[curr_idx] =  __fsub_rn(residual[curr_idx], inter);
-
             }
         }
     }

@@ -111,7 +111,7 @@ inline void sdp_create_copy_real(
 
 
 template<typename T>
-static void hogbom_clean(
+static void sdp_hogbom_clean_cpu(
         const T* psf,
         const T* cbeam_details,
         const T loop_gain,
@@ -174,7 +174,6 @@ static void hogbom_clean(
 
     // set up some loop variables
     int cur_cycle = 0;
-    bool stop = 0;
 
     // create CLEAN Beam
     sdp_mem_clear_contents(cbeam_mem, status);
@@ -486,7 +485,6 @@ void sdp_hogbom_clean_gpu(
 
     // set up some loop variables
     int cur_cycle = 0;
-    bool stop = 0;
 
     // CLEAN loop executes while the stop conditions (threshold and cycle limit) are not met
     while (cur_cycle < cycle_limit)
@@ -896,7 +894,7 @@ void sdp_hogbom_clean(
 
         if (data_type == SDP_MEM_DOUBLE)
         {
-            hogbom_clean<double>(
+            sdp_hogbom_clean_cpu<double>(
                     (const double*)sdp_mem_data_const(psf),
                     (const double*)sdp_mem_data_const(cbeam_details),
                     loop_gain,
@@ -913,7 +911,7 @@ void sdp_hogbom_clean(
         }
         else if (data_type == SDP_MEM_FLOAT)
         {
-            hogbom_clean<float>(
+            sdp_hogbom_clean_cpu<float>(
                     (const float*)sdp_mem_data_const(psf),
                     (const float*)sdp_mem_data_const(cbeam_details),
                     (float)loop_gain,

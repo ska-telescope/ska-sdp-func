@@ -32,7 +32,7 @@ def create_test_data(dirty_size, psf_size):
     channel_step_hz = 100e3
     np.random.seed(12)  # seed for generating data
 
-    # initialise empty output array for visibilities 
+    # initialise empty output array for visibilities
     vis = np.zeros(
         [num_times, num_baselines, num_channels, num_pols],
         dtype=np.complex128,
@@ -72,9 +72,7 @@ def create_test_data(dirty_size, psf_size):
 
     # Create random fluxes between 0 + 0j and 10 + 0j for sources
     for i in range(num_components):
-        fluxes[i, 0, 0] = (
-            np.random.uniform(1, 10) + 0j
-        )
+        fluxes[i, 0, 0] = np.random.uniform(1, 10) + 0j
 
     # create random lmn co-ordinates between (-0.015,-0.015) and (0.015,0.015)
     for i in range(num_components):
@@ -185,7 +183,7 @@ def create_test_data(dirty_size, psf_size):
 
 
 def create_cbeam(coeffs, size):
-    """ create clean beam"""
+    """create clean beam"""
 
     center = size // 2
 
@@ -201,14 +199,14 @@ def create_cbeam(coeffs, size):
     X = np.arange(0, size, 1)
     Y = np.arange(0, size, 1)
 
-    a = np.cos(theta) ** 2 / (2 * sigma_X**2) + np.sin(theta) ** 2 / (
-        2 * sigma_Y**2
+    a = np.cos(theta) ** 2 / (2 * sigma_X ** 2) + np.sin(theta) ** 2 / (
+        2 * sigma_Y ** 2
     )
-    b = np.sin(2 * theta) / (4 * sigma_X**2) - np.sin(2 * theta) / (
-        4 * sigma_Y**2
+    b = np.sin(2 * theta) / (4 * sigma_X ** 2) - np.sin(2 * theta) / (
+        4 * sigma_Y ** 2
     )
-    c = np.sin(theta) ** 2 / (2 * sigma_X**2) + np.cos(theta) ** 2 / (
-        2 * sigma_Y**2
+    c = np.sin(theta) ** 2 / (2 * sigma_X ** 2) + np.cos(theta) ** 2 / (
+        2 * sigma_Y ** 2
     )
 
     for x in X:
