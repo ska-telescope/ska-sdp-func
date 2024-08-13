@@ -30,11 +30,7 @@ struct sdp_GridderWtowerUVW
     int w_support;
     int w_oversampling;
     double tmr_grid_correct[2];
-    double tmr_fft[2];
-    double tmr_fft_shift[2];
-    double tmr_kernel[2];
-    double tmr_subgrid_shift[2];
-    double tmr_total[2];
+    double tmr_process_subgrid_stack[2];
     int num_w_planes[2];
     sdp_Mem* uv_kernel;
     sdp_Mem* uv_kernel_gpu;
@@ -972,15 +968,12 @@ void sdp_gridder_wtower_uvw_degrid(
         return;
     }
 
-    // Set up timers.
+    // Set up timer.
     const sdp_TimerType tmr_type = (
         loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
     );
-    sdp_Timer* tmr_degrid = sdp_timer_create(tmr_type);
-    sdp_Timer* tmr_fft_shift = sdp_timer_create(tmr_type);
-    sdp_Timer* tmr_subgrid_shift = sdp_timer_create(tmr_type);
-    sdp_Timer* tmr_total = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr_total);
+    sdp_Timer* tmr = sdp_timer_create(tmr_type);
+    sdp_timer_resume(tmr);
 
     // Copy internal arrays to GPU memory as required.
     sdp_Mem* w_pattern_ptr = plan->w_pattern;
@@ -1064,13 +1057,9 @@ void sdp_gridder_wtower_uvw_degrid(
                 current_subgrid_ptr, w_subgrid_image,
                 0, 0, num_elements_sg, status
         );
-        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(current_subgrid_ptr, status);
-        sdp_timer_pause(tmr_fft_shift);
         sdp_fft_exec(fft, current_subgrid_ptr, current_subgrid_ptr, status);
-        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(current_subgrid_ptr, status);
-        sdp_timer_pause(tmr_fft_shift);
         sdp_mem_free(current_subgrid_ptr);
 
         // Perform w_subgrid_image /= plan->w_pattern
@@ -1084,16 +1073,12 @@ void sdp_gridder_wtower_uvw_degrid(
     for (int w_plane = first_w_plane; w_plane <= last_w_plane; ++w_plane)
     {
         if (*status) break;
-        SDP_LOG_DEBUG("Degridding w-plane %d (%d/%d)",
-                w_plane, 1 + w_plane - first_w_plane, num_w_planes
-        );
 
         // Move to next w-plane.
         if (w_plane != first_w_plane)
         {
             // Shift subgrids, add new w-plane.
             // subgrids[:-1] = subgrids[1:]
-            sdp_timer_resume(tmr_subgrid_shift);
             for (int i = 0; i < plan->w_support - 1; ++i)
             {
                 sdp_mem_copy_contents(
@@ -1105,7 +1090,6 @@ void sdp_gridder_wtower_uvw_degrid(
                         status
                 );
             }
-            sdp_timer_pause(tmr_subgrid_shift);
 
             // subgrids[-1] = fft(w_subgrid_image)
             // Copy w_subgrid_image to last subgrid, and then do FFT in-place.
@@ -1113,13 +1097,9 @@ void sdp_gridder_wtower_uvw_degrid(
                     last_subgrid_ptr, w_subgrid_image,
                     0, 0, num_elements_sg, status
             );
-            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(last_subgrid_ptr, status);
-            sdp_timer_pause(tmr_fft_shift);
             sdp_fft_exec(fft, last_subgrid_ptr, last_subgrid_ptr, status);
-            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(last_subgrid_ptr, status);
-            sdp_timer_pause(tmr_fft_shift);
 
             // w_subgrid_image /= plan->w_pattern
             sdp_gridder_scale_inv_array(
@@ -1127,7 +1107,6 @@ void sdp_gridder_wtower_uvw_degrid(
             );
         }
 
-        sdp_timer_resume(tmr_degrid);
         if (loc == SDP_MEM_CPU)
         {
             degrid_cpu(
@@ -1144,17 +1123,12 @@ void sdp_gridder_wtower_uvw_degrid(
                     uvws, start_chs, end_chs, vis, status
             );
         }
-        sdp_timer_pause(tmr_degrid);
     }
 
-    // Update timers.
+    // Update timer.
     #pragma omp critical
     {
-        plan->tmr_kernel[0] += sdp_timer_elapsed(tmr_degrid);
-        plan->tmr_fft[0] += sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
-        plan->tmr_fft_shift[0] += sdp_timer_elapsed(tmr_fft_shift);
-        plan->tmr_subgrid_shift[0] += sdp_timer_elapsed(tmr_subgrid_shift);
-        plan->tmr_total[0] += sdp_timer_elapsed(tmr_total);
+        plan->tmr_process_subgrid_stack[0] += sdp_timer_elapsed(tmr);
         plan->num_w_planes[0] += num_w_planes;
     }
 
@@ -1162,10 +1136,7 @@ void sdp_gridder_wtower_uvw_degrid(
     sdp_mem_free(subgrids);
     sdp_mem_free(last_subgrid_ptr);
     sdp_fft_free(fft);
-    sdp_timer_free(tmr_degrid);
-    sdp_timer_free(tmr_fft_shift);
-    sdp_timer_free(tmr_subgrid_shift);
-    sdp_timer_free(tmr_total);
+    sdp_timer_free(tmr);
 }
 
 
@@ -1227,15 +1198,12 @@ void sdp_gridder_wtower_uvw_grid(
         return;
     }
 
-    // Set up timers.
+    // Set up timer.
     const sdp_TimerType tmr_type = (
         loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
     );
-    sdp_Timer* tmr_grid = sdp_timer_create(tmr_type);
-    sdp_Timer* tmr_fft_shift = sdp_timer_create(tmr_type);
-    sdp_Timer* tmr_subgrid_shift = sdp_timer_create(tmr_type);
-    sdp_Timer* tmr_total = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr_total);
+    sdp_Timer* tmr = sdp_timer_create(tmr_type);
+    sdp_timer_resume(tmr);
 
     // Copy internal arrays to GPU memory as required.
     sdp_Mem* w_pattern_ptr = plan->w_pattern;
@@ -1295,9 +1263,6 @@ void sdp_gridder_wtower_uvw_grid(
     for (int w_plane = first_w_plane; w_plane <= last_w_plane; ++w_plane)
     {
         if (*status) break;
-        SDP_LOG_DEBUG("Gridding w-plane %d (%d/%d)",
-                w_plane, 1 + w_plane - first_w_plane, num_w_planes
-        );
 
         // Move to next w-plane.
         if (w_plane != first_w_plane)
@@ -1312,19 +1277,14 @@ void sdp_gridder_wtower_uvw_grid(
             sdp_mem_copy_contents(
                     fft_buffer, subgrids, 0, 0, num_elements_sg, status
             );
-            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(fft_buffer, status);
-            sdp_timer_pause(tmr_fft_shift);
             sdp_fft_exec(fft, fft_buffer, fft_buffer, status);
-            sdp_timer_resume(tmr_fft_shift);
             sdp_fft_phase(fft_buffer, status);
-            sdp_timer_pause(tmr_fft_shift);
             sdp_gridder_accumulate_scaled_arrays(
                     w_subgrid_image, fft_buffer, 0, 0.0, status
             );
 
             // subgrids[:-1] = subgrids[1:]
-            sdp_timer_resume(tmr_subgrid_shift);
             for (int i = 0; i < plan->w_support - 1; ++i)
             {
                 sdp_mem_copy_contents(
@@ -1336,7 +1296,6 @@ void sdp_gridder_wtower_uvw_grid(
                         status
                 );
             }
-            sdp_timer_pause(tmr_subgrid_shift);
 
             // subgrids[-1] = 0
             sdp_mem_clear_portion(
@@ -1347,7 +1306,6 @@ void sdp_gridder_wtower_uvw_grid(
             );
         }
 
-        sdp_timer_resume(tmr_grid);
         if (loc == SDP_MEM_CPU)
         {
             grid_cpu(plan, subgrids, w_plane, subgrid_offset_u,
@@ -1362,7 +1320,6 @@ void sdp_gridder_wtower_uvw_grid(
                     uvws, start_chs, end_chs, vis, status
             );
         }
-        sdp_timer_pause(tmr_grid);
     }
 
     // Accumulate remaining data from subgrids.
@@ -1382,13 +1339,9 @@ void sdp_gridder_wtower_uvw_grid(
                 num_elements_sg,
                 status
         );
-        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(fft_buffer, status);
-        sdp_timer_pause(tmr_fft_shift);
         sdp_fft_exec(fft, fft_buffer, fft_buffer, status);
-        sdp_timer_resume(tmr_fft_shift);
         sdp_fft_phase(fft_buffer, status);
-        sdp_timer_pause(tmr_fft_shift);
         sdp_gridder_accumulate_scaled_arrays(
                 w_subgrid_image, fft_buffer, 0, 0.0, status
         );
@@ -1407,14 +1360,10 @@ void sdp_gridder_wtower_uvw_grid(
             subgrid_image, w_subgrid_image, w_pattern_ptr, exponent, status
     );
 
-    // Update timers.
+    // Update timer.
     #pragma omp critical
     {
-        plan->tmr_kernel[1] += sdp_timer_elapsed(tmr_grid);
-        plan->tmr_fft[1] += sdp_fft_elapsed_time(fft, SDP_FFT_TMR_EXEC);
-        plan->tmr_fft_shift[1] += sdp_timer_elapsed(tmr_fft_shift);
-        plan->tmr_subgrid_shift[1] += sdp_timer_elapsed(tmr_subgrid_shift);
-        plan->tmr_total[1] += sdp_timer_elapsed(tmr_total);
+        plan->tmr_process_subgrid_stack[1] += sdp_timer_elapsed(tmr);
         plan->num_w_planes[1] += num_w_planes;
     }
 
@@ -1422,10 +1371,7 @@ void sdp_gridder_wtower_uvw_grid(
     sdp_mem_free(subgrids);
     sdp_mem_free(fft_buffer);
     sdp_fft_free(fft);
-    sdp_timer_free(tmr_grid);
-    sdp_timer_free(tmr_fft_shift);
-    sdp_timer_free(tmr_subgrid_shift);
-    sdp_timer_free(tmr_total);
+    sdp_timer_free(tmr);
 }
 
 
@@ -1482,16 +1428,8 @@ double sdp_gridder_wtower_uvw_elapsed_time(
     {
     case SDP_WTOWER_TMR_GRID_CORRECT:
         return plan->tmr_grid_correct[gridding];
-    case SDP_WTOWER_TMR_FFT:
-        return plan->tmr_fft[gridding];
-    case SDP_WTOWER_TMR_FFT_SHIFT:
-        return plan->tmr_fft_shift[gridding];
-    case SDP_WTOWER_TMR_KERNEL:
-        return plan->tmr_kernel[gridding];
-    case SDP_WTOWER_TMR_SUBGRID_SHIFT:
-        return plan->tmr_subgrid_shift[gridding];
-    case SDP_WTOWER_TMR_TOTAL:
-        return plan->tmr_total[gridding];
+    case SDP_WTOWER_TMR_PROCESS_SUBGRID_STACK:
+        return plan->tmr_process_subgrid_stack[gridding];
     default:
         return 0.0;
     }

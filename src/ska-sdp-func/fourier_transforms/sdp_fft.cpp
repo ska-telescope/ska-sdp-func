@@ -9,7 +9,6 @@
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
-#include "ska-sdp-func/utility/sdp_timer.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cufft.h>
@@ -264,8 +263,6 @@ static void sdp_2d_fft(
 
 struct sdp_Fft
 {
-    sdp_Timer* tmr_exec;
-    sdp_Timer* tmr_plan;
     sdp_Mem* input;
     sdp_Mem* output;
     sdp_Mem* temp;
@@ -364,14 +361,6 @@ sdp_Fft* sdp_fft_create(
     fft->num_dims = num_dims_fft;
     fft->batch_size = 1;
     fft->is_forward = is_forward;
-
-    // Set up timers.
-    const sdp_TimerType tmr_type = (
-        loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    fft->tmr_exec = sdp_timer_create(tmr_type);
-    fft->tmr_plan = sdp_timer_create(tmr_type);
-    sdp_timer_resume(fft->tmr_plan);
 
     // Set up the batch size.
     const int32_t num_dims = sdp_mem_num_dims(input);
@@ -561,22 +550,7 @@ sdp_Fft* sdp_fft_create(
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Unsupported FFT location");
     }
-    sdp_timer_pause(fft->tmr_plan);
     return fft;
-}
-
-
-double sdp_fft_elapsed_time(sdp_Fft* fft, sdp_FftTimer timer)
-{
-    switch (timer)
-    {
-    case SDP_FFT_TMR_EXEC:
-        return sdp_timer_elapsed(fft->tmr_exec);
-    case SDP_FFT_TMR_PLAN:
-        return sdp_timer_elapsed(fft->tmr_plan);
-    default:
-        return 0.0;
-    }
 }
 
 
@@ -597,7 +571,6 @@ void sdp_fft_exec(
         SDP_LOG_ERROR("Arrays do not match those used for FFT plan creation");
         return;
     }
-    sdp_timer_resume(fft->tmr_exec);
     if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
 #ifdef SDP_HAVE_CUDA
@@ -742,15 +715,12 @@ void sdp_fft_exec(
         }
 #endif
     }
-    sdp_timer_pause(fft->tmr_exec);
 }
 
 
 void sdp_fft_free(sdp_Fft* fft)
 {
     if (!fft) return;
-    sdp_timer_free(fft->tmr_exec);
-    sdp_timer_free(fft->tmr_plan);
 #ifdef SDP_HAVE_CUDA
     if (sdp_mem_location(fft->input) == SDP_MEM_GPU)
     {

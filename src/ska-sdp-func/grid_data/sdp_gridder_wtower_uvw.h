@@ -39,11 +39,7 @@ struct sdp_GridderWtowerUVW;
 enum sdp_GridderWtowerUVWTimer
 {
     SDP_WTOWER_TMR_GRID_CORRECT,
-    SDP_WTOWER_TMR_FFT,
-    SDP_WTOWER_TMR_FFT_SHIFT,
-    SDP_WTOWER_TMR_KERNEL,
-    SDP_WTOWER_TMR_SUBGRID_SHIFT,
-    SDP_WTOWER_TMR_TOTAL
+    SDP_WTOWER_TMR_PROCESS_SUBGRID_STACK
 };
 
 /** @} */ /* End group GridderWtowerUVW_enum. */
