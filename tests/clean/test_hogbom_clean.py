@@ -16,7 +16,12 @@ from ska_sdp_func.visibility import dft_point_v01
 
 
 def create_test_data(dirty_size, psf_size):
-    """create a test image and corresponding PSF"""
+    """create a test image and corresponding PSF using PFL functions.
+    This image and PSF can then be used to test the Hogbom CLEAN
+    against known data.
+    Creates a simulated UVW coverage of randomly sized baselines,
+    random lmn coordinates for sources are generated and processed
+    by DFT and gridder functions in to a dirty image."""
     # Initialise settings
     num_components = 10
     num_pols = 1
@@ -27,7 +32,7 @@ def create_test_data(dirty_size, psf_size):
     channel_step_hz = 100e3
     np.random.seed(12)  # seed for generating data
 
-    # initialise empty output array
+    # initialise empty output array for visibilities 
     vis = np.zeros(
         [num_times, num_baselines, num_channels, num_pols],
         dtype=np.complex128,
@@ -51,7 +56,7 @@ def create_test_data(dirty_size, psf_size):
     x0 = 0
     r = 3000
 
-    # random filled circle
+    # random filled circle representing baselines
     for i in range(num_baselines):
 
         # random angle
@@ -65,12 +70,11 @@ def create_test_data(dirty_size, psf_size):
 
         uvw[0, i, :] = x, y, 0
 
-    # Create random fluxes between 0 + 0j and 10 + 0j
+    # Create random fluxes between 0 + 0j and 10 + 0j for sources
     for i in range(num_components):
         fluxes[i, 0, 0] = (
             np.random.uniform(1, 10) + 0j
-        )  # ((np.random.uniform(0, 1)) * 1j)
-        # fluxes[i, 0, 0] = 10
+        )
 
     # create random lmn co-ordinates between (-0.015,-0.015) and (0.015,0.015)
     for i in range(num_components):
@@ -84,6 +88,7 @@ def create_test_data(dirty_size, psf_size):
             1 - (directions[i, 0]) ** 2 - (directions[i, 1] ** 2)
         )
 
+    # process in to visibilities
     print("Creating visibilities using dft_point_v01 from ska-sdp-func...")
     # dirty image
     dft_point_v01(
@@ -100,6 +105,7 @@ def create_test_data(dirty_size, psf_size):
         vis_psf,
     )
 
+    # grid the generated visibilities
     # initialise settings for gridder
     nxydirty = dirty_size
     nxydirty_psf = psf_size
@@ -179,7 +185,7 @@ def create_test_data(dirty_size, psf_size):
 
 
 def create_cbeam(coeffs, size):
-    # create clean beam
+    """ create clean beam"""
 
     center = size // 2
 
@@ -221,7 +227,8 @@ def create_cbeam(coeffs, size):
 def reference_hogbom_clean(
     dirty_img, psf, cbeam_details, loop_gain, threshold, cycle_limit
 ):
-
+    """Reference python implementation of Hogbom CLEAN to
+    test against c version"""
     # calculate useful shapes and sizes
     dirty_size = dirty_img.shape[0]
 
@@ -279,7 +286,7 @@ def reference_hogbom_clean(
 
 
 def test_hogbom_clean():
-    """Test the Hogbom CLEAN function"""
+    """Test the Hogbom CLEAN function python version against c"""
 
     # initalise settings
     dirty_size = 256
