@@ -47,7 +47,7 @@ include:
   - dnf clean all
   - dnf -y install cuda-nvcc-12-0 cuda-cudart-devel-12-0 libcufft-devel-12-0
 
-.install-mkl-packages-rocky: &mkl_packages_rocky
+.install-intel-packages-rocky: &intel_packages_rocky
   - |
     cat > /tmp/oneAPI.repo << EOF
     [oneAPI]
@@ -59,26 +59,25 @@ include:
     gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
     EOF
   - mv /tmp/oneAPI.repo /etc/yum.repos.d
+  - dnf -y install intel-oneapi-compiler-dpcpp-cpp
   - dnf -y install intel-oneapi-mkl intel-oneapi-mkl-devel
   - . /opt/intel/oneapi/setvars.sh
 
 .build-manylinux-wheels: &build_wheels
   - dnf -y install zip
   - export CMAKE_BUILD_PARALLEL_LEVEL=16
-  - export CMAKE_ARGS="-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++"
-  - export PYVERS=("cp39" "cp310" "cp311" "cp312" "cp313")
-  - for PYVER in ${PYVERS[@]}; do
-      rm -rf ./build/temp.*;
-      ln -s /opt/python/$PYVER-$PYVER/bin/python3 /usr/local/bin/python3;
-      ln -s /opt/python/$PYVER-$PYVER/bin/pip /usr/local/bin/pip;
-      ln -s /opt/python/$PYVER-$PYVER/bin/pip3 /usr/local/bin/pip3;
-      python3 --version;
-      pip install --upgrade build setuptools;
-      make python-build PYTHON_BUILD_TYPE="tag_pyproject";
-      rm -f /usr/local/bin/python3;
-      rm -f /usr/local/bin/pip;
-      rm -f /usr/local/bin/pip3;
-    done
+  - export CMAKE_ARGS="-DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DMKL_LINK=static -DNVCC_COMPILER_BINDIR=/usr/bin/g++ -DBUILD_INFO=ON"
+  # Build a single wheel for all Python 3 versions on Linux.
+  # Since we're using ctypes, we don't need any particular Python version,
+  # we just need to fix the Python/ABI tags with the "wheel tags" command.
+  - export PYVER="cp312"
+  - rm -rf ./build/temp.*
+  - ln -s /opt/python/$PYVER-$PYVER/bin/python3 /usr/local/bin/python3
+  - ln -s /opt/python/$PYVER-$PYVER/bin/pip /usr/local/bin/pip
+  - ln -s /opt/python/$PYVER-$PYVER/bin/pip3 /usr/local/bin/pip3
+  - pip install --upgrade build setuptools wheel
+  - make python-build PYTHON_BUILD_TYPE="tag_pyproject"
+  - python3 -m wheel tags --remove --python-tag=py3 --abi-tag=none dist/*.whl
   - for whl in ./dist/*.whl; do
       auditwheel repair "$whl" -w wheelhouse;
     done
@@ -260,7 +259,7 @@ python-publish:
   image: quay.io/pypa/manylinux_2_28_x86_64
   before_script:
     - *cuda_packages_rocky
-    - *mkl_packages_rocky
+    - *intel_packages_rocky
     - python3.12 -m pip install twine
   script:
     - *build_wheels
