@@ -78,7 +78,6 @@ __global__ void create_cbeam<double, cuDoubleComplex>(
 )
 {
     // Fit a Gaussian to the main lobe of the PSF based on the parameters passed
-
     double A = 1;
     int16_t x0 = 0;
     int16_t y0 = 0;

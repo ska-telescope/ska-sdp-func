@@ -15,9 +15,14 @@ extern "C"
 #endif
 
 /**
+ * @defgroup CLEAN
+ * @{
+ */
+
+/**
  * @brief Perform the Hogbom CLEAN algorithm on a dirty image
  *
- * @param dirty_img Input dirty image.
+ * @param dirty_img Input dirty image is 2D and real-valued with shape: [x size, y size].
  * @param psf Input Point Spread Function.
  * @param cbeam_details Input shape of CLEAN beam, with the size of the array to be generated [BMAJ, BMINN, THETA, SIZE]
  * @param loop_gain Gain to be used in the CLEAN loop (typically 0.1)
@@ -40,6 +45,8 @@ void sdp_hogbom_clean(
         sdp_Mem* skymodel,
         sdp_Error* status
 );
+
+/** @} */ /* End group CLEAN. */
 
 #ifdef __cplusplus
 }
