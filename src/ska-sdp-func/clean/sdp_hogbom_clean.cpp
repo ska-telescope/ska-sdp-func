@@ -332,19 +332,7 @@ void sdp_hogbom_clean_gpu(
     }
 
     // Create intermediate data arrays
-    // to hold loop gain, threshold flag and threshold value in GPU memory
-    sdp_Mem* loop_gain_mem = sdp_mem_create(data_type,
-            SDP_MEM_GPU,
-            1,
-            variable_shape,
-            status
-    );
-    sdp_Mem* threshold_mem = sdp_mem_create(data_type,
-            SDP_MEM_GPU,
-            1,
-            variable_shape,
-            status
-    );
+    // to hold threshold flags in GPU memory
     sdp_Mem* thresh_reached_gpu_mem = sdp_mem_create(SDP_MEM_INT,
             SDP_MEM_GPU,
             1,
@@ -392,59 +380,6 @@ void sdp_hogbom_clean_gpu(
     // copy variables to GPU
     sdp_mem_copy_contents(residual, dirty_img, 0, 0, dirty_img_size, status);
     sdp_mem_copy_contents(working_psf_mem, psf, 0, 0, psf_size, status);
-
-    // set kernel names
-    const char* kernel_name_var_copy = 0;
-
-    if (data_type == SDP_MEM_DOUBLE)
-    {
-        kernel_name_var_copy = "copy_var_gpu<double, double>";
-    }
-    else if (data_type == SDP_MEM_FLOAT)
-    {
-        kernel_name_var_copy = "copy_var_gpu<float, float>";
-    }
-    // catch unsupported data types
-    else
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Unsupported data type");
-    }
-
-    uint64_t num_threads_copy_gpu[] = {1, 1, 1};
-    uint64_t num_blocks_copy_gpu[] = {1, 1, 1};
-
-    const void* args_loop_gain_to_gpu[] = {
-        &loop_gain,
-        sdp_mem_gpu_buffer(loop_gain_mem, status),
-    };
-
-    sdp_launch_cuda_kernel(kernel_name_var_copy,
-            num_blocks_copy_gpu,
-            num_threads_copy_gpu,
-            0,
-            0,
-            args_loop_gain_to_gpu,
-            status
-    );
-
-    sdp_mem_check_location(loop_gain_mem, SDP_MEM_GPU, status);
-
-    const void* args_threshold_to_gpu[] = {
-        &threshold,
-        sdp_mem_gpu_buffer(threshold_mem, status),
-    };
-
-    sdp_launch_cuda_kernel(kernel_name_var_copy,
-            num_blocks_copy_gpu,
-            num_threads_copy_gpu,
-            0,
-            0,
-            args_threshold_to_gpu,
-            status
-    );
-
-    sdp_mem_check_location(threshold_mem, SDP_MEM_GPU, status);
 
     // assign basic thread and block sizes
     uint64_t num_threads[] = {256, 1, 1};
@@ -589,9 +524,9 @@ void sdp_hogbom_clean_gpu(
         const void* args_clean_comp[] = {
             sdp_mem_gpu_buffer(clean_model, status),
             sdp_mem_gpu_buffer(max_idx_mem, status),
-            sdp_mem_gpu_buffer(loop_gain_mem, status),
+            &loop_gain,
             sdp_mem_gpu_buffer(max_val_mem, status),
-            sdp_mem_gpu_buffer(threshold_mem, status),
+            &threshold,
             sdp_mem_gpu_buffer(thresh_reached_gpu_mem, status)
         };
 
@@ -622,13 +557,13 @@ void sdp_hogbom_clean_gpu(
         const void* args_subtract_psf[] = {
             &dirty_img_dim,
             &psf_dim,
-            sdp_mem_gpu_buffer(loop_gain_mem, status),
+            &loop_gain,
             sdp_mem_gpu_buffer(max_idx_mem, status),
             sdp_mem_gpu_buffer(max_val_mem, status),
             &elements_per_thread,
             sdp_mem_gpu_buffer(working_psf_mem, status),
             sdp_mem_gpu_buffer(residual, status),
-            sdp_mem_gpu_buffer(threshold_mem, status),
+            &threshold,
         };
 
         // set number of threads and block for the psf subtraction
@@ -785,8 +720,6 @@ void sdp_hogbom_clean_gpu(
     );
 
     // clear memory
-    sdp_mem_ref_dec(loop_gain_mem);
-    sdp_mem_ref_dec(threshold_mem);
     sdp_mem_ref_dec(thresh_reached_gpu_mem);
     sdp_mem_ref_dec(thresh_reached_mem);
     sdp_mem_ref_dec(cbeam_complex_mem);

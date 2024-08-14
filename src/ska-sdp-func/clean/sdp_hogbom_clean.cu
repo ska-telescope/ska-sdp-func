@@ -394,9 +394,9 @@ template<typename T, typename T2>
 __global__ void add_clean_comp(
         T2* clean_comp,
         int* max_idx_flat,
-        T* loop_gain,
+        T loop_gain,
         T* highest_value,
-        T* threshold,
+        T threshold,
         int* thresh_reached
 )
 {
@@ -407,17 +407,17 @@ template<>
 __global__ void add_clean_comp<double, double>(
         double* clean_comp,
         int* max_idx_flat,
-        double* loop_gain,
+        double loop_gain,
         double* highest_value,
-        double* threshold,
+        double threshold,
         int* thresh_reached
 )
 {
     // check threshold
-    if (highest_value[0] > threshold[0] && *thresh_reached == 0)
+    if (highest_value[0] > threshold && *thresh_reached == 0)
     {
         // Add fraction of maximum to clean components list
-        double inter = __dmul_rn(loop_gain[0], highest_value[0]);
+        double inter = __dmul_rn(loop_gain, highest_value[0]);
         clean_comp[max_idx_flat[0]] = __dadd_rn(clean_comp[max_idx_flat[0]],
                 inter
         );
@@ -434,17 +434,17 @@ template<>
 __global__ void add_clean_comp<float, float>(
         float* clean_comp,
         int* max_idx_flat,
-        float* loop_gain,
+        float loop_gain,
         float* highest_value,
-        float* threshold,
+        float threshold,
         int* thresh_reached
 )
 {
     // check threshold
-    if (*highest_value > *threshold && *thresh_reached == 0)
+    if (*highest_value > threshold && *thresh_reached == 0)
     {
         // Add fraction of maximum to clean components list
-        float inter = __fmul_rn(*loop_gain, *highest_value);
+        float inter = __fmul_rn(loop_gain, *highest_value);
         clean_comp[*max_idx_flat] = __fadd_rn(clean_comp[*max_idx_flat], inter);
     }
     // if threshold reached, set flag
@@ -463,13 +463,13 @@ template<typename T, typename T2>
 __global__ void subtract_psf(
         int64_t dirty_img_dim,
         int64_t psf_dim,
-        T* loop_gain,
+        T loop_gain,
         int* max_idx_flat,
         T* highest_value,
         const int elements_per_thread,
         const T2* psf,
         T2* residual,
-        T* threshold
+        T threshold
 )
 {
 }
@@ -479,17 +479,17 @@ template<>
 __global__ void subtract_psf<double, double>(
         int64_t dirty_img_dim,
         int64_t psf_dim,
-        double* loop_gain,
+        double loop_gain,
         int* max_idx_flat,
         double* highest_value,
         const int elements_per_thread,
         const double* psf,
         double* residual,
-        double* threshold
+        double threshold
 )
 {
     // check threshold
-    if (highest_value[0] > threshold[0])
+    if (highest_value[0] > threshold)
     {
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
 
@@ -526,7 +526,7 @@ __global__ void subtract_psf<double, double>(
                 int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
                 // Subtract the PSF contribution from the residual
-                double inter = __dmul_rn(loop_gain[0], highest_value[0]);
+                double inter = __dmul_rn(loop_gain, highest_value[0]);
                 inter = __dmul_rn(inter, psf[psf_flat_idx]);
                 residual[curr_idx] =  __dsub_rn(residual[curr_idx], inter);
             }
@@ -543,17 +543,17 @@ template<>
 __global__ void subtract_psf<float, float>(
         int64_t dirty_img_dim,
         int64_t psf_dim,
-        float* loop_gain,
+        float loop_gain,
         int* max_idx_flat,
         float* highest_value,
         const int elements_per_thread,
         const float* psf,
         float* residual,
-        float* threshold
+        float threshold
 )
 {
     // check threshold
-    if (highest_value[0] > threshold[0])
+    if (highest_value[0] > threshold)
     {
         int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
         // int64_t psf_size = psf_dim * psf_dim;
@@ -591,7 +591,7 @@ __global__ void subtract_psf<float, float>(
                 int64_t psf_flat_idx = x_psf * psf_dim + y_psf;
 
                 // Subtract the PSF contribution from the residual
-                float inter = __fmul_rn(loop_gain[0], highest_value[0]);
+                float inter = __fmul_rn(loop_gain, highest_value[0]);
                 inter = __fmul_rn(inter, psf[psf_flat_idx]);
                 residual[curr_idx] =  __fsub_rn(residual[curr_idx], inter);
             }
@@ -671,37 +671,3 @@ __global__ void create_copy_complex<float, cuFloatComplex>(
 
 SDP_CUDA_KERNEL(create_copy_complex<double, cuDoubleComplex>);
 SDP_CUDA_KERNEL(create_copy_complex<float, cuFloatComplex>);
-
-
-// copy one value to gpu, can convert to bfloat from float or double precision
-// needed to convert loop gain and threshold to bfloat16 for correct use in maths with bfloat16 data
-template<typename T, typename OT>
-__global__ void copy_var_gpu(
-        T in,
-        OT* out
-)
-{
-}
-
-
-template<>
-__global__ void copy_var_gpu<double, double>(
-        double in,
-        double* out
-)
-{
-    out[0] = in;
-}
-
-
-template<>
-__global__ void copy_var_gpu<float, float>(
-        float in,
-        float* out
-)
-{
-    out[0] = in;
-}
-
-SDP_CUDA_KERNEL(copy_var_gpu<double, double>);
-SDP_CUDA_KERNEL(copy_var_gpu<float, float>);
