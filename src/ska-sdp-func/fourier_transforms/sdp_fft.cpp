@@ -361,6 +361,7 @@ sdp_Fft* sdp_fft_create(
     fft->batch_size = 1;
     fft->is_forward = is_forward;
 
+    // Set up the batch size.
     const int32_t num_dims = sdp_mem_num_dims(input);
     const int32_t last_dim = num_dims - 1;
     if (num_dims != num_dims_fft)
@@ -424,7 +425,6 @@ sdp_Fft* sdp_fft_create(
         SDP_LOG_ERROR("The processing function library was compiled "
                 "without CUDA support"
         );
-        return fft;
 #endif
     }
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
@@ -711,7 +711,6 @@ void sdp_fft_exec(
         {
             *status = SDP_ERR_INVALID_ARGUMENT;
             SDP_LOG_ERROR("3D FFT is not supported on host memory.");
-            return;
         }
 #endif
     }
@@ -732,10 +731,7 @@ void sdp_fft_free(sdp_Fft* fft)
 #endif
     sdp_mem_ref_dec(fft->input);
     sdp_mem_ref_dec(fft->output);
-    if (fft->temp != NULL)
-    {
-        sdp_mem_free(fft->temp);
-    }
+    sdp_mem_free(fft->temp);
     free(fft);
 }
 

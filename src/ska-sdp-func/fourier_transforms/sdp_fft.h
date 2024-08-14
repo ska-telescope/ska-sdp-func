@@ -13,7 +13,23 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup fft_struct
+ * @{
+ */
+
+/**
+ * @struct sdp_Fft
+ *
+ * @brief
+ * Wrapper for FFT functionality, using either NVIDIA's cuFFT, Intel's MKL,
+ * or a stand-alone CPU version as appropriate.
+ */
 struct sdp_Fft;
+
+/** @} */ /* End group fft_struct. */
+
+/* Typedefs. */
 typedef struct sdp_Fft sdp_Fft;
 
 /**

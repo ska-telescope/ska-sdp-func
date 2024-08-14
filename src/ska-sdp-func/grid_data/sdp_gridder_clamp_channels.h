@@ -18,7 +18,7 @@ extern "C" {
  * @brief Clamp channels for a single dimension of an array of uvw coordinates.
  *
  * Restricts a channel range such that all visibilities lie in
- * the given uvw bounding box.
+ * the given range in u or v or w.
  *
  * @param uvws ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).
  * @param dim Dimension index (0, 1 or 2) of @p uvws to check.

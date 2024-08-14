@@ -8,6 +8,14 @@ from .grid_wstack_wtower import (
     wstack_wtower_grid_all,
 )
 from .gridder_direct import GridderDirect
-from .gridder_utils import make_kernel, make_pswf_kernel, make_w_pattern
+from .gridder_utils import (
+    clamp_channels_single,
+    make_kernel,
+    make_pswf_kernel,
+    make_w_pattern,
+    subgrid_add,
+    subgrid_cut_out,
+    uvw_bounds_all,
+)
 from .gridder_uvw_es_fft import GridderUvwEsFft
 from .gridder_wtower_uvw import GridderWtowerUVW

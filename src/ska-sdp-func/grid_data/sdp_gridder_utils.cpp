@@ -333,7 +333,7 @@ void sdp_gridder_accumulate_scaled_arrays(
     const sdp_MemLocation loc = sdp_mem_location(out);
     if (sdp_mem_location(in1) != loc)
     {
-        SDP_LOG_ERROR("Arrays must be co-located");
+        SDP_LOG_ERROR("All arrays must be in the same memory space");
         *status = SDP_ERR_MEM_LOCATION;
         return;
     }
@@ -582,7 +582,7 @@ void sdp_gridder_scale_inv_array(
     const sdp_MemLocation loc = sdp_mem_location(out);
     if (sdp_mem_location(in1) != loc || sdp_mem_location(in2) != loc)
     {
-        SDP_LOG_ERROR("Arrays must be co-located");
+        SDP_LOG_ERROR("All arrays must be in the same memory space");
         *status = SDP_ERR_MEM_LOCATION;
         return;
     }
@@ -919,6 +919,7 @@ void sdp_gridder_sum_diff(
         sdp_Mem* result_gpu = sdp_mem_create(
                 SDP_MEM_INT, SDP_MEM_GPU, 1, shape, status
         );
+        sdp_mem_clear_contents(result_gpu, status);
 
         // Call the kernel.
         uint64_t num_threads[] = {512, 1, 1}, num_blocks[] = {8, 1, 1};
@@ -939,8 +940,9 @@ void sdp_gridder_sum_diff(
             (const void*)&b_int,
             sdp_mem_gpu_buffer(result_gpu, status)
         };
+        uint64_t shared_mem_bytes = num_threads[0] * sizeof(int);
         sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, arg, status
+                num_blocks, num_threads, shared_mem_bytes, 0, arg, status
         );
 
         sdp_Mem* result_cpu = sdp_mem_create_copy(
