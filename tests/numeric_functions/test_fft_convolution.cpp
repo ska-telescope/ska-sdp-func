@@ -14,6 +14,8 @@
 static void run_and_check(
         const char* test_name,
         bool read_only_output,
+        bool in1_square,
+        bool in2_square,
         sdp_MemType input_type,
         sdp_MemType output_type,
         sdp_MemLocation input_location,
@@ -25,8 +27,31 @@ static void run_and_check(
     int64_t in1_dim = 128;
     int64_t in2_dim = 256;
 
-    const int64_t in1_shape[] = {in1_dim, in1_dim};
-    const int64_t in2_shape[] = {in2_dim, in2_dim};
+    int64_t in1_shape[] = {0, 0};
+    int64_t in2_shape[] = {0, 0};
+
+    // set shape of inputs to be square or not
+    if (in1_square)
+    {
+        in1_shape[0] = in1_dim;
+        in1_shape[1] = in1_dim;
+    }
+    else
+    {
+        in1_shape[0] = in1_dim;
+        in1_shape[1] = in1_dim + 10;
+    }
+
+    if (in2_square)
+    {
+        in2_shape[0] = in2_dim;
+        in2_shape[1] = in2_dim;
+    }
+    else
+    {
+        in2_shape[0] = in2_dim;
+        in2_shape[1] = in2_dim + 10;
+    }
 
     // create test data
     sdp_Mem* in1 =
@@ -78,7 +103,7 @@ int main()
     // happy paths
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, double precision", false,
+        run_and_check("CPU, double precision", false, true, true,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status
         );
@@ -87,7 +112,7 @@ int main()
 
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, single precision", false,
+        run_and_check("CPU, single precision", false, true, true,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status
         );
@@ -97,7 +122,7 @@ int main()
     // unhappy paths
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, Type mis-match", false,
+        run_and_check("CPU, Type mis-match", false, true, true,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status
         );
@@ -106,7 +131,7 @@ int main()
 
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, read-only output", true,
+        run_and_check("CPU, read-only output", true, true, true,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status
         );
@@ -115,7 +140,7 @@ int main()
 
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("CPU, non-complex input", false,
+        run_and_check("CPU, non-complex input", false, true, true,
                 SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status
         );
@@ -124,8 +149,26 @@ int main()
 
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("Unsuported data type", false,
+        run_and_check("Unsuported data type", false, true, true,
                 SDP_MEM_CHAR, SDP_MEM_CHAR,
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
+        assert(status == SDP_ERR_DATA_TYPE);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("Input 1 not square shaped", false, false, true,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
+                SDP_MEM_CPU, SDP_MEM_CPU, &status
+        );
+        assert(status == SDP_ERR_DATA_TYPE);
+    }
+
+    {
+        sdp_Error status = SDP_SUCCESS;
+        run_and_check("Input 2 not square shaped", false, true, false,
+                SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_CPU, &status
         );
         assert(status == SDP_ERR_DATA_TYPE);
@@ -135,7 +178,7 @@ int main()
     // Happy paths.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("GPU, double precision", false,
+        run_and_check("GPU, double precision", false, true, true,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_GPU, SDP_MEM_GPU, &status
         );
@@ -144,7 +187,7 @@ int main()
 
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("GPU, single precision", false,
+        run_and_check("GPU, single precision", false, true, true,
                 SDP_MEM_COMPLEX_FLOAT, SDP_MEM_COMPLEX_FLOAT,
                 SDP_MEM_GPU, SDP_MEM_GPU, &status
         );
@@ -154,7 +197,7 @@ int main()
     // Unhappy paths.
     {
         sdp_Error status = SDP_SUCCESS;
-        run_and_check("memory location mis-match", false,
+        run_and_check("memory location mis-match", false, true, true,
                 SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_COMPLEX_DOUBLE,
                 SDP_MEM_CPU, SDP_MEM_GPU, &status
         );
