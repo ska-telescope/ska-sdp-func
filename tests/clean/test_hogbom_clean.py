@@ -199,14 +199,14 @@ def create_cbeam(coeffs, size):
     X = np.arange(0, size, 1)
     Y = np.arange(0, size, 1)
 
-    a = np.cos(theta) ** 2 / (2 * sigma_X ** 2) + np.sin(theta) ** 2 / (
-        2 * sigma_Y ** 2
+    a = np.cos(theta) ** 2 / (2 * sigma_X**2) + np.sin(theta) ** 2 / (
+        2 * sigma_Y**2
     )
-    b = np.sin(2 * theta) / (4 * sigma_X ** 2) - np.sin(2 * theta) / (
-        4 * sigma_Y ** 2
+    b = np.sin(2 * theta) / (4 * sigma_X**2) - np.sin(2 * theta) / (
+        4 * sigma_Y**2
     )
-    c = np.sin(theta) ** 2 / (2 * sigma_X ** 2) + np.cos(theta) ** 2 / (
-        2 * sigma_Y ** 2
+    c = np.sin(theta) ** 2 / (2 * sigma_X**2) + np.cos(theta) ** 2 / (
+        2 * sigma_Y**2
     )
 
     for x in X:

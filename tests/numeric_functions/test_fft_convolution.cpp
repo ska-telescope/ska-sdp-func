@@ -52,6 +52,8 @@ static void run_and_check(
     sdp_Mem* in2_copy = sdp_mem_create_copy(in2, input_location, status);
 
     // call function to test
+    // this test only checks the interface
+    // the correctness of the algorithm is checked in test_fft_convolution.py against scipy
     SDP_LOG_INFO("Running test: %s", test_name);
     sdp_fft_convolution(
             in1_copy,
