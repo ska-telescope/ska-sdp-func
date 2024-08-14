@@ -22,11 +22,11 @@ extern "C"
 /**
  * @brief Perform the Hogbom CLEAN algorithm on a dirty image
  *
- * @param dirty_img Input dirty image is 2D and real-valued with shape: [X SIZE, Y SIZE].
- * @param psf Input Point Spread Function.
+ * @param dirty_img Input dirty image is 2D and real-valued with square shape: [X SIZE, Y SIZE].
+ * @param psf Input Point Spread Function is 2D and real-valued with square shape: [X SIZE * 2, Y SIZE * 2].
  * @param cbeam_details Input shape of CLEAN beam, with the size of the array to be generated [BMAJ, BMINN, THETA, SIZE]
  * @param loop_gain Gain to be used in the CLEAN loop (typically 0.1)
- * @param threshold Minimum intensity of peak to search for, loop terminates if peak is found under this threshold.
+ * @param threshold Minimum intensity of peak to search for, loop terminates if peak is found under this threshold. Can be set to a negative number to ensure CLEAN loop is run exactly cycle_limit times.
  * @param cycle_limit Maximum nuber of loops to perform, if the stop threshold is not reached first.
  * @param clean_model Map of CLEAN components, unconvolved pixels.
  * @param residual Residual image, flux remaining after CLEANing.

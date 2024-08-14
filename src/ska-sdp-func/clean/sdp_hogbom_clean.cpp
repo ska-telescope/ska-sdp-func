@@ -746,7 +746,9 @@ void sdp_hogbom_clean(
     if (*status) {return;}
 
     const int64_t dirty_img_dim = sdp_mem_shape_dim(dirty_img, 0);
+    const int64_t dirty_img_dim1 = sdp_mem_shape_dim(dirty_img, 1);
     const int64_t psf_dim = sdp_mem_shape_dim(psf, 0);
+    const int64_t psf_dim1 = sdp_mem_shape_dim(psf, 1);
     const int64_t clean_model_dim = sdp_mem_shape_dim(clean_model, 0);
     const int64_t residual_dim = sdp_mem_shape_dim(residual, 0);
     const int64_t skymodel_dim = sdp_mem_shape_dim(skymodel, 0);
@@ -815,6 +817,43 @@ void sdp_hogbom_clean(
         SDP_LOG_ERROR(
                 "The array describing the CLEAN beam must include BMAJ, BMIN, THETA and SIZE"
         );
+        return;
+    }
+
+    if (dirty_img_dim != dirty_img_dim1)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Dirty image array must be square shaped");
+        return;
+    }
+
+    if (psf_dim != psf_dim1)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("PSF array must be square shaped");
+        return;
+    }
+
+    if (psf_dim != (dirty_img_dim * 2))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR(
+                "PSF array dimensions must be double the Dirty image array dimensions"
+        );
+        return;
+    }
+
+    if (cycle_limit < 1)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Number of cycles to perform must be > 0");
+        return;
+    }
+
+    if (loop_gain <= 0)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Loop gain must be > 0");
         return;
     }
 
