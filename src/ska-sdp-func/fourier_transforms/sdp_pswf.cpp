@@ -16,8 +16,8 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/fourier_transforms/private_pswf.h"
+#include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 
 using std::complex;
