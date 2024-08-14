@@ -354,7 +354,6 @@ sdp_Fft* sdp_fft_create(
     if (*status) return NULL;
 
     // Allocate space for a plan.
-    const sdp_MemLocation loc = sdp_mem_location(input);
     sdp_Fft* fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
     fft->input = sdp_mem_create_alias(input);
     fft->output = sdp_mem_create_alias(output);
