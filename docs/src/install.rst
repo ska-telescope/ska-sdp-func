@@ -2,6 +2,30 @@
 Installation guide
 ******************
 
+Python wheel
+============
+
+Pre-built Python wheels are available for Linux x86_64-based systems,
+which include MKL as well as cuFFT.
+To install the wheel from the SKA central artefact repository, use:
+
+  .. code-block:: bash
+
+     pip3 install --extra-index-url https://artefact.skao.int/repository/pypi-internal/simple ska-sdp-func
+
+Uninstalling
+------------
+
+The Python package can be uninstalled using:
+
+  .. code-block:: bash
+
+     pip3 uninstall ska-sdp-func
+
+
+Building from source
+====================
+
 If GPU acceleration is required, make sure the CUDA toolkit is installed first,
 from https://developer.nvidia.com/cuda-downloads.
 
@@ -10,7 +34,7 @@ Intel oneAPI toolkit, from
 https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html
 
 The C library
-=============
+-------------
 
 The processing function library is compiled from source using CMake.
 
@@ -67,7 +91,7 @@ The C unit tests can then be run from the same build directory:
      ctest
 
 The Python library
-==================
+------------------
 
 To control the build, the following environment variables can be used.
 
@@ -109,12 +133,3 @@ from the top-level directory:
   .. code-block:: bash
 
      pytest
-
-Uninstalling
-------------
-
-The Python package can be uninstalled using:
-
-  .. code-block:: bash
-
-     pip3 uninstall ska-sdp-func

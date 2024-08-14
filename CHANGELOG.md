@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.6
+
+- Build a single wheel for all Python 3 versions on Linux.
+- Use static linking of MKL libraries and libstdc++ for the wheel.
+
 ## 1.1.5
 
 - Re-issue release of previous version.

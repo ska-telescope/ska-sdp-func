@@ -1,6 +1,6 @@
 [project]
 name = "ska_sdp_func"
-version = "1.1.5"
+version = "1.1.6"
 description = "SKA SDP Processing Function Library"
 authors = [{name = "The SKA SDP Processing Function Library Developers"}]
 license = {text = "BSD-3-Clause"}
@@ -29,7 +29,7 @@ build-backend = "setuptools.build_meta"
 [tool.poetry]
 package-mode = false
 name = "ska_sdp_func"
-version = "1.1.5"
+version = "1.1.6"
 description = "SKA SDP Processing Function Library"
 authors = [
     "The SKA SDP Processing Function Library Developers <someone@skao.int>",
