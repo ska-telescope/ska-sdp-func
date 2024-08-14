@@ -18,6 +18,11 @@ if (NOT WIN32)
         append_flags(CMAKE_CXX_FLAGS -stdlib=libc++)
     endif()
 
+    if ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel.*"
+            OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+    endif()
+
     if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang.*"
             OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
         append_flags(CMAKE_C_FLAGS -std=c99)
