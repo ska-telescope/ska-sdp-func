@@ -124,7 +124,7 @@ inline void sdp_fft_normalise(
 
 
 template<typename T>
-static void fft_convolution(
+static void sdp_fft_convolution_cpu(
         const complex<T>* in1,
         const complex<T>* in2,
         const int64_t in1_dim,
@@ -244,7 +244,7 @@ static void fft_convolution(
 }
 
 
-static void fft_convolution_gpu(
+static void sdp_fft_convolution_gpu(
         const sdp_Mem* in1,
         const sdp_Mem* in2,
         const int64_t in1_dim,
@@ -544,8 +544,10 @@ void sdp_fft_convolution(
 {
     if (*status) {return;}
 
-    const int64_t in1_dim = sdp_mem_shape_dim(in1, 0);
-    const int64_t in2_dim = sdp_mem_shape_dim(in2, 0);
+    const int64_t in1_dim_0 = sdp_mem_shape_dim(in1, 0);
+    const int64_t in1_dim_1 = sdp_mem_shape_dim(in1, 1);
+    const int64_t in2_dim_0 = sdp_mem_shape_dim(in2, 0);
+    const int64_t in2_dim_1 = sdp_mem_shape_dim(in2, 1);
 
     const sdp_MemLocation location = sdp_mem_location(in1);
     const sdp_MemType data_type = sdp_mem_type(in1);
@@ -578,15 +580,29 @@ void sdp_fft_convolution(
         return;
     }
 
+    if (in1_dim_0 != in1_dim_1)
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Input array 1 must be square shaped");
+        return;
+    }
+
+    if (in2_dim_0 != in2_dim_1)
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Input array 2 must be square shaped");
+        return;
+    }
+
     if (location == SDP_MEM_CPU)
     {
         if (data_type == SDP_MEM_COMPLEX_DOUBLE)
         {
-            fft_convolution<double>(
+            sdp_fft_convolution_cpu<double>(
                     (const complex<double>*)sdp_mem_data_const(in1),
                     (const complex<double>*)sdp_mem_data_const(in2),
-                    in1_dim,
-                    in2_dim,
+                    in1_dim_0,
+                    in2_dim_0,
                     data_type,
                     (complex<double>*)sdp_mem_data(out),
                     status
@@ -594,11 +610,11 @@ void sdp_fft_convolution(
         }
         else if (data_type == SDP_MEM_COMPLEX_FLOAT)
         {
-            fft_convolution<float>(
+            sdp_fft_convolution_cpu<float>(
                     (const complex<float>*)sdp_mem_data_const(in1),
                     (const complex<float>*)sdp_mem_data_const(in2),
-                    in1_dim,
-                    in2_dim,
+                    in1_dim_0,
+                    in2_dim_0,
                     data_type,
                     (complex<float>*)sdp_mem_data(out),
                     status
@@ -612,11 +628,11 @@ void sdp_fft_convolution(
     }
     else if (location == SDP_MEM_GPU)
     {
-        fft_convolution_gpu(
+        sdp_fft_convolution_gpu(
                 in1,
                 in2,
-                in1_dim,
-                in2_dim,
+                in1_dim_0,
+                in2_dim_0,
                 data_type,
                 out,
                 status
