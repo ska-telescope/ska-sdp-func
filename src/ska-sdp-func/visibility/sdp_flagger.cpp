@@ -179,7 +179,6 @@ static void flagger_fixed_threshold(
                     // method 1 only operating on absolute values
                     // and method 3 for broadband detection:
 
-                    
                     for (int s = 0; s < num_samples; s++)
                     {
                         int pos = baseline_pos + (s * sampling_step) *
@@ -435,7 +434,6 @@ static void flagger_dynamic_threshold(
                     delete medarray;
 
                     // method 2 operating on rate of changes (fluctuations):
-                    
 
                     if (t > 0)
                     {
