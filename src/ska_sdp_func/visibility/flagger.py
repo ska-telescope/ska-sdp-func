@@ -39,7 +39,7 @@ def flagger_fixed_threshold(vis, parameters, flags):
 
     * ``parameters`` is 1D and real-valued.
 
-      * The size of the array is 5``.
+      * The size of the array is 6``.
 
     * ``flags`` is 4D and integer-valued, with the same shape as ``vis``.
 
