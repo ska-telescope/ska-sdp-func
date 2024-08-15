@@ -78,14 +78,6 @@ int compare(const void* a, const void* b)
 }
 
 
-double quantile(double* arr, double q, int n)
-{
-    qsort(arr, n, sizeof(double), compare);
-    int cutpoint = round(q * n);
-    return arr[cutpoint];
-}
-
-
 template<typename AA, typename VL>
 void filler(AA* arr, VL val, int length)
 {
@@ -114,7 +106,7 @@ double median_dev_calc(double* arr, int n, double median)
     }
     qsort(devs, n, sizeof(double), compare);
     double medidev = devs[mid];
-    delete devs;
+    delete[] devs;
     return medidev;
 }
 
@@ -184,9 +176,10 @@ static void flagger_fixed_threshold(
                 {
                     int baseline_pos = t * time_block + b * baseline_block;
 
-                    // method 1 only operating on absolute values:
+                    // method 1 only operating on absolute values
+                    // and method 3 for broadband detection:
 
-                    // calculating the threshold by sorting the sampled channels and find the value of the given percentile
+                    
                     for (int s = 0; s < num_samples; s++)
                     {
                         int pos = baseline_pos + (s * sampling_step) *
@@ -302,9 +295,9 @@ static void flagger_fixed_threshold(
             }
         }
 
-        delete transit_score;
-        delete samples;
-        delete transit_samples;
+        delete[] transit_score;
+        delete[] samples;
+        delete[] transit_samples;
     }
     end = omp_get_wtime();
     printf("Work took %f seconds\n", end - start);
@@ -361,9 +354,9 @@ static void flagger_dynamic_threshold(
                     int medwindow = std::min(t + 1, window_median_history);
                     double* medarray = new double[medwindow];
 
-                    // method 1 only operating on absolute values:
+                    // method 1 only operating on absolute values
+                    // and method 3 for broadband detection:
 
-                    // calculating the threshold by sorting the sampled channels and find the value of the given percentile
                     for (int s = 0; s < num_samples; s++)
                     {
                         int pos = baseline_pos + (s * sampling_step) *
@@ -442,6 +435,7 @@ static void flagger_dynamic_threshold(
                     delete medarray;
 
                     // method 2 operating on rate of changes (fluctuations):
+                    
 
                     if (t > 0)
                     {
