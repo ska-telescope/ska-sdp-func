@@ -213,7 +213,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         sdp_fft_phase(grid, status);
 
         // Loop over sub-grid (towers) in u.
-        #pragma omp parallel for num_threads(num_threads)
+        #pragma omp parallel for schedule(dynamic) num_threads(num_threads)
         for (int64_t iu = min_iu; iu <= max_iu; ++iu)
         {
             int tid = 0;
@@ -497,7 +497,7 @@ void sdp_grid_wstack_wtower_grid_all(
         sdp_mem_clear_contents(grid, status);
 
         // Loop over sub-grid (towers) in u.
-        #pragma omp parallel for num_threads(num_threads)
+        #pragma omp parallel for schedule(dynamic) num_threads(num_threads)
         for (int64_t iu = min_iu; iu <= max_iu; ++iu)
         {
             int tid = 0;
