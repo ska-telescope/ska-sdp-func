@@ -11,7 +11,7 @@ from ska_sdp_func.visibility import (
 )
 
 
-@pytest.fixture(scope="module", name="visibility_data")
+@pytest.fixture(scope="module", name="visibility_data1")
 def visibility_data():
     """visibility data fixture"""
     num_times = 50
@@ -32,7 +32,7 @@ def visibility_data():
     return vis
 
 
-def test_fixed_flagger(visibility_data):
+def test_fixed_flagger(vis_data):
     """Test fixed threshold RFI flagger."""
 
     what_quantile_for_vis = 0.98
@@ -51,8 +51,8 @@ def test_fixed_flagger(visibility_data):
         dtype=numpy.float64,
     )
 
-    flags = numpy.zeros(visibility_data.shape, dtype=numpy.int32)
-    expected_flags = numpy.zeros(visibility_data.shape, dtype=numpy.int32)
+    flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
+    expected_flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
 
     expected_flags[10, 0, 28, :] = 1
     expected_flags[36, 0, 14, 0] = 1
@@ -61,7 +61,7 @@ def test_fixed_flagger(visibility_data):
     assert (expected_flags == flags).all()
 
 
-def test_dynamic_flagger(visibility_data):
+def test_dynamic_flagger(vis_data):
     """Test dynamic RFI flagger"""
 
     # below line is added to consider broadband RFI
@@ -86,8 +86,8 @@ def test_dynamic_flagger(visibility_data):
         ]
     )
 
-    flags = numpy.zeros(visibility_data.shape, dtype=numpy.int32)
-    expected_flags = numpy.zeros(visibility_data.shape, dtype=numpy.int32)
+    flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
+    expected_flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
 
     expected_flags[9, 0, 28, :] = 1
     expected_flags[10, 0, 28, :] = 1
