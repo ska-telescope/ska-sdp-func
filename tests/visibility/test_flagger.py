@@ -11,7 +11,7 @@ from ska_sdp_func.visibility import (
 )
 
 
-@pytest.fixture(scope="module", name="visibility_data1")
+@pytest.fixture(scope="module", name="vis_data")
 def visibility_data():
     """visibility data fixture"""
     num_times = 50
