@@ -57,7 +57,7 @@ def test_fixed_flagger(vis_data):
     expected_flags[10, 0, 28, :] = 1
     expected_flags[36, 0, 14, 0] = 1
 
-    flagger_fixed_threshold(visibility_data, parameters, flags)
+    flagger_fixed_threshold(vis_data, parameters, flags)
     assert (expected_flags == flags).all()
 
 
@@ -95,5 +95,5 @@ def test_dynamic_flagger(vis_data):
     expected_flags[36, 0, 14, 0] = 1
     expected_flags[27, 1, :, 2] = 1
 
-    flagger_dynamic_threshold(visibility_data, parameters, flags)
+    flagger_dynamic_threshold(vis_data, parameters, flags)
     assert (expected_flags == flags).all()
