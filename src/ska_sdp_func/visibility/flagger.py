@@ -29,9 +29,9 @@ Lib.wrap_func(
 
 def flagger_fixed_threshold(vis, parameters, flags):
     """
-    A lightweight RFI flagger. The fixed threshold version is only for 
+    A lightweight RFI flagger. The fixed threshold version is only for
     basic experimentations. The dynamic threshold function is the
-    recommended version. 
+    recommended version.
 
     Array dimensions are as follows, from slowest to fastest varying:
 
@@ -49,7 +49,7 @@ def flagger_fixed_threshold(vis, parameters, flags):
     :param vis: Complex valued visibilities. Dimensions as above.
     :type vis: numpy.ndarray
 
-    :param parameters: parameters for the fixed threshold algorithm in 
+    :param parameters: parameters for the fixed threshold algorithm in
     the following order.
 
     [what_quantile_for_vis,what_quantile_for_changes, sampling_step
@@ -59,11 +59,11 @@ def flagger_fixed_threshold(vis, parameters, flags):
      on the absolute values of visibilities,
      - what_quantile_for_changes is the threshold for flagging
     based on fluctuations (transit_score),
-     - sampling_step gives the interval at which a sample is taken to 
-     choose the actual values of the above thresholds, 
+     - sampling_step gives the interval at which a sample is taken to
+     choose the actual values of the above thresholds,
      - window is the number of channels on each side of a flagged value
-      to be flagged 
-    :type parameters: numpy.ndarray 
+      to be flagged
+    :type parameters: numpy.ndarray
 
     :param flags: Output flags. Dimensions as above.
     :type flags: numpy.ndarray
@@ -102,7 +102,7 @@ def flagger_dynamic_threshold(vis, parameters, flags):
     :param parameters: A numpy array containing the parameters for the
     flagger in the following order.
 
-    [alpha, threshold_magnitudes, threshold_variations, 
+    [alpha, threshold_magnitudes, threshold_variations,
     threshold_broadband, sampling_step, window, window_median_history]
 
     - alpha, the coefficient for the recursive equation for measuring
@@ -110,19 +110,19 @@ def flagger_dynamic_threshold(vis, parameters, flags):
     0 and 1.
     - threshold_magnitudes, the threshold on modified z-score to flag
     based on magnitudes of visibilities. A recommended rule of theumb
-    in the statistics textbooks for this value is 3.5. 
+    in the statistics textbooks for this value is 3.5.
     - threshold_variations, the threshold on modified z-score to flag
     based on the rate of fluctuations in the magnitudes in the recent
     time samples (similar to last one, 3.5 is an appropriate value)
     - threshold_broadband: A threshold on the modified z-score of the
     medians of each time slot across all channels to detect broadband
     RFI.
-    - sampling_step, integer value, shows at how many steps we take 
+    - sampling_step, integer value, shows at how many steps we take
     sample to compute the medians and z-scores across all channels
     in a time slot.
     - window, is the number of side channels of a flagged visibility
     on each side to be flagged
-    - window_median_history, the window size that the history of 
+    - window_median_history, the window size that the history of
     the medians of time slots is maintained for the broadband RFI
     detection.
 
