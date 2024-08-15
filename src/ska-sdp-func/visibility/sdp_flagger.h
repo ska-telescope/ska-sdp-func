@@ -40,7 +40,8 @@ void sdp_flagger_fixed_threshold(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /**
  * @defgroup flag_func
@@ -69,11 +70,10 @@ void sdp_flagger_dynamic_threshold(
         const sdp_Mem* vis,
         const sdp_Mem* parameters,
         sdp_Mem* flags,
-        sdp_Error* status);
+        sdp_Error* status
+);
 
 /** @} */ /* End group flag_func. */
-
-
 
 
 #ifdef __cplusplus
