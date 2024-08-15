@@ -291,9 +291,9 @@ def reference_briggs_weights(
                         weight_g = weights_grid_uv[idx_u, idx_v, i_pol]
                         w = input_weight[i_time, i_baseline, i_channel, i_pol]
                         weight_x = w / (1 + (robustness * weight_g))
-                        output_weight[
-                            i_time, i_baseline, i_channel, i_pol
-                        ] = weight_x
+                        output_weight[i_time, i_baseline, i_channel, i_pol] = (
+                            weight_x
+                        )
 
 
 def reference_uniform_weights(
