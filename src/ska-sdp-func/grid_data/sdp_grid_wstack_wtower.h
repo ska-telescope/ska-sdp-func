@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 /**
- * @defgroup GridWStackWtower_func
+ * @defgroup grid_wstack_wtower_func
  * @{
  */
 
@@ -104,7 +104,7 @@ void sdp_grid_wstack_wtower_grid_all(
         sdp_Error* status
 );
 
-/** @} */ /* End group GridWStackWtower_func. */
+/** @} */ /* End group grid_wstack_wtower_func. */
 
 #ifdef __cplusplus
 }
