@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.7
+
+- Add GPU support in w-towers wrapper functions.
+- Use OpenMP dynamic scheduling for w-towers wrappers in loop over subgrids.
+- Allow non-complex image types to be used in w-towers wrappers.
+
 ## 1.1.6
 
 - Build a single wheel for all Python 3 versions on Linux.
