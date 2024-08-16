@@ -631,7 +631,7 @@ sdp_Pswf* sdp_pswf_create(int m, double c)
     // Calculate characteristic values of spheroidal wave functions
     int n = m;
     int kd = 1; // prolate
-    double cv = 0, eg[2];
+    double cv = 0.0, eg[2] = {0.0, 0.0};
     pswf_segv(&plan->m, &n, &plan->c, &kd, &cv, eg);
 
     // Calculate expansion coefficients

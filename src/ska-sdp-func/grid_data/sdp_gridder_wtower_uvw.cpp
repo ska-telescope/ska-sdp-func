@@ -759,7 +759,7 @@ void grid_corr_w_stack(
         int facet_offset_l,
         int facet_offset_m,
         int w_offset,
-        bool inverse,
+        int inverse,
         sdp_Error* status
 )
 {
@@ -799,7 +799,7 @@ void sdp_gridder_grid_correct_w_stack(
         int facet_offset_l,
         int facet_offset_m,
         int w_offset,
-        bool inverse,
+        int inverse,
         sdp_Error* status
 )
 {
@@ -830,7 +830,7 @@ void sdp_gridder_grid_correct_w_stack(
     {
         uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
         const char* kernel_name = 0;
-        int is_dbl = 0, inverse_int = (int) inverse;
+        int is_dbl = 0;
         const int num_l = sdp_mem_shape_dim(facet, 0);
         const int num_m = sdp_mem_shape_dim(facet, 1);
         sdp_MemViewGpu<complex<double>, 2> facet_dbl;
@@ -861,7 +861,7 @@ void sdp_gridder_grid_correct_w_stack(
             (const void*) &facet_offset_l,
             (const void*) &facet_offset_m,
             (const void*) &w_offset,
-            (const void*) &inverse_int
+            (const void*) &inverse
         };
         num_blocks[0] = (num_l + num_threads[0] - 1) / num_threads[0];
         num_blocks[1] = (num_m + num_threads[1] - 1) / num_threads[1];

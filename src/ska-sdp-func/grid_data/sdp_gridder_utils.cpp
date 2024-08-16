@@ -183,25 +183,13 @@ void subgrid_add(
     for (int64_t i = 0; i < sub_size_u; ++i)
     {
         int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
-        while (i1 < 0)
-        {
-            i1 += grid_size_u;
-        }
-        while (i1 >= grid_size_u)
-        {
-            i1 -= grid_size_u;
-        }
+        if (i1 < 0) i1 += grid_size_u;
+        if (i1 >= grid_size_u) i1 -= grid_size_u;
         for (int64_t j = 0; j < sub_size_v; ++j)
         {
             int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 - offset_v;
-            while (j1 < 0)
-            {
-                j1 += grid_size_v;
-            }
-            while (j1 >= grid_size_v)
-            {
-                j1 -= grid_size_v;
-            }
+            if (j1 < 0) j1 += grid_size_v;
+            if (j1 >= grid_size_v) j1 -= grid_size_v;
             grid_(i1, j1) += sub_(i, j) * factor;
         }
     }
@@ -230,25 +218,13 @@ void subgrid_cut_out(
     for (int64_t i = 0; i < sub_size_u; ++i)
     {
         int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
-        while (i1 < 0)
-        {
-            i1 += grid_size_u;
-        }
-        while (i1 >= grid_size_u)
-        {
-            i1 -= grid_size_u;
-        }
+        if (i1 < 0) i1 += grid_size_u;
+        if (i1 >= grid_size_u) i1 -= grid_size_u;
         for (int64_t j = 0; j < sub_size_v; ++j)
         {
             int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 + offset_v;
-            while (j1 < 0)
-            {
-                j1 += grid_size_v;
-            }
-            while (j1 >= grid_size_v)
-            {
-                j1 -= grid_size_v;
-            }
+            if (j1 < 0) j1 += grid_size_v;
+            if (j1 >= grid_size_v) j1 -= grid_size_v;
             sub_(i, j) = grid_(i1, j1);
         }
     }

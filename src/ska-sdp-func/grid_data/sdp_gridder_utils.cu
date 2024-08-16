@@ -147,22 +147,10 @@ __global__ void sdp_gridder_subgrid_add(
     if (i >= sub_size_u || j >= sub_size_v) return;
     int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
     int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 - offset_v;
-    while (i1 < 0)
-    {
-        i1 += grid_size_u;
-    }
-    while (i1 >= grid_size_u)
-    {
-        i1 -= grid_size_u;
-    }
-    while (j1 < 0)
-    {
-        j1 += grid_size_v;
-    }
-    while (j1 >= grid_size_v)
-    {
-        j1 -= grid_size_v;
-    }
+    if (i1 < 0) i1 += grid_size_u;
+    if (i1 >= grid_size_u) i1 -= grid_size_u;
+    if (j1 < 0) j1 += grid_size_v;
+    if (j1 >= grid_size_v) j1 -= grid_size_v;
     grid(i1, j1) += subgrid(i, j) * factor;
 }
 
@@ -182,22 +170,10 @@ __global__ void sdp_gridder_subgrid_cut_out(
     if (i >= sub_size_u || j >= sub_size_v) return;
     int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
     int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 + offset_v;
-    while (i1 < 0)
-    {
-        i1 += grid_size_u;
-    }
-    while (i1 >= grid_size_u)
-    {
-        i1 -= grid_size_u;
-    }
-    while (j1 < 0)
-    {
-        j1 += grid_size_v;
-    }
-    while (j1 >= grid_size_v)
-    {
-        j1 -= grid_size_v;
-    }
+    if (i1 < 0) i1 += grid_size_u;
+    if (i1 >= grid_size_u) i1 -= grid_size_u;
+    if (j1 < 0) j1 += grid_size_v;
+    if (j1 >= grid_size_v) j1 -= grid_size_v;
     subgrid(i, j) = grid(i1, j1);
 }
 
