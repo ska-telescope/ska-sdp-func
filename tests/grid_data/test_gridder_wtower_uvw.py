@@ -2232,7 +2232,7 @@ def test_gpu_gridder_wstack():
 
     # Create an image for input to degridding.
     numpy.random.seed(123)
-    image = numpy.zeros((image_size, image_size), dtype=numpy.complex128)
+    image = numpy.zeros((image_size, image_size))
     sources = [
         (2, image_size // 4, 2),
         (1, -image_size // 4 + 2, image_size // 4 - 12),
@@ -2304,7 +2304,7 @@ def test_gpu_gridder_wstack():
     print(f"PFL wstack_wtower_degrid_all (CPU) took {t1:.4f} s.")
 
     # Call the CPU PFL gridding function.
-    img_ref = numpy.zeros((image_size, image_size), dtype=numpy.complex128)
+    img_ref = numpy.zeros((image_size, image_size))
     t0 = time.time()
     sdp_grid_func.wstack_wtower_grid_all(
         vis_dft,
@@ -2394,7 +2394,7 @@ def test_gpu_gridder_wstack():
     img_gpu_copy = cupy.asnumpy(img_gpu)
     left = 30
     right = -30
-    im_pfl_gpu = numpy.real(img_gpu_copy[left:right, left:right])
+    im_pfl_gpu = img_gpu_copy[left:right, left:right]
     numpy.testing.assert_allclose(im_pfl_gpu, im_pfl_ref, atol=1e-6)
 
     if plt:

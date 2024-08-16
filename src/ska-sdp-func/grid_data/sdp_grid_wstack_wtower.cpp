@@ -202,9 +202,8 @@ void sdp_grid_wstack_wtower_degrid_all(
         if (num_vis == 0) continue;
 
         // Do image correction / w-stacking.
-        sdp_mem_copy_contents(
-                grid, image, 0, 0, image_size * image_size, status
-        );
+        sdp_mem_clear_contents(grid, status);
+        sdp_gridder_accumulate_scaled_arrays(grid, image, NULL, 0, status);
         sdp_gridder_wtower_uvw_degrid_correct(
                 kernel[0], grid, 0, 0, iw * w_tower_height, status
         );

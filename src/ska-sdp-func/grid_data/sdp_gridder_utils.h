@@ -21,9 +21,9 @@ extern "C" {
  * and the results are accumulated into the output, so that:
  * out += in1 * in2 ** exponent
  *
- * An exponent of 1 is handled separately, so pow() is not called unnecessarily.
- *
- * The parameter @p in2 may be NULL, in which case the output is given by:
+ * Exponent values of 0 and 1 are handled separately, so pow() is not called
+ * unnecessarily.
+ * If the exponent is zero, in2 is ignored, and the output is given by:
  * out += in1
  *
  * @param out Output array.
