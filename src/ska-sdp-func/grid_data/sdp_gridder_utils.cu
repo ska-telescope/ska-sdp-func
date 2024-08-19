@@ -17,28 +17,37 @@ __global__ void sdp_gridder_accum_scale_array(
         sdp_MemViewGpu<OUT_TYPE, 2> out,
         const sdp_MemViewGpu<const IN1_TYPE, 2> in1,
         const sdp_MemViewGpu<const IN2_TYPE, 2> in2,
-        const int exponent,
-        const int use_in2
+        const int exponent
 )
 {
     const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
     const int64_t j = blockDim.y * blockIdx.y + threadIdx.y;
     if (i >= out.shape[0] || j >= out.shape[1]) return;
-    if (use_in2)
-    {
-        if (exponent == 1)
-        {
-            out(i, j) += (IN2_TYPE) in1(i, j) * in2(i, j);
-        }
-        else
-        {
-            out(i, j) += (IN2_TYPE) in1(i, j) * pow(in2(i, j), exponent);
-        }
-    }
-    else
+    if (exponent == 0)
     {
         out(i, j) += in1(i, j);
     }
+    else if (exponent == 1)
+    {
+        out(i, j) += (IN2_TYPE) in1(i, j) * in2(i, j);
+    }
+    else
+    {
+        out(i, j) += (IN2_TYPE) in1(i, j) * pow(in2(i, j), exponent);
+    }
+}
+
+
+template<typename OUT_TYPE, typename IN_TYPE>
+__global__ void sdp_gridder_accum_complex_real_array(
+        sdp_MemViewGpu<OUT_TYPE, 2> out,
+        const sdp_MemViewGpu<const IN_TYPE, 2> in
+)
+{
+    const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    const int64_t j = blockDim.y * blockIdx.y + threadIdx.y;
+    if (i >= out.shape[0] || j >= out.shape[1]) return;
+    out(i, j) += in(i, j).real();
 }
 
 
@@ -147,22 +156,10 @@ __global__ void sdp_gridder_subgrid_add(
     if (i >= sub_size_u || j >= sub_size_v) return;
     int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
     int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 - offset_v;
-    while (i1 < 0)
-    {
-        i1 += grid_size_u;
-    }
-    while (i1 >= grid_size_u)
-    {
-        i1 -= grid_size_u;
-    }
-    while (j1 < 0)
-    {
-        j1 += grid_size_v;
-    }
-    while (j1 >= grid_size_v)
-    {
-        j1 -= grid_size_v;
-    }
+    if (i1 < 0) i1 += grid_size_u;
+    if (i1 >= grid_size_u) i1 -= grid_size_u;
+    if (j1 < 0) j1 += grid_size_v;
+    if (j1 >= grid_size_v) j1 -= grid_size_v;
     grid(i1, j1) += subgrid(i, j) * factor;
 }
 
@@ -182,22 +179,10 @@ __global__ void sdp_gridder_subgrid_cut_out(
     if (i >= sub_size_u || j >= sub_size_v) return;
     int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
     int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 + offset_v;
-    while (i1 < 0)
-    {
-        i1 += grid_size_u;
-    }
-    while (i1 >= grid_size_u)
-    {
-        i1 -= grid_size_u;
-    }
-    while (j1 < 0)
-    {
-        j1 += grid_size_v;
-    }
-    while (j1 >= grid_size_v)
-    {
-        j1 -= grid_size_v;
-    }
+    if (i1 < 0) i1 += grid_size_u;
+    if (i1 >= grid_size_u) i1 -= grid_size_u;
+    if (j1 < 0) j1 += grid_size_v;
+    if (j1 >= grid_size_v) j1 -= grid_size_v;
     subgrid(i, j) = grid(i1, j1);
 }
 
@@ -300,6 +285,16 @@ SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<double>, complex<double>, 
 SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<float>, complex<float>, complex<double> >)
 SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<double>, complex<float>, complex<double> >)
 SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<float>, complex<double>, complex<double> >)
+
+SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<double>, double, complex<double> >)
+SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<float>, float, complex<double> >)
+SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<double>, float, complex<double> >)
+SDP_CUDA_KERNEL(sdp_gridder_accum_scale_array<complex<float>, double, complex<double> >)
+
+SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<double, complex<double> >)
+SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<float, complex<float> >)
+SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<double, complex<float> >)
+SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<float, complex<double> >)
 
 SDP_CUDA_KERNEL(sdp_gridder_grid_correct_pswf<double>)
 SDP_CUDA_KERNEL(sdp_gridder_grid_correct_pswf<float>)

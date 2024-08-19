@@ -14,6 +14,8 @@
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 #include "ska-sdp-func/utility/sdp_timer.h"
 
+using std::vector;
+
 static void report_timing(
         int num_w_planes,
         int num_subgrids_u,
@@ -22,10 +24,8 @@ static void report_timing(
         int subgrid_size,
         const sdp_Mem* vis,
         sdp_Timer* tmr_total,
-        sdp_Fft* fft,
         int num_threads,
         sdp_GridderWtowerUVW** kernel,
-        sdp_Fft** fft_subgrid,
         int gridding
 );
 
@@ -114,11 +114,11 @@ void sdp_grid_wstack_wtower_degrid_all(
     );
 
     // Create gridder kernels, sub-grids and sub-grid FFT plans, per thread.
-    std::vector<sdp_GridderWtowerUVW*> kernel(num_threads);
-    std::vector<sdp_Mem*> subgrid(num_threads);
-    std::vector<sdp_Fft*> ifft_subgrid(num_threads);
-    std::vector<sdp_Mem*> start_ch_u(num_threads), start_ch_v(num_threads);
-    std::vector<sdp_Mem*> end_ch_u(num_threads), end_ch_v(num_threads);
+    vector<sdp_GridderWtowerUVW*> kernel(num_threads, 0);
+    vector<sdp_Mem*> subgrid(num_threads, 0);
+    vector<sdp_Fft*> ifft_subgrid(num_threads, 0);
+    vector<sdp_Mem*> start_ch_u(num_threads, 0), start_ch_v(num_threads, 0);
+    vector<sdp_Mem*> end_ch_u(num_threads, 0), end_ch_v(num_threads, 0);
     const int image_size = (int) sdp_mem_shape_dim(image, 0);
     const int64_t grid_shape[] = {image_size, image_size};
     const int64_t subgrid_shape[] = {subgrid_size, subgrid_size};
@@ -202,9 +202,8 @@ void sdp_grid_wstack_wtower_degrid_all(
         if (num_vis == 0) continue;
 
         // Do image correction / w-stacking.
-        sdp_mem_copy_contents(
-                grid, image, 0, 0, image_size * image_size, status
-        );
+        sdp_mem_clear_contents(grid, status);
+        sdp_gridder_accumulate_scaled_arrays(grid, image, NULL, 0, status);
         sdp_gridder_wtower_uvw_degrid_correct(
                 kernel[0], grid, 0, 0, iw * w_tower_height, status
         );
@@ -213,7 +212,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         sdp_fft_phase(grid, status);
 
         // Loop over sub-grid (towers) in u.
-        #pragma omp parallel for num_threads(num_threads)
+        #pragma omp parallel for schedule(dynamic) num_threads(num_threads)
         for (int64_t iu = min_iu; iu <= max_iu; ++iu)
         {
             int tid = 0;
@@ -302,8 +301,8 @@ void sdp_grid_wstack_wtower_degrid_all(
     if (verbosity > 0)
     {
         report_timing(num_w_planes, num_subgrids_u, num_subgrids_v,
-                image_size, subgrid_size, vis, tmr_total, fft,
-                num_threads, &kernel[0], &ifft_subgrid[0], 0
+                image_size, subgrid_size, vis, tmr_total,
+                num_threads, &kernel[0], 0
         );
     }
     for (int i = 0; i < num_threads; ++i)
@@ -405,11 +404,11 @@ void sdp_grid_wstack_wtower_grid_all(
     );
 
     // Create gridder kernels, sub-grids and sub-grid FFT plans, per thread.
-    std::vector<sdp_GridderWtowerUVW*> kernel(num_threads);
-    std::vector<sdp_Mem*> subgrid(num_threads);
-    std::vector<sdp_Fft*> fft_subgrid(num_threads);
-    std::vector<sdp_Mem*> start_ch_u(num_threads), start_ch_v(num_threads);
-    std::vector<sdp_Mem*> end_ch_u(num_threads), end_ch_v(num_threads);
+    vector<sdp_GridderWtowerUVW*> kernel(num_threads, 0);
+    vector<sdp_Mem*> subgrid(num_threads, 0);
+    vector<sdp_Fft*> fft_subgrid(num_threads, 0);
+    vector<sdp_Mem*> start_ch_u(num_threads, 0), start_ch_v(num_threads, 0);
+    vector<sdp_Mem*> end_ch_u(num_threads, 0), end_ch_v(num_threads, 0);
     const int image_size = (int) sdp_mem_shape_dim(image, 0);
     const int64_t grid_shape[] = {image_size, image_size};
     const int64_t subgrid_shape[] = {subgrid_size, subgrid_size};
@@ -497,7 +496,7 @@ void sdp_grid_wstack_wtower_grid_all(
         sdp_mem_clear_contents(grid, status);
 
         // Loop over sub-grid (towers) in u.
-        #pragma omp parallel for num_threads(num_threads)
+        #pragma omp parallel for schedule(dynamic) num_threads(num_threads)
         for (int64_t iu = min_iu; iu <= max_iu; ++iu)
         {
             int tid = 0;
@@ -596,8 +595,8 @@ void sdp_grid_wstack_wtower_grid_all(
     if (verbosity > 0)
     {
         report_timing(num_w_planes, num_subgrids_u, num_subgrids_v,
-                image_size, subgrid_size, vis, tmr_total, ifft,
-                num_threads, &kernel[0], &fft_subgrid[0], 1
+                image_size, subgrid_size, vis, tmr_total,
+                num_threads, &kernel[0], 1
         );
     }
     for (int i = 0; i < num_threads; ++i)
@@ -623,10 +622,8 @@ static void report_timing(
         int subgrid_size,
         const sdp_Mem* vis,
         sdp_Timer* tmr_total,
-        sdp_Fft* fft,
         int num_threads,
         sdp_GridderWtowerUVW** kernel,
-        sdp_Fft** fft_subgrid,
         int gridding
 )
 {

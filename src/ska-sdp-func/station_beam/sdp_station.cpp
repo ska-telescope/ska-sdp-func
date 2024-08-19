@@ -76,7 +76,10 @@ void sdp_station_beam_dft(
     #pragma omp parallel for
     for (int i_out = 0; i_out < num_out; i_out++)
     {
-        complex<FP> out[NUM_POL];
+        // Should be allowed to be of length NUM_POL instead of 4,
+        // as it's a template parameter and therefore known at compile time,
+        // but compilers warn when doing that.
+        complex<FP> out[4];
         for (int k = 0; k < NUM_POL; ++k)
         {
             out[k] = complex<FP>(0, 0);
@@ -104,14 +107,12 @@ void sdp_station_beam_dft(
                     if (eval_x)
                     {
                         out[0] += weighted_phasor * data[i_in + 0];
-                        // NOLINTBEGIN(clang-diagnostic-array-bounds)
                         out[1] += weighted_phasor * data[i_in + 1];
                     }
                     if (eval_y)
                     {
                         out[2] += weighted_phasor * data[i_in + 2];
                         out[3] += weighted_phasor * data[i_in + 3];
-                        // NOLINTEND(clang-diagnostic-array-bounds)
                     }
                 }
             }
@@ -132,14 +133,12 @@ void sdp_station_beam_dft(
                     if (eval_x)
                     {
                         out[0] += weighted_phasor;
-                        // NOLINTBEGIN(clang-diagnostic-array-bounds)
                         out[1] += weighted_phasor;
                     }
                     if (eval_y)
                     {
                         out[2] += weighted_phasor;
                         out[3] += weighted_phasor;
-                        // NOLINTEND(clang-diagnostic-array-bounds)
                     }
                 }
             }
@@ -154,14 +153,12 @@ void sdp_station_beam_dft(
             if (eval_x)
             {
                 output[i_out_offset_scaled + 0] = out[0] * norm_factor;
-                // NOLINTBEGIN(clang-diagnostic-array-bounds)
                 output[i_out_offset_scaled + 1] = out[1] * norm_factor;
             }
             if (eval_y)
             {
                 output[i_out_offset_scaled + 2] = out[2] * norm_factor;
                 output[i_out_offset_scaled + 3] = out[3] * norm_factor;
-                // NOLINTEND(clang-diagnostic-array-bounds)
             }
         }
     }

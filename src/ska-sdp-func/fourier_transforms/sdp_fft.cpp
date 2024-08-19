@@ -615,10 +615,17 @@ void sdp_fft_exec(
         {
             placement = DFTI_INPLACE;
         }
-        mkl_status = DftiSetValue(fft->mkl_plan, DFTI_PLACEMENT, placement);
+        DftiSetValue(fft->mkl_plan, DFTI_PLACEMENT, placement);
 
         // Commit descriptor.
         mkl_status = DftiCommitDescriptor(fft->mkl_plan);
+        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+        {
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Error in DftiCommitDescriptor (code %lld): %s",
+                    mkl_status, DftiErrorMessage(mkl_status)
+            );
+        }
 
         // Compute FFT.
         if (fft->is_forward)

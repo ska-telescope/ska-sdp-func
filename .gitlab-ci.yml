@@ -88,7 +88,7 @@ cpp-lint:
   before_script:
     - *ready_reports
     - apt-get -y update
-    - apt-get -y install build-essential clang-tidy cmake libomp-dev
+    - apt-get -y install build-essential clang-tidy cmake libomp-dev libomp-14-dev
     - mkdir release
     - cd release/
     - cmake ../ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
