@@ -41,6 +41,8 @@ extern "C" {
  * for variations in the magnitudes
  * @param threshold_broadband threshold on the modified z-score
  * for median history
+ * @param sampling_step the intervals at which samples are taken
+ * for computing the medians.
  * @param window the number of channels on each side of a flagged
  * visibility to be flagged
  * @param window_median_history the size of the window of time

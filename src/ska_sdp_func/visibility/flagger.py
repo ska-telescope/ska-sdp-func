@@ -51,7 +51,6 @@ def flagger_dynamic_threshold(
 
     * ``flags`` is 4D and integer-valued, with the same shape as ``vis``.
 
-    :param parameters:
     :param vis: Complex valued visibilities. Dimensions as above.
     :type vis: numpy.ndarray
 
