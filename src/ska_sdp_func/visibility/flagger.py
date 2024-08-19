@@ -55,11 +55,8 @@ def flagger_dynamic_threshold(
     :param vis: Complex valued visibilities. Dimensions as above.
     :type vis: numpy.ndarray
 
-    :param parameters: A numpy array containing the parameters for the
-    flagger in the following order.
-
-    [alpha, threshold_magnitudes, threshold_variations,
-    threshold_broadband, sampling_step, window, window_median_history]
+    :param flags: Output flags. Dimensions as above.
+    :type flags: numpy.ndarray
 
     :param alpha: the coefficient for the recursive equation for measuring
     the rate of fluctuations in the 'recent time samples', between
@@ -87,8 +84,6 @@ def flagger_dynamic_threshold(
     the medians of time slots is maintained for the broadband RFI
     detection.
 
-    :param flags: Output flags. Dimensions as above.
-    :type flags: numpy.ndarray
     """
 
     Lib.sdp_flagger_dynamic_threshold(
