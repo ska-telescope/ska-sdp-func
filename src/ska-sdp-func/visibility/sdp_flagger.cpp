@@ -1,11 +1,7 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #include <complex>
-#include <iomanip>
-#include <iostream>
 #include <math.h>
-#include "omp.h"
-#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "src/ska-sdp-func/visibility/sdp_flagger.h"
 
 
@@ -60,7 +56,7 @@ static void check_params_dynamic(
 }
 
 
-int compare(const void* a, const void* b)
+static int compare(const void* a, const void* b)
 {
     const double* da = static_cast<const double*>(a);
     const double* db = static_cast<const double*>(b);
@@ -75,7 +71,7 @@ int compare(const void* a, const void* b)
 
 
 template<typename AA, typename VL>
-void filler(AA* arr, VL val, int length)
+static void filler(AA* arr, VL val, int length)
 {
     for (int i = 0; i < length; i++)
     {
@@ -84,7 +80,7 @@ void filler(AA* arr, VL val, int length)
 }
 
 
-double median_calc(double* arr, int n)
+static double median_calc(double* arr, int n)
 {
     int mid = int(round(0.5 * n));
     double median = arr[mid];
@@ -92,7 +88,7 @@ double median_calc(double* arr, int n)
 }
 
 
-double median_dev_calc(double* arr, int n, double median)
+static double median_dev_calc(double* arr, int n, double median)
 {
     int mid = int(round(0.5 * n));
     double* devs = new double[n];
@@ -107,7 +103,7 @@ double median_dev_calc(double* arr, int n, double median)
 }
 
 
-double modified_zscore(double median, double mediandev, double val)
+static double modified_zscore(double median, double mediandev, double val)
 {
     double zscore = 0;
     if (mediandev == 0 && val == median)
@@ -143,8 +139,7 @@ static void flagger_dynamic_threshold(
         const int num_pols
 )
 {
-#pragma \
-    omp parallel  shared(flags, visibilities)
+#pragma omp parallel
 
     {
         int num_samples = num_channels / sampling_step;

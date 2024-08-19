@@ -3,6 +3,8 @@
 """Module for RFI flagging functions."""
 import ctypes
 
+import numpy
+
 from ..utility import Lib, Mem
 
 Lib.wrap_func(
@@ -24,18 +26,18 @@ Lib.wrap_func(
 
 
 def flagger_dynamic_threshold(
-    vis,
-    flags,
-    alpha,
-    threshold_magnitudes,
-    threshold_variations,
-    threshold_broadband,
-    sampling_step,
-    window,
-    window_median_history,
+    vis: numpy.ndarray,
+    flags: numpy.ndarray,
+    alpha: float,
+    threshold_magnitudes: float,
+    threshold_variations: float,
+    threshold_broadband: float,
+    sampling_step: int,
+    window: int,
+    window_median_history: int,
 ):
     """
-    A leightweight RFI flagger to statistically flag the unusually
+    A lightweight RFI flagger to statistically flag the unusually
     larger absolute values of visibilities, the unusually fluctuating
     absolute values, and unusually large collection of channels with a
     sudden jump in their absolute values to detect broadband RFI
