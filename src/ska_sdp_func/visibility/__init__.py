@@ -3,6 +3,6 @@
 """Import functions that we want to expose under ska_sdp_func.visibility"""
 
 from .dft import dft_point_v00, dft_point_v01
-from .flagger import flagger_dynamic_threshold, flagger_fixed_threshold
+from .flagger import flagger_dynamic_threshold
 from .phase_rotate import phase_rotate_uvw, phase_rotate_vis
 from .weighting import briggs_weights, get_uv_range

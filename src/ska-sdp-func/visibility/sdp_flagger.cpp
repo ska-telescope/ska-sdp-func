@@ -12,53 +12,6 @@
 using namespace std;
 
 
-static void check_params_fix(
-        const sdp_Mem* vis,
-        sdp_Mem* flags,
-        sdp_Error* status
-)
-{
-    if (*status) return;
-    if (sdp_mem_is_read_only(flags))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Output flags must be writable.");
-        return;
-    }
-    if (!sdp_mem_is_c_contiguous(vis) ||
-            !sdp_mem_is_c_contiguous(flags))
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("All arrays must be C contiguous.");
-        return;
-    }
-    if (sdp_mem_num_dims(vis) != 4 || sdp_mem_num_dims(flags) != 4)
-    {
-        *status = SDP_ERR_RUNTIME;
-        SDP_LOG_ERROR("Visibility and flags arrays must be 4D.");
-        return;
-    }
-    if (!sdp_mem_is_complex(vis))
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Visibilities must be complex.");
-        return;
-    }
-    if (sdp_mem_type(flags) != SDP_MEM_INT)
-    {
-        *status = SDP_ERR_DATA_TYPE;
-        SDP_LOG_ERROR("Flags must be integers.");
-        return;
-    }
-
-    if (sdp_mem_location(vis) != sdp_mem_location(flags))
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("All arrays must be in the same memory location.");
-        return;
-    }
-}
-
 static void check_params_dynamic(
         const sdp_Mem* vis,
         sdp_Mem* flags,
@@ -105,7 +58,6 @@ static void check_params_dynamic(
         return;
     }
 }
-
 
 
 int compare(const void* a, const void* b)
@@ -175,177 +127,6 @@ double modified_zscore(double median, double mediandev, double val)
 
 
 template<typename FP>
-static void flagger_fixed_threshold(
-        const std::complex<FP>* visibilities,
-        int* flags,
-        const double what_quantile_for_vis,
-        const double what_quantile_for_changes,
-        const int sampling_step,
-        const double alpha,
-        const int window, 
-        const int num_timesamples,
-        const int num_baselines,
-        const int num_channels,
-        const int num_pols
-)
-{
-
-#ifdef _OPENMP
-#pragma omp parallel  shared(what_quantile_for_vis, what_quantile_for_changes,  sampling_step, alpha, window, flags, visibilities)
-#endif
-    {
-        double q_for_vis = 0;
-        double q_for_ts = 0;
-
-        int num_samples = num_channels / sampling_step;
-        double* samples = new double[num_samples];
-        double* transit_score = new double[num_channels];
-        double* transit_samples = new double[num_samples];
-
-        filler(samples, 0, num_samples);
-        filler(transit_score, 0, num_channels);
-        filler(transit_samples, 0, num_samples);
-
-        int time_block = num_baselines * num_channels * num_pols;
-        int baseline_block = num_channels * num_pols;
-
-        #ifdef _OPENMP
-        #pragma omp for
-        #endif
-        for (int b = 0; b < num_baselines; b++)
-        {
-            for (int p = 0; p < num_pols; p++)
-            {
-                for (int t = 0; t < num_timesamples; t++)
-                {
-                    int baseline_pos = t * time_block + b * baseline_block;
-
-                    // method 1 only operating on absolute values
-                    // and method 3 for broadband detection:
-
-                    for (int s = 0; s < num_samples; s++)
-                    {
-                        int pos = baseline_pos + (s * sampling_step) *
-                                num_pols + p;
-                        samples[s] = abs(visibilities[pos]);
-                    }
-
-                    qsort(samples, num_samples, sizeof(double), compare);
-                    q_for_vis =
-                            samples[int(round(num_samples *
-                            what_quantile_for_vis
-                                    ))];
-
-                    for (int c = 0; c < num_channels; c++)
-                    {
-                        int pos = baseline_pos + c * num_pols + p;
-                        double vis1 = abs(visibilities[pos]);
-
-                        if (vis1 > q_for_vis)
-                        {
-                            flags[pos] = 1;
-                            if (window > 0)
-                            {
-                                for (int w = 0; w < window; w++)
-                                {
-                                    if (c - w - 1 > 0)
-                                    {
-                                        pos = baseline_pos + (c - w - 1) *
-                                                num_pols + p;
-                                        flags[pos] = 1;
-                                    }
-                                    if (c + w + 1 < num_channels)
-                                    {
-                                        pos = baseline_pos + (c + w + 1) *
-                                                num_pols + p;
-                                        flags[pos] = 1;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // method 2 operating on rate of changes (fluctuations):
-
-                    if (t > 0)
-                    {
-                        for (int c = 0; c < num_channels; c++)
-                        {
-                            int pos0 = baseline_pos + c * num_pols + p;
-                            int pos1 = (t - 1) * time_block + b *
-                                    baseline_block + c * num_pols + p;
-                            double vis0 = abs(visibilities[pos0]);
-                            double vis1 = abs(visibilities[pos1]);
-                            double rate_of_change = abs(vis1 - vis0);
-
-                            if (t == 1)
-                            {
-                                transit_score[c] = rate_of_change;
-                            }
-                            else
-                            {
-                                transit_score[c] = alpha * rate_of_change +
-                                        (1 - alpha) * transit_score[c];
-                            }
-                        }
-
-                        for (int s = 0; s < num_samples; s++)
-                        {
-                            transit_samples[s] =
-                                    abs(transit_score[s * sampling_step]);
-                        }
-
-                        qsort(transit_samples,
-                                num_samples,
-                                sizeof(double),
-                                compare
-                        );
-                        q_for_ts =
-                                transit_samples[int(round(num_samples *
-                                what_quantile_for_changes
-                                        ))];
-
-                        for (int c = 0; c < num_channels; c++)
-                        {
-                            int pos = baseline_pos + c * num_pols + p;
-                            double ts = abs(transit_score[c]);
-
-                            if (ts > q_for_ts)
-                            {
-                                flags[pos] = 1;
-                                if (window > 0)
-                                {
-                                    for (int w = 0; w < window; w++)
-                                    {
-                                        if (c - w - 1 > 0)
-                                        {
-                                            pos = baseline_pos + (c - w - 1) *
-                                                    num_pols + p;
-                                            flags[pos] = 1;
-                                        }
-                                        if (c + w + 1 < num_channels)
-                                        {
-                                            pos = baseline_pos + (c + w + 1) *
-                                                    num_pols + p;
-                                            flags[pos] = 1;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        delete[] transit_score;
-        delete[] samples;
-        delete[] transit_samples;
-    }
-}
-
-
-template<typename FP>
 static void flagger_dynamic_threshold(
         const std::complex<FP>* visibilities,
         int* flags,
@@ -362,9 +143,9 @@ static void flagger_dynamic_threshold(
         const int num_pols
 )
 {
-   
 #ifdef _OPENMP
-#pragma omp parallel  shared(alpha, threshold_magnitudes, threshold_variations,threshold_broadband, sampling_step, window, window_median_history, flags, visibilities)
+#pragma \
+    omp parallel  shared(alpha, threshold_magnitudes, threshold_variations,threshold_broadband, sampling_step, window, window_median_history, flags, visibilities)
 #endif
     {
         int num_samples = num_channels / sampling_step;
@@ -473,7 +254,7 @@ static void flagger_dynamic_threshold(
                         }
                     }
 
-                    delete medarray;
+                    delete[] medarray;
 
                     // method 2 operating on rate of changes (fluctuations):
 
@@ -569,82 +350,10 @@ static void flagger_dynamic_threshold(
                 }
             }
         }
-        delete transit_score;
-        delete samples;
-        delete transit_samples;
-        delete median_history;
-    }
-}
-
-
-void sdp_flagger_fixed_threshold(
-        const sdp_Mem* vis,
-        sdp_Mem* flags,
-        const double what_quantile_for_vis,
-        const double what_quantile_for_changes,
-        const int sampling_step,
-        const double alpha,
-        const int window, 
-        sdp_Error* status
-)
-{
-    check_params_fix(vis, flags, status);
-    if (*status) return;
-
-    const int num_timesamples   =  sdp_mem_shape_dim(vis, 0);
-    const int num_baselines   = sdp_mem_shape_dim(vis, 1);
-    const int num_channels      =  sdp_mem_shape_dim(vis, 2);
-    const int num_pols   =  sdp_mem_shape_dim(vis, 3);
-
-    if (sdp_mem_location(vis) == SDP_MEM_CPU)
-    {
-        if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT &&
-                sdp_mem_type(flags) == SDP_MEM_INT)
-        {
-            flagger_fixed_threshold(
-                    (const std::complex<float>*) sdp_mem_data_const(vis),
-                    (int*) sdp_mem_data(flags),
-                    what_quantile_for_vis,
-                    what_quantile_for_changes,
-                    sampling_step,
-                    alpha,
-                    window,
-                    num_timesamples,
-                    num_baselines,
-                    num_channels,
-                    num_pols
-            );
-        }
-        else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(flags) == SDP_MEM_INT)
-        {
-            flagger_fixed_threshold(
-                    (const std::complex<double>*) sdp_mem_data_const(vis),
-                    (int*) sdp_mem_data(flags),
-                    what_quantile_for_vis,
-                    what_quantile_for_changes,
-                    sampling_step,
-                    alpha,
-                    window,
-                    num_timesamples,
-                    num_baselines,
-                    num_channels,
-                    num_pols
-            );
-        }
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
-            SDP_LOG_ERROR("Unsupported data type(s): visibilities and "
-                    "thresholds arrays must have the same precision."
-            );
-        }
-    }
-    else
-    {
-        *status = SDP_ERR_MEM_LOCATION;
-        SDP_LOG_ERROR("Unsupported memory location for visibility data.");
-        return;
+        delete[] transit_score;
+        delete[] samples;
+        delete[] transit_samples;
+        delete[] median_history;
     }
 }
 

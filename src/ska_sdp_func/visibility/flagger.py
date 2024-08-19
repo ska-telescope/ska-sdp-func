@@ -6,21 +6,6 @@ import ctypes
 from ..utility import Lib, Mem
 
 Lib.wrap_func(
-    "sdp_flagger_fixed_threshold",
-    restype=None,
-    argtypes=[
-        Mem.handle_type(),
-        Mem.handle_type(),
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double
-    ],
-    check_errcode=True,
-)
-
-Lib.wrap_func(
     "sdp_flagger_dynamic_threshold",
     restype=None,
     argtypes=[
@@ -30,63 +15,25 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
-        ctypes.c_double,
-        ctypes.c_double
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
     ],
     check_errcode=True,
 )
 
 
-def flagger_fixed_threshold(vis, flags, what_quantile_for_vis, what_quantile_for_changes, sampling_step, alpha, window):
-    """
-    A lightweight RFI flagger. The fixed threshold version is only for
-    basic experimentations. The dynamic threshold function is the
-    recommended version.
-
-    Array dimensions are as follows, from slowest to fastest varying:
-
-    * ``vis`` is 4D and complex-valued, with shape:
-
-      * [ num_timesamples, num_baselines, num_channels, num_polarisations ]
-
-    * ``flags`` is 4D and integer-valued, with the same shape as ``vis``.
-
-    :param parameters:
-    :param vis: Complex valued visibilities. Dimensions as above.
-    :type vis: numpy.ndarray
-
-    :param parameters: parameters for the fixed threshold algorithm in
-    the following order.
-
-    :param what_quantile_for_vis: is the cut-off point for flagging based
-     on the absolute values of visibilities
-
-    :param what_quantile_for_changes: is the threshold for flagging
-    based on fluctuations (transit_score)
-
-    :param sampling_step: gives the interval at which a sample is taken to
-     choose the actual values of the above thresholds
-
-    :param window: is the number of channels on each side of a flagged value
-      to be flagged
-    
-    :param flags: Output flags. Dimensions as above.
-    :type flags: numpy.ndarray
-    """
-
-    Lib.sdp_flagger_fixed_threshold(
-        Mem(vis),
-        Mem(flags),
-        what_quantile_for_vis,
-        what_quantile_for_changes,
-        sampling_step,
-        alpha,
-        window
-       
-    )
-
-
-def flagger_dynamic_threshold(vis, flags, alpha, threshold_magnitudes, threshold_variations, threshold_broadband, sampling_step, window, window_median_history,):
+def flagger_dynamic_threshold(
+    vis,
+    flags,
+    alpha,
+    threshold_magnitudes,
+    threshold_variations,
+    threshold_broadband,
+    sampling_step,
+    window,
+    window_median_history,
+):
     """
     A leightweight RFI flagger to statistically flag the unusually
     larger absolute values of visibilities, the unusually fluctuating
