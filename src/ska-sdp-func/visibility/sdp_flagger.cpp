@@ -143,10 +143,10 @@ static void flagger_dynamic_threshold(
         const int num_pols
 )
 {
-#ifdef _OPENMP
+
 #pragma \
-    omp parallel  shared(alpha, threshold_magnitudes, threshold_variations,threshold_broadband, sampling_step, window, window_median_history, flags, visibilities)
-#endif
+    omp parallel  shared(flags, visibilities)
+
     {
         int num_samples = num_channels / sampling_step;
         double* samples = new double[num_samples];
@@ -159,9 +159,8 @@ static void flagger_dynamic_threshold(
         filler(transit_samples, 0, num_samples);
         filler(median_history, 0, num_timesamples);
 
-        #ifdef _OPENMP
+        
         #pragma omp for
-        #endif
         for (int b = 0; b < num_baselines; b++)
         {
             for (int p = 0; p < num_pols; p++)
@@ -374,10 +373,10 @@ void sdp_flagger_dynamic_threshold(
     check_params_dynamic(vis, flags, status);
     if (*status) return;
 
-    const int num_timesamples   = (uint64_t) sdp_mem_shape_dim(vis, 0);
-    const int num_baselines   = (uint64_t) sdp_mem_shape_dim(vis, 1);
-    const int num_channels      = (uint64_t) sdp_mem_shape_dim(vis, 2);
-    const int num_pols   = (uint64_t) sdp_mem_shape_dim(vis, 3);
+    const int num_timesamples   = (int) sdp_mem_shape_dim(vis, 0);
+    const int num_baselines   = (int) sdp_mem_shape_dim(vis, 1);
+    const int num_channels      = (int) sdp_mem_shape_dim(vis, 2);
+    const int num_pols   = (int) sdp_mem_shape_dim(vis, 3);
 
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
