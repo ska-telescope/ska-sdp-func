@@ -143,7 +143,6 @@ static void flagger_dynamic_threshold(
         const int num_pols
 )
 {
-
 #pragma \
     omp parallel  shared(flags, visibilities)
 
@@ -159,7 +158,6 @@ static void flagger_dynamic_threshold(
         filler(transit_samples, 0, num_samples);
         filler(median_history, 0, num_timesamples);
 
-        
         #pragma omp for
         for (int b = 0; b < num_baselines; b++)
         {
