@@ -40,24 +40,15 @@ def test_fixed_flagger(vis_data):
     sampling_step = 1
     alpha = 0.5
     window = 0
-    parameters = numpy.array(
-        [
-            what_quantile_for_vis,
-            what_quantile_for_changes,
-            sampling_step,
-            alpha,
-            window,
-        ],
-        dtype=numpy.float64,
-    )
-
+    
     flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
     expected_flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
 
     expected_flags[10, 0, 28, :] = 1
     expected_flags[36, 0, 14, 0] = 1
+    
 
-    flagger_fixed_threshold(vis_data, parameters, flags)
+    flagger_fixed_threshold(vis_data, flags, what_quantile_for_vis, what_quantile_for_changes, sampling_step, alpha, window)
     assert (expected_flags == flags).all()
 
 
@@ -74,18 +65,6 @@ def test_dynamic_flagger(vis_data):
     window = 0
     window_median_history = 20
 
-    parameters = numpy.array(
-        [
-            alpha,
-            threshold_magnitudes,
-            threshold_variations,
-            threshold_broadband,
-            sampling_step,
-            window,
-            window_median_history,
-        ]
-    )
-
     flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
     expected_flags = numpy.zeros(vis_data.shape, dtype=numpy.int32)
 
@@ -95,5 +74,5 @@ def test_dynamic_flagger(vis_data):
     expected_flags[36, 0, 14, 0] = 1
     expected_flags[27, 1, :, 2] = 1
 
-    flagger_dynamic_threshold(vis_data, parameters, flags)
+    flagger_dynamic_threshold(vis_data, flags, alpha, threshold_magnitudes, threshold_variations, threshold_broadband, sampling_step, window, window_median_history)
     assert (expected_flags == flags).all()

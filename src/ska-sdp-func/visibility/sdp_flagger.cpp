@@ -6,16 +6,14 @@
 #include <math.h>
 #include "omp.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
-#include "ska-sdp-func/utility/sdp_logging.h"
 #include "src/ska-sdp-func/visibility/sdp_flagger.h"
 
 
 using namespace std;
 
 
-static void check_params(
+static void check_params_fix(
         const sdp_Mem* vis,
-        const sdp_Mem* parameters,
         sdp_Mem* flags,
         sdp_Error* status
 )
@@ -28,7 +26,6 @@ static void check_params(
         return;
     }
     if (!sdp_mem_is_c_contiguous(vis) ||
-            !sdp_mem_is_c_contiguous(parameters) ||
             !sdp_mem_is_c_contiguous(flags))
     {
         *status = SDP_ERR_RUNTIME;
@@ -54,14 +51,61 @@ static void check_params(
         return;
     }
 
-    if (sdp_mem_location(vis) != sdp_mem_location(parameters) ||
-            sdp_mem_location(vis) != sdp_mem_location(flags))
+    if (sdp_mem_location(vis) != sdp_mem_location(flags))
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("All arrays must be in the same memory location.");
         return;
     }
 }
+
+static void check_params_dynamic(
+        const sdp_Mem* vis,
+        sdp_Mem* flags,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    if (sdp_mem_is_read_only(flags))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Output flags must be writable.");
+        return;
+    }
+    if (!sdp_mem_is_c_contiguous(vis) ||
+            !sdp_mem_is_c_contiguous(flags))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("All arrays must be C contiguous.");
+        return;
+    }
+    if (sdp_mem_num_dims(vis) != 4 || sdp_mem_num_dims(flags) != 4)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Visibility and flags arrays must be 4D.");
+        return;
+    }
+    if (!sdp_mem_is_complex(vis))
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Visibilities must be complex.");
+        return;
+    }
+    if (sdp_mem_type(flags) != SDP_MEM_INT)
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Flags must be integers.");
+        return;
+    }
+
+    if (sdp_mem_location(vis) != sdp_mem_location(flags))
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+        SDP_LOG_ERROR("All arrays must be in the same memory location.");
+        return;
+    }
+}
+
 
 
 int compare(const void* a, const void* b)
@@ -133,24 +177,22 @@ double modified_zscore(double median, double mediandev, double val)
 template<typename FP>
 static void flagger_fixed_threshold(
         const std::complex<FP>* visibilities,
-        const FP* parameters,
         int* flags,
+        const double what_quantile_for_vis,
+        const double what_quantile_for_changes,
+        const int sampling_step,
+        const double alpha,
+        const int window, 
         const int num_timesamples,
         const int num_baselines,
         const int num_channels,
         const int num_pols
 )
 {
-    double start;
-    double end;
-    start = omp_get_wtime();
-    double what_quantile_for_vis = parameters[0];
-    double what_quantile_for_changes = parameters[1];
-    int sampling_step = parameters[2];
-    double alpha = parameters[3];
-    int window = parameters[4];
 
-#pragma omp parallel  shared(parameters, flags, visibilities)
+#ifdef _OPENMP
+#pragma omp parallel  shared(what_quantile_for_vis, what_quantile_for_changes,  sampling_step, alpha, window, flags, visibilities)
+#endif
     {
         double q_for_vis = 0;
         double q_for_ts = 0;
@@ -167,7 +209,9 @@ static void flagger_fixed_threshold(
         int time_block = num_baselines * num_channels * num_pols;
         int baseline_block = num_channels * num_pols;
 
+        #ifdef _OPENMP
         #pragma omp for
+        #endif
         for (int b = 0; b < num_baselines; b++)
         {
             for (int p = 0; p < num_pols; p++)
@@ -298,34 +342,30 @@ static void flagger_fixed_threshold(
         delete[] samples;
         delete[] transit_samples;
     }
-    end = omp_get_wtime();
-    printf("Work took %f seconds\n", end - start);
 }
 
 
 template<typename FP>
 static void flagger_dynamic_threshold(
         const std::complex<FP>* visibilities,
-        const FP* parameters,
         int* flags,
+        const double alpha,
+        const double threshold_magnitudes,
+        const double threshold_variations,
+        const double threshold_broadband,
+        const int sampling_step,
+        const int window,
+        const int window_median_history,
         const int num_timesamples,
         const int num_baselines,
         const int num_channels,
         const int num_pols
 )
 {
-    double start;
-    double end;
-    start = omp_get_wtime();
-    double alpha = parameters[0];
-    double threshold_magnitudes = parameters[1];
-    double threshold_variations = parameters[2];
-    double threshold_broadband = parameters[3];
-    int sampling_step = parameters[4];
-    int window = parameters[5];
-    int window_median_history = parameters[6];
-
-#pragma omp parallel  shared(parameters, flags, visibilities)
+   
+#ifdef _OPENMP
+#pragma omp parallel  shared(alpha, threshold_magnitudes, threshold_variations,threshold_broadband, sampling_step, window, window_median_history, flags, visibilities)
+#endif
     {
         int num_samples = num_channels / sampling_step;
         double* samples = new double[num_samples];
@@ -338,7 +378,9 @@ static void flagger_dynamic_threshold(
         filler(transit_samples, 0, num_samples);
         filler(median_history, 0, num_timesamples);
 
+        #ifdef _OPENMP
         #pragma omp for
+        #endif
         for (int b = 0; b < num_baselines; b++)
         {
             for (int p = 0; p < num_pols; p++)
@@ -532,19 +574,21 @@ static void flagger_dynamic_threshold(
         delete transit_samples;
         delete median_history;
     }
-    end = omp_get_wtime();
-    printf("Work took %f seconds\n", end - start);
 }
 
 
 void sdp_flagger_fixed_threshold(
         const sdp_Mem* vis,
-        const sdp_Mem* parameters,
         sdp_Mem* flags,
+        const double what_quantile_for_vis,
+        const double what_quantile_for_changes,
+        const int sampling_step,
+        const double alpha,
+        const int window, 
         sdp_Error* status
 )
 {
-    check_params(vis, parameters, flags, status);
+    check_params_fix(vis, flags, status);
     if (*status) return;
 
     const int num_timesamples   =  sdp_mem_shape_dim(vis, 0);
@@ -555,13 +599,16 @@ void sdp_flagger_fixed_threshold(
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
         if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT &&
-                sdp_mem_type(parameters) == SDP_MEM_FLOAT &&
                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_fixed_threshold(
                     (const std::complex<float>*) sdp_mem_data_const(vis),
-                    (const float*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
+                    what_quantile_for_vis,
+                    what_quantile_for_changes,
+                    sampling_step,
+                    alpha,
+                    window,
                     num_timesamples,
                     num_baselines,
                     num_channels,
@@ -569,13 +616,16 @@ void sdp_flagger_fixed_threshold(
             );
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(parameters) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_fixed_threshold(
                     (const std::complex<double>*) sdp_mem_data_const(vis),
-                    (const double*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
+                    what_quantile_for_vis,
+                    what_quantile_for_changes,
+                    sampling_step,
+                    alpha,
+                    window,
                     num_timesamples,
                     num_baselines,
                     num_channels,
@@ -601,12 +651,18 @@ void sdp_flagger_fixed_threshold(
 
 void sdp_flagger_dynamic_threshold(
         const sdp_Mem* vis,
-        const sdp_Mem* parameters,
         sdp_Mem* flags,
+        const double alpha,
+        const double threshold_magnitudes,
+        const double threshold_variations,
+        const double threshold_broadband,
+        const int sampling_step,
+        const int window,
+        const int window_median_history,
         sdp_Error* status
 )
 {
-    check_params(vis, parameters, flags, status);
+    check_params_dynamic(vis, flags, status);
     if (*status) return;
 
     const int num_timesamples   = (uint64_t) sdp_mem_shape_dim(vis, 0);
@@ -617,13 +673,18 @@ void sdp_flagger_dynamic_threshold(
     if (sdp_mem_location(vis) == SDP_MEM_CPU)
     {
         if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT &&
-                sdp_mem_type(parameters) == SDP_MEM_FLOAT &&
                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_dynamic_threshold(
                     (const std::complex<float>*) sdp_mem_data_const(vis),
-                    (const float*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
+                    alpha,
+                    threshold_magnitudes,
+                    threshold_variations,
+                    threshold_broadband,
+                    sampling_step,
+                    window,
+                    window_median_history,
                     num_timesamples,
                     num_baselines,
                     num_channels,
@@ -631,13 +692,18 @@ void sdp_flagger_dynamic_threshold(
             );
         }
         else if (sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(parameters) == SDP_MEM_DOUBLE &&
                 sdp_mem_type(flags) == SDP_MEM_INT)
         {
             flagger_dynamic_threshold(
                     (const std::complex<double>*) sdp_mem_data_const(vis),
-                    (const double*) sdp_mem_data_const(parameters),
                     (int*) sdp_mem_data(flags),
+                    alpha,
+                    threshold_magnitudes,
+                    threshold_variations,
+                    threshold_broadband,
+                    sampling_step,
+                    window,
+                    window_median_history,
                     num_timesamples,
                     num_baselines,
                     num_channels,
