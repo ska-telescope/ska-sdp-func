@@ -46,6 +46,24 @@ def clamp_channels_single(
     )
 
 
+def determine_w_step(
+    theta: float, fov: float, shear_u: float, shear_v: float, x0: float = 0.0
+):
+    """
+    Determine a value for the w_step parameter.
+
+    :param theta: Size of padded field of view, in direction cosines.
+    :param fov: Size of imaged field of view, in direction cosines.
+    :param shear_u: Shear parameter in u (use zero for no shear).
+    :param shear_v: Shear parameter in v (use zero for no shear).
+    :param x0: If not zero, scaling factor for fov_n; if zero, this
+        will be calculated as fov / theta.
+    """
+    return float(
+        Lib.sdp_gridder_determine_w_step(theta, fov, shear_u, shear_v, x0)
+    )
+
+
 def make_kernel(window: numpy.ndarray, kernel: numpy.ndarray):
     """
     Convert image-space window function to oversampled kernel.
@@ -190,6 +208,19 @@ Lib.wrap_func(
         ctypes.c_double,
     ],
     check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_determine_w_step",
+    restype=ctypes.c_double,
+    argtypes=[
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+    ],
+    check_errcode=False,
 )
 
 Lib.wrap_func(

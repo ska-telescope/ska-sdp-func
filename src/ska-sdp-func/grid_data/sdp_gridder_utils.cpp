@@ -587,6 +587,32 @@ void sdp_gridder_accumulate_scaled_arrays(
 }
 
 
+double sdp_gridder_determine_w_step(
+        double theta,
+        double fov,
+        double shear_u,
+        double shear_v,
+        double x0
+)
+{
+    if (x0 == 0.0) x0 = fov / theta;
+
+    // Determine maximum used n, deduce theta along n-axis.
+    const double v1 = lm_to_n(-fov / 2.0, -fov / 2.0, shear_u, shear_v);
+    const double v2 = lm_to_n(fov / 2.0, -fov / 2.0, shear_u, shear_v);
+    const double v3 = lm_to_n(-fov / 2.0, fov / 2.0, shear_u, shear_v);
+    const double v4 = lm_to_n(fov / 2.0, fov / 2.0, shear_u, shear_v);
+    const double t1 = std::min(v1, v2);
+    const double t2 = std::min(v3, v4);
+    const double fov_n = 2.0 * -std::min(t1, t2);
+    const double theta_n = fov_n / x0;
+
+    // theta_n is our size in image space,
+    // therefore 1 / theta_n is our step length in grid space
+    return 1.0 / theta_n;
+}
+
+
 void sdp_gridder_make_kernel(
         const sdp_Mem* window,
         sdp_Mem* kernel,
