@@ -749,9 +749,10 @@ static void fft_norm(sdp_Mem* data, sdp_Error* status)
     if (*status) return;
     sdp_MemViewCpu<DATA_TYPE, 2> data_;
     sdp_mem_check_and_view(data, &data_, status);
-    const int num_x = data_.shape[0];
-    const int num_y = data_.shape[1];
+    const int num_x = (int) data_.shape[0];
+    const int num_y = (int) data_.shape[1];
     const double factor = 1.0 / (num_x * num_y);
+    #pragma omp parallel for
     for (int ix = 0; ix < num_x; ++ix)
     {
         for (int iy = 0; iy < num_y; ++iy)
@@ -824,35 +825,96 @@ void sdp_fft_norm(sdp_Mem* data, sdp_Error* status)
 }
 
 
-template<typename T>
-static void fft_phase(int num_x, int num_y, complex<T>* data)
+template<typename DATA_TYPE>
+static void fft_phase(sdp_Mem* data, sdp_Error* status)
 {
-    #pragma omp parallel for collapse(2)
-    for (int iy = 0; iy < num_y; ++iy)
+    if (*status) return;
+    sdp_MemViewCpu<DATA_TYPE, 2> data_;
+    sdp_mem_check_and_view(data, &data_, status);
+    const int num_x = (int) data_.shape[0];
+    const int num_y = (int) data_.shape[1];
+    #pragma omp parallel for
+    for (int ix = 0; ix < num_x; ++ix)
     {
-        for (int ix = 0; ix < num_x; ++ix)
+        for (int iy = 0; iy < num_y; ++iy)
         {
-            data[iy * num_x + ix] *= (T) (1 - (((ix + iy) & 1) << 1));
+            data_(ix, iy) *= (1 - (((ix + iy) & 1) << 1));
         }
     }
 }
 
 
+#if 0
+
+
+template<typename T>
+static inline void swap_values(T& a, T& b)
+{
+    T temp = a;
+    a = b;
+    b = temp;
+}
+
+
+// The fft_phase function, above, is faster than this by quite a long way.
+template<typename DATA_TYPE>
+static void fft_shift(sdp_Mem* data, sdp_Error* status)
+{
+    if (*status) return;
+    sdp_MemViewCpu<DATA_TYPE, 2> data_;
+    sdp_mem_check_and_view(data, &data_, status);
+    const int rows = (int) data_.shape[0];
+    const int cols = (int) data_.shape[1];
+    const int half_rows = rows / 2;
+    const int half_cols = cols / 2;
+
+    // Swap quadrants: 1 with 3, and 2 with 4 for even-sized arrays.
+    #pragma omp parallel for
+    for (int i = 0; i < half_rows; ++i)
+    {
+        for (int j = 0; j < half_cols; ++j)
+        {
+            // Swap (i, j) with (i + half_rows, j + half_cols)
+            swap_values(data_(i, j), data_(i + half_rows, j + half_cols));
+
+            // Swap (i, j + half_cols) with (i + half_rows, j)
+            swap_values(data_(i, j + half_cols), data_(i + half_rows, j));
+        }
+    }
+
+    // Handle odd-sized arrays.
+    if (rows % 2 != 0)
+    {
+        for (int j = 0; j < half_cols; ++j)
+        {
+            // Swap middle row's left and right parts.
+            swap_values(data_(half_rows, j), data_(half_rows, j + half_cols));
+        }
+    }
+    if (cols % 2 != 0)
+    {
+        for (int i = 0; i < half_rows; ++i)
+        {
+            // Swap middle column's top and bottom parts.
+            swap_values(data_(i, half_cols), data_(i + half_rows, half_cols));
+        }
+    }
+}
+#endif
+
+
 void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
 {
     if (*status || !data) return;
-    const int num_y = (int) sdp_mem_shape_dim(data, 0);
-    const int num_x = (int) sdp_mem_num_dims(data) > 1 ?
-                sdp_mem_shape_dim(data, 1) : 1;
     if (sdp_mem_location(data) == SDP_MEM_CPU)
     {
         if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            fft_phase(num_x, num_y, (complex<double>*) sdp_mem_data(data));
+            fft_phase<complex<double> >(data, status);
         }
         else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
         {
-            fft_phase(num_x, num_y, (complex<float>*) sdp_mem_data(data));
+            fft_phase<complex<float> >(data, status);
         }
         else
         {
@@ -862,20 +924,29 @@ void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
     else if (sdp_mem_location(data) == SDP_MEM_GPU)
     {
         uint64_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        sdp_MemViewGpu<complex<double>, 2> data_dbl;
+        sdp_MemViewGpu<complex<float>, 2> data_flt;
         const char* kernel_name = 0;
+        int is_dbl = 0;
         if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
         {
-            kernel_name = "sdp_fft_phase<float>";
+            is_dbl = 0;
+            sdp_mem_check_and_view(data, &data_flt, status);
+            kernel_name = "sdp_fft_phase<complex<float> >";
         }
         else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "sdp_fft_phase<double>";
+            is_dbl = 1;
+            sdp_mem_check_and_view(data, &data_dbl, status);
+            kernel_name = "sdp_fft_phase<complex<double> >";
         }
         else
         {
             *status = SDP_ERR_DATA_TYPE;
-            return;
         }
+        if (*status) return;
+        const int num_x = sdp_mem_shape_dim(data, 0);
+        const int num_y = sdp_mem_shape_dim(data, 1);
         if (num_x == 1)
         {
             num_threads[0] = 1;
@@ -886,7 +957,9 @@ void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
             num_threads[0] = 256;
             num_threads[1] = 1;
         }
-        const void* arg[] = {&num_x, &num_y, sdp_mem_gpu_buffer(data, status)};
+        const void* arg[] = {
+            is_dbl ? (const void*)&data_dbl : (const void*)&data_flt,
+        };
         num_blocks[0] = (num_x + num_threads[0] - 1) / num_threads[0];
         num_blocks[1] = (num_y + num_threads[1] - 1) / num_threads[1];
         sdp_launch_cuda_kernel(kernel_name,
