@@ -9,9 +9,10 @@ are handled internally.
 
 Some notes on the parameters passed to these functions:
 
-- The spacing between w-layers within each tower is given by
-  the ``w_step`` parameter, while the spacing between each tower is given by
-  the ``w_tower_height`` parameter. Both are in wavelengths.
+- The spacing (in wavelengths) between small w-layers within each tower is
+  given by the ``w_step`` parameter, while the spacing between the large
+  w-layers used for w-stacking is given by ``w_tower_height``
+  multiplied by ``w_step``.
 
 - The oversampling factors ``oversampling`` and ``w_oversampling``, which are
   used to tabulate the convolution kernels, should be large enough.

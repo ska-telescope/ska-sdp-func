@@ -23,6 +23,11 @@ if (NOT WIN32)
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
     endif()
 
+    # This made it slower!
+    # if ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel.*")
+    #     append_flags(CMAKE_CXX_FLAGS -axCORE-AVX512,CORE-AVX2 -qopt-zmm-usage=high)
+    # endif()
+
     if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang.*"
             OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
         append_flags(CMAKE_C_FLAGS -std=c99)

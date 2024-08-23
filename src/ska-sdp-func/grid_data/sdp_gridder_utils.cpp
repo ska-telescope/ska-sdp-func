@@ -31,13 +31,14 @@ void accum_scale_array(
     sdp_MemViewCpu<const IN1_TYPE, 2> in1_;
     sdp_mem_check_and_view(out, &out_, status);
     sdp_mem_check_and_view(in1, &in1_, status);
-    const int64_t shape0 = out_.shape[0];
-    const int64_t shape1 = out_.shape[1];
+    const int shape0 = (int) out_.shape[0];
+    const int shape1 = (int) out_.shape[1];
     if (exponent == 0 || !in2)
     {
-        for (int64_t i = 0; i < shape0; ++i)
+        #pragma omp parallel for
+        for (int i = 0; i < shape0; ++i)
         {
-            for (int64_t j = 0; j < shape1; ++j)
+            for (int j = 0; j < shape1; ++j)
             {
                 out_(i, j) += in1_(i, j);
             }
@@ -49,9 +50,10 @@ void accum_scale_array(
         sdp_mem_check_and_view(in2, &in2_, status);
         if (exponent == 1)
         {
-            for (int64_t i = 0; i < shape0; ++i)
+            #pragma omp parallel for
+            for (int i = 0; i < shape0; ++i)
             {
-                for (int64_t j = 0; j < shape1; ++j)
+                for (int j = 0; j < shape1; ++j)
                 {
                     out_(i, j) += (IN2_TYPE) in1_(i, j) * in2_(i, j);
                 }
@@ -59,9 +61,10 @@ void accum_scale_array(
         }
         else
         {
-            for (int64_t i = 0; i < shape0; ++i)
+            #pragma omp parallel for
+            for (int i = 0; i < shape0; ++i)
             {
-                for (int64_t j = 0; j < shape1; ++j)
+                for (int j = 0; j < shape1; ++j)
                 {
                     out_(i, j) += (IN2_TYPE) in1_(i, j) * pow(
                             in2_(i, j), exponent
@@ -86,11 +89,12 @@ void accum_complex_real_array(
     sdp_MemViewCpu<const IN_TYPE, 2> in_;
     sdp_mem_check_and_view(out, &out_, status);
     sdp_mem_check_and_view(in, &in_, status);
-    const int64_t shape0 = out_.shape[0];
-    const int64_t shape1 = out_.shape[1];
-    for (int64_t i = 0; i < shape0; ++i)
+    const int shape0 = (int) out_.shape[0];
+    const int shape1 = (int) out_.shape[1];
+    #pragma omp parallel for
+    for (int i = 0; i < shape0; ++i)
     {
-        for (int64_t j = 0; j < shape1; ++j)
+        for (int j = 0; j < shape1; ++j)
         {
             out_(i, j) += in_(i, j).real();
         }
@@ -160,13 +164,14 @@ void scale_inv_array(
     sdp_mem_check_and_view(out, &out_, status);
     sdp_mem_check_and_view(in1, &in1_, status);
     sdp_mem_check_and_view(in2, &in2_, status);
-    const int64_t shape0 = out_.shape[0];
-    const int64_t shape1 = out_.shape[1];
+    const int shape0 = (int) out_.shape[0];
+    const int shape1 = (int) out_.shape[1];
     if (exponent == 1)
     {
-        for (int64_t i = 0; i < shape0; ++i)
+        #pragma omp parallel for
+        for (int i = 0; i < shape0; ++i)
         {
-            for (int64_t j = 0; j < shape1; ++j)
+            for (int j = 0; j < shape1; ++j)
             {
                 out_(i, j) = (IN2_TYPE) in1_(i, j) / in2_(i, j);
             }
@@ -174,9 +179,10 @@ void scale_inv_array(
     }
     else
     {
-        for (int64_t i = 0; i < shape0; ++i)
+        #pragma omp parallel for
+        for (int i = 0; i < shape0; ++i)
         {
-            for (int64_t j = 0; j < shape1; ++j)
+            for (int j = 0; j < shape1; ++j)
             {
                 out_(i, j) = (IN2_TYPE) in1_(i, j) / pow(in2_(i, j), exponent);
             }
@@ -257,27 +263,30 @@ void subgrid_cut_out(
 
 
 // Determine sum of element-wise difference: result = sum(a - b).
-template<typename A_TYPE, typename B_TYPE>
 void sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
-        double* result,
+        int64_t* result,
         sdp_Error* status
 )
 {
-    sdp_MemViewCpu<const A_TYPE, 1> a_;
-    sdp_MemViewCpu<const B_TYPE, 1> b_;
+    sdp_MemViewCpu<const int, 1> a_;
+    sdp_MemViewCpu<const int, 1> b_;
     sdp_mem_check_and_view(a, &a_, status);
     sdp_mem_check_and_view(b, &b_, status);
+    if (*status) return;
     if (a_.shape[0] != b_.shape[0])
     {
         *status = SDP_ERR_INVALID_ARGUMENT;
         return;
     }
-    for (int64_t i = 0; i < a_.shape[0]; ++i)
+    int64_t res = 0;
+    const int num = (int) a_.shape[0];
+    for (int i = 0; i < num; ++i)
     {
-        *result += (double) (a_(i) - b_(i));
+        res += (a_(i) - b_(i));
     }
+    *result = res;
 }
 
 
@@ -981,18 +990,18 @@ void sdp_gridder_subgrid_cut_out(
 void sdp_gridder_sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
-        double* result,
+        int64_t* result,
         sdp_Error* status
 )
 {
     if (*status) return;
     const sdp_MemLocation loc = sdp_mem_location(a);
-    *result = 0.0;
+    *result = 0;
     if (loc == SDP_MEM_CPU)
     {
         if (sdp_mem_type(a) == SDP_MEM_INT && sdp_mem_type(b) == SDP_MEM_INT)
         {
-            sum_diff<int, int>(a, b, result, status);
+            sum_diff(a, b, result, status);
         }
         else
         {

@@ -185,7 +185,7 @@ void sdp_gridder_subgrid_cut_out(
 void sdp_gridder_sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
-        double* result,
+        int64_t* result,
         sdp_Error* status
 );
 
