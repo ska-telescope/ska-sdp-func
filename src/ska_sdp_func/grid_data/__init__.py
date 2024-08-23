@@ -10,6 +10,7 @@ from .grid_wstack_wtower import (
 from .gridder_direct import GridderDirect
 from .gridder_utils import (
     clamp_channels_single,
+    clamp_channels_uv,
     determine_w_step,
     make_kernel,
     make_pswf_kernel,

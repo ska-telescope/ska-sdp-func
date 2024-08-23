@@ -46,6 +46,47 @@ def clamp_channels_single(
     )
 
 
+def clamp_channels_uv(
+    uvws: numpy.ndarray,
+    freq0_hz: float,
+    dfreq_hz: float,
+    start_ch: numpy.ndarray,
+    end_ch: numpy.ndarray,
+    min_u: float,
+    max_u: float,
+    min_v: float,
+    max_v: float,
+):
+    """
+    Clamp channels for (u,v) in an array of uvw coordinates.
+
+    Restricts a channel range such that all visibilities lie in
+    the given range in u and v.
+
+    :param uvws:
+        ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).
+    :param freq0_hz: Frequency of first channel, in Hz.
+    :param dfreq_hz: Channel width, in Hz.
+    :param start_ch: Channel range to clamp (excluding end).
+    :param end_ch: Channel range to clamp (excluding end).
+    :param min_u: Minimum value for u (inclusive).
+    :param max_u: Maximum value for u (exclusive).
+    :param min_v: Minimum value for v (inclusive).
+    :param max_v: Maximum value for v (exclusive).
+    """
+    Lib.sdp_gridder_clamp_channels_uv(
+        Mem(uvws),
+        freq0_hz,
+        dfreq_hz,
+        Mem(start_ch),
+        Mem(end_ch),
+        min_u,
+        max_u,
+        min_v,
+        max_v,
+    )
+
+
 def determine_w_step(
     theta: float, fov: float, shear_u: float, shear_v: float, x0: float = 0.0
 ):
@@ -204,6 +245,23 @@ Lib.wrap_func(
         ctypes.c_double,
         Mem.handle_type(),
         Mem.handle_type(),
+        ctypes.c_double,
+        ctypes.c_double,
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_clamp_channels_uv",
+    restype=None,
+    argtypes=[
+        Mem.handle_type(),
+        ctypes.c_double,
+        ctypes.c_double,
+        Mem.handle_type(),
+        Mem.handle_type(),
+        ctypes.c_double,
+        ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
     ],
