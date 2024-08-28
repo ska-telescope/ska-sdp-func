@@ -41,6 +41,24 @@ void sdp_gridder_accumulate_scaled_arrays(
 );
 
 /**
+ * @brief Determine a value for the w_step parameter.
+ *
+ * @param theta Size of padded field of view, in direction cosines.
+ * @param fov Size of imaged field of view, in direction cosines.
+ * @param shear_u Shear parameter in u (use zero for no shear).
+ * @param shear_v Shear parameter in v (use zero for no shear).
+ * @param x0 If not zero, scaling factor for fov_n; if zero, this
+ *           will be calculated as fov / theta.
+ */
+double sdp_gridder_determine_w_step(
+        double theta,
+        double fov,
+        double shear_u,
+        double shear_v,
+        double x0
+);
+
+/**
  * @brief Convert image-space window function to oversampled kernel.
  *
  * This uses a DFT to do the transformation to Fourier space.
@@ -167,7 +185,7 @@ void sdp_gridder_subgrid_cut_out(
 void sdp_gridder_sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
-        double* result,
+        int64_t* result,
         sdp_Error* status
 );
 

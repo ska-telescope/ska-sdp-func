@@ -2098,7 +2098,7 @@ def test_gridder_wstack():
     t0 = time.time()
     w_tower_height = find_max_w_tower_height(gridder_ref, fov, subgrid_frac)
     t1 = time.time() - t0
-    print(f"find_max_w_tower_height took {t1:.4f} s.")
+    print(f"w_tower_height is {w_tower_height} (took {t1:.4f} s.)")
 
     # Call the reference degridding function.
     t0 = time.time()
@@ -2276,7 +2276,7 @@ def test_gpu_gridder_wstack():
     t0 = time.time()
     w_tower_height = find_max_w_tower_height(gridder_ref, fov, subgrid_frac)
     t1 = time.time() - t0
-    print(f"find_max_w_tower_height took {t1:.4f} s.")
+    print(f"w_tower_height is {w_tower_height} (took {t1:.4f} s.)")
 
     # Call the CPU PFL degridding function.
     vis_ref = numpy.zeros_like(vis_dft)

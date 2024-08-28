@@ -42,6 +42,36 @@ void sdp_gridder_clamp_channels_single(
         sdp_Error* status
 );
 
+/**
+ * @brief Clamp channels for (u,v) in an array of uvw coordinates.
+ *
+ * Restricts a channel range such that all visibilities lie in
+ * the given range in u and v.
+ *
+ * @param uvws ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).
+ * @param freq0_hz Frequency of first channel, in Hz.
+ * @param dfreq_hz Channel width, in Hz.
+ * @param start_ch Channel range to clamp (excluding end).
+ * @param end_ch Channel range to clamp (excluding end).
+ * @param min_u Minimum value for u (inclusive).
+ * @param max_u Maximum value for u (exclusive).
+ * @param min_v Minimum value for v (inclusive).
+ * @param max_v Maximum value for v (exclusive).
+ * @param status Error status.
+ */
+void sdp_gridder_clamp_channels_uv(
+        const sdp_Mem* uvws,
+        const double freq0_hz,
+        const double dfreq_hz,
+        sdp_Mem* start_ch,
+        sdp_Mem* end_ch,
+        const double min_u,
+        const double max_u,
+        const double min_v,
+        const double max_v,
+        sdp_Error* status
+);
+
 
 /**
  * @brief Clamp channels for a particular uvw position.
