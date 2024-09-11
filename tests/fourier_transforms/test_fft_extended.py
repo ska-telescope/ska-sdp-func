@@ -22,9 +22,7 @@ def test_fft_2d_ones():
         idata_1d_gpu = cupy.zeros(512 * 4 * 128, dtype=numpy.complex128)
         odata_1d_gpu = cupy.zeros_like(idata_1d_gpu)
         output_cpu = numpy.zeros_like(input_data)
-        fft_cpu = FftExtended(
-            idata_1d_gpu, odata_1d_gpu, input_data, output_cpu, 1, True, 4, 128
-        )
+        fft_cpu = FftExtended(idata_1d_gpu, odata_1d_gpu, 1, True, 4, 128)
         fft_cpu.exec(input_data, output_cpu)
         numpy.testing.assert_allclose(output_cpu, output_ref)
 
@@ -41,9 +39,7 @@ def test_fft_2d():
         idata_1d_gpu = cupy.zeros(512 * 4 * 128, dtype=numpy.complex128)
         odata_1d_gpu = cupy.zeros_like(idata_1d_gpu)
         output_cpu = numpy.zeros_like(input_data)
-        fft_cpu = FftExtended(
-            idata_1d_gpu, odata_1d_gpu, input_data, output_cpu, 1, True, 4, 128
-        )
+        fft_cpu = FftExtended(idata_1d_gpu, odata_1d_gpu, 1, True, 4, 128)
         fft_cpu.exec(input_data, output_cpu)
         numpy.testing.assert_allclose(output_cpu, output_ref)
 
@@ -63,8 +59,6 @@ def test_fft_2d_inverse():
         fft_cpu = FftExtended(
             idata_1d_gpu,
             odata_1d_gpu,
-            input_data,
-            output_cpu,
             1,
             False,
             4,

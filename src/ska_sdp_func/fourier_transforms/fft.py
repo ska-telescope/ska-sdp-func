@@ -88,8 +88,6 @@ class FftExtended(StructWrapper):
         self,
         idata_1d,
         odata_1d,
-        input_data,
-        output_data,
         num_dims_fft,
         is_forward,
         num_streams,
@@ -107,12 +105,6 @@ class FftExtended(StructWrapper):
 
         :param odata_1d: Output scratch GPU array
         :type odata_1d: cupy.ndarray
-
-        :param input_data: Input data.
-        :type input_data: numpy.ndarray or cupy.ndarray
-
-        :param output_data: Output data.
-        :type output_data: numpy.ndarray or cupy.ndarray
 
         :param num_dims_fft: The number of dimensions for the FFT.
         :type num_dims_fft: int
