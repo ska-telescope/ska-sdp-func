@@ -61,7 +61,14 @@ def test_fft_2d_inverse():
         odata_1d_gpu = cupy.zeros_like(idata_1d_gpu)
         output_cpu = numpy.zeros_like(input_data)
         fft_cpu = Fft_extended(
-            idata_1d_gpu, odata_1d_gpu, input_data, output_cpu, 1, False, 4, 128
+            idata_1d_gpu,
+            odata_1d_gpu,
+            input_data,
+            output_cpu,
+            1,
+            False,
+            4,
+            128,
         )
         fft_cpu.exec(input_data, output_cpu)
         output_cpu /= input_data.size
