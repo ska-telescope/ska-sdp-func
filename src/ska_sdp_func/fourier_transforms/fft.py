@@ -81,8 +81,8 @@ Lib.wrap_func(
 )
 
 
-class Fft_extended(StructWrapper):
-    """Interface to SDP FFT."""
+class FftExtended(StructWrapper):
+    """Interface to SDP FFT extended."""
 
     def __init__(
         self,
@@ -101,6 +101,12 @@ class Fft_extended(StructWrapper):
         num_dims_fft parameter. If this is less than the number of dimensions
         in the arrays, then the FFT batch size is assumed to be the size of the
         first (slowest varying) dimension.
+
+        :param idata_1d: Input scratch GPU array
+        :type idata_1d: cupy.ndarray
+
+        :param odata_1d: Output scratch GPU array
+        :type odata_1d: cupy.ndarray
 
         :param input_data: Input data.
         :type input_data: numpy.ndarray or cupy.ndarray
@@ -149,7 +155,7 @@ class Fft_extended(StructWrapper):
 
 Lib.wrap_func(
     "sdp_fft_extended_create",
-    restype=Fft_extended.handle_type(),
+    restype=FftExtended.handle_type(),
     argtypes=[
         Mem.handle_type(),
         Mem.handle_type(),
@@ -164,14 +170,14 @@ Lib.wrap_func(
 Lib.wrap_func(
     "sdp_fft_extended_free",
     restype=None,
-    argtypes=[Fft_extended.handle_type()],
+    argtypes=[FftExtended.handle_type()],
 )
 
 Lib.wrap_func(
     "sdp_fft_extended_exec",
     restype=None,
     argtypes=[
-        Fft_extended.handle_type(),
+        FftExtended.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
     ],
