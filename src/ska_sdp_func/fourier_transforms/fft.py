@@ -80,10 +80,21 @@ Lib.wrap_func(
     check_errcode=True,
 )
 
+
 class Fft_extended(StructWrapper):
     """Interface to SDP FFT."""
 
-    def __init__(self, input_data, output_data, num_dims_fft, is_forward, num_streams, batch_size):
+    def __init__(
+        self,
+        idata_1d,
+        odata_1d,
+        input_data,
+        output_data,
+        num_dims_fft,
+        is_forward,
+        num_streams,
+        batch_size,
+    ):
         """Creates a plan for FFTs using the supplied input and output buffers.
 
         The number of dimensions used for the FFT is specified using the
@@ -103,23 +114,25 @@ class Fft_extended(StructWrapper):
         :param is_forward: Set true if FFT should be "forward",
                            false for "inverse".
         :type is_forward: bool
-        
+
         :param num_streams: The number of CUDA streams.
         :type num_streams: int
-        
+
         :param batch_size: The size of the batch (simultaneously performed 1D FFTs).
         :type batch_size: int
-        
+
         """
         create_args = (
-            Mem(input_data),
-            Mem(output_data),
+            Mem(idata_1d),
+            Mem(odata_1d),
             num_dims_fft,
             is_forward,
             num_streams,
-            batch_size
+            batch_size,
         )
-        super().__init__(Lib.sdp_fft_extended_create, create_args, Lib.sdp_fft_extended_free)
+        super().__init__(
+            Lib.sdp_fft_extended_create, create_args, Lib.sdp_fft_extended_free
+        )
 
     def exec(self, input_data, output_data):
         """Executes FFT using plan and supplied data.
@@ -142,7 +155,7 @@ Lib.wrap_func(
         ctypes.c_int32,
         ctypes.c_int32,
         ctypes.c_int32,
-        ctypes.c_int32
+        ctypes.c_int32,
     ],
     check_errcode=True,
 )
@@ -163,5 +176,3 @@ Lib.wrap_func(
     ],
     check_errcode=True,
 )
-
-
