@@ -118,7 +118,8 @@ class Fft_extended(StructWrapper):
         :param num_streams: The number of CUDA streams.
         :type num_streams: int
 
-        :param batch_size: The size of the batch (simultaneously performed 1D FFTs).
+        :param batch_size: The size of the batch
+                           (simultaneously performed 1D FFTs).
         :type batch_size: int
 
         """
