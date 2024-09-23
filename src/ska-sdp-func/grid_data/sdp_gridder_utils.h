@@ -41,6 +41,17 @@ void sdp_gridder_accumulate_scaled_arrays(
 );
 
 /**
+ * @brief Count non-zero pixels in an image.
+ *
+ * @param image Image to analyse.
+ * @param status Error status.
+ */
+int64_t sdp_gridder_count_nonzero_pixels(
+        const sdp_Mem* image,
+        sdp_Error* status
+);
+
+/**
  * @brief Determine a value for the w_step parameter.
  *
  * @param theta Size of padded field of view, in direction cosines.
@@ -56,6 +67,40 @@ double sdp_gridder_determine_w_step(
         double shear_u,
         double shear_v,
         double x0
+);
+
+/**
+ * @brief Convert image pixels to coordinates and optionally, fluxes.
+ *
+ * If the @p flux parameter is not NULL, then only the non-zero pixel values
+ * and corresponding coordinates will be returned.
+ * Both the output arrays must be created with the correct size before this
+ * function is called, which can be done by first
+ * calling @fn sdp_gridder_count_nonzero_pixels().
+ *
+ * If the @p flux parameter is NULL, then the output pixel coordinates will be
+ * for the whole image, and the @p lmn array must be sized appropriately.
+ *
+ * @param image Image to convert.
+ * @param theta Field of view in direction cosines.
+ * @param shear_u Shear parameter in u (use zero for no shear).
+ * @param shear_v Shear parameter in v (use zero for no shear).
+ * @param image_taper_1d Optional separable taper to apply across
+ *                       both dimensions of the image. May be NULL.
+ * @param flux Optional output pixel brightness values.
+ *             If not NULL, must be pre-sized.
+ * @param lmn Output pixel (l, m, n)-coordinates. Must be pre-sized.
+ * @param status Error status.
+ */
+void sdp_gridder_image_to_flmn(
+        const sdp_Mem* image,
+        double theta,
+        double shear_u,
+        double shear_v,
+        const sdp_Mem* image_taper_1d,
+        sdp_Mem* flux,
+        sdp_Mem* lmn,
+        sdp_Error* status
 );
 
 /**
@@ -113,6 +158,21 @@ void sdp_gridder_make_w_pattern(
         double shear_v,
         double w_step,
         sdp_Mem* w_pattern,
+        sdp_Error* status
+);
+
+/**
+ * @brief Returns the RMS of the difference between two 2D arrays: rms(a - b).
+ *
+ * The two arrays must be 2D and have the same shape.
+ *
+ * @param a The first input array.
+ * @param b The second input array.
+ * @param status Error status.
+ */
+double sdp_gridder_rms_diff(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
         sdp_Error* status
 );
 

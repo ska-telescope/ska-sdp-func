@@ -102,6 +102,94 @@ void accum_complex_real_array(
 }
 
 
+// Local function to count non-zero pixels in image.
+template<typename FLUX_TYPE>
+int64_t count_nonzero_pixels(const sdp_Mem* image, sdp_Error* status)
+{
+    int64_t num_sources = 0;
+    const int image_size = (int) sdp_mem_shape_dim(image, 0);
+    sdp_MemViewCpu<const FLUX_TYPE, 2> image_;
+    sdp_mem_check_and_view(image, &image_, status);
+    if (*status) return 0;
+    for (int il = 0; il < image_size; ++il)
+    {
+        for (int im = 0; im < image_size; ++im)
+        {
+            if (image_(il, im) != (FLUX_TYPE) 0) num_sources++;
+        }
+    }
+    return num_sources;
+}
+
+
+// Local function to convert image pixels to coordinates and optionally, fluxes.
+template<typename IMAGE_TYPE, typename FLUX_TYPE, typename DIR_TYPE>
+void image_to_flmn(
+        const sdp_Mem* image,
+        double theta,
+        double shear_u,
+        double shear_v,
+        const sdp_Mem* image_taper_1d,
+        sdp_Mem* flux,
+        sdp_Mem* lmn,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_MemViewCpu<const IMAGE_TYPE, 2> image_;
+    sdp_MemViewCpu<FLUX_TYPE, 1> flux_;
+    sdp_MemViewCpu<DIR_TYPE, 2> lmn_;
+    sdp_MemViewCpu<const double, 1> taper_;
+    sdp_mem_check_and_view(image, &image_, status);
+    if (flux) sdp_mem_check_and_view(flux, &flux_, status);
+    sdp_mem_check_and_view(lmn, &lmn_, status);
+    if (image_taper_1d) sdp_mem_check_and_view(image_taper_1d, &taper_, status);
+
+    // Store pixel data.
+    if (*status) return;
+    int64_t k = 0;
+    const int size_l = (int) sdp_mem_shape_dim(image, 0);
+    const int size_m = (int) sdp_mem_shape_dim(image, 1);
+    if (flux)
+    {
+        for (int il = 0; il < size_l; ++il)
+        {
+            const double l = (il - size_l / 2) * theta / size_l;
+            for (int im = 0; im < size_m; ++im)
+            {
+                const double m = (im - size_m / 2) * theta / size_m;
+                const IMAGE_TYPE pix_val = image_(il, im);
+                if (pix_val != (IMAGE_TYPE) 0)
+                {
+                    const double taper_val = (
+                        image_taper_1d ? taper_(il) * taper_(im) : 1.0
+                    );
+                    flux_(k) = std::real(pix_val) * taper_val;
+                    lmn_(k, 0) = l;
+                    lmn_(k, 1) = m;
+                    lmn_(k, 2) = lm_to_n(l, m, shear_u, shear_v);
+                    k++;
+                }
+            }
+        }
+    }
+    else
+    {
+        for (int il = 0; il < size_l; ++il)
+        {
+            const double l = (il - size_l / 2) * theta / size_l;
+            for (int im = 0; im < size_m; ++im, ++k)
+            {
+                const double m = (im - size_m / 2) * theta / size_m;
+                lmn_(k, 0) = l;
+                lmn_(k, 1) = m;
+                lmn_(k, 2) = lm_to_n(l, m, shear_u, shear_v);
+            }
+        }
+    }
+}
+
+
 // Make an oversampled uv-space kernel from an image-space window function.
 template<typename T>
 void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
@@ -144,6 +232,31 @@ void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
             kernel_(i, s_out) = (T) val * inv_support;
         }
     }
+}
+
+
+// Local function to compute the RMS difference between 2D arrays, rms(a - b).
+template<typename TYPE_A, typename TYPE_B>
+double rms_diff(const sdp_Mem* a, const sdp_Mem* b, sdp_Error* status)
+{
+    sdp_MemViewCpu<const TYPE_A, 2> a_;
+    sdp_MemViewCpu<const TYPE_B, 2> b_;
+    sdp_mem_check_and_view(a, &a_, status);
+    sdp_mem_check_and_view(b, &b_, status);
+    if (*status) return INFINITY;
+    double sum_sq_diff = 0.0;
+    const int num_x = (int) a_.shape[0];
+    const int num_y = (int) a_.shape[1];
+    const int size = num_x * num_y;
+    #pragma omp parallel for reduction(+:sum_sq_diff) collapse(2)
+    for (int i = 0; i < num_x; ++i)
+    {
+        for (int j = 0; j < num_y; ++j)
+        {
+            sum_sq_diff += std::norm(a_(i, j) - b_(i, j));
+        }
+    }
+    return sqrt(sum_sq_diff / size);
 }
 
 
@@ -596,6 +709,35 @@ void sdp_gridder_accumulate_scaled_arrays(
 }
 
 
+int64_t sdp_gridder_count_nonzero_pixels(
+        const sdp_Mem* image,
+        sdp_Error* status
+)
+{
+    int64_t num_src = 0;
+    if (*status) return 0;
+    switch (sdp_mem_type(image))
+    {
+    case SDP_MEM_COMPLEX_DOUBLE:
+        num_src = count_nonzero_pixels<complex<double> >(image, status);
+        break;
+    case SDP_MEM_COMPLEX_FLOAT:
+        num_src = count_nonzero_pixels<complex<float> >(image, status);
+        break;
+    case SDP_MEM_DOUBLE:
+        num_src = count_nonzero_pixels<double>(image, status);
+        break;
+    case SDP_MEM_FLOAT:
+        num_src = count_nonzero_pixels<float>(image, status);
+        break;
+    default:
+        *status = SDP_ERR_DATA_TYPE;
+        break;
+    }
+    return num_src;
+}
+
+
 double sdp_gridder_determine_w_step(
         double theta,
         double fov,
@@ -619,6 +761,69 @@ double sdp_gridder_determine_w_step(
     // theta_n is our size in image space,
     // therefore 1 / theta_n is our step length in grid space
     return 1.0 / theta_n;
+}
+
+
+void sdp_gridder_image_to_flmn(
+        const sdp_Mem* image,
+        double theta,
+        double shear_u,
+        double shear_v,
+        const sdp_Mem* image_taper_1d,
+        sdp_Mem* flux,
+        sdp_Mem* lmn,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    const sdp_MemType image_type = sdp_mem_type(image);
+    const sdp_MemType flux_type = flux ? sdp_mem_type(flux) : SDP_MEM_DOUBLE;
+    const sdp_MemType dir_type = sdp_mem_type(lmn);
+    if (image_type == SDP_MEM_DOUBLE &&
+            flux_type == SDP_MEM_DOUBLE &&
+            dir_type == SDP_MEM_DOUBLE)
+    {
+        image_to_flmn<double, double, double>(image, theta,
+                shear_u, shear_v, image_taper_1d, flux, lmn, status
+        );
+    }
+    else if (image_type == SDP_MEM_FLOAT &&
+            flux_type == SDP_MEM_DOUBLE &&
+            dir_type == SDP_MEM_FLOAT)
+    {
+        image_to_flmn<float, double, float>(image, theta,
+                shear_u, shear_v, image_taper_1d, flux, lmn, status
+        );
+    }
+    else if (image_type == SDP_MEM_COMPLEX_DOUBLE &&
+            flux_type == SDP_MEM_DOUBLE &&
+            dir_type == SDP_MEM_DOUBLE)
+    {
+        image_to_flmn<complex<double>, double, double>(image, theta,
+                shear_u, shear_v, image_taper_1d, flux, lmn, status
+        );
+    }
+    else if (image_type == SDP_MEM_COMPLEX_FLOAT &&
+            flux_type == SDP_MEM_DOUBLE &&
+            dir_type == SDP_MEM_FLOAT)
+    {
+        image_to_flmn<complex<float>, double, float>(image, theta,
+                shear_u, shear_v, image_taper_1d, flux, lmn, status
+        );
+    }
+    else if (image_type == SDP_MEM_COMPLEX_FLOAT &&
+            flux_type == SDP_MEM_DOUBLE &&
+            dir_type == SDP_MEM_DOUBLE)
+    {
+        image_to_flmn<complex<float>, double, double>(image, theta,
+                shear_u, shear_v, image_taper_1d, flux, lmn, status
+        );
+    }
+    else
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types");
+    }
 }
 
 
@@ -697,6 +902,59 @@ void sdp_gridder_make_w_pattern(
             w_pattern_(il, im) = complex<double>(cos(phase), sin(phase));
         }
     }
+}
+
+
+double sdp_gridder_rms_diff(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        sdp_Error* status
+)
+{
+    if (*status) return INFINITY;
+    if (sdp_mem_location(a) != SDP_MEM_CPU || sdp_mem_location(b) != SDP_MEM_CPU)
+    {
+        SDP_LOG_ERROR("Input arrays must be in CPU memory");
+        *status = SDP_ERR_MEM_LOCATION;
+        return INFINITY;
+    }
+    const sdp_MemType t_a = sdp_mem_type(a);
+    const sdp_MemType t_b = sdp_mem_type(b);
+    if (sdp_mem_num_dims(a) != 2 || sdp_mem_num_dims(b) != 2)
+    {
+        SDP_LOG_ERROR("Input arrays must be 2D");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return INFINITY;
+    }
+    if (sdp_mem_shape_dim(a, 0) != sdp_mem_shape_dim(b, 0) ||
+            sdp_mem_shape_dim(a, 1) != sdp_mem_shape_dim(b, 1))
+    {
+        SDP_LOG_ERROR("Input arrays must have the same shape");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return INFINITY;
+    }
+    if (t_a == SDP_MEM_COMPLEX_DOUBLE && t_b == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        return rms_diff<complex<double>, complex<double> >(a, b, status);
+    }
+    else if (t_a == SDP_MEM_COMPLEX_FLOAT && t_b == SDP_MEM_COMPLEX_FLOAT)
+    {
+        return rms_diff<complex<float>, complex<float> >(a, b, status);
+    }
+    else if (t_a == SDP_MEM_DOUBLE && t_b == SDP_MEM_DOUBLE)
+    {
+        return rms_diff<double, double>(a, b, status);
+    }
+    else if (t_a == SDP_MEM_FLOAT && t_b == SDP_MEM_FLOAT)
+    {
+        return rms_diff<float, float>(a, b, status);
+    }
+    else
+    {
+        SDP_LOG_ERROR("Unsupported data types for RMS difference calculation");
+        *status = SDP_ERR_DATA_TYPE;
+    }
+    return INFINITY;
 }
 
 
@@ -856,8 +1114,23 @@ void sdp_gridder_subgrid_add(
                     grid, offset_u, offset_v, subgrid, (float) factor, status
             );
         }
+        else if (sdp_mem_type(grid) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(subgrid) == SDP_MEM_DOUBLE)
+        {
+            subgrid_add<double, double, double>(
+                    grid, offset_u, offset_v, subgrid, factor, status
+            );
+        }
+        else if (sdp_mem_type(grid) == SDP_MEM_FLOAT &&
+                sdp_mem_type(subgrid) == SDP_MEM_FLOAT)
+        {
+            subgrid_add<float, float, float>(
+                    grid, offset_u, offset_v, subgrid, (float) factor, status
+            );
+        }
         else
         {
+            SDP_LOG_ERROR("Unsupported grid or sub-grid data type");
             *status = SDP_ERR_DATA_TYPE;
         }
     }
@@ -893,6 +1166,7 @@ void sdp_gridder_subgrid_add(
         }
         else
         {
+            SDP_LOG_ERROR("Unsupported grid or sub-grid data type");
             *status = SDP_ERR_DATA_TYPE;
         }
         const void* arg[] = {
@@ -935,8 +1209,23 @@ void sdp_gridder_subgrid_cut_out(
                     grid, offset_u, offset_v, subgrid, status
             );
         }
+        else if (sdp_mem_type(grid) == SDP_MEM_DOUBLE &&
+                sdp_mem_type(subgrid) == SDP_MEM_DOUBLE)
+        {
+            subgrid_cut_out<double, double>(
+                    grid, offset_u, offset_v, subgrid, status
+            );
+        }
+        else if (sdp_mem_type(grid) == SDP_MEM_FLOAT &&
+                sdp_mem_type(subgrid) == SDP_MEM_FLOAT)
+        {
+            subgrid_cut_out<float, float>(
+                    grid, offset_u, offset_v, subgrid, status
+            );
+        }
         else
         {
+            SDP_LOG_ERROR("Unsupported grid or sub-grid data type");
             *status = SDP_ERR_DATA_TYPE;
         }
     }
@@ -972,6 +1261,7 @@ void sdp_gridder_subgrid_cut_out(
         }
         else
         {
+            SDP_LOG_ERROR("Unsupported grid or sub-grid data type");
             *status = SDP_ERR_DATA_TYPE;
         }
         const void* arg[] = {
@@ -1096,6 +1386,7 @@ void sdp_gridder_uvw_bounds_all(
         }
         else
         {
+            SDP_LOG_ERROR("Unsupported (u,v,w) data type");
             *status = SDP_ERR_DATA_TYPE;
         }
     }
@@ -1136,6 +1427,7 @@ void sdp_gridder_uvw_bounds_all(
         }
         else
         {
+            SDP_LOG_ERROR("Unsupported (u,v,w) data type");
             *status = SDP_ERR_DATA_TYPE;
         }
         const void* arg[] = {

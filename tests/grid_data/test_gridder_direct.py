@@ -33,28 +33,63 @@ def idft(vis, uvws, lmns):
     )
 
 
-def image_to_flmn(image, theta):
+def lm_to_n(l, m, h_u, h_v):  # noqa: E741
+    """
+    Find location on sky sphere
+
+    Incoming coordinates are assumed to already be transformed
+    :param l, m: Horizontal / vertical sky coordinates
+    :param h_u, h_v: Horizontal / vertical shear factors
+    :returns: n, the coordinate towards the phase centre
+    """
+
+    # Easy case
+    if h_u == 0 and h_v == 0:
+        return numpy.sqrt(1 - l * l - m * m) - 1
+
+    # Sheared case
+    hul_hvm_1 = h_u * l + h_v * m - 1  # = -1 with h_u=h_v=0
+    hu2_hv2_1 = h_u * h_u + h_v * h_v + 1  # = 1 with h_u=h_v=0
+    return (
+        numpy.sqrt(hul_hvm_1 * hul_hvm_1 - hu2_hv2_1 * (l * l + m * m))
+        + hul_hvm_1
+    ) / hu2_hv2_1
+
+
+def image_to_flmn(image, theta, h_u, h_v):
     """
     Convert image into list of sources
 
     :param image: Image, assumed to be at centre of sky sphere
     :param theta:
         Size of image in (l,m) coordinate system (i.e. directional cosines)
+    :param h_u, h_v: Horizontal / vertical shear factors
     :returns: List of (flux, l, m, n) tuples
     """
-    result = []
-    image_size = image.shape[0]
-    for il, im in zip(*numpy.where(image != 0)):
-        dir_l = (il - image_size // 2) * theta / image_size
-        dir_m = (im - image_size // 2) * theta / image_size
-        dir_n = numpy.sqrt(1 - dir_l * dir_l - dir_m * dir_m) - 1
-        assert image[il, im] != 0
-        result.append((image[il, im], dir_l, dir_m, dir_n))
-    return numpy.array(result)
+    image_size_l = image.shape[0]
+    image_size_m = image.shape[1]
+    ils, ims = numpy.where(image != 0)
+    ls = (ils - image_size_l // 2) * (theta / image_size_l)
+    ms = (ims - image_size_m // 2) * (theta / image_size_m)
+    return numpy.transpose(
+        [image[ils, ims], ls, ms, lm_to_n(ls, ms, h_u, h_v)]
+    )
 
 
-def shift_uvw(uvw, idu, idv, theta):
-    return uvw - [idu / theta, idv / theta, 0]
+def shift_uvw(uvw, offsets, theta, w_step=0):
+    return uvw - numpy.array(offsets) * [1 / theta, 1 / theta, w_step]
+
+
+def make_pswf(support, size):
+    pswf = scipy.special.pro_ang1(
+        0,
+        0,
+        numpy.pi * support / 2,
+        numpy.arange(-size // 2, size // 2) / size * 2,
+    )[0]
+    if size % 2 == 0:
+        pswf[0] = 1e-15
+    return pswf
 
 
 class DFTGridKernel:
@@ -65,7 +100,14 @@ class DFTGridKernel:
     """
 
     def __init__(
-        self, image_size: int, subgrid_size: int, theta: float, support: int
+        self,
+        image_size: int,
+        subgrid_size: int,
+        theta: float,
+        w_step: float,
+        shear_u: float,
+        shear_v: float,
+        support: int,
     ):
 
         # Image / subgrid setup. We assume that some gridding kernels might
@@ -74,27 +116,21 @@ class DFTGridKernel:
         self.image_size = image_size
         self.subgrid_size = subgrid_size
         self.theta = theta
+        self.w_step = w_step  # not currently used
+        self.shear_u = shear_u
+        self.shear_v = shear_v
+        self.support = support
 
         # Processing function plan / common parameters
-        image_coords = (
-            numpy.arange(-image_size // 2, image_size // 2) / image_size * 2
-        )
-        self.pswf = scipy.special.pro_ang1(
-            0, 0, numpy.pi * support / 2, image_coords
-        )[0]
-        self.pswf[0] = 1e-15
-        subgrid_image_coords = (
-            numpy.arange(-subgrid_size // 2, subgrid_size // 2)
-            / subgrid_size
-            * 2
-        )
-        self.pswf_sg = scipy.special.pro_ang1(
-            0, 0, numpy.pi * support / 2, subgrid_image_coords
-        )[0]
-        self.pswf_sg[0] = 1e-15
+        self.pswf = make_pswf(support, image_size)
+        self.pswf_sg = make_pswf(support, subgrid_size)
 
     def degrid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
+        w_offset: int = 0,
     ):
         """
         Do degrid correction to enable degridding from the FT of the image
@@ -109,13 +145,13 @@ class DFTGridKernel:
         pswf_l = numpy.roll(self.pswf, -facet_offset_l)
         pswf_l = pswf_l[
             self.image_size // 2
-            - (facet.shape[0] // 2) : (self.image_size // 2)
+            - facet.shape[0] // 2 : self.image_size // 2
             + facet.shape[0] // 2
         ]
         pswf_m = numpy.roll(self.pswf, -facet_offset_m)
         pswf_m = pswf_m[
             self.image_size // 2
-            - (facet.shape[1] // 2) : (self.image_size // 2)
+            - facet.shape[1] // 2 : self.image_size // 2
             + facet.shape[1] // 2
         ]
 
@@ -125,8 +161,7 @@ class DFTGridKernel:
     def degrid_subgrid(
         self,
         subgrid_image: numpy.ndarray,
-        subgrid_offset_u: int,
-        subgrid_offset_v: int,
+        subgrid_offsets: tuple[int, int, int],
         ch_count: int,
         freq0: float,
         dfreq: float,
@@ -142,8 +177,9 @@ class DFTGridKernel:
         :param subgrid_image: Fourier transformed subgrid to degrid from.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid centre relative to grid centre
+        :param subgrid_offsets:
+            Offset of subgrid centre relative to grid centre,
+            in pixels & wplanes
         :param ch_count: Channel count (determines size of array returned)
         :param freq0: Frequency of first channel (Hz)
         :param dfreq: Channel width (Hz)
@@ -162,7 +198,9 @@ class DFTGridKernel:
             * self.pswf_sg[:, numpy.newaxis]
             * self.pswf_sg[numpy.newaxis, :]
         )
-        image_flmns = image_to_flmn(subgrid_image_uncorrected, self.theta)
+        image_flmns = image_to_flmn(
+            subgrid_image_uncorrected, self.theta, self.shear_u, self.shear_v
+        )
 
         # Create array to return
         uvw_count = uvws.shape[0]
@@ -182,7 +220,7 @@ class DFTGridKernel:
                 [uvw * ((freq0 + dfreq * ch) / C_0) for ch in range(ch_count)]
             )
             uwv_shifted = shift_uvw(
-                uvw_scaled, subgrid_offset_u, subgrid_offset_v, self.theta
+                uvw_scaled, subgrid_offsets, self.theta, self.w_step
             )
 
             # Degrid visibilities
@@ -193,7 +231,11 @@ class DFTGridKernel:
         return vis_out
 
     def grid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
+        w_offset: int = 0,
     ):
         """
         Do grid correction after gridding
@@ -232,8 +274,7 @@ class DFTGridKernel:
         freq0: float,
         dfreq: float,
         subgrid_image: numpy.ndarray,
-        subgrid_offset_u: int,
-        subgrid_offset_v: int,
+        subgrid_offsets: tuple[int, int, int],
     ):
         """
         Grid visibilities using direct Fourier transformation
@@ -259,7 +300,10 @@ class DFTGridKernel:
 
         # Generate lmns for subgrid image
         subgrid_image_lmns = image_to_flmn(
-            numpy.ones_like(subgrid_image), self.theta
+            numpy.ones_like(subgrid_image),
+            self.theta,
+            self.shear_u,
+            self.shear_v,
         )[:, 1:]
 
         # Create array to return
@@ -279,7 +323,7 @@ class DFTGridKernel:
                 [uvw * ((freq0 + dfreq * ch) / C_0) for ch in range(ch_count)]
             )
             uwv_shifted = shift_uvw(
-                uvw_scaled, subgrid_offset_u, subgrid_offset_v, self.theta
+                uvw_scaled, subgrid_offsets, self.theta, self.w_step
             )
 
             # Grid visibilities
@@ -301,11 +345,15 @@ def test_gridder_direct():
     # Common parameters
     image_size = 128  # Total image size in pixels
     theta = 0.1  # Total image size in directional cosines.
+    w_step = 100.5
+    shear_u = 0.1
+    shear_v = -0.4
     support = 10
     print("Grid size: ", image_size / theta, "wavelengths")
     subgrid_size = image_size // 4
     idu = 90
     idv = 90
+    idw = 50
     ch_count = 100
     freq0_hz = 1e6
     dfreq_hz = 1e3
@@ -320,16 +368,33 @@ def test_gridder_direct():
     end_chs = numpy.ones((num_uvw), dtype=numpy.int32) * (ch_count)
 
     # Generate reference data set.
-    gridder_ref = DFTGridKernel(image_size, subgrid_size, theta, support)
+    gridder_ref = DFTGridKernel(
+        image_size, subgrid_size, theta, w_step, shear_u, shear_v, support
+    )
     vis_ref = gridder_ref.degrid_subgrid(
-        image, idu, idv, ch_count, freq0_hz, dfreq_hz, uvw, start_chs, end_chs
+        image,
+        (idu, idv, idw),
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        uvw,
+        start_chs,
+        end_chs,
     )
 
     # Call the degridder in PFL.
-    vis = numpy.zeros_like(vis_ref)
-    gridder = GridderDirect(image_size, subgrid_size, theta, support)
-    gridder.degrid(
-        image, idu, idv, freq0_hz, dfreq_hz, uvw, start_chs, end_chs, vis
+    gridder = GridderDirect(
+        image_size, subgrid_size, theta, w_step, shear_u, shear_v, support
+    )
+    vis = gridder.degrid_subgrid(
+        image,
+        (idu, idv, idw),
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        uvw,
+        start_chs,
+        end_chs,
     )
 
     # Check they are the same.
@@ -346,14 +411,21 @@ def test_gridder_direct():
         freq0_hz,
         dfreq_hz,
         img_ref,
-        idu,
-        idv,
+        (idu, idv, idw),
     )
 
     # Call the gridder in PFL.
     img_tst = numpy.zeros_like(img_ref)
-    gridder.grid(
-        vis_ref, uvw, start_chs, end_chs, freq0_hz, dfreq_hz, img_tst, idu, idv
+    gridder.grid_subgrid(
+        vis_ref,
+        uvw,
+        start_chs,
+        end_chs,
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        img_tst,
+        (idu, idv, idw),
     )
 
     # Check they are the same.
@@ -363,6 +435,9 @@ def test_gridder_direct():
 def test_gridder_direct_degrid_correct():
     image_size = 128  # Total image size in pixels
     theta = 0.1  # Total image size in directional cosines.
+    w_step = 100.5
+    shear_u = 0.1
+    shear_v = -0.4
     support = 10
     subgrid_size = image_size // 4
 
@@ -372,11 +447,15 @@ def test_gridder_direct_degrid_correct():
     facet_offset_m = 15
 
     # Generate reference data.
-    gridder_ref = DFTGridKernel(image_size, subgrid_size, theta, support)
+    gridder_ref = DFTGridKernel(
+        image_size, subgrid_size, theta, w_step, shear_u, shear_v, support
+    )
     img_ref = gridder_ref.degrid_correct(image, facet_offset_l, facet_offset_m)
 
     # Call the degrid correction function in PFL.
-    gridder = GridderDirect(image_size, subgrid_size, theta, support)
+    gridder = GridderDirect(
+        image_size, subgrid_size, theta, w_step, shear_u, shear_v, support
+    )
     img_tst = numpy.array(image)
     gridder.degrid_correct(img_tst, facet_offset_l, facet_offset_m)
 

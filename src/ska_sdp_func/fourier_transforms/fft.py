@@ -51,6 +51,15 @@ class Fft(StructWrapper):
         Lib.sdp_fft_exec(self, Mem(input_data), Mem(output_data))
 
 
+def padded_fft_size(n: int, padding_factor: float):
+    """Returns the next largest even that is a power of 2, 3, 5, 7 or 11.
+
+    :param n: Minimum input grid size.
+    :param padding_factor: Padding factor to multiply input grid size.
+    """
+    return Lib.sdp_fft_padded_size(n, padding_factor)
+
+
 Lib.wrap_func(
     "sdp_fft_create",
     restype=Fft.handle_type(),
@@ -78,4 +87,13 @@ Lib.wrap_func(
         Mem.handle_type(),
     ],
     check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_fft_padded_size",
+    restype=ctypes.c_int,
+    argtypes=[
+        ctypes.c_int,
+        ctypes.c_double,
+    ],
 )

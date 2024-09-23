@@ -18,48 +18,71 @@ class GridderDirect(StructWrapper):
     """
 
     def __init__(
-        self, image_size: int, subgrid_size: int, theta: float, support: int
+        self,
+        image_size: int,
+        subgrid_size: int,
+        theta: float,
+        w_step: float,
+        shear_u: float,
+        shear_v: float,
+        support: int,
     ):
         """Creates a plan for (de)gridding using the supplied parameters.
 
         :param image_size: Total image size in pixels.
         :param subgrid_size: Sub-grid size in pixels.
         :param theta: Total image size in directional cosines.
+        :param w_step: Spacing between w-planes. (Not currently used.)
+        :param shear_u: Shear parameter in u (use zero for no shear).
+        :param shear_v: Shear parameter in v (use zero for no shear).
         :param support: Support size.
         """
-        create_args = (image_size, subgrid_size, theta, support)
+        create_args = (
+            image_size,
+            subgrid_size,
+            theta,
+            w_step,
+            shear_u,
+            shear_v,
+            support,
+        )
         super().__init__(
             Lib.sdp_gridder_direct_create,
             create_args,
             Lib.sdp_gridder_direct_free,
         )
 
-    def degrid(
+    def degrid_subgrid(
         self,
         subgrid_image: numpy.ndarray,
-        subgrid_offset_u: int,
-        subgrid_offset_v: int,
+        subgrid_offset: tuple[int, int, int],
+        ch_count: int,
         freq0_hz: float,
         dfreq_hz: float,
-        uvw: numpy.ndarray,
+        uvws: numpy.ndarray,
         start_chs: numpy.ndarray,
         end_chs: numpy.ndarray,
-        vis: numpy.ndarray,
+        vis: numpy.ndarray = None,
     ):
         """Degrid visibilities using direct Fourier transformation.
 
         This is painfully slow, but as good as we can make it by definition.
 
-        The caller must ensure the output visibility array is sized correctly.
+        This matches the interface in the notebook version.
+
+        If supplied, the caller must ensure the output visibility array is
+        sized correctly; otherwise, it will be created and returned.
 
         :param subgrid_image: Fourier transformed subgrid to degrid from.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid centre relative to grid centre
+        :param subgrid_offset:
+            Tuple of integers containing offset of subgrid in (u, v, w)
+            relative to grid centre.
+        :param ch_count: Channel count (determines size of array returned)
         :param freq0_hz: Frequency of first channel (Hz)
         :param dfreq_hz: Channel width (Hz)
-        :param uvw: ``float[uvw_count, 3]``
+        :param uvws: ``float[uvw_count, 3]``
             UVW coordinates of visibilities (in m)
         :param start_chs: ``int[uvw_count]``
             First channel to degrid for every uvw
@@ -67,47 +90,69 @@ class GridderDirect(StructWrapper):
             Channel at which to stop degridding for every uvw
         :param vis: ``complex[uvw_count, ch_count]`` Output visibilities
         """
+        (subgrid_offset_u, subgrid_offset_v, subgrid_offset_w) = subgrid_offset
+        return_vis = False
+        if vis is None:
+            vis = numpy.zeros(
+                (uvws.shape[0], ch_count), dtype=numpy.complex128
+            )
+            return_vis = True
         Lib.sdp_gridder_direct_degrid(
             self,
             Mem(subgrid_image),
             subgrid_offset_u,
             subgrid_offset_v,
+            subgrid_offset_w,
             freq0_hz,
             dfreq_hz,
-            Mem(uvw),
+            Mem(uvws),
             Mem(start_chs),
             Mem(end_chs),
             Mem(vis),
         )
+        if return_vis:
+            return vis
+        return None
 
     def degrid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
+        w_offset: int = 0,
     ):
         """Do degrid correction to enable degridding from the FT of the image.
 
         :param facet: ``complex[facet_size,facet_size]`` Facet.
-        :param facet_offset_l, facet_offset_m:
-            Offset of facet centre relative to image centre
+        :param facet_offset_l:
+            Offset of facet centre relative to image centre.
+        :param facet_offset_m:
+            Offset of facet centre relative to image centre.
+        :param w_offset:
+            Offset in w, to allow for w-stacking.
         """
         Lib.sdp_gridder_direct_degrid_correct(
-            self, Mem(facet), facet_offset_l, facet_offset_m
+            self, Mem(facet), facet_offset_l, facet_offset_m, w_offset
         )
+        return facet
 
-    def grid(
+    def grid_subgrid(
         self,
         vis: numpy.ndarray,
         uvw: numpy.ndarray,
         start_chs: numpy.ndarray,
         end_chs: numpy.ndarray,
+        ch_count: int,
         freq0_hz: float,
         dfreq_hz: float,
         subgrid_image: numpy.ndarray,
-        subgrid_offset_u: int,
-        subgrid_offset_v: int,
+        subgrid_offset: tuple[int, int, int],
     ):
-        """Grid visibilities using direct Fourier transformation
+        """Grid visibilities using direct Fourier transformation.
 
-        This is painfully slow, but as good as we can make it by definition
+        This is painfully slow, but as good as we can make it by definition.
+
+        This matches the interface in the notebook version.
 
         The caller must ensure the output subgrid_image is sized correctly.
 
@@ -118,14 +163,19 @@ class GridderDirect(StructWrapper):
             First channel to grid for every uvw
         :param end_chs: ``int[uvw_count]``
             Channel at which to stop gridding for every uvw
+        :param ch_count: Channel count
         :param freq0_hz: Frequency of first channel (Hz)
         :param dfreq_hz: Channel width (Hz)
         :param subgrid_image: Fourier transformed subgrid to be gridded to.
             Note that the subgrid could especially span the entire grid,
             in which case this could simply be the entire (corrected) image.
-        :param subgrid_offset_u, subgrid_offset_v:
-            Offset of subgrid relative to grid centre
+        :param subgrid_offset:
+            Tuple of integers containing offset of subgrid in (u, v, w)
+            relative to grid centre.
         """
+        (subgrid_offset_u, subgrid_offset_v, subgrid_offset_w) = subgrid_offset
+        if ch_count and vis.shape[1] != ch_count:
+            raise RuntimeError("Inconsistent channel dimensions")
         Lib.sdp_gridder_direct_grid(
             self,
             Mem(vis),
@@ -137,20 +187,79 @@ class GridderDirect(StructWrapper):
             Mem(subgrid_image),
             subgrid_offset_u,
             subgrid_offset_v,
+            subgrid_offset_w,
         )
 
     def grid_correct(
-        self, facet: numpy.ndarray, facet_offset_l: int, facet_offset_m: int
+        self,
+        facet: numpy.ndarray,
+        facet_offset_l: int,
+        facet_offset_m: int,
+        w_offset: int = 0,
     ):
         """Do grid correction after gridding.
 
         :param facet: ``complex[facet_size,facet_size]`` Facet.
-        :param facet_offset_l, facet_offset_m:
-            Offset of facet centre relative to image centre
+        :param facet_offset_l:
+            Offset of facet centre relative to image centre.
+        :param facet_offset_m:
+            Offset of facet centre relative to image centre.
+        :param w_offset:
+            Offset in w, to allow for w-stacking.
         """
         Lib.sdp_gridder_direct_grid_correct(
-            self, Mem(facet), facet_offset_l, facet_offset_m
+            self, Mem(facet), facet_offset_l, facet_offset_m, w_offset
         )
+        return facet
+
+    @property
+    def image_size(self):
+        """
+        Returns the image size.
+        """
+        return Lib.sdp_gridder_direct_image_size(self)
+
+    @property
+    def shear_u(self):
+        """
+        Returns the shear factor in the u-dimension.
+        """
+        return Lib.sdp_gridder_direct_shear_u(self)
+
+    @property
+    def shear_v(self):
+        """
+        Returns the shear factor in the v-dimension.
+        """
+        return Lib.sdp_gridder_direct_shear_v(self)
+
+    @property
+    def subgrid_size(self):
+        """
+        Returns the sub-grid size.
+        """
+        return Lib.sdp_gridder_direct_subgrid_size(self)
+
+    @property
+    def support(self):
+        """
+        Returns the kernel support size in (u, v).
+        """
+        return Lib.sdp_gridder_direct_support(self)
+
+    @property
+    def theta(self):
+        """
+        Returns the padded field of view, in direction cosines.
+        """
+        return Lib.sdp_gridder_direct_theta(self)
+
+    @property
+    def w_step(self):
+        """
+        Returns the distance between w-layers.
+        """
+        return Lib.sdp_gridder_direct_w_step(self)
 
 
 Lib.wrap_func(
@@ -159,6 +268,9 @@ Lib.wrap_func(
     argtypes=[
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
         ctypes.c_double,
         ctypes.c_int,
     ],
@@ -171,6 +283,7 @@ Lib.wrap_func(
     argtypes=[
         GridderDirect.handle_type(),
         Mem.handle_type(),
+        ctypes.c_int,
         ctypes.c_int,
         ctypes.c_int,
         ctypes.c_double,
@@ -191,6 +304,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_int,
     ],
     check_errcode=True,
 )
@@ -209,6 +323,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_int,
     ],
     check_errcode=True,
 )
@@ -221,6 +336,7 @@ Lib.wrap_func(
         Mem.handle_type(),
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_int,
     ],
     check_errcode=True,
 )
@@ -228,5 +344,47 @@ Lib.wrap_func(
 Lib.wrap_func(
     "sdp_gridder_direct_free",
     restype=None,
+    argtypes=[GridderDirect.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_image_size",
+    restype=ctypes.c_int,
+    argtypes=[GridderDirect.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_shear_u",
+    restype=ctypes.c_double,
+    argtypes=[GridderDirect.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_shear_v",
+    restype=ctypes.c_double,
+    argtypes=[GridderDirect.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_subgrid_size",
+    restype=ctypes.c_int,
+    argtypes=[GridderDirect.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_support",
+    restype=ctypes.c_int,
+    argtypes=[GridderDirect.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_theta",
+    restype=ctypes.c_double,
+    argtypes=[GridderDirect.handle_type()],
+)
+
+Lib.wrap_func(
+    "sdp_gridder_direct_w_step",
+    restype=ctypes.c_double,
     argtypes=[GridderDirect.handle_type()],
 )
