@@ -1247,7 +1247,8 @@ void sdp_mem_check_same_shape_at(
         if (mem == mem2)
         {
             sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
-                    "%s: '%s' dimensions %d and %d do not have same size (%d != %d)!",
+                    "%s: '%s' dimensions %d and %d do not"
+                    " have the same size (%d != %d)!",
                     func, expr, dim, dim2,
                     sdp_mem_shape_dim(mem, dim), sdp_mem_shape_dim(mem2, dim2)
             );

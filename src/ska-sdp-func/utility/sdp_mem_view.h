@@ -27,9 +27,9 @@
 
 // Check if static_assert is available before trying to use it.
 #if __cpp_static_assert >= 200410L
-#define SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM)\
-    static_assert(num_dims == NUM,\
-        "Wrong number of indices passed to operator ()!"\
+#define SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM) \
+    static_assert(num_dims == NUM, \
+        "Wrong number of indices passed to operator ()!" \
     );
 #else
 #define SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM)
@@ -53,7 +53,8 @@
 // Call the appropriate SDP_MV_REPEAT_X macro.
 #define SDP_MV_REPEAT(NUM, MACRO) SDP_MV_GET_REPEAT_MACRO(NUM)(MACRO)
 
-#define SDP_MV_CHECK_DIMS(NUM) SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM) \
+#define SDP_MV_CHECK_DIMS(NUM) \
+    SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM) \
     SDP_MV_REPEAT(NUM, SDP_MV_CHECK_DIM)
 
 /**

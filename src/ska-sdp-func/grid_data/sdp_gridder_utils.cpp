@@ -912,7 +912,8 @@ double sdp_gridder_rms_diff(
 )
 {
     if (*status) return INFINITY;
-    if (sdp_mem_location(a) != SDP_MEM_CPU || sdp_mem_location(b) != SDP_MEM_CPU)
+    if (sdp_mem_location(a) != SDP_MEM_CPU ||
+            sdp_mem_location(b) != SDP_MEM_CPU)
     {
         SDP_LOG_ERROR("Input arrays must be in CPU memory");
         *status = SDP_ERR_MEM_LOCATION;

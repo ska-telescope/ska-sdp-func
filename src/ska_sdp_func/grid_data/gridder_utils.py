@@ -195,16 +195,16 @@ def make_w_pattern(
     )
 
 
-def rms_diff(a: numpy.ndarray, b: numpy.ndarray):
+def rms_diff(array_a: numpy.ndarray, array_b: numpy.ndarray):
     """
     Returns the RMS of the difference between two 2D arrays: rms(a - b).
 
     The two arrays must be 2D and have the same shape.
 
-    :param a: The first input array.
-    :param b: The second input array.
+    :param array_a: The first input array.
+    :param array_b: The second input array.
     """
-    return Lib.sdp_gridder_rms_diff(Mem(a), Mem(b))
+    return Lib.sdp_gridder_rms_diff(Mem(array_a), Mem(array_b))
 
 
 def subgrid_add(

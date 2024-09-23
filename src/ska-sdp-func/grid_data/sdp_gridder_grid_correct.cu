@@ -10,6 +10,7 @@
 
 using thrust::complex;
 
+
 template<typename T>
 __global__ void sdp_gridder_grid_correct_pswf(
         int image_size,
