@@ -74,9 +74,13 @@ static void sdp_tile_count_simple(
 
                 if ((grid_u + support < grid_size) && (grid_u - support >= 0) &&
                         (grid_v + support < grid_size) &&
-                        (grid_v - support >= 0))
+                        (grid_v - support) >= 0)
                 {
-                    int tile_u_min, tile_u_max, tile_v_min, tile_v_max;
+                    int tile_u_min = 0;
+                    int tile_u_max = 0;
+                    int tile_v_min = 0;
+                    int tile_v_max = 0;
+
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
@@ -178,7 +182,10 @@ static void sdp_bucket_sort_simple(
                         (grid_v + support < grid_size) &&
                         (grid_v - support) >= 0)
                 {
-                    int tile_u_min, tile_u_max, tile_v_min, tile_v_max;
+                    int tile_u_min = 0;
+                    int tile_u_max = 0;
+                    int tile_v_min = 0;
+                    int tile_v_max = 0;
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
@@ -262,7 +269,10 @@ static void tiled_indexing(
                         (grid_v + support < grid_size) &&
                         (grid_v - support) >= 0)
                 {
-                    int tile_u_min, tile_u_max, tile_v_min, tile_v_max;
+                    int tile_u_min = 0;
+                    int tile_u_max = 0;
+                    int tile_v_min = 0;
+                    int tile_v_max = 0;
                     TILE_RANGES(support,
                             tile_v_min,
                             tile_u_max,
@@ -490,14 +500,12 @@ void sdp_bucket_sort(
         const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,
         sdp_Mem* sorted_weight,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_vis,
         sdp_Mem* tile_offsets,
-        sdp_Mem* num_points_in_tiles,
         sdp_Error* status
 )
 {
@@ -712,8 +720,6 @@ void sdp_tiled_indexing(
         const int64_t num_channels,
         const int64_t num_baselines,
         const int64_t num_times,
-        const int64_t num_pol,
-        int* num_visibilites,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,
@@ -740,8 +746,6 @@ void sdp_tiled_indexing(
     const float inv_tile_size_u = 1.0 / tile_size_u;
     const float inv_tile_size_v = 1.0 / tile_size_v;
     int64_t num_tiles_u = (grid_size + tile_size_u - 1) / tile_size_u;
-    int64_t num_tiles_v = (grid_size + tile_size_v - 1) / tile_size_v;
-    int64_t num_tiles = num_tiles_u * num_tiles_v;
     int64_t top_left_u = grid_centre - ctile_u * tile_size_u - tile_size_u / 2;
     int64_t top_left_v = grid_centre - ctile_v * tile_size_v - tile_size_v / 2;
 

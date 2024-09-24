@@ -66,7 +66,6 @@ extern "C" {
  * @param robust_param Input parameter by the user to determine robustness of the weighting. Integer value between -2 and 2.
  * @param output_weights Output of the function including the weights for each visibility. Dimensions as above.
  * @param grid_size Size of the grid in one dimension. Assumed to be square.
- * @param cell_size_rad Size of the cell, in radians.
  * @param num_visibilites Number of total visibilities after prefix sum.
  * @param sorted_uu Sorted u coordinates after bucket sort. Dimensions as above.
  * @param sorted_vv Sorted v coordinates after bucket sort. Dimensions as above.
@@ -85,21 +84,17 @@ void sdp_optimized_weighting(
         const sdp_Mem* weights,
         const double robust_param,
         const int grid_size,
-        const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,
         sdp_Mem* sorted_weight,
         sdp_Mem* sorted_tile,
-        sdp_Mem* sorted_vis,
         sdp_Mem* tile_offsets,
         sdp_Mem* num_points_in_tiles,
         sdp_Mem* output_weights,
         sdp_Error* status
 );
 
-/**
 /**
  * @brief Calculate the number of hits per UV cell and use the inverse of this
  * as the weight, calculate the sum of these weights and the sum of these weights squared

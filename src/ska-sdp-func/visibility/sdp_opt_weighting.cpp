@@ -29,14 +29,11 @@ void sdp_optimized_weighting(
         const sdp_Mem* weights,
         const double robust_param,
         const int grid_size,
-        const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,
         sdp_Mem* sorted_weight,
         sdp_Mem* sorted_tile,
-        sdp_Mem* sorted_vis,
         sdp_Mem* tile_offsets,
         sdp_Mem* num_points_in_tiles,
         sdp_Mem* output_weights,
@@ -60,8 +57,6 @@ void sdp_optimized_weighting(
     const int64_t tile_size_v = 16;
     int64_t ctile_u = grid_centre / tile_size_u;
     int64_t ctile_v = grid_centre / tile_size_v;
-    const float inv_tile_size_u = 1.0 / tile_size_u;
-    const float inv_tile_size_v = 1.0 / tile_size_v;
     int64_t num_tiles_u = (grid_size + tile_size_u - 1) / tile_size_u;
     int64_t num_tiles_v = (grid_size + tile_size_v - 1) / tile_size_v;
     int64_t num_tiles = num_tiles_u * num_tiles_v;
@@ -203,8 +198,6 @@ void sdp_optimised_indexed_weighting(
     const int64_t tile_size_v = 16;
     int64_t ctile_u = grid_centre / tile_size_u;
     int64_t ctile_v = grid_centre / tile_size_v;
-    const float inv_tile_size_u = 1.0 / tile_size_u;
-    const float inv_tile_size_v = 1.0 / tile_size_v;
     int64_t num_tiles_u = (grid_size + tile_size_u - 1) / tile_size_u;
     int64_t num_tiles_v = (grid_size + tile_size_v - 1) / tile_size_v;
     int64_t num_tiles = num_tiles_u * num_tiles_v;
