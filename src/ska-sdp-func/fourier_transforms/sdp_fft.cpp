@@ -1082,7 +1082,7 @@ void sdp_transpose_inplace_accelerated(
         return sdp_transpose_inplace_simple(inout, n);
     }
     // transpose square blocks
-#   pragma omp parallel for collapse(1)
+#   pragma omp parallel for collapse(2)
     for (i = 0; i < m; i += block)
     {
         for (j = i; j < m; j += block)
