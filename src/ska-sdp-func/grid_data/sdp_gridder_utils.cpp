@@ -122,6 +122,95 @@ int64_t count_nonzero_pixels(const sdp_Mem* image, sdp_Error* status)
 }
 
 
+// Local function for prediction of visibilities via direct FT.
+template<
+        typename DIR_TYPE,
+        typename FLUX_TYPE,
+        typename UVW_TYPE,
+        typename VIS_TYPE
+>
+void dft(
+        const sdp_Mem* uvw,
+        const sdp_Mem* start_chs,
+        const sdp_Mem* end_chs,
+        const sdp_Mem* flux,
+        const sdp_Mem* lmn,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double theta,
+        double w_step,
+        double freq0_hz,
+        double dfreq_hz,
+        sdp_Mem* vis,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+
+    // Get views to data.
+    const int64_t num_uvw = sdp_mem_shape_dim(uvw, 0);
+    const int num_chan = (int) sdp_mem_shape_dim(vis, 1);
+    const int num_sources = (int) sdp_mem_shape_dim(flux, 0);
+    sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvw_;
+    sdp_MemViewCpu<const FLUX_TYPE, 1> flux_;
+    sdp_MemViewCpu<const DIR_TYPE, 2> lmn_;
+    sdp_MemViewCpu<complex<VIS_TYPE>, 2> vis_;
+    if (start_chs && end_chs)
+    {
+        sdp_mem_check_and_view(start_chs, &start_chs_, status);
+        sdp_mem_check_and_view(end_chs, &end_chs_, status);
+    }
+    sdp_mem_check_and_view(uvw, &uvw_, status);
+    sdp_mem_check_and_view(flux, &flux_, status);
+    sdp_mem_check_and_view(lmn, &lmn_, status);
+    sdp_mem_check_and_view(vis, &vis_, status);
+    if (*status) return;
+
+    // Scale subgrid offset values.
+    double du = 0, dv = 0, dw = 0;
+    if (theta > 0)
+    {
+        du = (double) subgrid_offset_u / theta;
+        dv = (double) subgrid_offset_v / theta;
+        dw = (double) subgrid_offset_w * w_step;
+    }
+
+    // Loop over uvw values.
+    #pragma omp parallel for
+    for (int64_t i = 0; i < num_uvw; ++i)
+    {
+        // Skip if there's no visibility to degrid.
+        if (start_chs && end_chs && start_chs_(i) >= end_chs_(i)) continue;
+
+        // Loop over channels.
+        for (int c = 0; c < num_chan; ++c)
+        {
+            const double inv_wave = (freq0_hz + dfreq_hz * c) / C_0;
+
+            // Scale and shift uvws.
+            const double u = uvw_(i, 0) * inv_wave - du;
+            const double v = uvw_(i, 1) * inv_wave - dv;
+            const double w = uvw_(i, 2) * inv_wave - dw;
+
+            // Loop over sources.
+            complex<VIS_TYPE> local_vis = 0;
+            for (int s = 0; s < num_sources; ++s)
+            {
+                const double phase = -2.0 * M_PI *
+                        (lmn_(s, 0) * u + lmn_(s, 1) * v + lmn_(s, 2) * w);
+                const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
+                local_vis += (complex<VIS_TYPE>) flux_(s) * phasor;
+            }
+
+            // Store local visibility.
+            vis_(i, c) += local_vis;
+        }
+    }
+}
+
+
 // Local function to convert image pixels to coordinates and optionally, fluxes.
 template<typename IMAGE_TYPE, typename FLUX_TYPE, typename DIR_TYPE>
 void image_to_flmn(
@@ -761,6 +850,67 @@ double sdp_gridder_determine_w_step(
     // theta_n is our size in image space,
     // therefore 1 / theta_n is our step length in grid space
     return 1.0 / theta_n;
+}
+
+
+void sdp_gridder_dft(
+        const sdp_Mem* uvws,
+        const sdp_Mem* start_chs,
+        const sdp_Mem* end_chs,
+        const sdp_Mem* flux,
+        const sdp_Mem* lmn,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double theta,
+        double w_step,
+        double freq0_hz,
+        double dfreq_hz,
+        sdp_Mem* vis,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(vis);
+    const sdp_MemType flux_type = sdp_mem_type(lmn);
+    const sdp_MemType dir_type = sdp_mem_type(lmn);
+    const sdp_MemType uvw_type = sdp_mem_type(uvws);
+    const sdp_MemType vis_type = sdp_mem_type(vis);
+    if (loc == SDP_MEM_CPU)
+    {
+        if (dir_type == SDP_MEM_DOUBLE &&
+                flux_type == SDP_MEM_DOUBLE &&
+                uvw_type == SDP_MEM_DOUBLE &&
+                vis_type == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            dft<double, double, double, double>(
+                    uvws, start_chs, end_chs, flux, lmn,
+                    subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                    theta, w_step, freq0_hz, dfreq_hz, vis, status
+            );
+        }
+        else if (dir_type == SDP_MEM_FLOAT &&
+                flux_type == SDP_MEM_DOUBLE &&
+                uvw_type == SDP_MEM_FLOAT &&
+                vis_type == SDP_MEM_COMPLEX_FLOAT)
+        {
+            dft<float, double, float, float>(
+                    uvws, start_chs, end_chs, flux, lmn,
+                    subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                    theta, w_step, freq0_hz, dfreq_hz, vis, status
+            );
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data types");
+        }
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+        SDP_LOG_ERROR("Unsupported memory location");
+    }
 }
 
 

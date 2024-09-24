@@ -15,6 +15,11 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup gridder_util_func
+ * @{
+ */
+
+/**
  * @brief Multiply every element in an array by those in another array.
  *
  * Elements in the second array are raised to the given exponent,
@@ -67,6 +72,45 @@ double sdp_gridder_determine_w_step(
         double shear_u,
         double shear_v,
         double x0
+);
+
+/**
+ * @brief Perform prediction of visibilities via direct Fourier transform.
+ *
+ * Used primarily to generate reference data for testing.
+ *
+ * If @p start_chs and @p end_chs are NULL, all visibilities will be generated.
+ *
+ * @param uvws ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).
+ * @param start_chs ``int[uvw_count]`` First channel to degrid for every uvw.
+ * @param end_chs ``int[uvw_count]`` Channel at which to stop degridding for every uvw.
+ * @param flux ``float[source_count]`` Flux value of each source component.
+ * @param lmn ``float[source_count, 3]`` Direction cosine of each source component.
+ * @param subgrid_offset_u Offset of subgrid centre relative to grid centre.
+ * @param subgrid_offset_v Offset of subgrid centre relative to grid centre.
+ * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
+ * @param theta Total image size in direction cosines.
+ * @param w_step Spacing between w-planes.
+ * @param freq0_hz Frequency of first channel (Hz).
+ * @param dfreq_hz Channel separation (Hz).
+ * @param vis ``complex[uvw_count, ch_count]`` Output visibilities.
+ * @param status Error status.
+ */
+void sdp_gridder_dft(
+        const sdp_Mem* uvws,
+        const sdp_Mem* start_chs,
+        const sdp_Mem* end_chs,
+        const sdp_Mem* flux,
+        const sdp_Mem* lmn,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double theta,
+        double w_step,
+        double freq0_hz,
+        double dfreq_hz,
+        sdp_Mem* vis,
+        sdp_Error* status
 );
 
 /**
@@ -271,6 +315,8 @@ void sdp_gridder_uvw_bounds_all(
         double uvw_max[3],
         sdp_Error* status
 );
+
+/** @} */ /* End group gridder_util_func. */
 
 #ifdef __cplusplus
 }
