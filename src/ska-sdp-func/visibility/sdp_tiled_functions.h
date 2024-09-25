@@ -1,7 +1,7 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #ifndef SKA_SDP_PROC_FUNC_TILED_H_
-#define SKA_SDP_PROC_FUNC_TILIED_H_
+#define SKA_SDP_PROC_FUNC_TILED_H_
 
 /**
  * @file sdp_tiled_functions.h
