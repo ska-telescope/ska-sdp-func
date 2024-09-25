@@ -139,7 +139,7 @@ class GridderDirect(StructWrapper):
     def grid_subgrid(
         self,
         vis: numpy.ndarray,
-        uvw: numpy.ndarray,
+        uvws: numpy.ndarray,
         start_chs: numpy.ndarray,
         end_chs: numpy.ndarray,
         ch_count: int,
@@ -157,7 +157,7 @@ class GridderDirect(StructWrapper):
         The caller must ensure the output subgrid_image is sized correctly.
 
         :param vis: ``complex[uvw_count, ch_count]`` Input visibilities
-        :param uvw: ``float[uvw_count, 3]``
+        :param uvws: ``float[uvw_count, 3]``
             UVW coordinates of visibilities (in m)
         :param start_chs: ``int[uvw_count]``
             First channel to grid for every uvw
@@ -179,7 +179,7 @@ class GridderDirect(StructWrapper):
         Lib.sdp_gridder_direct_grid(
             self,
             Mem(vis),
-            Mem(uvw),
+            Mem(uvws),
             Mem(start_chs),
             Mem(end_chs),
             freq0_hz,
