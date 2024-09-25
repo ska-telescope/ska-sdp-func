@@ -274,14 +274,12 @@ def test_bucket_sort():
         tile_size_v,
         cell_size_rad,
         support,
-        num_visibilities,
         sorted_uu,
         sorted_vv,
         sorted_weight,
         sorted_tile,
         sorted_vis,
         tile_offsets,
-        num_points_in_tiles,
     )
 
     expected_uu = calc_grid_u(
@@ -339,7 +337,6 @@ def test_tiled_indexing():
     num_channels = freqs.shape[0]
     num_times = uvw.shape[0]
     num_baselines = uvw.shape[1]
-    num_pol = 1
 
     tiled_indexing(
         uvw,
@@ -352,8 +349,6 @@ def test_tiled_indexing():
         num_channels,
         num_baselines,
         num_times,
-        num_pol,
-        num_visibilities,
         sorted_tile,
         sorted_uu,
         sorted_vv,

@@ -147,15 +147,6 @@ __global__ void calc_sum_gpu(
                 idx_v,
                 0
         );
-        const int i_pol_start = INDEX_4D(num_times,
-                num_baselines,
-                num_channels,
-                num_pols,
-                i_time,
-                i_baseline,
-                i_channel,
-                0
-        );
 
         for (int i_pol = 0; i_pol < num_pols; ++i_pol)
         {

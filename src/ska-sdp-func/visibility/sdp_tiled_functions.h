@@ -1,7 +1,7 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
 #ifndef SKA_SDP_PROC_FUNC_TILED_H_
-#define SKA_SDP_PROC_FUNC_TILIED_H_
+#define SKA_SDP_PROC_FUNC_TILED_H_
 
 /**
  * @file sdp_tiled_functions.h
@@ -125,14 +125,12 @@ void sdp_count_and_prefix_sum(
  * @param tile_size_v Size of the individual tile, in the v-direction.
  * @param cell_size_rad Size of the cell, in radians.
  * @param support Number of cells a visibility contributes to during gridding.
- * @param num_visibilites Number of total visibilities after prefix sum.
  * @param sorted_uu Sorted u coordinates after bucket sort. Dimensions as above.
  * @param sorted_vv Sorted v coordinates after bucket sort. Dimensions as above.
  * @param sorted_weight Sorted weights after bucket sort. Dimensions as above.
  * @param sorted_tile Sorted visibilities in tile positions after bucket sort. Dimensions as above.
  * @param sorted_vis Sorted visibilties after bucket sort. Dimensions as above.
  * @param tile_offsets Prefix summed visibilities in each tile. Dimensions as above.
- * @param num_points_in_tiles Number of visibilities in each tile. Dimensions as above.
  * @param status Error status.
  */
 void sdp_bucket_sort(
@@ -145,14 +143,12 @@ void sdp_bucket_sort(
         const int64_t tile_size_v,
         const double cell_size_rad,
         const int64_t support,
-        int* num_visibilites,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,
         sdp_Mem* sorted_weight,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_vis,
         sdp_Mem* tile_offsets,
-        sdp_Mem* num_points_in_tiles,
         sdp_Error* status
 );
 
@@ -212,8 +208,6 @@ void sdp_tiled_indexing(
         const int64_t num_channels,
         const int64_t num_baselines,
         const int64_t num_times,
-        const int64_t num_pol,
-        int* num_visibilites,
         sdp_Mem* sorted_tile,
         sdp_Mem* sorted_uu,
         sdp_Mem* sorted_vv,

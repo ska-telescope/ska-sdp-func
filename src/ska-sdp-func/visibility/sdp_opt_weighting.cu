@@ -193,7 +193,6 @@ __global__ void sdp_opt_briggs_index_gpu(
             i_thread < total_vis;
             i_thread += blockDim.x)
     {
-        const double grid_scale = grid_size * cell_size_rad;
         const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
         if (i_channel > num_channels) break;
         int i_vis = sorted_index[i_thread];
@@ -222,8 +221,6 @@ __global__ void sdp_opt_briggs_index_gpu(
             i_thread < total_vis;
             i_thread += blockDim.x)
     {
-        const double grid_scale = grid_size * cell_size_rad;
-        const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
         const UVW_TYPE pos_u = sorted_uu[i_thread];
         const UVW_TYPE pos_v = sorted_vv[i_thread];
         const int64_t grid_u = (int64_t)round(pos_u) + grid_centre;
@@ -253,8 +250,6 @@ __global__ void sdp_opt_briggs_index_gpu(
             i_thread < total_vis;
             i_thread += blockDim.x)
     {
-        const double grid_scale = grid_size * cell_size_rad;
-        const size_t i_channel = blockDim.y * blockIdx.y + threadIdx.y;
         int i_vis = sorted_index[i_thread];
         const UVW_TYPE pos_u = sorted_uu[i_thread];
         const UVW_TYPE pos_v = sorted_vv[i_thread];
