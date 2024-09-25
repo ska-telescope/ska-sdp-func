@@ -120,7 +120,7 @@ void sdp_gridder_dft(
  * and corresponding coordinates will be returned.
  * Both the output arrays must be created with the correct size before this
  * function is called, which can be done by first
- * calling @fn sdp_gridder_count_nonzero_pixels().
+ * calling ::sdp_gridder_count_nonzero_pixels().
  *
  * If the @p flux parameter is NULL, then the output pixel coordinates will be
  * for the whole image, and the @p lmn array must be sized appropriately.

@@ -265,8 +265,8 @@ def uvw_bounds_all(
     :param start_ch: First channel to degrid for every uvw.
     :param end_ch: Channel at which to stop degridding for every uvw.
 
-    :return (uvw_min, uvw_max): A tuple of two 3-element lists
-        containing minimum and maximum (u,v,w)-values.
+    :return: A tuple of two 3-element lists
+        containing minimum and maximum (u,v,w)-values: (uvw_min, uvw_max)
     """
     min_uvw = (ctypes.c_double * 3)(0.0, 0.0, 0.0)
     max_uvw = (ctypes.c_double * 3)(0.0, 0.0, 0.0)

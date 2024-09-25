@@ -15,6 +15,11 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup gridder_clamp_chan_func
+ * @{
+ */
+
+/**
  * @brief Clamp channels for a single dimension of an array of uvw coordinates.
  *
  * Restricts a channel range such that all visibilities lie in
@@ -71,6 +76,8 @@ void sdp_gridder_clamp_channels_uv(
         const double max_v,
         sdp_Error* status
 );
+
+/** @} */ /* End group gridder_clamp_chan_func. */
 
 
 /**
