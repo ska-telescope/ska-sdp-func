@@ -6,6 +6,7 @@ import ctypes
 import numpy
 
 from ..utility import Lib, Mem
+from .gridder_wtower_uvw import GridderWtowerUVW
 
 
 def clamp_channels_single(
@@ -105,6 +106,40 @@ def determine_w_step(
     )
 
 
+def find_max_w_tower_height(
+    grid_kernel: GridderWtowerUVW,
+    fov: float,
+    subgrid_frac: float = 2.0 / 3.0,
+    num_samples: int = 3,
+    target_err: float = 0.0,
+):
+    """
+    Find the maximum w-tower height by trial-and-error.
+
+    :param grid_kernel: Gridder kernel to use for the evaluation.
+    :param fov: Un-padded image field of view, in direction cosines.
+    :param subgrid_frac: Fraction of sub-grid to use.
+    :param num_samples: Number of sample points to test in u and v directions.
+    :param target_err: Target error to use. If 0, determined automatically.
+    """
+    return Lib.sdp_gridder_find_max_w_tower_height(
+        grid_kernel.image_size,
+        grid_kernel.subgrid_size,
+        grid_kernel.theta,
+        grid_kernel.w_step,
+        grid_kernel.shear_u,
+        grid_kernel.shear_v,
+        grid_kernel.support,
+        grid_kernel.oversampling,
+        grid_kernel.w_support,
+        grid_kernel.w_oversampling,
+        fov,
+        subgrid_frac,
+        num_samples,
+        target_err,
+    )
+
+
 def make_kernel(window: numpy.ndarray, kernel: numpy.ndarray):
     """
     Convert image-space window function to oversampled kernel.
@@ -158,6 +193,18 @@ def make_w_pattern(
     Lib.sdp_gridder_make_w_pattern(
         subgrid_size, theta, shear_u, shear_v, w_step, Mem(w_pattern)
     )
+
+
+def rms_diff(array_a: numpy.ndarray, array_b: numpy.ndarray):
+    """
+    Returns the RMS of the difference between two 2D arrays: rms(a - b).
+
+    The two arrays must be 2D and have the same shape.
+
+    :param array_a: The first input array.
+    :param array_b: The second input array.
+    """
+    return Lib.sdp_gridder_rms_diff(Mem(array_a), Mem(array_b))
 
 
 def subgrid_add(
@@ -218,8 +265,8 @@ def uvw_bounds_all(
     :param start_ch: First channel to degrid for every uvw.
     :param end_ch: Channel at which to stop degridding for every uvw.
 
-    :return (uvw_min, uvw_max): A tuple of two 3-element lists
-        containing minimum and maximum (u,v,w)-values.
+    :return: A tuple of two 3-element lists
+        containing minimum and maximum (u,v,w)-values: (uvw_min, uvw_max)
     """
     min_uvw = (ctypes.c_double * 3)(0.0, 0.0, 0.0)
     max_uvw = (ctypes.c_double * 3)(0.0, 0.0, 0.0)
@@ -282,6 +329,28 @@ Lib.wrap_func(
 )
 
 Lib.wrap_func(
+    "sdp_gridder_find_max_w_tower_height",
+    restype=ctypes.c_double,
+    argtypes=[
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.c_int,
+        ctypes.c_double,
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
     "sdp_gridder_make_kernel",
     restype=None,
     argtypes=[Mem.handle_type(), Mem.handle_type()],
@@ -304,6 +373,16 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_double,
         ctypes.c_double,
+        Mem.handle_type(),
+    ],
+    check_errcode=True,
+)
+
+Lib.wrap_func(
+    "sdp_gridder_rms_diff",
+    restype=ctypes.c_double,
+    argtypes=[
+        Mem.handle_type(),
         Mem.handle_type(),
     ],
     check_errcode=True,

@@ -67,6 +67,8 @@ typedef enum sdp_GridderWtowerUVWTimer sdp_GridderWtowerUVWTimer;
  * @param w_support Support size in w.
  * @param w_oversampling Oversampling factor for w-kernel.
  * @param status Error status.
+ *
+ * @return Handle to gridder plan.
  */
 sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
         int image_size,
@@ -216,10 +218,90 @@ double sdp_gridder_wtower_uvw_elapsed_time(
  * @param plan Handle to gridder plan.
  * @param gridding 0 for w-planes in degridding, 1 for w-planes in gridding.
  */
-double sdp_gridder_wtower_uvw_num_w_planes(
+int sdp_gridder_wtower_uvw_num_w_planes(
         const sdp_GridderWtowerUVW* plan,
         int gridding
 );
+
+/**
+ * @brief Accessor function to return the image size.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured image size.
+ */
+int sdp_gridder_wtower_uvw_image_size(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the (u, v)-oversampling factor.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured (u,v)-oversampling factor.
+ */
+int sdp_gridder_wtower_uvw_oversampling(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the shear factor in the u-dimension.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured shear factor in the u-dimension.
+ */
+double sdp_gridder_wtower_uvw_shear_u(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the shear factor in the v-dimension.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured shear factor in the v-dimension.
+ */
+double sdp_gridder_wtower_uvw_shear_v(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the sub-grid size.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured sub-grid size.
+ */
+int sdp_gridder_wtower_uvw_subgrid_size(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the kernel support size in (u, v).
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured kernel support size in (u, v).
+ */
+int sdp_gridder_wtower_uvw_support(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the padded field of view.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured padded field of view, in direction cosines.
+ */
+double sdp_gridder_wtower_uvw_theta(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the w-oversampling factor.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured w-oversampling factor.
+ */
+int sdp_gridder_wtower_uvw_w_oversampling(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the distance between w-layers.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured distance between w-layers.
+ */
+double sdp_gridder_wtower_uvw_w_step(const sdp_GridderWtowerUVW* plan);
+
+/**
+ * @brief Accessor function to return the kernel support size in w.
+ *
+ * @param plan Handle to gridder plan.
+ * @return The configured kernel support size in w.
+ */
+int sdp_gridder_wtower_uvw_w_support(const sdp_GridderWtowerUVW* plan);
 
 /** @} */ /* End group GridderWtowerUVW_func. */
 

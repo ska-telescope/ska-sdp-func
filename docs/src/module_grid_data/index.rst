@@ -11,3 +11,4 @@ and degridding functions.
   gridder_uvw_es_fft
   gridder_wtower_uvw
   gridder_wstack_wtower
+  gridder_utils

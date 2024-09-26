@@ -29,6 +29,8 @@ static void report_timing(
         const sdp_Mem* vis,
         sdp_Timer* tmr_fft_grid,
         sdp_Timer* tmr_total,
+        sdp_Timer* tmr_w_stack,
+        sdp_Timer* tmr_zero,
         int num_threads,
         sdp_GridderWtowerUVW** kernel,
         int gridding
@@ -127,28 +129,19 @@ void sdp_grid_wstack_wtower_degrid_all(
     );
     sdp_Timer* tmr_fft_grid = sdp_timer_create(tmr_type);
     sdp_Timer* tmr_total = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_w_stack = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_zero = sdp_timer_create(tmr_type);
     sdp_timer_resume(tmr_total);
 
     // Assume we're using all visibilities.
     const int64_t num_rows = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_chan = sdp_mem_shape_dim(vis, 1);
     sdp_Mem* start_ch = 0, * end_ch = 0, * start_ch_w = 0, * end_ch_w = 0;
     start_ch = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
-    end_ch = sdp_mem_create(SDP_MEM_INT, SDP_MEM_CPU, 1, &num_rows, status);
+    end_ch = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     start_ch_w = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     end_ch_w = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
-    sdp_mem_clear_contents(start_ch, status);
-    int* end_ch_ = (int*) sdp_mem_data(end_ch);
-    for (int64_t i = 0; i < num_rows; ++i)
-    {
-        end_ch_[i] = num_chan;
-    }
-    if (loc == SDP_MEM_GPU)
-    {
-        sdp_Mem* tmp = sdp_mem_create_copy(end_ch, loc, status);
-        sdp_mem_free(end_ch);
-        end_ch = tmp;
-    }
+    sdp_mem_set_value(start_ch, 0, status);
+    sdp_mem_set_value(end_ch, (int) sdp_mem_shape_dim(vis, 1), status);
 
     // Create gridder kernels, sub-grids and sub-grid FFT plans, per thread.
     vector<sdp_GridderWtowerUVW*> kernel(num_threads, 0);
@@ -205,7 +198,9 @@ void sdp_grid_wstack_wtower_degrid_all(
     sdp_Fft* fft = sdp_fft_create(grid, grid, 2, true, status);
 
     // Clear output visibilities.
-    sdp_mem_clear_contents(vis, status);
+    sdp_timer_resume(tmr_zero);
+    sdp_mem_set_value(vis, 0, status);
+    sdp_timer_pause(tmr_zero);
 
     // Loop over w-planes.
     if (verbosity > 0)
@@ -231,8 +226,12 @@ void sdp_grid_wstack_wtower_degrid_all(
         if (num_vis == 0) continue;
 
         // Do image correction / w-stacking.
-        sdp_mem_clear_contents(grid, status);
+        sdp_timer_resume(tmr_zero);
+        sdp_mem_set_value(grid, 0, status);
+        sdp_timer_pause(tmr_zero);
+        sdp_timer_resume(tmr_w_stack);
         sdp_gridder_accumulate_scaled_arrays(grid, image, NULL, 0, status);
+        sdp_timer_pause(tmr_w_stack);
         sdp_gridder_wtower_uvw_degrid_correct(
                 kernel[0], grid, 0, 0, iw * w_tower_height, status
         );
@@ -292,7 +291,8 @@ void sdp_grid_wstack_wtower_degrid_all(
     {
         report_timing(num_w_planes, num_subgrids_u, num_subgrids_v,
                 image_size, subgrid_size, w_step, w_tower_height,
-                vis, tmr_fft_grid, tmr_total, num_threads, &kernel[0], 0
+                vis, tmr_fft_grid, tmr_total, tmr_w_stack, tmr_zero,
+                num_threads, &kernel[0], 0
         );
     }
     for (int i = 0; i < num_threads; ++i)
@@ -306,6 +306,8 @@ void sdp_grid_wstack_wtower_degrid_all(
     sdp_fft_free(fft);
     sdp_timer_free(tmr_fft_grid);
     sdp_timer_free(tmr_total);
+    sdp_timer_free(tmr_w_stack);
+    sdp_timer_free(tmr_zero);
 }
 
 
@@ -363,28 +365,19 @@ void sdp_grid_wstack_wtower_grid_all(
     );
     sdp_Timer* tmr_fft_grid = sdp_timer_create(tmr_type);
     sdp_Timer* tmr_total = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_w_stack = sdp_timer_create(tmr_type);
+    sdp_Timer* tmr_zero = sdp_timer_create(tmr_type);
     sdp_timer_resume(tmr_total);
 
     // Assume we're using all visibilities.
     const int64_t num_rows = sdp_mem_shape_dim(vis, 0);
-    const int64_t num_chan = sdp_mem_shape_dim(vis, 1);
     sdp_Mem* start_ch = 0, * end_ch = 0, * start_ch_w = 0, * end_ch_w = 0;
     start_ch = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
-    end_ch = sdp_mem_create(SDP_MEM_INT, SDP_MEM_CPU, 1, &num_rows, status);
+    end_ch = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     start_ch_w = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     end_ch_w = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
-    sdp_mem_clear_contents(start_ch, status);
-    int* end_ch_ = (int*) sdp_mem_data(end_ch);
-    for (int64_t i = 0; i < num_rows; ++i)
-    {
-        end_ch_[i] = num_chan;
-    }
-    if (loc == SDP_MEM_GPU)
-    {
-        sdp_Mem* tmp = sdp_mem_create_copy(end_ch, loc, status);
-        sdp_mem_free(end_ch);
-        end_ch = tmp;
-    }
+    sdp_mem_set_value(start_ch, 0, status);
+    sdp_mem_set_value(end_ch, (int) sdp_mem_shape_dim(vis, 1), status);
 
     // Create gridder kernels, sub-grids and sub-grid FFT plans, per thread.
     vector<sdp_GridderWtowerUVW*> kernel(num_threads, 0);
@@ -442,7 +435,9 @@ void sdp_grid_wstack_wtower_grid_all(
     sdp_Fft* ifft = sdp_fft_create(grid, grid, 2, false, status);
 
     // Clear the output image.
-    sdp_mem_clear_contents(image, status);
+    sdp_timer_resume(tmr_zero);
+    sdp_mem_set_value(image, 0, status);
+    sdp_timer_pause(tmr_zero);
 
     // Loop over w-planes.
     if (verbosity > 0)
@@ -468,7 +463,9 @@ void sdp_grid_wstack_wtower_grid_all(
         if (num_vis == 0) continue;
 
         // Clear the grid for this w-plane.
-        sdp_mem_clear_contents(grid, status);
+        sdp_timer_resume(tmr_zero);
+        sdp_mem_set_value(grid, 0, status);
+        sdp_timer_pause(tmr_zero);
 
         // Loop over sub-grid (towers) in u and v.
         #pragma \
@@ -489,7 +486,7 @@ void sdp_grid_wstack_wtower_grid_all(
                 if (num_vis == 0) continue;
 
                 // Grid onto sub-grid.
-                sdp_mem_clear_contents(subgrid[tid], status);
+                sdp_mem_set_value(subgrid[tid], 0, status);
                 sdp_gridder_wtower_uvw_grid(kernel[tid], vis, uvw,
                         start_ch_uv[tid], end_ch_uv[tid], freq0_hz, dfreq_hz,
                         subgrid[tid], iu * eff_sg_size, iv * eff_sg_size,
@@ -521,7 +518,9 @@ void sdp_grid_wstack_wtower_grid_all(
         sdp_gridder_wtower_uvw_grid_correct(
                 kernel[0], grid, 0, 0, iw * w_tower_height, status
         );
+        sdp_timer_resume(tmr_w_stack);
         sdp_gridder_accumulate_scaled_arrays(image, grid, NULL, 0, status);
+        sdp_timer_pause(tmr_w_stack);
     }
     sdp_mem_free(grid);
     sdp_mem_free(start_ch);
@@ -534,7 +533,8 @@ void sdp_grid_wstack_wtower_grid_all(
     {
         report_timing(num_w_planes, num_subgrids_u, num_subgrids_v,
                 image_size, subgrid_size, w_step, w_tower_height,
-                vis, tmr_fft_grid, tmr_total, num_threads, &kernel[0], 1
+                vis, tmr_fft_grid, tmr_total, tmr_w_stack, tmr_zero,
+                num_threads, &kernel[0], 1
         );
     }
     for (int i = 0; i < num_threads; ++i)
@@ -548,6 +548,8 @@ void sdp_grid_wstack_wtower_grid_all(
     sdp_fft_free(ifft);
     sdp_timer_free(tmr_fft_grid);
     sdp_timer_free(tmr_total);
+    sdp_timer_free(tmr_w_stack);
+    sdp_timer_free(tmr_zero);
 }
 
 
@@ -562,6 +564,8 @@ static void report_timing(
         const sdp_Mem* vis,
         sdp_Timer* tmr_fft_grid,
         sdp_Timer* tmr_total,
+        sdp_Timer* tmr_w_stack,
+        sdp_Timer* tmr_zero,
         int num_threads,
         sdp_GridderWtowerUVW** kernel,
         int gridding
@@ -570,6 +574,8 @@ static void report_timing(
     int total_w_planes = 0;
     double t_total = sdp_timer_elapsed(tmr_total);
     double t_fft_grid = sdp_timer_elapsed(tmr_fft_grid);
+    double t_w_stack = sdp_timer_elapsed(tmr_w_stack);
+    double t_zeroing = sdp_timer_elapsed(tmr_zero);
     std::vector<double> t_kernel_totals(num_threads, 0.0);
     double t_kernel_grid_correct = sdp_gridder_wtower_uvw_elapsed_time(
             kernel[0], SDP_WTOWER_TMR_GRID_CORRECT, gridding
@@ -619,6 +625,12 @@ static void report_timing(
     );
     SDP_LOG_INFO("|   + FFT(grid)             : %.3f sec (%.1f%%)",
             t_fft_grid, 100 * t_fft_grid / t_total
+    );
+    SDP_LOG_INFO("|   + W-stacking            : %.3f sec (%.1f%%)",
+            t_w_stack, 100 * t_w_stack / t_total
+    );
+    SDP_LOG_INFO("|   + Zeroing arrays        : %.3f sec (%.1f%%)",
+            t_zeroing, 100 * t_zeroing / t_total
     );
     SDP_LOG_INFO("|   + Process sub-grid stack thread distribution:");
     SDP_LOG_INFO("|     - Minimum             : %.3f sec (%.1f%%)",

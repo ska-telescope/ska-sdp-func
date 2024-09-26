@@ -470,6 +470,17 @@ sdp_Mem* sdp_mem_ref_inc(sdp_Mem* mem);
 void sdp_mem_set_read_only(sdp_Mem* mem, int32_t value);
 
 /**
+ * @brief Sets values in an array.
+ *
+ * For large arrays, this is very much faster than calling memset().
+ *
+ * @param mem Array to be set.
+ * @param value Value to set in each element.
+ * @param status Error status.
+ */
+void sdp_mem_set_value(sdp_Mem* mem, int value, sdp_Error* status);
+
+/**
  * @brief Returns the number of elements in the specified dimension.
  *
  * The slowest varying dimension is the first index (0), and

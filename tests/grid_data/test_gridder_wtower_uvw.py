@@ -1633,10 +1633,16 @@ def test_gridder_wtower_uvw():
     print(f"Reference uvw degrid_subgrid took {t1_r:.4f} s.")
 
     # Call the degridder in PFL.
-    vis = numpy.zeros((num_uvw, ch_count), dtype=numpy.complex128)
     t0 = time.time()
-    gridder.degrid(
-        image, idu, idv, idw, freq0_hz, dfreq_hz, uvw, start_chs, end_chs, vis
+    vis = gridder.degrid_subgrid(
+        image,
+        (idu, idv, idw),
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        uvw,
+        start_chs,
+        end_chs,
     )
     t1 = time.time() - t0
     print(f"PFL uvw degrid took {t1:.4f} s. (speed-up: {t1_r / t1:.0f})")
@@ -1674,17 +1680,16 @@ def test_gridder_wtower_uvw():
     # Call the gridder in PFL.
     img_tst = numpy.zeros_like(img_ref)
     t0 = time.time()
-    gridder.grid(
+    gridder.grid_subgrid(
         vis_ref,
         uvw,
         start_chs,
         end_chs,
+        ch_count,
         freq0_hz,
         dfreq_hz,
         img_tst,
-        idu,
-        idv,
-        idw,
+        (idu, idv, idw),
     )
     t1 = time.time() - t0
     print(f"PFL uvw grid took {t1:.4f} s. (speed-up: {t1_r / t1:.0f})")
@@ -1793,8 +1798,16 @@ def test_gridder_wtower_uvw_gpu():
     # Call the degridder with data in CPU memory.
     vis0 = numpy.zeros((num_uvw, ch_count), dtype=complex_type)
     t0 = time.time()
-    gridder.degrid(
-        image, idu, idv, idw, freq0_hz, dfreq_hz, uvw, start_chs, end_chs, vis0
+    gridder.degrid_subgrid(
+        image,
+        (idu, idv, idw),
+        ch_count,
+        freq0_hz,
+        dfreq_hz,
+        uvw,
+        start_chs,
+        end_chs,
+        vis0,
     )
     t1_r = time.time() - t0
     print(f"PFL CPU degrid took {t1_r:.4f} s.")
@@ -1802,17 +1815,16 @@ def test_gridder_wtower_uvw_gpu():
     # Call the gridder with data in CPU memory.
     img0 = numpy.zeros((subgrid_size, subgrid_size), dtype=complex_type)
     t0 = time.time()
-    gridder.grid(
+    gridder.grid_subgrid(
         vis0,
         uvw,
         start_chs,
         end_chs,
+        ch_count,
         freq0_hz,
         dfreq_hz,
         img0,
-        idu,
-        idv,
-        idw,
+        (idu, idv, idw),
     )
     t1_r = time.time() - t0
     print(f"PFL CPU grid took {t1_r:.4f} s.")
@@ -1827,11 +1839,10 @@ def test_gridder_wtower_uvw_gpu():
         # Call the degridder with data in GPU memory.
         vis_gpu = cupy.zeros((num_uvw, ch_count), dtype=complex_type)
         t0 = time.time()
-        gridder.degrid(
+        gridder.degrid_subgrid(
             image_gpu,
-            idu,
-            idv,
-            idw,
+            (idu, idv, idw),
+            ch_count,
             freq0_hz,
             dfreq_hz,
             uvw_gpu,
@@ -1849,17 +1860,16 @@ def test_gridder_wtower_uvw_gpu():
         # Call the gridder with data in GPU memory.
         img_gpu = cupy.zeros((subgrid_size, subgrid_size), dtype=complex_type)
         t0 = time.time()
-        gridder.grid(
+        gridder.grid_subgrid(
             vis_gpu,
             uvw_gpu,
             start_chs_gpu,
             end_chs_gpu,
+            ch_count,
             freq0_hz,
             dfreq_hz,
             img_gpu,
-            idu,
-            idv,
-            idw,
+            (idu, idv, idw),
         )
         t1 = time.time() - t0
         print(f"PFL GPU grid took {t1:.4f} s.")
@@ -2042,8 +2052,8 @@ def test_gridder_wstack():
     # Common parameters
     image_size = 512  # Total image size in pixels
     subgrid_size = image_size // 4
-    theta = 0.01  # Total image size in directional cosines.
-    fov = 2 * numpy.arcsin(theta / 2)
+    theta = 0.01  # Padded image size in directional cosines.
+    fov = theta * 0.8
     shear_u = 0.0
     shear_v = 0.0
     support = 10
@@ -2220,8 +2230,8 @@ def test_gpu_gridder_wstack():
     # Common parameters
     image_size = 512  # Total image size in pixels
     subgrid_size = image_size // 4
-    theta = 0.01  # Total image size in directional cosines.
-    fov = 2 * numpy.arcsin(theta / 2)
+    theta = 0.01  # Padded image size in directional cosines.
+    fov = theta * 0.8
     shear_u = 0.0
     shear_v = 0.0
     support = 10
@@ -2256,10 +2266,10 @@ def test_gpu_gridder_wstack():
         flatten_uvws_wl(num_chan, freq0_hz, dfreq_hz, uvw, start_chs, end_chs),
     ).reshape(len(uvw), num_chan)
 
-    # Create the reference kernel (needed for find_max_w_tower_height).
+    # Create a kernel to pass to find_max_w_tower_height().
     t0 = time.time()
-    gridder_ref = WtowerUVWGridKernelWStack(
-        image_size,
+    kernel = sdp_grid_func.GridderWtowerUVW(
+        2 * subgrid_size,
         subgrid_size,
         theta,
         w_step,
@@ -2271,10 +2281,12 @@ def test_gpu_gridder_wstack():
         w_oversampling,
     )
     t1 = time.time() - t0
-    print(f"Creating reference gridder kernel took {t1:.4f} s.")
+    print(f"Creating gridder kernel took {t1:.4f} s.")
     subgrid_frac = 2 / 3
     t0 = time.time()
-    w_tower_height = find_max_w_tower_height(gridder_ref, fov, subgrid_frac)
+    w_tower_height = sdp_grid_func.find_max_w_tower_height(
+        kernel, fov, subgrid_frac
+    )
     t1 = time.time() - t0
     print(f"w_tower_height is {w_tower_height} (took {t1:.4f} s.)")
 

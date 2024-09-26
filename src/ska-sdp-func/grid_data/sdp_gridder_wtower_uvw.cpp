@@ -4,10 +4,9 @@
 #include <complex>
 #include <cstdlib>
 
-#include "ska-sdp-func/fourier_transforms/private_pswf.h"
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
-#include "ska-sdp-func/fourier_transforms/sdp_pswf.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
+#include "ska-sdp-func/grid_data/sdp_gridder_grid_correct.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.h"
 #include "ska-sdp-func/math/sdp_math_macros.h"
@@ -564,313 +563,6 @@ void grid_gpu(
     );
 }
 
-
-// Local function to apply grid correction for the PSWF.
-template<typename T>
-void grid_corr_pswf(
-        int image_size,
-        double theta,
-        double w_step,
-        double shear_u,
-        double shear_v,
-        sdp_Pswf* pswf_lm,
-        sdp_Pswf* pswf_n,
-        sdp_Mem* facet,
-        int facet_offset_l,
-        int facet_offset_m,
-        sdp_Error* status
-)
-{
-    if (*status) return;
-
-    // Apply portion of shifted PSWF to facet.
-    sdp_MemViewCpu<T, 2> facet_;
-    sdp_MemViewCpu<const double, 1> pswf_;
-    sdp_mem_check_and_view(facet, &facet_, status);
-    sdp_mem_check_and_view(
-            sdp_pswf_values(pswf_lm, SDP_MEM_CPU, status), &pswf_, status
-    );
-    if (*status) return;
-    const int num_l = (int) sdp_mem_shape_dim(facet, 0);
-    const int num_m = (int) sdp_mem_shape_dim(facet, 1);
-    const double* pswf_n_coe = (const double*) sdp_mem_data_const(
-            sdp_pswf_coeff(pswf_n, SDP_MEM_CPU, status)
-    );
-    const double pswf_n_c = sdp_pswf_par_c(pswf_n);
-    #pragma omp parallel for
-    for (int il = 0; il < num_l; ++il)
-    {
-        const int pl = il - num_l / 2 + facet_offset_l;
-        const double l_ = pl * theta / image_size;
-        const double pswf_l = pswf_(pl + image_size / 2);
-        for (int im = 0; im < num_m; ++im)
-        {
-            const int pm = im - num_m / 2 + facet_offset_m;
-            const double m_ = pm * theta / image_size;
-            const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
-            const double pswf_m = pswf_(pm + image_size / 2);
-            const double pswf_n_x = fabs(n_ * 2.0 * w_step);
-            const double pswf_n = (pswf_n_x < 1.0) ?
-                        sdp_pswf_aswfa(0, 0, pswf_n_c, pswf_n_coe, pswf_n_x) :
-                        1.0;
-            const double scale = 1.0 / (pswf_l * pswf_m * pswf_n);
-            facet_(il, im) *= (T) scale;
-        }
-    }
-}
-
-
-void sdp_gridder_grid_correct_pswf(
-        int image_size,
-        double theta,
-        double w_step,
-        double shear_u,
-        double shear_v,
-        int support,
-        int w_support,
-        sdp_Mem* facet,
-        int facet_offset_l,
-        int facet_offset_m,
-        sdp_Error* status
-)
-{
-    if (*status) return;
-    sdp_Pswf* pswf_n = sdp_pswf_create(0, w_support * (M_PI / 2));
-    sdp_Pswf* pswf_lm = sdp_pswf_create(0, support * (M_PI / 2));
-    sdp_pswf_generate(pswf_lm, 0, image_size, 1, status);
-
-    // Apply grid correction for the appropriate data type.
-    const sdp_MemLocation loc = sdp_mem_location(facet);
-    if (loc == SDP_MEM_CPU)
-    {
-        switch (sdp_mem_type(facet))
-        {
-        case SDP_MEM_DOUBLE:
-            grid_corr_pswf<double>(
-                    image_size, theta, w_step, shear_u, shear_v, pswf_lm,
-                    pswf_n, facet, facet_offset_l, facet_offset_m, status
-            );
-            break;
-        case SDP_MEM_COMPLEX_DOUBLE:
-            grid_corr_pswf<complex<double> >(
-                    image_size, theta, w_step, shear_u, shear_v, pswf_lm,
-                    pswf_n, facet, facet_offset_l, facet_offset_m, status
-            );
-            break;
-        case SDP_MEM_FLOAT:
-            grid_corr_pswf<float>(
-                    image_size, theta, w_step, shear_u, shear_v, pswf_lm,
-                    pswf_n, facet, facet_offset_l, facet_offset_m, status
-            );
-            break;
-        case SDP_MEM_COMPLEX_FLOAT:
-            grid_corr_pswf<complex<float> >(
-                    image_size, theta, w_step, shear_u, shear_v, pswf_lm,
-                    pswf_n, facet, facet_offset_l, facet_offset_m, status
-            );
-            break;
-        default:
-            *status = SDP_ERR_DATA_TYPE;
-            break;
-        }
-    }
-    else if (loc == SDP_MEM_GPU)
-    {
-        uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
-        const char* kernel_name = 0;
-        int is_cplx = 0, is_dbl = 0;
-        const int num_l = sdp_mem_shape_dim(facet, 0);
-        const int num_m = sdp_mem_shape_dim(facet, 1);
-        sdp_MemViewGpu<complex<double>, 2> fct_cdbl;
-        sdp_MemViewGpu<complex<float>, 2> fct_cflt;
-        sdp_MemViewGpu<double, 2> fct_dbl;
-        sdp_MemViewGpu<float, 2> fct_flt;
-        sdp_MemViewGpu<const double, 1> pswf_;
-        sdp_mem_check_and_view(
-                sdp_pswf_values(pswf_lm, SDP_MEM_GPU, status), &pswf_, status
-        );
-        const sdp_Mem* pswf_n_coe = sdp_pswf_coeff(pswf_n, SDP_MEM_GPU, status);
-        const double pswf_n_c = sdp_pswf_par_c(pswf_n);
-        switch (sdp_mem_type(facet))
-        {
-        case SDP_MEM_FLOAT:
-            is_cplx = 0;
-            is_dbl = 0;
-            sdp_mem_check_and_view(facet, &fct_flt, status);
-            kernel_name = "sdp_gridder_grid_correct_pswf<float>";
-            break;
-        case SDP_MEM_DOUBLE:
-            is_cplx = 0;
-            is_dbl = 1;
-            sdp_mem_check_and_view(facet, &fct_dbl, status);
-            kernel_name = "sdp_gridder_grid_correct_pswf<double>";
-            break;
-        case SDP_MEM_COMPLEX_FLOAT:
-            is_cplx = 1;
-            is_dbl = 0;
-            sdp_mem_check_and_view(facet, &fct_cflt, status);
-            kernel_name = "sdp_gridder_grid_correct_pswf<complex<float> >";
-            break;
-        case SDP_MEM_COMPLEX_DOUBLE:
-            is_cplx = 1;
-            is_dbl = 1;
-            sdp_mem_check_and_view(facet, &fct_cdbl, status);
-            kernel_name = "sdp_gridder_grid_correct_pswf<complex<double> >";
-            break;
-        default:
-            *status = SDP_ERR_DATA_TYPE;
-            break;
-        }
-        const void* arg[] = {
-            (const void*) &image_size,
-            (const void*) &theta,
-            (const void*) &w_step,
-            (const void*) &shear_u,
-            (const void*) &shear_v,
-            (const void*) &pswf_,
-            sdp_mem_gpu_buffer_const(pswf_n_coe, status),
-            (const void*) &pswf_n_c,
-            is_cplx ?
-                (is_dbl ? (const void*) &fct_cdbl : (const void*) &fct_cflt) :
-                (is_dbl ? (const void*) &fct_dbl : (const void*) &fct_flt),
-            (const void*) &facet_offset_l,
-            (const void*) &facet_offset_m
-        };
-        num_blocks[0] = (num_l + num_threads[0] - 1) / num_threads[0];
-        num_blocks[1] = (num_m + num_threads[1] - 1) / num_threads[1];
-        sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, arg, status
-        );
-    }
-    sdp_pswf_free(pswf_n);
-    sdp_pswf_free(pswf_lm);
-}
-
-
-// Local function to apply w-correction.
-template<typename T>
-void grid_corr_w_stack(
-        int image_size,
-        double theta,
-        double w_step,
-        double shear_u,
-        double shear_v,
-        sdp_Mem* facet,
-        int facet_offset_l,
-        int facet_offset_m,
-        int w_offset,
-        int inverse,
-        sdp_Error* status
-)
-{
-    if (*status || w_offset == 0) return;
-    sdp_MemViewCpu<T, 2> facet_;
-    sdp_mem_check_and_view(facet, &facet_, status);
-    if (*status) return;
-    const int num_l = (int) sdp_mem_shape_dim(facet, 0);
-    const int num_m = (int) sdp_mem_shape_dim(facet, 1);
-    #pragma omp parallel for
-    for (int il = 0; il < num_l; ++il)
-    {
-        const int pl = il - num_l / 2 + facet_offset_l;
-        const double l_ = pl * theta / image_size;
-        for (int im = 0; im < num_m; ++im)
-        {
-            const int pm = im - num_m / 2 + facet_offset_m;
-            const double m_ = pm * theta / image_size;
-            const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
-            const double phase = 2.0 * M_PI * w_step * n_;
-            complex<double> w = complex<double>(cos(phase), sin(phase));
-            w = std::pow(w, w_offset);
-            w = !inverse ? 1.0 / w : w;
-            facet_(il, im) *= (T) w;
-        }
-    }
-}
-
-
-void sdp_gridder_grid_correct_w_stack(
-        int image_size,
-        double theta,
-        double w_step,
-        double shear_u,
-        double shear_v,
-        sdp_Mem* facet,
-        int facet_offset_l,
-        int facet_offset_m,
-        int w_offset,
-        int inverse,
-        sdp_Error* status
-)
-{
-    if (*status || w_offset == 0) return;
-    const sdp_MemLocation loc = sdp_mem_location(facet);
-    if (loc == SDP_MEM_CPU)
-    {
-        if (sdp_mem_type(facet) == SDP_MEM_COMPLEX_DOUBLE)
-        {
-            grid_corr_w_stack<complex<double> >(
-                    image_size, theta, w_step, shear_u, shear_v, facet,
-                    facet_offset_l, facet_offset_m, w_offset, inverse, status
-            );
-        }
-        else if (sdp_mem_type(facet) == SDP_MEM_COMPLEX_FLOAT)
-        {
-            grid_corr_w_stack<complex<float> >(
-                    image_size, theta, w_step, shear_u, shear_v, facet,
-                    facet_offset_l, facet_offset_m, w_offset, inverse, status
-            );
-        }
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
-        }
-    }
-    else if (loc == SDP_MEM_GPU)
-    {
-        uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
-        const char* kernel_name = 0;
-        int is_dbl = 0;
-        const int num_l = sdp_mem_shape_dim(facet, 0);
-        const int num_m = sdp_mem_shape_dim(facet, 1);
-        sdp_MemViewGpu<complex<double>, 2> facet_dbl;
-        sdp_MemViewGpu<complex<float>, 2> facet_flt;
-        if (sdp_mem_type(facet) == SDP_MEM_COMPLEX_DOUBLE)
-        {
-            is_dbl = 1;
-            sdp_mem_check_and_view(facet, &facet_dbl, status);
-            kernel_name = "sdp_gridder_grid_correct_w_stack<complex<double> >";
-        }
-        else if (sdp_mem_type(facet) == SDP_MEM_COMPLEX_FLOAT)
-        {
-            is_dbl = 0;
-            sdp_mem_check_and_view(facet, &facet_flt, status);
-            kernel_name = "sdp_gridder_grid_correct_w_stack<complex<float> >";
-        }
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
-        }
-        const void* arg[] = {
-            (const void*) &image_size,
-            (const void*) &theta,
-            (const void*) &w_step,
-            (const void*) &shear_u,
-            (const void*) &shear_v,
-            is_dbl ? (const void*) &facet_dbl : (const void*) &facet_flt,
-            (const void*) &facet_offset_l,
-            (const void*) &facet_offset_m,
-            (const void*) &w_offset,
-            (const void*) &inverse
-        };
-        num_blocks[0] = (num_l + num_threads[0] - 1) / num_threads[0];
-        num_blocks[1] = (num_m + num_threads[1] - 1) / num_threads[1];
-        sdp_launch_cuda_kernel(kernel_name,
-                num_blocks, num_threads, 0, 0, arg, status
-        );
-    }
-}
-
 } // End anonymous namespace for file-local functions.
 
 
@@ -912,29 +604,28 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
     plan->w_oversampling = w_oversampling;
 
     // Generate oversampled convolution kernel (uv_kernel).
-    const int64_t uv_kernel_shape[] = {oversampling + 1, plan->support};
+    const int64_t uv_conv_shape[] = {plan->oversampling + 1, plan->support};
     plan->uv_kernel = sdp_mem_create(
-            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, uv_kernel_shape, status
+            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, uv_conv_shape, status
     );
-    sdp_gridder_make_pswf_kernel(support, plan->uv_kernel, status);
+    sdp_gridder_make_pswf_kernel(plan->support, plan->uv_kernel, status);
 
     // Generate oversampled w convolution kernel (w_kernel).
-    const int64_t w_kernel_shape[] = {w_oversampling + 1, w_support};
+    const int64_t w_conv_shape[] = {plan->w_oversampling + 1, plan->w_support};
     plan->w_kernel = sdp_mem_create(
-            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, w_kernel_shape, status
+            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, w_conv_shape, status
     );
-    sdp_gridder_make_pswf_kernel(w_support, plan->w_kernel, status);
+    sdp_gridder_make_pswf_kernel(plan->w_support, plan->w_kernel, status);
 
     // Generate w_pattern.
     // This is the iDFT of a sole visibility at (0, 0, w) - our plan is roughly
     // to convolve in uvw space by a delta function to move the grid in w.
     const int64_t w_pattern_shape[] = {subgrid_size, subgrid_size};
-    sdp_Mem* w_pattern = sdp_mem_create(
+    plan->w_pattern = sdp_mem_create(
             SDP_MEM_COMPLEX_DOUBLE, SDP_MEM_CPU, 2, w_pattern_shape, status
     );
-    plan->w_pattern = w_pattern;
-    sdp_gridder_make_w_pattern(
-            subgrid_size, theta, shear_u, shear_v, w_step, w_pattern, status
+    sdp_gridder_make_w_pattern(subgrid_size, theta,
+            shear_u, shear_v, w_step, plan->w_pattern, status
     );
 
     return plan;
@@ -957,6 +648,7 @@ void sdp_gridder_wtower_uvw_degrid(
 )
 {
     if (*status) return;
+    if (dfreq_hz == 0.0) dfreq_hz = 10; // Prevent possible divide-by-zero.
     const sdp_MemLocation loc = sdp_mem_location(vis);
     if (sdp_mem_location(subgrid_image) != loc ||
             sdp_mem_location(uvws) != loc ||
@@ -1187,6 +879,7 @@ void sdp_gridder_wtower_uvw_grid(
 )
 {
     if (*status) return;
+    if (dfreq_hz == 0.0) dfreq_hz = 10; // Prevent possible divide-by-zero.
     const sdp_MemLocation loc = sdp_mem_location(vis);
     if (sdp_mem_location(subgrid_image) != loc ||
             sdp_mem_location(uvws) != loc ||
@@ -1249,8 +942,8 @@ void sdp_gridder_wtower_uvw_grid(
     sdp_Mem* subgrids = sdp_mem_create(
             sdp_mem_type(vis), loc, 3, subgrids_shape, status
     );
-    sdp_mem_clear_contents(subgrids, status);
-    sdp_mem_clear_contents(w_subgrid_image, status);
+    sdp_mem_set_value(subgrids, 0, status);
+    sdp_mem_set_value(w_subgrid_image, 0, status);
 
     // Create the iFFT plan and scratch buffer.
     sdp_Mem* fft_buffer = sdp_mem_create(
@@ -1408,6 +1101,7 @@ void sdp_gridder_wtower_uvw_grid_correct(
 
 void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan)
 {
+    if (!plan) return;
     sdp_mem_free(plan->uv_kernel);
     sdp_mem_free(plan->uv_kernel_gpu);
     sdp_mem_free(plan->w_kernel);
@@ -1436,10 +1130,70 @@ double sdp_gridder_wtower_uvw_elapsed_time(
 }
 
 
-double sdp_gridder_wtower_uvw_num_w_planes(
+int sdp_gridder_wtower_uvw_num_w_planes(
         const sdp_GridderWtowerUVW* plan,
         int gridding
 )
 {
     return (gridding >= 0 && gridding < 2) ? plan->num_w_planes[gridding] : 0;
+}
+
+
+int sdp_gridder_wtower_uvw_image_size(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->image_size;
+}
+
+
+int sdp_gridder_wtower_uvw_oversampling(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->oversampling;
+}
+
+
+double sdp_gridder_wtower_uvw_shear_u(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->shear_u;
+}
+
+
+double sdp_gridder_wtower_uvw_shear_v(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->shear_v;
+}
+
+
+int sdp_gridder_wtower_uvw_subgrid_size(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->subgrid_size;
+}
+
+
+int sdp_gridder_wtower_uvw_support(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->support;
+}
+
+
+double sdp_gridder_wtower_uvw_theta(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->theta;
+}
+
+
+int sdp_gridder_wtower_uvw_w_oversampling(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->w_oversampling;
+}
+
+
+double sdp_gridder_wtower_uvw_w_step(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->w_step;
+}
+
+
+int sdp_gridder_wtower_uvw_w_support(const sdp_GridderWtowerUVW* plan)
+{
+    return plan->w_support;
 }

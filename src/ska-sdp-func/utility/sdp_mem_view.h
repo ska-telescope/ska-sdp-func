@@ -13,16 +13,54 @@
 #error Memory views require C++ language features!
 #endif
 
-/**
- * @defgroup Mem_view_struct
- * @{
- */
-
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 
 #include <assert.h>
 #include <complex>
+
+#ifdef __CUDACC__
+#define SDP_MV_INLINE __host__ __device__ __forceinline__
+#else
+#define SDP_MV_INLINE inline
+#endif
+
+// Check if static_assert is available before trying to use it.
+#if __cpp_static_assert >= 200410L
+#define SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM) \
+    static_assert(num_dims == NUM, \
+        "Wrong number of indices passed to operator ()!" \
+    );
+#else
+#define SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM)
+#endif
+
+#ifndef NDEBUG
+#define SDP_MV_CHECK_DIM(NUM) assert(i ## NUM >= 0 && i ## NUM < shape[NUM]);
+#else
+#define SDP_MV_CHECK_DIM(NUM)
+#endif
+
+// Helper macros for repetition, used for dimension bounds check.
+#define SDP_MV_REPEAT_0(MACRO)
+#define SDP_MV_REPEAT_1(MACRO) MACRO(0)
+#define SDP_MV_REPEAT_2(MACRO) SDP_MV_REPEAT_1(MACRO) MACRO(1)
+#define SDP_MV_REPEAT_3(MACRO) SDP_MV_REPEAT_2(MACRO) MACRO(2)
+#define SDP_MV_REPEAT_4(MACRO) SDP_MV_REPEAT_3(MACRO) MACRO(3)
+#define SDP_MV_REPEAT_5(MACRO) SDP_MV_REPEAT_4(MACRO) MACRO(4)
+#define SDP_MV_GET_REPEAT_MACRO(NUM) SDP_MV_REPEAT_ ## NUM
+
+// Call the appropriate SDP_MV_REPEAT_X macro.
+#define SDP_MV_REPEAT(NUM, MACRO) SDP_MV_GET_REPEAT_MACRO(NUM)(MACRO)
+
+#define SDP_MV_CHECK_DIMS(NUM) \
+    SDP_MV_STATIC_ASSERT_NUM_DIMS(NUM) \
+    SDP_MV_REPEAT(NUM, SDP_MV_CHECK_DIM)
+
+/**
+ * @defgroup Mem_view_struct
+ * @{
+ */
 
 /**
  * @brief Utility class for accessing simple strided arrays
@@ -59,161 +97,87 @@ struct sdp_MemView
     /**
      * @brief Operator for accessing const data via 0-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline const num_t &operator ()() const
+    SDP_MV_INLINE const num_t &operator ()() const
     {
-        static_assert(num_dims == 0,
-                "Wrong number of indices passed to operator ()!"
-        );
+        SDP_MV_CHECK_DIMS(0)
         return *ptr;
     }
 
     /**
      * @brief Operator for accessing data via 0-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline num_t &operator ()()
+    SDP_MV_INLINE num_t &operator ()()
     {
-        static_assert(num_dims == 0,
-                "Wrong number of indices passed to operator ()!"
-        );
+        SDP_MV_CHECK_DIMS(0)
         return *ptr;
     }
 
     /**
      * @brief Operator for accessing const data via 1-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline const num_t &operator ()(int64_t i0) const
+    SDP_MV_INLINE const num_t &operator ()(int64_t i0) const
     {
-        static_assert(num_dims == 1,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-#endif
+        SDP_MV_CHECK_DIMS(1)
         return ptr[stride[0] * i0];
     }
 
     /**
      * @brief Operator for accessing data via 1-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline num_t &operator ()(int64_t i0)
+    SDP_MV_INLINE num_t &operator ()(int64_t i0)
     {
-        static_assert(num_dims == 1,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-#endif
+        SDP_MV_CHECK_DIMS(1)
         return ptr[stride[0] * i0];
     }
 
     /**
      * @brief Operator for accessing const data via 2-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline const num_t &operator ()(int64_t i0, int64_t i1) const
+    SDP_MV_INLINE const num_t &operator ()(int64_t i0, int64_t i1) const
     {
-        static_assert(num_dims == 2,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-#endif
+        SDP_MV_CHECK_DIMS(2)
         return ptr[stride[0] * i0 + stride[1] * i1];
     }
 
     /**
      * @brief Operator for accessing data via 2-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline num_t &operator ()(int64_t i0, int64_t i1)
+    SDP_MV_INLINE num_t &operator ()(int64_t i0, int64_t i1)
     {
-        static_assert(num_dims == 2,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-#endif
+        SDP_MV_CHECK_DIMS(2)
         return ptr[stride[0] * i0 + stride[1] * i1];
     }
 
     /**
      * @brief Operator for accessing const data via 3-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline const num_t &operator ()(int64_t i0, int64_t i1, int64_t i2) const
+    SDP_MV_INLINE
+    const num_t &operator ()(int64_t i0, int64_t i1, int64_t i2) const
     {
-        static_assert(num_dims == 3,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-        assert(i2 >= 0 && i2 < shape[2]);
-#endif
+        SDP_MV_CHECK_DIMS(3)
         return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2];
     }
 
     /**
      * @brief Operator for accessing data via 3-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2)
+    SDP_MV_INLINE num_t &operator ()(int64_t i0, int64_t i1, int64_t i2)
     {
-        static_assert(num_dims == 3,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-        assert(i2 >= 0 && i2 < shape[2]);
-#endif
+        SDP_MV_CHECK_DIMS(3)
         return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2];
     }
 
     /**
      * @brief Operator for accessing const data via 4-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline const num_t &operator ()(
+    SDP_MV_INLINE const num_t &operator ()(
             int64_t i0,
             int64_t i1,
             int64_t i2,
             int64_t i3
     ) const
     {
-        static_assert(num_dims == 4,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-        assert(i2 >= 0 && i2 < shape[2]);
-        assert(i3 >= 0 && i3 < shape[3]);
-#endif
+        SDP_MV_CHECK_DIMS(4)
         return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
                        stride[3] * i3];
     }
@@ -221,20 +185,10 @@ struct sdp_MemView
     /**
      * @brief Operator for accessing data via 4-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline num_t &operator ()(int64_t i0, int64_t i1, int64_t i2, int64_t i3)
+    SDP_MV_INLINE
+    num_t &operator ()(int64_t i0, int64_t i1, int64_t i2, int64_t i3)
     {
-        static_assert(num_dims == 4,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-        assert(i2 >= 0 && i2 < shape[2]);
-        assert(i3 >= 0 && i3 < shape[3]);
-#endif
+        SDP_MV_CHECK_DIMS(4)
         return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
                        stride[3] * i3];
     }
@@ -242,10 +196,7 @@ struct sdp_MemView
     /**
      * @brief Operator for accessing const data via 5-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline const num_t &operator ()(
+    SDP_MV_INLINE const num_t &operator ()(
             int64_t i0,
             int64_t i1,
             int64_t i2,
@@ -253,16 +204,7 @@ struct sdp_MemView
             int64_t i4
     ) const
     {
-        static_assert(num_dims == 5,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-        assert(i2 >= 0 && i2 < shape[2]);
-        assert(i3 >= 0 && i3 < shape[3]);
-        assert(i4 >= 0 && i4 < shape[4]);
-#endif
+        SDP_MV_CHECK_DIMS(5)
         return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
                        stride[3] * i3 + stride[4] * i4];
     }
@@ -270,10 +212,7 @@ struct sdp_MemView
     /**
      * @brief Operator for accessing data via 5-dimensional array views.
      */
-#ifdef __CUDACC__
-    __host__ __device__
-#endif
-    inline num_t &operator ()(
+    SDP_MV_INLINE num_t &operator ()(
             int64_t i0,
             int64_t i1,
             int64_t i2,
@@ -281,16 +220,7 @@ struct sdp_MemView
             int64_t i4
 )
     {
-        static_assert(num_dims == 5,
-                "Wrong number of indices passed to operator ()!"
-        );
-#ifndef NDEBUG
-        assert(i0 >= 0 && i0 < shape[0]);
-        assert(i1 >= 0 && i1 < shape[1]);
-        assert(i2 >= 0 && i2 < shape[2]);
-        assert(i3 >= 0 && i3 < shape[3]);
-        assert(i4 >= 0 && i4 < shape[4]);
-#endif
+        SDP_MV_CHECK_DIMS(5)
         return ptr[stride[0] * i0 + stride[1] * i1 + stride[2] * i2 +
                        stride[3] * i3 + stride[4] * i4];
     }
