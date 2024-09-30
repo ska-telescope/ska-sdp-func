@@ -127,36 +127,32 @@ def clamp_channels(uvw, freq0, dfreq, start_ch, end_ch, min_uvw, max_uvw):
     :returns: Clamped (start_ch, end_ch) or (0,0) if no channels overlap
     """
 
-    # We have to be slightly careful about degenerate cases in the
-    # division below - not only can we have divisions by zero,
-    # but also channel numbers that go over the integer range.
-    # So it is safer to round these coordinates to zero for the
-    # purpose of the bounds check.
-    eta = 1e-3
     for _u, _min, _max in zip(uvw, min_uvw, max_uvw):
         u0 = freq0 * _u / C_0
         du = dfreq * _u / C_0
+
+        # We want to calculate (_min-u0)/du and (_max-u0)/du below,
+        # but that has a chance of overflowing integers. So here we
+        # "smartly" calculate lower bounds for du to make this safe.
+        eta = max(abs(_min - u0), abs(_max - u0)) / 2147483645.0
+
         # Note the symmetry below: we get precisely the same expression
         # for maximum and minimum, however start_ch is inclusive but
         # end_ch is exclusive. This means that two calls to
         # clamp_channels where any min_uvw is equal to any max_uvw will
         # never return overlapping channel ranges.
-        try:
-            if _u > eta:
-                start_ch = max(start_ch, int(math.ceil((_min - u0) / du)))
-                end_ch = min(end_ch, int(math.ceil((_max - u0) / du)))
-            elif _u < -eta:
-                start_ch = max(start_ch, int(math.ceil((_max - u0) / du)))
-                end_ch = min(end_ch, int(math.ceil((_min - u0) / du)))
-            else:
-                # Assume _u = 0, which makes this a binary decision:
-                # Does the range include 0 or not? Also let's be careful
-                # just in case somebody puts a subgrid boundary right at zero.
-                if _min > 0 or _max <= 0:
-                    return (0, 0)
-        except OverflowError:
-            print(_u, _max, _min, du)
-            raise
+        if du > eta:
+            start_ch = max(start_ch, int(math.ceil((_min - u0) / du)))
+            end_ch = min(end_ch, int(math.ceil((_max - u0) / du)))
+        elif du < -eta:
+            start_ch = max(start_ch, int(math.ceil((_max - u0) / du)))
+            end_ch = min(end_ch, int(math.ceil((_min - u0) / du)))
+        else:
+            # Assume _u = u0, which makes this a binary decision:
+            # Does the range include u0 or not? Also let's be careful
+            # just in case somebody puts a subgrid boundary right at u0.
+            if _min > u0 or _max <= u0:
+                return (0, 0)
 
     if end_ch <= start_ch:
         return (0, 0)
@@ -783,7 +779,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                 uvw_shifted = shift_uvw(
                     uvw_stretched, subgrid_offsets, self.theta, self.w_step
                 )
-                uvw_shifted -= [0, 0, w_plane * self.w_step]
+                uvw_shifted -= [0, 0, (w_plane - 1) * self.w_step]
 
                 # Bounds check.
                 duvw = uvw * dfreq / C_0
@@ -812,6 +808,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                     vis_out[i][start_ch:end_ch],
                     uvw_shifted[start_ch:end_ch],
                     subgrids,
+                    i,
                 )
 
         return vis_out
@@ -922,7 +919,7 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
                 uvw_shifted = shift_uvw(
                     uvw_scaled, subgrid_offsets, self.theta, self.w_step
                 )
-                uvw_shifted -= [0, 0, w_plane * self.w_step]
+                uvw_shifted -= [0, 0, (w_plane - 1) * self.w_step]
 
                 # Bounds check.
                 duvw = uvw * dfreq / C_0
@@ -966,45 +963,47 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
             * self.subgrid_size**2
         )
 
-    def _degrid_vis_uvw(self, vis_out, uvw_shifted, subgrids):
+    def _degrid_vis_uvw(self, vis_out, uvw_shifted, subgrids, i_row):
 
         # Degrid visibilities
+        theta_ov = self.theta * self.oversampling
+        w_step_ov = 1 / self.w_step * self.w_oversampling
+        half_sg_size_ov = (
+            self.subgrid_size // 2 - self.vr_size / 2 + 1
+        ) * self.oversampling
         for j, (u, v, w) in enumerate(uvw_shifted):
 
-            # Determine top-left corner of grid region centered
-            # approximately on visibility
-            iu0 = (
-                int(round(self.theta * u - (self.vr_size - 1) / 2))
-                + self.subgrid_size // 2
-            )
-            iv0 = (
-                int(round(self.theta * v - (self.vr_size - 1) / 2))
-                + self.subgrid_size // 2
-            )
-            iu_shift = iu0 + self.vr_size // 2 - self.subgrid_size // 2
-            iv_shift = iv0 + self.vr_size // 2 - self.subgrid_size // 2
+            # Determine top-left corner of grid region centered approximately
+            # on visibility in oversampled coordinates (this is subgrid-local,
+            # so should be safe for overflows)
+            iu0_ov = int(numpy.round(u * theta_ov + half_sg_size_ov))
+            iv0_ov = int(numpy.round(v * theta_ov + half_sg_size_ov))
+            iw0_ov = int(numpy.round(w * w_step_ov))
+            iu0 = iu0_ov // self.oversampling
+            iv0 = iv0_ov // self.oversampling
+
+            # Determine which kernel to use.
+            u_off = iu0_ov % self.oversampling
+            v_off = iv0_ov % self.oversampling
+            w_off = iw0_ov % self.w_oversampling
+
+            if iu0 < 0 or iv0 < 0 or u_off < 0 or v_off < 0 or w_off < 0:
+                print(
+                    "Negative index encountered in Python version! "
+                    f"i_row = {i_row}, iu0 = {iu0}, iv0 = {iv0} "
+                    f"u_off = {u_off}, v_off = {v_off}, w_off = {w_off} "
+                    f"u = {u}, v = {v}, w = {w}, "
+                    f"theta_ov = {theta_ov}, "
+                    f"half_sg_size_ov = {half_sg_size_ov}"
+                )
 
             # Get grid region in image space, convolve
             vis_region = subgrids[
                 :, iu0 : iu0 + self.vr_size, iv0 : iv0 + self.vr_size
             ]
-            u_factor = self._uv_kernel[
-                int(
-                    numpy.round(
-                        (u * self.theta - iu_shift + 1) * self.oversampling
-                    )
-                )
-            ]
-            v_factor = self._uv_kernel[
-                int(
-                    numpy.round(
-                        (v * self.theta - iv_shift + 1) * self.oversampling
-                    )
-                )
-            ]
-            w_factor = self._w_kernel[
-                int(numpy.round((w / self.w_step + 1) * self.w_oversampling))
-            ]
+            u_factor = self._uv_kernel[u_off]
+            v_factor = self._uv_kernel[v_off]
+            w_factor = self._w_kernel[w_off]
             u_factor = u_factor[numpy.newaxis, :, numpy.newaxis]
             v_factor = v_factor[numpy.newaxis, numpy.newaxis, :]
             w_factor = w_factor[
@@ -1017,39 +1016,26 @@ class WtowerUVWGridKernel(WtowerUVGridKernel):
     def _grid_vis_uvw(self, vis, uvw_shifted, subgrids):
 
         # Grid visibilities
+        theta_ov = self.theta * self.oversampling
+        w_step_ov = 1 / self.w_step * self.w_oversampling
+        half_sg_size_ov = (
+            self.subgrid_size // 2 - self.vr_size / 2 + 1
+        ) * self.oversampling
         for j, (u, v, w) in enumerate(uvw_shifted):
 
-            # Determine top-left corner of grid region centered
-            # approximately on visibility
-            iu0 = (
-                int(round(self.theta * u - (self.vr_size - 1) / 2))
-                + self.subgrid_size // 2
-            )
-            iv0 = (
-                int(round(self.theta * v - (self.vr_size - 1) / 2))
-                + self.subgrid_size // 2
-            )
-            iu_shift = iu0 + self.vr_size // 2 - self.subgrid_size // 2
-            iv_shift = iv0 + self.vr_size // 2 - self.subgrid_size // 2
+            # Determine top-left corner of grid region centered approximately
+            # on visibility in oversampled coordinates (this is subgrid-local,
+            # so should be safe for overflows)
+            iu0_ov = int(numpy.round(u * theta_ov + half_sg_size_ov))
+            iv0_ov = int(numpy.round(v * theta_ov + half_sg_size_ov))
+            iw0_ov = int(numpy.round(w * w_step_ov))
+            iu0 = iu0_ov // self.oversampling
+            iv0 = iv0_ov // self.oversampling
 
-            # Determine convolution
-            u_factor = self._uv_kernel[
-                int(
-                    numpy.round(
-                        (u * self.theta - iu_shift + 1) * self.oversampling
-                    )
-                )
-            ]
-            v_factor = self._uv_kernel[
-                int(
-                    numpy.round(
-                        (v * self.theta - iv_shift + 1) * self.oversampling
-                    )
-                )
-            ]
-            w_factor = self._w_kernel[
-                int(numpy.round((w / self.w_step + 1) * self.w_oversampling))
-            ]
+            # Get grid region in image space, convolve
+            u_factor = self._uv_kernel[iu0_ov % self.oversampling]
+            v_factor = self._uv_kernel[iv0_ov % self.oversampling]
+            w_factor = self._w_kernel[iw0_ov % self.w_oversampling]
             u_factor = u_factor[numpy.newaxis, :, numpy.newaxis]
             v_factor = v_factor[numpy.newaxis, numpy.newaxis, :]
             w_factor = w_factor[
@@ -1129,16 +1115,19 @@ def clamp_channels_single(us, freq0, dfreq, start_chs, end_chs, _min, _max):
     :returns: Clamped (start_chs, end_chs) or (0,0) if no channels overlap
     """
 
-    # Determine positions far away from zero
-    eta = 1e-2
-    mask = numpy.abs(us) > eta * C_0 / dfreq
+    # Determine mask for positions far enough away from zero
+    # not to trigger integer overflows (see clamp_channels)
+    u0 = us * (freq0 / C_0)
+    du = us * (dfreq / C_0)
+    eta = numpy.maximum(abs(_min - u0), abs(_max - u0)) / 2147483645.0
+    mask = numpy.abs(du) > eta
 
     # Clamp non-zero positions
-    u0 = us[mask] * (freq0 / C_0)
-    du = us[mask] * (dfreq / C_0)
-    mins = numpy.ceil((_min - u0) / du).astype(int)
-    maxs = numpy.ceil((_max - u0) / du).astype(int)
-    positive_mask = du > 0
+    masked_u0 = u0[mask]
+    masked_du = du[mask]
+    mins = numpy.ceil((_min - masked_u0) / masked_du).astype(int)
+    maxs = numpy.ceil((_max - masked_u0) / masked_du).astype(int)
+    positive_mask = masked_du > 0
     start_chs = numpy.array(start_chs)
     end_chs = numpy.array(end_chs)
     start_chs[mask] = numpy.maximum(
@@ -1149,9 +1138,10 @@ def clamp_channels_single(us, freq0, dfreq, start_chs, end_chs, _min, _max):
     )
 
     # Clamp zero positions if range doesn't include them
-    if _min > 0 or _max <= 0:
-        start_chs[~mask] = 0
-        end_chs[~mask] = 0
+    if not mask.all():
+        in_range_mask = ~mask & ((_min > u0) | (_max <= u0))
+        start_chs[in_range_mask] = 0
+        end_chs[in_range_mask] = 0
 
     # Normalise, return
     end_chs = numpy.maximum(end_chs, start_chs)

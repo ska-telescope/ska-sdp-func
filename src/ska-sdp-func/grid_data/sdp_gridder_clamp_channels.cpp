@@ -20,8 +20,6 @@ void clamp_channels_single(
 )
 {
     if (*status) return;
-    const double eta = 1e-2;
-    const int range_includes_zero = (min_u <= 0 && max_u > 0);
     sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
     sdp_MemViewCpu<int, 1> start_chs_, end_chs_;
     sdp_mem_check_and_view(uvws, &uvws_, status);
@@ -30,11 +28,13 @@ void clamp_channels_single(
 
     for (int64_t i = 0; i < uvws_.shape[0]; ++i)
     {
-        const double u = uvws_(i, dim);
-        if (fabs(u) > eta * C_0 / dfreq_hz)
+        const double u0 = uvws_(i, dim) * (freq0_hz / C_0);
+        const double du = uvws_(i, dim) * (dfreq_hz / C_0);
+        const double rel_min_u = fabs(min_u - u0);
+        const double rel_max_u = fabs(max_u - u0);
+        const double eta_u = MAX(rel_min_u, rel_max_u) / 2147483645.0;
+        if (fabs(du) > eta_u) // Use a safe value for eta.
         {
-            const double u0 = u * freq0_hz / C_0;
-            const double du = u * dfreq_hz / C_0;
             const int64_t mins = (int64_t) (ceil((min_u - u0) / du));
             const int64_t maxs = (int64_t) (ceil((max_u - u0) / du));
             const int is_positive = du > 0;
@@ -43,7 +43,7 @@ void clamp_channels_single(
             start_chs_(i) = MAX(start_chs_(i), start_ch_);
             end_chs_(i) = MIN(end_chs_(i), end_ch_);
         }
-        else if (!range_includes_zero)
+        else if (min_u > u0 || max_u <= u0)
         {
             start_chs_(i) = 0;
             end_chs_(i) = 0;
@@ -68,10 +68,6 @@ void clamp_channels_uv(
 )
 {
     if (*status) return;
-    const double eta = 1e-2;
-    const double threshold = eta * C_0 / dfreq_hz;
-    const int range_includes_zero_u = (min_u <= 0 && max_u > 0);
-    const int range_includes_zero_v = (min_v <= 0 && max_v > 0);
     sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
     sdp_MemViewCpu<int, 1> start_chs_, end_chs_;
     sdp_mem_check_and_view(uvws, &uvws_, status);
@@ -80,11 +76,13 @@ void clamp_channels_uv(
 
     for (int64_t i = 0; i < uvws_.shape[0]; ++i)
     {
-        const double u = uvws_(i, 0);
-        if (fabs(u) > threshold)
+        const double u0 = uvws_(i, 0) * (freq0_hz / C_0);
+        const double du = uvws_(i, 0) * (dfreq_hz / C_0);
+        const double rel_min_u = fabs(min_u - u0);
+        const double rel_max_u = fabs(max_u - u0);
+        const double eta_u = MAX(rel_min_u, rel_max_u) / 2147483645.0;
+        if (fabs(du) > eta_u) // Use a safe value for eta.
         {
-            const double u0 = u * freq0_hz / C_0;
-            const double du = u * dfreq_hz / C_0;
             const int64_t mins = (int64_t) (ceil((min_u - u0) / du));
             const int64_t maxs = (int64_t) (ceil((max_u - u0) / du));
             const int is_positive = du > 0;
@@ -93,16 +91,21 @@ void clamp_channels_uv(
             start_chs_(i) = MAX(start_chs_(i), start_ch_);
             end_chs_(i) = MIN(end_chs_(i), end_ch_);
         }
-        else if (!range_includes_zero_u)
+        else if (min_u > u0 || max_u <= u0)
         {
             start_chs_(i) = 0;
             end_chs_(i) = 0;
         }
-        const double v = uvws_(i, 1);
-        if (fabs(v) > threshold)
+        end_chs_(i) = MAX(end_chs_(i), start_chs_(i));
+        if (start_chs_(i) >= end_chs_(i)) continue;
+
+        const double v0 = uvws_(i, 1) * (freq0_hz / C_0);
+        const double dv = uvws_(i, 1) * (dfreq_hz / C_0);
+        const double rel_min_v = fabs(min_v - v0);
+        const double rel_max_v = fabs(max_v - v0);
+        const double eta_v = MAX(rel_min_v, rel_max_v) / 2147483645.0;
+        if (fabs(dv) > eta_v) // Use a safe value for eta.
         {
-            const double v0 = v * freq0_hz / C_0;
-            const double dv = v * dfreq_hz / C_0;
             const int64_t mins = (int64_t) (ceil((min_v - v0) / dv));
             const int64_t maxs = (int64_t) (ceil((max_v - v0) / dv));
             const int is_positive = dv > 0;
@@ -111,7 +114,7 @@ void clamp_channels_uv(
             start_chs_(i) = MAX(start_chs_(i), start_ch_);
             end_chs_(i) = MIN(end_chs_(i), end_ch_);
         }
-        else if (!range_includes_zero_v)
+        else if (min_v > v0 || max_v <= v0)
         {
             start_chs_(i) = 0;
             end_chs_(i) = 0;

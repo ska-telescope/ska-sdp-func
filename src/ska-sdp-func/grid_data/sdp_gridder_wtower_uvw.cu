@@ -58,12 +58,13 @@ __global__ void sdp_gridder_wtower_degrid(
     double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
     uvw0[0] -= subgrid_offset_u / theta;
     uvw0[1] -= subgrid_offset_v / theta;
-    uvw0[2] -= ((subgrid_offset_w + w_plane) * w_step);
+    uvw0[2] -= ((subgrid_offset_w + w_plane - 1) * w_step);
 
     const int64_t subgrid_square = subgrid_size * subgrid_size;
     const int half_subgrid = subgrid_size / 2;
-    const double half_sup_m1 = (support - 1) / 2.0;
-    const int half_sup = support / 2;
+    const double theta_ov = theta * oversample;
+    const double w_step_ov = 1.0 / w_step * w_oversample;
+    const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
 
     // Bounds check.
     const double u_min = floor(theta * (uvw0[0] + start_ch * duvw[0]));
@@ -83,25 +84,19 @@ __global__ void sdp_gridder_wtower_degrid(
         const double v = uvw0[1] + c * duvw[1];
         const double w = uvw0[2] + c * duvw[2];
 
-        // Determine top-left corner of grid region
-        // centered approximately on visibility.
-        const int iu0 = int(round(theta * u - half_sup_m1)) + half_subgrid;
-        const int iv0 = int(round(theta * v - half_sup_m1)) + half_subgrid;
-        const int iu_shift = iu0 + half_sup - half_subgrid;
-        const int iv_shift = iv0 + half_sup - half_subgrid;
+        // Determine top-left corner of grid region centred approximately
+        // on visibility in oversampled coordinates (this is subgrid-local,
+        // so should be safe for overflows).
+        const int iu0_ov = int(round(u * theta_ov)) + half_sg_size_ov;
+        const int iv0_ov = int(round(v * theta_ov)) + half_sg_size_ov;
+        const int iw0_ov = int(round(w * w_step_ov));
+        const int iu0 = iu0_ov / oversample;
+        const int iv0 = iv0_ov / oversample;
 
         // Determine which kernel to use.
-        int u_off = int(round((u * theta - iu_shift + 1) * oversample));
-        int v_off = int(round((v * theta - iv_shift + 1) * oversample));
-        int w_off = int(round((w / w_step + 1) * w_oversample));
-
-        // Cater for the negative indexing which is allowed in Python!
-        if (u_off < 0) u_off += oversample + 1;
-        if (v_off < 0) v_off += oversample + 1;
-        if (w_off < 0) w_off += w_oversample + 1;
-        u_off *= support;
-        v_off *= support;
-        w_off *= w_support;
+        const int u_off = (iu0_ov % oversample) * support;
+        const int v_off = (iv0_ov % oversample) * support;
+        const int w_off = (iw0_ov % w_oversample) * w_support;
 
         // Degrid visibility.
         VIS_TYPE local_vis = (VIS_TYPE) 0;
@@ -176,12 +171,13 @@ __global__ void sdp_gridder_wtower_grid(
     double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
     uvw0[0] -= subgrid_offset_u / theta;
     uvw0[1] -= subgrid_offset_v / theta;
-    uvw0[2] -= ((subgrid_offset_w + w_plane) * w_step);
+    uvw0[2] -= ((subgrid_offset_w + w_plane - 1) * w_step);
 
     const int64_t subgrid_square = subgrid_size * subgrid_size;
     const int half_subgrid = subgrid_size / 2;
-    const double half_sup_m1 = (support - 1) / 2.0;
-    const int half_sup = support / 2;
+    const double theta_ov = theta * oversample;
+    const double w_step_ov = 1.0 / w_step * w_oversample;
+    const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
 
     // Bounds check.
     const double u_min = floor(theta * (uvw0[0] + start_ch * duvw[0]));
@@ -201,25 +197,19 @@ __global__ void sdp_gridder_wtower_grid(
         const double v = uvw0[1] + c * duvw[1];
         const double w = uvw0[2] + c * duvw[2];
 
-        // Determine top-left corner of grid region
-        // centered approximately on visibility.
-        const int iu0 = int(round(theta * u - half_sup_m1)) + half_subgrid;
-        const int iv0 = int(round(theta * v - half_sup_m1)) + half_subgrid;
-        const int iu_shift = iu0 + half_sup - half_subgrid;
-        const int iv_shift = iv0 + half_sup - half_subgrid;
+        // Determine top-left corner of grid region centred approximately
+        // on visibility in oversampled coordinates (this is subgrid-local,
+        // so should be safe for overflows).
+        const int iu0_ov = int(round(u * theta_ov)) + half_sg_size_ov;
+        const int iv0_ov = int(round(v * theta_ov)) + half_sg_size_ov;
+        const int iw0_ov = int(round(w * w_step_ov));
+        const int iu0 = iu0_ov / oversample;
+        const int iv0 = iv0_ov / oversample;
 
         // Determine which kernel to use.
-        int u_off = int(round((u * theta - iu_shift + 1) * oversample));
-        int v_off = int(round((v * theta - iv_shift + 1) * oversample));
-        int w_off = int(round((w / w_step + 1) * w_oversample));
-
-        // Cater for the negative indexing which is allowed in Python!
-        if (u_off < 0) u_off += oversample + 1;
-        if (v_off < 0) v_off += oversample + 1;
-        if (w_off < 0) w_off += w_oversample + 1;
-        u_off *= support;
-        v_off *= support;
-        w_off *= w_support;
+        const int u_off = (iu0_ov % oversample) * support;
+        const int v_off = (iv0_ov % oversample) * support;
+        const int w_off = (iw0_ov % w_oversample) * w_support;
 
         // Grid visibility.
         const complex<VIS_TYPE> local_vis = vis(i_row, c);
