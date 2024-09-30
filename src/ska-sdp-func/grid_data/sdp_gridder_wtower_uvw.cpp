@@ -148,7 +148,7 @@ void degrid(
                         const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
                         const int ix_v = iv0 + iv;
                         local_vis += (
-                                (VIS_TYPE) kern_wuv * subgrids(iw, ix_u, ix_v)
+                            (VIS_TYPE) kern_wuv * subgrids(iw, ix_u, ix_v)
                         );
                     }
                 }
@@ -405,7 +405,7 @@ void grid(
                         const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
                         const int ix_v = iv0 + iv;
                         subgrids(iw, ix_u, ix_v) += (
-                                (VIS_TYPE) kern_wuv * local_vis
+                            (VIS_TYPE) kern_wuv * local_vis
                         );
                     }
                 }
