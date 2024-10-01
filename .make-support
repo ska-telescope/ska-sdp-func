@@ -1,14 +1,23 @@
 #!/bin/bash
 
-function setSetupPyRelease() {
+function setPyProjectRelease() {
 
-    # Get release, adjust in setup.py
+    # Get release, adjust in pyproject.toml
     version=$(awk -F= '$1=="release" {print $2}' .release 2>/dev/null)
-    echo Bumping setup.py to version $version
-    sed -i.x -e "s/version=\".*\"/version=\"$version\"/g" setup.py
-    rm setup.py.x
+    echo Bumping pyproject.toml to version $version
+    sed -i.x -e "s/^version = \".*\"/version = \"$version\"/g" pyproject.toml
+    rm pyproject.toml.x
 }
 
+function setDocsRelease() {
+
+    # Get release, adjust in conf.py
+    version=$(awk -F= '$1=="release" {print $2}' .release 2>/dev/null)
+    echo Bumping conf.py to version $version
+    sed -i.x -e "s/^version = '.*'/version = '$version'/g" docs/src/conf.py
+    sed -i.x -e "s/^release = '.*'/release = '$version'/g" docs/src/conf.py
+    rm docs/src/conf.py.x
+}
 
 function setCMakeRelease() {
 
@@ -32,7 +41,7 @@ function setCMakeRelease() {
 
 function setConanRelease() {
 
-    # Get release, adjust in setup.py
+    # Get release, adjust in conanfile.py
     version=$(awk -F= '$1=="release" {print $2}' .release 2>/dev/null)
     echo Bumping conanfile.py to version $version
     sed -i.x -e "s/version = \".*\"/version = \"$version\"/g" conan/ska-sdp-func/conanfile.py

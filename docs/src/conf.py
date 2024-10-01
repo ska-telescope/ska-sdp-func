@@ -25,10 +25,10 @@ def setup(app):
 # -- Project information -----------------------------------------------------
 
 project = 'SKA SDP Processing Function Library'
-copyright = '2022, The SKA SDP Processing Function Library Developers'
+copyright = '2022-2024, The SKA SDP Processing Function Library Developers'
 author = 'The SKA SDP Processing Function Library Developers'
-version = '1.0.1'
-release = '1.0.1'
+version = '1.1.7'
+release = '1.1.7'
 
 # -- General configuration ---------------------------------------------------
 
@@ -36,11 +36,12 @@ release = '1.0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'breathe',
+    'sphinx_mdinclude',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosectionlabel',
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
-    'breathe'
 ]
 
 # Set Breathe configuration (uses Doxygen XML output).
@@ -69,9 +70,10 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #
 html_theme = 'sphinx_rtd_theme'
 
+html_logo = "_static/img/logo.png"
+html_favicon = "_static/img/favicon_mono.ico"
+
 html_context = {
-    "favicon": "img/favicon_mono.ico",
-    "logo": "img/logo.png",
     "theme_logo_only" : True,
     "conf_py_path": "/src/",  # Path in the checkout to the docs root
 }

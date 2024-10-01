@@ -13,7 +13,23 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup fft_struct
+ * @{
+ */
+
+/**
+ * @struct sdp_Fft
+ *
+ * @brief
+ * Wrapper for FFT functionality, using either NVIDIA's cuFFT, Intel's MKL,
+ * or a stand-alone CPU version as appropriate.
+ */
 struct sdp_Fft;
+
+/** @} */ /* End group fft_struct. */
+
+/* Typedefs. */
 typedef struct sdp_Fft sdp_Fft;
 
 /**
@@ -70,6 +86,16 @@ void sdp_fft_exec(
  * @param fft Handle to FFT plan.
  */
 void sdp_fft_free(sdp_Fft* fft);
+
+/**
+ * @brief Normalises the supplied array by dividing by the number of elements.
+ *
+ * This is to provide compatibility with numpy's ifft.
+ *
+ * @param data Array to normalise.
+ * @param status Error status.
+ */
+void sdp_fft_norm(sdp_Mem* data, sdp_Error* status);
 
 /**
  * @brief Provide fftshift() behaviour for complex data.

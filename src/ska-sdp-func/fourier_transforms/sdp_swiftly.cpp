@@ -647,6 +647,7 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
     {
         for (int64_t i0 = 0; i0 < xM_size / 2; i0++)
         {
+            // NOLINTNEXTLINE(clang-diagnostic-unknown-pragmas)
 #pragma GCC ivdep
             for (int64_t i1 = 0; i1 < xM_size / 2; i1++)
             {
@@ -663,6 +664,7 @@ void sdp_swiftly_finish_subgrid_inplace_2d(
     {
         for (int64_t i0 = 0; i0 < xM_size / 2; i0++)
         {
+            // NOLINTNEXTLINE(clang-diagnostic-unknown-pragmas)
 #pragma GCC ivdep
 #pragma GCC unroll 2
             for (int64_t i1 = 0; i1 < xM_size / 2; i1++)

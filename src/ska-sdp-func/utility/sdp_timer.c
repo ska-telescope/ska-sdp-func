@@ -114,17 +114,14 @@ double sdp_timer_elapsed(sdp_Timer* timer)
         /* Increment elapsed time and restart. */
         timer->elapsed += millisec / 1000.0;
         cudaEventRecord(timer->start_cuda, 0);
+        return timer->elapsed;
     }
-    else
 #endif
-    if (timer->type == SDP_TIMER_NATIVE)
-    {
-        const double now = sdp_get_wtime(timer);
+    const double now = sdp_get_wtime(timer);
 
-        /* Increment elapsed time and restart. */
-        timer->elapsed += (now - timer->start);
-        timer->start = now;
-    }
+    /* Increment elapsed time and restart. */
+    timer->elapsed += (now - timer->start);
+    timer->start = now;
     return timer->elapsed;
 }
 

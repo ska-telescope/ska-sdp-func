@@ -1,15 +1,20 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
 
-#include <stdlib.h>
-#include <string.h>
+#include <complex>
+#include <cstdlib>
+#include <cstring>
 
 #include "ska-sdp-func/utility/private_device_wrapper.h"
+#include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cuda_runtime_api.h>
 #endif
+
+using std::complex;
 
 // Private implementation.
 struct sdp_Mem
@@ -28,8 +33,11 @@ struct sdp_Mem
 };
 
 
-// Private function.
-static void sdp_mem_alloc(sdp_Mem* mem, sdp_Error* status)
+// Begin anonymous namespace for file-local functions.
+namespace {
+
+// Local function to perform the memory allocation.
+void sdp_mem_alloc(sdp_Mem* mem, sdp_Error* status)
 {
     mem->is_owner = 1; // Set flag to indicate ownership, as we're allocating.
     const size_t bytes = mem->num_elements * sdp_mem_type_size(mem->type);
@@ -78,6 +86,65 @@ static void sdp_mem_alloc(sdp_Mem* mem, sdp_Error* status)
         SDP_LOG_CRITICAL("Unsupported memory location");
     }
 }
+
+
+// Set all elements of a 1D array to specified value.
+template<typename T>
+void set_value_1d(sdp_Mem* mem, int value, sdp_Error* status)
+{
+    sdp_MemViewCpu<T, 1> mem_;
+    sdp_mem_check_and_view(mem, &mem_, status);
+    const int shape0 = (int) mem_.shape[0];
+    #pragma omp parallel for
+    for (int i = 0; i < shape0; ++i)
+    {
+        mem_(i) = (T) value;
+    }
+}
+
+
+// Set all elements of a 2D array to specified value. Much faster than memset.
+template<typename T>
+void set_value_2d(sdp_Mem* mem, int value, sdp_Error* status)
+{
+    sdp_MemViewCpu<T, 2> mem_;
+    sdp_mem_check_and_view(mem, &mem_, status);
+    const int shape0 = (int) mem_.shape[0];
+    const int shape1 = (int) mem_.shape[1];
+    #pragma omp parallel for
+    for (int i = 0; i < shape0; ++i)
+    {
+        for (int j = 0; j < shape1; ++j)
+        {
+            mem_(i, j) = (T) value;
+        }
+    }
+}
+
+
+// Set all elements of a 3D array to specified value. Much faster than memset.
+template<typename T>
+void set_value_3d(sdp_Mem* mem, int value, sdp_Error* status)
+{
+    sdp_MemViewCpu<T, 3> mem_;
+    sdp_mem_check_and_view(mem, &mem_, status);
+    const int shape0 = (int) mem_.shape[0];
+    const int shape1 = (int) mem_.shape[1];
+    const int shape2 = (int) mem_.shape[2];
+    #pragma omp parallel for
+    for (int i = 0; i < shape0; ++i)
+    {
+        for (int j = 0; j < shape1; ++j)
+        {
+            for (int k = 0; k < shape2; ++k)
+            {
+                mem_(i, j, k) = (T) value;
+            }
+        }
+    }
+}
+
+} // End anonymous namespace for file-local functions.
 
 
 sdp_Mem* sdp_mem_create(
@@ -169,12 +236,14 @@ sdp_Mem* sdp_mem_create_wrapper_for_slice(
     }
     for (int32_t i = 0; i < src->num_dims; ++i)
     {
-        if (slice_offsets[i] >= src->shape[i])
+        if (slice_offsets[i] >= src->shape[i] || slice_offsets[i] < 0)
         {
             *status = SDP_ERR_INVALID_ARGUMENT;
             SDP_LOG_CRITICAL(
-                    "Slice offset in dimension %d is out of bounds: %d >= %d",
-                    i, slice_offsets[i], src->shape[i]
+                    "Slice offset in dimension %d is out of bounds: %d (max is %d)",
+                    i,
+                    slice_offsets[i],
+                    src->shape[i]
             );
             return 0;
         }
@@ -349,6 +418,8 @@ void sdp_mem_copy_contents_async(
 {
 #ifdef SDP_HAVE_CUDA
     cudaError_t cuda_error = cudaSuccess;
+    cudaStream_t cuda_stream = 0;
+    if (stream) cuda_stream = stream->stream;
 #endif
     if (*status || !dst || !src || !dst->data || !src->data) return;
     if (src->num_elements == 0 || num_elements == 0) return;
@@ -369,19 +440,19 @@ void sdp_mem_copy_contents_async(
     else if (location_src == SDP_MEM_CPU && location_dst == SDP_MEM_GPU)
     {
         cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
-                cudaMemcpyHostToDevice, stream->stream
+                cudaMemcpyHostToDevice, cuda_stream
         );
     }
     else if (location_src == SDP_MEM_GPU && location_dst == SDP_MEM_CPU)
     {
         cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
-                cudaMemcpyDeviceToHost, stream->stream
+                cudaMemcpyDeviceToHost, cuda_stream
         );
     }
     else if (location_src == SDP_MEM_GPU && location_dst == SDP_MEM_GPU)
     {
         cuda_error = cudaMemcpyAsync(p_dst, p_src, bytes,
-                cudaMemcpyDeviceToDevice, stream->stream
+                cudaMemcpyDeviceToDevice, cuda_stream
         );
     }
 #endif
@@ -471,30 +542,21 @@ int32_t sdp_mem_is_c_contiguous(const sdp_Mem* mem)
 
 int32_t sdp_mem_is_floating_point(const sdp_Mem* mem)
 {
-    if (!mem || !mem->data)
-    {
-        return 0;
-    }
+    if (!mem || !mem->data) return 0;
     return mem->type == SDP_MEM_FLOAT || mem->type == SDP_MEM_DOUBLE;
 }
 
 
 int32_t sdp_mem_is_complex(const sdp_Mem* mem)
 {
-    if (!mem || !mem->data)
-    {
-        return 0;
-    }
+    if (!mem || !mem->data) return 0;
     return (mem->type & SDP_MEM_COMPLEX) == SDP_MEM_COMPLEX;
 }
 
 
 int32_t sdp_mem_is_complex4(const sdp_Mem* mem)
 {
-    if (!sdp_mem_is_complex(mem))
-    {
-        return 0;
-    }
+    if (!sdp_mem_is_complex(mem)) return 0;
     const int32_t nd = mem->num_dims;
     return (nd > 1 && mem->shape[nd - 1] == 4) ||
            (nd > 2 && mem->shape[nd - 1] == 2 && mem->shape[nd - 2] == 2);
@@ -503,10 +565,7 @@ int32_t sdp_mem_is_complex4(const sdp_Mem* mem)
 
 int32_t sdp_mem_is_double(const sdp_Mem* mem)
 {
-    if (!mem || !mem->data)
-    {
-        return 0;
-    }
+    if (!mem || !mem->data) return 0;
     return (mem->type & SDP_MEM_DOUBLE) == SDP_MEM_DOUBLE;
 }
 
@@ -563,7 +622,7 @@ void sdp_mem_random_fill(sdp_Mem* mem, sdp_Error* status)
         return;
     }
     int64_t num_elements = mem->num_elements;
-    const sdp_MemType precision = mem->type & 0x0F;
+    const sdp_MemType precision = (sdp_MemType) (mem->type & 0x0F);
     if (sdp_mem_is_complex(mem)) num_elements *= 2;
     if (precision == SDP_MEM_FLOAT)
     {
@@ -604,6 +663,306 @@ void sdp_mem_set_read_only(sdp_Mem* mem, int32_t value)
 {
     if (!mem) return;
     mem->is_read_only = value;
+}
+
+
+void sdp_mem_set_value(sdp_Mem* mem, int value, sdp_Error* status)
+{
+    if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(mem);
+    if (loc == SDP_MEM_CPU)
+    {
+        if (sdp_mem_num_dims(mem) == 1)
+        {
+            switch (sdp_mem_type(mem))
+            {
+            case SDP_MEM_COMPLEX_DOUBLE:
+                set_value_1d<complex<double> >(mem, value, status);
+                break;
+            case SDP_MEM_COMPLEX_FLOAT:
+                set_value_1d<complex<float> >(mem, value, status);
+                break;
+            case SDP_MEM_DOUBLE:
+                set_value_1d<double>(mem, value, status);
+                break;
+            case SDP_MEM_FLOAT:
+                set_value_1d<float>(mem, value, status);
+                break;
+            case SDP_MEM_INT:
+                set_value_1d<int>(mem, value, status);
+                break;
+            default:
+                SDP_LOG_ERROR("Unsupported data type");
+                *status = SDP_ERR_DATA_TYPE;
+                return;
+            }
+        }
+        else if (sdp_mem_num_dims(mem) == 2)
+        {
+            switch (sdp_mem_type(mem))
+            {
+            case SDP_MEM_COMPLEX_DOUBLE:
+                set_value_2d<complex<double> >(mem, value, status);
+                break;
+            case SDP_MEM_COMPLEX_FLOAT:
+                set_value_2d<complex<float> >(mem, value, status);
+                break;
+            case SDP_MEM_DOUBLE:
+                set_value_2d<double>(mem, value, status);
+                break;
+            case SDP_MEM_FLOAT:
+                set_value_2d<float>(mem, value, status);
+                break;
+            case SDP_MEM_INT:
+                set_value_2d<int>(mem, value, status);
+                break;
+            default:
+                SDP_LOG_ERROR("Unsupported data type");
+                *status = SDP_ERR_DATA_TYPE;
+                return;
+            }
+        }
+        else if (sdp_mem_num_dims(mem) == 3)
+        {
+            switch (sdp_mem_type(mem))
+            {
+            case SDP_MEM_COMPLEX_DOUBLE:
+                set_value_3d<complex<double> >(mem, value, status);
+                break;
+            case SDP_MEM_COMPLEX_FLOAT:
+                set_value_3d<complex<float> >(mem, value, status);
+                break;
+            case SDP_MEM_DOUBLE:
+                set_value_3d<double>(mem, value, status);
+                break;
+            case SDP_MEM_FLOAT:
+                set_value_3d<float>(mem, value, status);
+                break;
+            case SDP_MEM_INT:
+                set_value_3d<int>(mem, value, status);
+                break;
+            default:
+                SDP_LOG_ERROR("Unsupported data type");
+                *status = SDP_ERR_DATA_TYPE;
+                return;
+            }
+        }
+        else
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_ERROR("Only 1D, 2D or 3D arrays are currently supported");
+        }
+    }
+    else
+    {
+        // Call the kernel.
+        if (sdp_mem_num_dims(mem) == 1)
+        {
+            uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
+            const int64_t shape0 = sdp_mem_shape_dim(mem, 0);
+            num_blocks[0] = (shape0 + num_threads[0] - 1) / num_threads[0];
+            switch (sdp_mem_type(mem))
+            {
+            case SDP_MEM_COMPLEX_DOUBLE:
+            {
+                sdp_MemViewGpu<complex<double>, 1> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_1d<complex<double> >",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_COMPLEX_FLOAT:
+            {
+                sdp_MemViewGpu<complex<float>, 1> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_1d<complex<float> >",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_DOUBLE:
+            {
+                sdp_MemViewGpu<double, 1> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_1d<double>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_FLOAT:
+            {
+                sdp_MemViewGpu<float, 1> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_1d<float>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_INT:
+            {
+                sdp_MemViewGpu<int, 1> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_1d<int>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            default:
+            {
+                SDP_LOG_ERROR("Unsupported data type");
+                *status = SDP_ERR_DATA_TYPE;
+                return;
+            }
+            }
+        }
+        else if (sdp_mem_num_dims(mem) == 2)
+        {
+            uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
+            const int64_t shape0 = sdp_mem_shape_dim(mem, 0);
+            const int64_t shape1 = sdp_mem_shape_dim(mem, 1);
+            num_blocks[0] = (shape0 + num_threads[0] - 1) / num_threads[0];
+            num_blocks[1] = (shape1 + num_threads[1] - 1) / num_threads[1];
+            switch (sdp_mem_type(mem))
+            {
+            case SDP_MEM_COMPLEX_DOUBLE:
+            {
+                sdp_MemViewGpu<complex<double>, 2> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_2d<complex<double> >",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_COMPLEX_FLOAT:
+            {
+                sdp_MemViewGpu<complex<float>, 2> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_2d<complex<float> >",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_DOUBLE:
+            {
+                sdp_MemViewGpu<double, 2> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_2d<double>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_FLOAT:
+            {
+                sdp_MemViewGpu<float, 2> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_2d<float>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_INT:
+            {
+                sdp_MemViewGpu<int, 2> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_2d<int>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            default:
+            {
+                SDP_LOG_ERROR("Unsupported data type");
+                *status = SDP_ERR_DATA_TYPE;
+                return;
+            }
+            }
+        }
+        else if (sdp_mem_num_dims(mem) == 3)
+        {
+            uint64_t num_threads[] = {16, 8, 4}, num_blocks[] = {1, 1, 1};
+            const int64_t shape0 = sdp_mem_shape_dim(mem, 0);
+            const int64_t shape1 = sdp_mem_shape_dim(mem, 1);
+            const int64_t shape2 = sdp_mem_shape_dim(mem, 2);
+            num_blocks[0] = (shape0 + num_threads[0] - 1) / num_threads[0];
+            num_blocks[1] = (shape1 + num_threads[1] - 1) / num_threads[1];
+            num_blocks[2] = (shape2 + num_threads[2] - 1) / num_threads[2];
+            switch (sdp_mem_type(mem))
+            {
+            case SDP_MEM_COMPLEX_DOUBLE:
+            {
+                sdp_MemViewGpu<complex<double>, 3> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_3d<complex<double> >",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_COMPLEX_FLOAT:
+            {
+                sdp_MemViewGpu<complex<float>, 3> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_3d<complex<float> >",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_DOUBLE:
+            {
+                sdp_MemViewGpu<double, 3> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_3d<double>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_FLOAT:
+            {
+                sdp_MemViewGpu<float, 3> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_3d<float>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            case SDP_MEM_INT:
+            {
+                sdp_MemViewGpu<int, 3> mem_;
+                sdp_mem_check_and_view(mem, &mem_, status);
+                const void* arg[] = {(const void*) &mem_, &value};
+                sdp_launch_cuda_kernel("sdp_mem_set_value_3d<int>",
+                        num_blocks, num_threads, 0, 0, arg, status
+                );
+                break;
+            }
+            default:
+            {
+                SDP_LOG_ERROR("Unsupported data type");
+                *status = SDP_ERR_DATA_TYPE;
+                return;
+            }
+            }
+        }
+        else
+        {
+            *status = SDP_ERR_INVALID_ARGUMENT;
+            SDP_LOG_ERROR("Only 1D, 2D or 3D arrays are currently supported");
+        }
+    }
 }
 
 
@@ -704,15 +1063,8 @@ void sdp_mem_check_writeable_at(
     if (*status) return;
     if (sdp_mem_is_read_only(mem))
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
-                "%s: Expected '%s' not to be read-only!",
-                func,
-                expr
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+                "%s: Expected '%s' not to be read-only!", func, expr
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
@@ -731,15 +1083,8 @@ void sdp_mem_check_c_contiguity_at(
     if (*status) return;
     if (!sdp_mem_is_c_contiguous(mem))
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
-                "%s: Expected '%s' to be C contiguous!",
-                func,
-                expr
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+                "%s: Expected '%s' to be C contiguous!", func, expr
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
@@ -759,14 +1104,8 @@ void sdp_mem_check_location_at(
     if (*status) return;
     if (sdp_mem_location(mem) != expected_location)
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
-                "%s: Expected '%s' to be in %s memory (found %s)!",
-                func, expr,
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+                "%s: Expected '%s' to be in %s memory (found %s)!", func, expr,
                 sdp_mem_location_name(expected_location),
                 sdp_mem_location_name(sdp_mem_location(mem))
         );
@@ -788,18 +1127,10 @@ void sdp_mem_check_num_dims_at(
     if (*status) return;
     if (sdp_mem_num_dims(mem) != expected_num_dims)
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
                 "%s: Expected '%s' to have %d dimension%s (found %d)!",
-                func,
-                expr,
-                expected_num_dims,
-                (expected_num_dims == 1 ? "" : "s"),
-                sdp_mem_num_dims(mem)
+                func, expr, expected_num_dims,
+                (expected_num_dims == 1 ? "" : "s"), sdp_mem_num_dims(mem)
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
@@ -820,18 +1151,9 @@ void sdp_mem_check_dim_size_at(
     if (*status) return;
     if (sdp_mem_shape_dim(mem, dim) != size)
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
                 "%s: Expected '%s' dimension %d to have size %d (found %d)!",
-                func,
-                expr,
-                dim,
-                size,
-                sdp_mem_shape_dim(mem, dim)
+                func, expr, dim, size, sdp_mem_shape_dim(mem, dim)
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
@@ -852,32 +1174,18 @@ void sdp_mem_check_shape_at(
     if (*status) return;
     if (sdp_mem_num_dims(mem) != expected_num_dims)
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
                 "%s: Expected '%s' to have %d dimension%s (found %d)!",
-                func,
-                expr,
-                expected_num_dims,
-                (expected_num_dims == 1 ? "" : "s"),
-                sdp_mem_num_dims(mem)
+                func, expr, expected_num_dims,
+                (expected_num_dims == 1 ? "" : "s"), sdp_mem_num_dims(mem)
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
         return;
     }
     for (int32_t dim = 0; dim < expected_num_dims; dim++)
     {
-        sdp_mem_check_shape_dim_at(mem,
-                dim,
-                expected_shape[dim],
-                status,
-                expr,
-                func,
-                file,
-                line
+        sdp_mem_check_shape_dim_at(mem, dim, expected_shape[dim], status,
+                expr, func, file, line
         );
     }
 }
@@ -897,17 +1205,9 @@ void sdp_mem_check_shape_dim_at(
     if (*status) return;
     if (sdp_mem_num_dims(mem) <= dim)
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
                 "%s: Expected '%s' to have at least %d dimension%s (found %d)!",
-                func,
-                expr,
-                dim + 1,
-                (dim == 0 ? "" : "s"),
+                func, expr, dim + 1, (dim == 0 ? "" : "s"),
                 sdp_mem_num_dims(mem)
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
@@ -915,18 +1215,9 @@ void sdp_mem_check_shape_dim_at(
     }
     if (sdp_mem_shape_dim(mem, dim) != expected_shape)
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
                 "%s: Expected '%s' dimension %d to have size %d (found %d)!",
-                func,
-                expr,
-                dim,
-                expected_shape,
-                sdp_mem_shape_dim(mem, dim)
+                func, expr, dim, expected_shape, sdp_mem_shape_dim(mem, dim)
         );
         *status = SDP_ERR_INVALID_ARGUMENT;
     }
@@ -955,30 +1246,20 @@ void sdp_mem_check_same_shape_at(
         // Same memory object? Reflect in error message
         if (mem == mem2)
         {
-            sdp_log_message(
-                    SDP_LOG_LEVEL_ERROR,
-                    stderr,
-                    func,
-                    file,
-                    line,
-                    "%s: '%s' dimensions %d and %d do not have same size (%d != %d)!",
-                    func,
-                    expr,
-                    dim,
-                    dim2,
-                    sdp_mem_shape_dim(mem, dim),
-                    sdp_mem_shape_dim(mem2, dim2)
+            sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+                    "%s: '%s' dimensions %d and %d do not"
+                    " have the same size (%d != %d)!",
+                    func, expr, dim, dim2,
+                    sdp_mem_shape_dim(mem, dim), sdp_mem_shape_dim(mem2, dim2)
             );
         }
         else
         {
-            sdp_log_message(
-                    SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+            sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
                     "%s: '%s' dimension %d and '%s' dimension %d do not"
                     " have the same size (%d != %d)!",
                     func, expr, dim, expr2, dim2,
-                    sdp_mem_shape_dim(mem, dim),
-                    sdp_mem_shape_dim(mem2, dim2)
+                    sdp_mem_shape_dim(mem, dim), sdp_mem_shape_dim(mem2, dim2)
             );
         }
         *status = SDP_ERR_INVALID_ARGUMENT;
@@ -999,15 +1280,8 @@ void sdp_mem_check_type_at(
     if (*status) return;
     if (sdp_mem_type(mem) != expected_type)
     {
-        sdp_log_message(
-                SDP_LOG_LEVEL_ERROR,
-                stderr,
-                func,
-                file,
-                line,
-                "%s: Expected '%s' to have type %s (found %s)!",
-                func,
-                expr,
+        sdp_log_message(SDP_LOG_LEVEL_ERROR, stderr, func, file, line,
+                "%s: Expected '%s' to have type %s (found %s)!", func, expr,
                 sdp_mem_type_name(expected_type),
                 sdp_mem_type_name(sdp_mem_type(mem))
         );

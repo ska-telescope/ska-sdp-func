@@ -9,5 +9,6 @@ RFI flagging - those have separate sections).
   :maxdepth: 1
 
   dft
+  flagger
   phase_rotation
   weighting

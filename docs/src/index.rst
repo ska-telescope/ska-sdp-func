@@ -4,6 +4,13 @@ SDP Processing Function Library
 
 .. toctree::
   :maxdepth: 1
+  :caption: Releases
+
+  changelog
+
+.. toctree::
+  :maxdepth: 1
+  :caption: Installation
 
   install
 
@@ -25,12 +32,19 @@ SDP Processing Function Library
   :caption: Processing functions
   :maxdepth: 1
 
+  module_clean/index
   module_fourier_transforms/index
   module_grid_data/index
   module_rfi/index
   module_station_beam/index
   module_visibility/index
   module_examples/index
+
+.. toctree::
+  :caption: Licenses
+  :maxdepth: 1
+
+  license
 
 
 Indices and tables

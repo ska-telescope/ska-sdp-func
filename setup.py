@@ -121,22 +121,10 @@ class CMakeBuild(build_ext):
 
 setup(
     name="ska_sdp_func",
-    version="1.0.1",
-    description="SKA SDP Processing Function Library (Python bindings)",
     ext_modules=[CMakeExtension("ska_sdp_func")],
     cmdclass={"build_ext": CMakeBuild},
-    packages=setuptools.find_namespace_packages(where="src"),
+    packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
-    include_package_data=True,
-    classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
-        "Environment :: Console",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: BSD License",
-        "Natural Language :: English",
-        "Programming Language :: Python :: 3"
-    ],
-    author="The SKA SDP Processing Function Library Developers",
-    url="https://gitlab.com/ska-telescope/sdp/ska-sdp-func/",
-    license="BSD"
+    package_data={"ska_sdp_func": ["*.py"]},
+    include_package_data=False,
 )

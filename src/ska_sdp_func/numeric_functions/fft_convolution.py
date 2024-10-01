@@ -11,7 +11,7 @@ Lib.wrap_func(
 
 
 def fft_convolution(in1, in2, out):
-    """Implimentation of the convolution theorem. Assumes that inputs
+    """Implementation of the convolution theorem. Assumes that inputs
     are square. returned convolution is the same size as in1,
     similar to scipy.signal.convolve "same" mode.
 

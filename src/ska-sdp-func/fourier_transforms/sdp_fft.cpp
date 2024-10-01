@@ -8,9 +8,14 @@
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/utility/sdp_device_wrapper.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
+#include "ska-sdp-func/utility/sdp_mem_view.h"
 
 #ifdef SDP_HAVE_CUDA
 #include <cufft.h>
+#endif
+
+#ifdef SDP_HAVE_MKL
+#include "mkl.h"
 #endif
 
 using std::complex;
@@ -267,6 +272,9 @@ struct sdp_Fft
     int batch_size;
     int is_forward;
     int cufft_plan;
+#ifdef SDP_HAVE_MKL
+    DFTI_DESCRIPTOR_HANDLE mkl_plan;
+#endif
 };
 
 
@@ -342,17 +350,24 @@ sdp_Fft* sdp_fft_create(
         sdp_Error* status
 )
 {
-    sdp_Fft* fft = 0;
-    sdp_Mem* temp = NULL;
-    int cufft_plan = 0;
-    int batch_size = 1;
-    int num_x = 0;
-    int num_y = 0;
     check_params(input, output, num_dims_fft, status);
-    if (*status) return fft;
+    if (*status) return NULL;
 
+    // Allocate space for a plan.
+    sdp_Fft* fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
+    fft->input = sdp_mem_create_alias(input);
+    fft->output = sdp_mem_create_alias(output);
+    fft->num_dims = num_dims_fft;
+    fft->batch_size = 1;
+    fft->is_forward = is_forward;
+
+    // Set up the batch size.
     const int32_t num_dims = sdp_mem_num_dims(input);
     const int32_t last_dim = num_dims - 1;
+    if (num_dims != num_dims_fft)
+    {
+        fft->batch_size = sdp_mem_shape_dim(input, 0);
+    }
 
     if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
@@ -387,18 +402,14 @@ sdp_Fft* sdp_fft_create(
             inembed[i] = dim_size[i];
             onembed[i] = dim_size[i];
         }
-        if (num_dims != num_dims_fft)
-        {
-            batch_size = sdp_mem_shape_dim(input, 0);
-        }
         istride = sdp_mem_stride_elements_dim(input, last_dim);
         ostride = sdp_mem_stride_elements_dim(output, last_dim);
         idist = sdp_mem_stride_elements_dim(input, 0);
         odist = sdp_mem_stride_elements_dim(output, 0);
         const cufftResult error = cufftPlanMany(
-                &cufft_plan, num_dims_fft, dim_size,
+                &fft->cufft_plan, num_dims_fft, dim_size,
                 inembed, istride, idist, onembed, ostride, odist,
-                cufft_type, batch_size
+                cufft_type, fft->batch_size
         );
         free(onembed);
         free(inembed);
@@ -414,23 +425,89 @@ sdp_Fft* sdp_fft_create(
         SDP_LOG_ERROR("The processing function library was compiled "
                 "without CUDA support"
         );
-        return fft;
 #endif
     }
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
     {
+#ifdef SDP_HAVE_MKL
+        // Use MKL if available.
+        MKL_LONG mkl_status = 0;
+        DFTI_CONFIG_VALUE precision = DFTI_DOUBLE;
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            precision = DFTI_DOUBLE;
+        }
+        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            precision = DFTI_SINGLE;
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data types");
+            return fft;
+        }
+
+        // Create descriptor.
+        MKL_LONG* dim_size = (MKL_LONG*) calloc(
+                num_dims_fft, sizeof(MKL_LONG)
+        );
+        MKL_LONG num_elem_fft = 1;
+        for (int i = 0; i < num_dims_fft; ++i)
+        {
+            dim_size[i] = sdp_mem_shape_dim(
+                    input, i + num_dims - num_dims_fft
+            );
+            num_elem_fft *= dim_size[i];
+        }
+        if (num_dims_fft == 1)
+        {
+            mkl_status = DftiCreateDescriptor(
+                    &fft->mkl_plan, precision, DFTI_COMPLEX,
+                    1, (MKL_LONG) sdp_mem_shape_dim(input, last_dim)
+            );
+        }
+        else
+        {
+            mkl_status = DftiCreateDescriptor(
+                    &fft->mkl_plan, precision, DFTI_COMPLEX,
+                    num_dims_fft, dim_size
+            );
+        }
+        free(dim_size);
+
+        // Check for any errors from MKL.
+        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+        {
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Error in DftiCreateDescriptor (code %lld): %s",
+                    mkl_status, DftiErrorMessage(mkl_status)
+            );
+            return fft;
+        }
+
+        // Set descriptor parameters.
+        DftiSetValue(fft->mkl_plan, DFTI_NUMBER_OF_TRANSFORMS,
+                (MKL_LONG) fft->batch_size
+        );
+        DftiSetValue(fft->mkl_plan, DFTI_INPUT_DISTANCE, num_elem_fft);
+        DftiSetValue(fft->mkl_plan, DFTI_OUTPUT_DISTANCE, num_elem_fft);
+#else
+        // No MKL available.
         int64_t num_x_stride = 0, num_y_stride = 0, batch_stride = 0;
         if (num_dims_fft == 1)
         {
-            num_x = sdp_mem_shape_dim(input, last_dim);
+            fft->num_x = sdp_mem_shape_dim(input, last_dim);
             num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
-            num_y = 1;
-            num_y_stride = num_x;
+            fft->num_y = 1;
+            num_y_stride = fft->num_x;
         }
         if (num_dims_fft == 2)
         {
-            num_x = sdp_mem_shape_dim(input, last_dim - 1);
-            num_y = sdp_mem_shape_dim(input, last_dim);
+            fft->num_x = sdp_mem_shape_dim(input, last_dim - 1);
+            fft->num_y = sdp_mem_shape_dim(input, last_dim);
             num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
             num_y_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
         }
@@ -439,16 +516,15 @@ sdp_Fft* sdp_fft_create(
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported FFT dimension");
         }
-        batch_stride = num_x * num_y;
+        batch_stride = fft->num_x * fft->num_y;
         if (num_dims != num_dims_fft)
         {
-            batch_size = sdp_mem_shape_dim(input, 0);
             batch_stride = sdp_mem_stride_elements_dim(input, 0);
         }
 
         if (num_x_stride != 1
-                && num_y_stride != num_x
-                && batch_stride != num_x * num_y)
+                && num_y_stride != fft->num_x
+                && batch_stride != fft->num_x * fft->num_y)
         {
             *status = SDP_ERR_DATA_TYPE;
             SDP_LOG_ERROR("Unsupported data strides");
@@ -461,30 +537,17 @@ sdp_Fft* sdp_fft_create(
             {
                 shape[f] = sdp_mem_shape_dim(input, f);
             }
-            temp = sdp_mem_create(
+            fft->temp = sdp_mem_create(
                     sdp_mem_type(input), SDP_MEM_CPU, num_dims, shape, status
             );
             free(shape);
         }
+#endif
     }
     else
     {
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("Unsupported FFT location");
-        return fft;
-    }
-    if (!*status)
-    {
-        fft = (sdp_Fft*) calloc(1, sizeof(sdp_Fft));
-        fft->input = sdp_mem_create_alias(input);
-        fft->output = sdp_mem_create_alias(output);
-        fft->temp = temp;
-        fft->num_dims = num_dims_fft;
-        fft->num_x = num_x;
-        fft->num_y = num_y;
-        fft->batch_size = batch_size;
-        fft->is_forward = is_forward;
-        fft->cufft_plan = cufft_plan;
     }
     return fft;
 }
@@ -542,6 +605,57 @@ void sdp_fft_exec(
     }
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
     {
+#ifdef SDP_HAVE_MKL
+        // Use MKL if available.
+        MKL_LONG mkl_status = 0;
+
+        // Check if transform should be in-place or out-of-place.
+        DFTI_CONFIG_VALUE placement = DFTI_NOT_INPLACE;
+        if (sdp_mem_data(output) == sdp_mem_data(input))
+        {
+            placement = DFTI_INPLACE;
+        }
+        DftiSetValue(fft->mkl_plan, DFTI_PLACEMENT, placement);
+
+        // Commit descriptor.
+        mkl_status = DftiCommitDescriptor(fft->mkl_plan);
+        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+        {
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Error in DftiCommitDescriptor (code %lld): %s",
+                    mkl_status, DftiErrorMessage(mkl_status)
+            );
+        }
+
+        // Compute FFT.
+        if (fft->is_forward)
+        {
+            mkl_status = DftiComputeForward(
+                    fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
+            );
+            if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+            {
+                *status = SDP_ERR_RUNTIME;
+                SDP_LOG_ERROR("Error in DftiComputeForward (code %lld): %s",
+                        mkl_status, DftiErrorMessage(mkl_status)
+                );
+            }
+        }
+        else
+        {
+            mkl_status = DftiComputeBackward(
+                    fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
+            );
+            if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+            {
+                *status = SDP_ERR_RUNTIME;
+                SDP_LOG_ERROR("Error in DftiComputeBackward (code %lld): %s",
+                        mkl_status, DftiErrorMessage(mkl_status)
+                );
+            }
+        }
+#else
+        // No MKL available.
         int do_inverse = (fft->is_forward == 1 ? 0 : 1);
 
         if (fft->num_dims == 1)
@@ -604,8 +718,8 @@ void sdp_fft_exec(
         {
             *status = SDP_ERR_INVALID_ARGUMENT;
             SDP_LOG_ERROR("3D FFT is not supported on host memory.");
-            return;
         }
+#endif
     }
 }
 
@@ -619,41 +733,48 @@ void sdp_fft_free(sdp_Fft* fft)
         cufftDestroy(fft->cufft_plan);
     }
 #endif
+#ifdef SDP_HAVE_MKL
+    (void) DftiFreeDescriptor(&fft->mkl_plan);
+#endif
     sdp_mem_ref_dec(fft->input);
     sdp_mem_ref_dec(fft->output);
-    if (fft->temp != NULL)
-    {
-        sdp_mem_free(fft->temp);
-    }
+    sdp_mem_free(fft->temp);
     free(fft);
 }
 
 
-template<typename T>
-void fft_phase(int num_x, int num_y, complex<T>* data)
+template<typename DATA_TYPE>
+static void fft_norm(sdp_Mem* data, sdp_Error* status)
 {
-    #pragma omp parallel for collapse(2)
-    for (int iy = 0; iy < num_y; ++iy)
-        for (int ix = 0; ix < num_x; ++ix)
-            data[iy * num_x + ix] *= (T) (1 - (((ix + iy) & 1) << 1));
+    if (*status) return;
+    sdp_MemViewCpu<DATA_TYPE, 2> data_;
+    sdp_mem_check_and_view(data, &data_, status);
+    const int num_x = (int) data_.shape[0];
+    const int num_y = (int) data_.shape[1];
+    const double factor = 1.0 / (num_x * num_y);
+    #pragma omp parallel for
+    for (int ix = 0; ix < num_x; ++ix)
+    {
+        for (int iy = 0; iy < num_y; ++iy)
+        {
+            data_(ix, iy) *= factor;
+        }
+    }
 }
 
 
-void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
+void sdp_fft_norm(sdp_Mem* data, sdp_Error* status)
 {
     if (*status || !data) return;
-    const int num_y = (int) sdp_mem_shape_dim(data, 0);
-    const int num_x = (int) sdp_mem_num_dims(data) > 1 ?
-                sdp_mem_shape_dim(data, 1) : 1;
     if (sdp_mem_location(data) == SDP_MEM_CPU)
     {
         if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            fft_phase(num_x, num_y, (complex<double>*) sdp_mem_data(data));
+            fft_norm<complex<double> >(data, status);
         }
         else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
         {
-            fft_phase(num_x, num_y, (complex<float>*) sdp_mem_data(data));
+            fft_norm<complex<float> >(data, status);
         }
         else
         {
@@ -662,21 +783,170 @@ void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
     }
     else if (sdp_mem_location(data) == SDP_MEM_GPU)
     {
-        size_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        uint64_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        const int num_x = sdp_mem_shape_dim(data, 0);
+        const int num_y = sdp_mem_shape_dim(data, 1);
+        num_blocks[0] = (num_x + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (num_y + num_threads[1] - 1) / num_threads[1];
+        const double factor = 1.0 / (num_x * num_y);
+        sdp_MemViewGpu<complex<double>, 2> data_dbl;
+        sdp_MemViewGpu<complex<float>, 2> data_flt;
         const char* kernel_name = 0;
+        int is_dbl = 0;
         if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
         {
-            kernel_name = "fft_phase<float>";
+            is_dbl = 0;
+            sdp_mem_check_and_view(data, &data_flt, status);
+            kernel_name = "sdp_fft_norm<complex<float> >";
         }
         else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
         {
-            kernel_name = "fft_phase<double>";
+            is_dbl = 1;
+            sdp_mem_check_and_view(data, &data_dbl, status);
+            kernel_name = "sdp_fft_norm<complex<double> >";
         }
         else
         {
             *status = SDP_ERR_DATA_TYPE;
             return;
         }
+        const void* arg[] = {
+            is_dbl ? (const void*)&data_dbl : (const void*)&data_flt,
+            (const void*)&factor
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+    }
+    else
+    {
+        *status = SDP_ERR_MEM_LOCATION;
+    }
+}
+
+
+template<typename DATA_TYPE>
+static void fft_phase(sdp_Mem* data, sdp_Error* status)
+{
+    if (*status) return;
+    sdp_MemViewCpu<DATA_TYPE, 2> data_;
+    sdp_mem_check_and_view(data, &data_, status);
+    const int num_x = (int) data_.shape[0];
+    const int num_y = (int) data_.shape[1];
+    #pragma omp parallel for
+    for (int ix = 0; ix < num_x; ++ix)
+    {
+        for (int iy = 0; iy < num_y; ++iy)
+        {
+            data_(ix, iy) *= (1 - (((ix + iy) & 1) << 1));
+        }
+    }
+}
+
+
+#if 0
+
+
+template<typename T>
+static inline void swap_values(T& a, T& b)
+{
+    T temp = a;
+    a = b;
+    b = temp;
+}
+
+
+// The fft_phase function, above, is faster than this by quite a long way.
+template<typename DATA_TYPE>
+static void fft_shift(sdp_Mem* data, sdp_Error* status)
+{
+    if (*status) return;
+    sdp_MemViewCpu<DATA_TYPE, 2> data_;
+    sdp_mem_check_and_view(data, &data_, status);
+    const int rows = (int) data_.shape[0];
+    const int cols = (int) data_.shape[1];
+    const int half_rows = rows / 2;
+    const int half_cols = cols / 2;
+
+    // Swap quadrants: 1 with 3, and 2 with 4 for even-sized arrays.
+    #pragma omp parallel for
+    for (int i = 0; i < half_rows; ++i)
+    {
+        for (int j = 0; j < half_cols; ++j)
+        {
+            // Swap (i, j) with (i + half_rows, j + half_cols)
+            swap_values(data_(i, j), data_(i + half_rows, j + half_cols));
+
+            // Swap (i, j + half_cols) with (i + half_rows, j)
+            swap_values(data_(i, j + half_cols), data_(i + half_rows, j));
+        }
+    }
+
+    // Handle odd-sized arrays.
+    if (rows % 2 != 0)
+    {
+        for (int j = 0; j < half_cols; ++j)
+        {
+            // Swap middle row's left and right parts.
+            swap_values(data_(half_rows, j), data_(half_rows, j + half_cols));
+        }
+    }
+    if (cols % 2 != 0)
+    {
+        for (int i = 0; i < half_rows; ++i)
+        {
+            // Swap middle column's top and bottom parts.
+            swap_values(data_(i, half_cols), data_(i + half_rows, half_cols));
+        }
+    }
+}
+#endif
+
+
+void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
+{
+    if (*status || !data) return;
+    if (sdp_mem_location(data) == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            fft_phase<complex<double> >(data, status);
+        }
+        else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            fft_phase<complex<float> >(data, status);
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+    }
+    else if (sdp_mem_location(data) == SDP_MEM_GPU)
+    {
+        uint64_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        sdp_MemViewGpu<complex<double>, 2> data_dbl;
+        sdp_MemViewGpu<complex<float>, 2> data_flt;
+        const char* kernel_name = 0;
+        int is_dbl = 0;
+        if (sdp_mem_type(data) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            is_dbl = 0;
+            sdp_mem_check_and_view(data, &data_flt, status);
+            kernel_name = "sdp_fft_phase<complex<float> >";
+        }
+        else if (sdp_mem_type(data) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            is_dbl = 1;
+            sdp_mem_check_and_view(data, &data_dbl, status);
+            kernel_name = "sdp_fft_phase<complex<double> >";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+        }
+        if (*status) return;
+        const int num_x = sdp_mem_shape_dim(data, 0);
+        const int num_y = sdp_mem_shape_dim(data, 1);
         if (num_x == 1)
         {
             num_threads[0] = 1;
@@ -687,7 +957,9 @@ void sdp_fft_phase(sdp_Mem* data, sdp_Error* status)
             num_threads[0] = 256;
             num_threads[1] = 1;
         }
-        const void* arg[] = {&num_x, &num_y, sdp_mem_gpu_buffer(data, status)};
+        const void* arg[] = {
+            is_dbl ? (const void*)&data_dbl : (const void*)&data_flt,
+        };
         num_blocks[0] = (num_x + num_threads[0] - 1) / num_threads[0];
         num_blocks[1] = (num_y + num_threads[1] - 1) / num_threads[1];
         sdp_launch_cuda_kernel(kernel_name,

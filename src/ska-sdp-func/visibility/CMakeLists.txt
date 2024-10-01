@@ -5,4 +5,9 @@ SKA_SDP_FUNC_SRC(
     sdp_phase_rotate.cu
     sdp_weighting.cpp
     sdp_weighting.cu
+    sdp_flagger.cpp
+    sdp_opt_weighting.cpp
+    sdp_opt_weighting.cu
+    sdp_tiled_functions.cpp
+    sdp_tiled_functions.cu 
 )

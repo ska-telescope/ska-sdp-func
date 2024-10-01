@@ -147,19 +147,10 @@ __global__ void calc_sum_gpu(
                 idx_v,
                 0
         );
-        const int i_pol_start = INDEX_4D(num_times,
-                num_baselines,
-                num_channels,
-                num_pols,
-                i_time,
-                i_baseline,
-                i_channel,
-                0
-        );
 
         for (int i_pol = 0; i_pol < num_pols; ++i_pol)
         {
-            atomicAdd(&(*sumweight), input_weight[i_pol_start + i_pol]);
+            atomicAdd(&(*sumweight), weights_grid_uv[i_pol_s + i_pol]);
             atomicAdd(&(*sumweight2),
                     weights_grid_uv[i_pol_s + i_pol] *
                     weights_grid_uv[i_pol_s + i_pol]

@@ -86,7 +86,6 @@ static void sum_weights_calc(
         const FREQ_TYPE* freq_hz,
         const double max_abs_uv,
         const WEIGHT_TYPE* weights_grid_uv,
-        const WEIGHT_TYPE* input_weight,
         double* sumweight,
         double* sumweight2
 )
@@ -112,10 +111,6 @@ static void sum_weights_calc(
                         (int64_t) (floor(grid_v / max_abs_uv * half_grid_size) +
                         half_grid_size);
                 if (idx_u >= grid_size || idx_v >= grid_size) continue;
-                const int64_t i_pol_start = INDEX_4D(
-                        num_times, num_baselines, num_channels, num_pols,
-                        i_time, i_baseline, i_channel, 0
-                );
                 const int64_t i_pol_s = INDEX_3D(
                         grid_size,
                         grid_size,
@@ -126,7 +121,7 @@ static void sum_weights_calc(
                 );
                 for (int64_t i_pol = 0; i_pol < num_pols; ++i_pol)
                 {
-                    *sumweight += input_weight[i_pol_start + i_pol];
+                    *sumweight += weights_grid_uv[i_pol_s + i_pol];
                     *sumweight2 +=
                             (weights_grid_uv[i_pol_s + i_pol] *
                             weights_grid_uv[i_pol_s + i_pol]);
@@ -602,7 +597,6 @@ void sdp_weighting_briggs(
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
                     (const double*)sdp_mem_data(weights_grid_uv),
-                    (const double*)sdp_mem_data_const(input_weight),
                     &sumweight,
                     &sumweight2
             );
@@ -655,7 +649,6 @@ void sdp_weighting_briggs(
                     (const double*)sdp_mem_data_const(freq_hz),
                     max_abs_uv,
                     (const float*)sdp_mem_data(weights_grid_uv),
-                    (const float*)sdp_mem_data_const(input_weight),
                     &sumweight,
                     &sumweight2
             );

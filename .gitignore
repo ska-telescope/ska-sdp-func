@@ -8,8 +8,10 @@
 /debug/
 /build/
 /dist/
+/wheelhouse/
 __pycache__/
 *.egg-info/
+poetry.lock
 
 # Documentation build directories
 /docs/doxygen/

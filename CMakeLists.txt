@@ -5,10 +5,10 @@ endif()
 project(ska_sdp_func CXX C)
 
 # Project version.
-set(SDP_FUNC_VERSION_ID "0x010001")
+set(SDP_FUNC_VERSION_ID "0x010107")
 set(SDP_FUNC_VERSION_MAJOR 1)
-set(SDP_FUNC_VERSION_MINOR 0)
-set(SDP_FUNC_VERSION_PATCH 1)
+set(SDP_FUNC_VERSION_MINOR 1)
+set(SDP_FUNC_VERSION_PATCH 7)
 set(SDP_FUNC_VERSION_SUFFIX "")
 
 # Add local CMake module path.
@@ -51,6 +51,12 @@ if (CUDA_FOUND)
     add_definitions(-DSDP_HAVE_CUDA)
 endif()
 find_package(OpenMP QUIET)
+if (FIND_MKL OR NOT DEFINED FIND_MKL)
+    find_package(MKL CONFIG QUIET PATHS $ENV{MKLROOT})
+endif()
+if (MKL_FOUND)
+    add_definitions(-DSDP_HAVE_MKL)
+endif()
 
 # Set compiler options.
 include(compiler_options)
@@ -99,6 +105,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
+
+# Link with MKL if found.
+if (MKL_FOUND)
+    target_link_libraries(${PROJECT_NAME} MKL::MKL)
+endif()
 
 # Add OpenMP compiler flags if found.
 if (OpenMP_CXX_FOUND)

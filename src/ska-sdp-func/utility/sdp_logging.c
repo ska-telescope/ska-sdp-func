@@ -51,7 +51,7 @@ void sdp_log_message(
         }
         else
         {
-            log_filter = SDP_LOG_LEVEL_DEBUG;
+            log_filter = SDP_LOG_LEVEL_INFO;
         }
     }
 

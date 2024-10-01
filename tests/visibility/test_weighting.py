@@ -259,9 +259,7 @@ def reference_briggs_weights(
                 if idx_u >= grid_size or idx_v >= grid_size:
                     continue
                 for i_pol in range(num_pol):
-                    sum_weight += input_weight[
-                        i_time, i_baseline, i_channel, i_pol
-                    ]
+                    sum_weight += weights_grid_uv[idx_u, idx_v, i_pol]
                     sum_weight2 += (
                         weights_grid_uv[idx_u, idx_v, i_pol]
                         * weights_grid_uv[idx_u, idx_v, i_pol]
@@ -400,7 +398,7 @@ def test_briggs_weights():
         output_weight_pfl_briggs,
     )
 
-    # Print the output of both functions
+    # Check the output of the functions
 
     assert np.allclose(
         output_weight_pfl_briggs, output_weight_ref_briggs

@@ -40,7 +40,7 @@ def test_fft_convolution():
 
     np.testing.assert_allclose(out, out_reference)
 
-    print("FFT convlution at double precision on CPU: Test passed")
+    print("FFT convolution at double precision on CPU: Test passed")
 
     # # Test for complex float
     in1_float = in1.astype(dtype=np.complex64)
@@ -59,7 +59,7 @@ def test_fft_convolution():
         out_float, out_reference_float, decimal=0
     )
 
-    print("FFT convlution at float precision on CPU: Test passed")
+    print("FFT convolution at float precision on CPU: Test passed")
 
     # Run FFT convolution test on GPU using cumpy arrays.
     if cupy:
@@ -75,7 +75,7 @@ def test_fft_convolution():
 
         np.testing.assert_array_almost_equal(output_gpu_check, out_reference)
 
-        print("FFT convlution at double precision on GPU: Test passed")
+        print("FFT convolution at double precision on GPU: Test passed")
 
         # Test for complex float
         in1_gpu_float = cupy.asarray(in1_float)
@@ -94,4 +94,4 @@ def test_fft_convolution():
             output_gpu_check, out_reference_float, decimal=0
         )
 
-        print("FFT convlution at float precision on GPU: Test passed")
+        print("FFT convolution at float precision on GPU: Test passed")

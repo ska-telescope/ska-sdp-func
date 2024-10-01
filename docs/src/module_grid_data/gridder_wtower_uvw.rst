@@ -1,6 +1,8 @@
-**********************
-W-tower gridder kernel
-**********************
+.. _w_tower_gridder_kernel:
+
+********************************
+W-tower gridder kernel functions
+********************************
 
 C/C++
 =====
