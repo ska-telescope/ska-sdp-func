@@ -1073,7 +1073,7 @@ void sdp_transpose_inplace_accelerated(
         int64_t block
 )
 {
-    int64_t i, j;
+    // int64_t i, j;
     int64_t r = n % block, m = n - r;
     T temp;
     // if dimension of matrix is less than block size just do naive
@@ -1082,10 +1082,10 @@ void sdp_transpose_inplace_accelerated(
         return sdp_transpose_inplace_simple(inout, n);
     }
     // transpose square blocks
-// #   pragma omp parallel for collapse(2)
-    for (i = 0; i < m; i += block)
+ #   pragma omp parallel for collapse(1)
+    for (int64_t i = 0; i < m; i += block)
     {
-        for (j = i; j < m; j += block)
+        for (int64_t j = i; j < m; j += block)
         {
             (i == j) ? sdp_transpose_block_diag(inout, n, i, j,
                     block
@@ -1097,9 +1097,9 @@ void sdp_transpose_inplace_accelerated(
     if (r)
     {
         // transpose rectangular sub-matrix
-        for (j = m; j < n; j++)
+        for (int64_t j = m; j < n; j++)
         {
-            for (i = 0; i < m; i++)
+            for (int64_t i = 0; i < m; i++)
             {
                 temp = inout[i * n + j];
                 inout[i * n + j] = inout[j * n + i];
@@ -1107,9 +1107,9 @@ void sdp_transpose_inplace_accelerated(
             }
         }
         // transpose square sub matrix in "bottom right"
-        for (i = m; i < n; i++)
+        for (int64_t i = m; i < n; i++)
         {
-            for (j = i + 1; j < n; j++)
+            for (int64_t j = i + 1; j < n; j++)
             {
                 temp = inout[i * n + j];
                 inout[i * n + j] = inout[j * n + i];
