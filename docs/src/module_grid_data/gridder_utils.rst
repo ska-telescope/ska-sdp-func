@@ -17,8 +17,24 @@ C/C++
 .. doxygengroup:: gridder_clamp_chan_func
    :content-only:
 
-.. doxygengroup:: gridder_util_func
-   :content-only:
+.. doxygenfunction:: sdp_gridder_determine_w_step
+
+.. doxygenfunction:: sdp_gridder_find_max_w_tower_height
+
+.. doxygenfunction:: sdp_gridder_make_kernel
+
+.. doxygenfunction:: sdp_gridder_make_pswf_kernel
+
+.. doxygenfunction:: sdp_gridder_make_w_pattern
+
+.. doxygenfunction:: sdp_gridder_rms_diff
+
+.. doxygenfunction:: sdp_gridder_subgrid_add
+
+.. doxygenfunction:: sdp_gridder_subgrid_cut_out
+
+.. doxygenfunction:: sdp_gridder_uvw_bounds_all
+
 
 Python
 ======

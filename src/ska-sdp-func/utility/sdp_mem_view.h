@@ -36,7 +36,8 @@
 #endif
 
 #ifndef NDEBUG
-#define SDP_MV_CHECK_DIM(NUM) assert(i ## NUM >= 0 && i ## NUM < shape[NUM]);
+#define SDP_MV_CHECK_DIM(NUM) \
+    assert(i ## NUM >= 0); assert(i ## NUM < shape[NUM]);
 #else
 #define SDP_MV_CHECK_DIM(NUM)
 #endif

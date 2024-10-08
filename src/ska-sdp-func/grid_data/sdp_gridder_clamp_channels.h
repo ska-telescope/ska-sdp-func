@@ -108,28 +108,29 @@ void sdp_gridder_clamp_channels_inline(
         const double max_u
 )
 {
-    // We have to be slightly careful about degenerate cases in the
-    // division below - not only can we have divisions by zero,
-    // but also channel numbers that go over the integer range.
-    // So it is safer to round these coordinates to zero for the
-    // purpose of the bounds check.
-    const double eta = 1e-3;
     const double u0 = freq0_hz * u / C_0;
     const double du = dfreq_hz * u / C_0;
+
+    // We want to calculate (min_u - u0) / du and (max_u - u0) / du
+    // but that has a chance of overflowing integers. So here we
+    // "smartly" calculate lower bounds for du to make this safe.
+    const double min_u_rel = fabs(min_u - u0);
+    const double max_u_rel = fabs(max_u - u0);
+    const double eta = MAX(min_u_rel, max_u_rel) / 2147483645.0;
 
     // Note the symmetry below: we get precisely the same expression
     // for maximum and minimum, however start_ch is inclusive but
     // end_ch is exclusive. This means that two calls to
     // clamp_channels where any min_uvw is equal to any max_uvw will
     // never return overlapping channel ranges.
-    if (u > eta)
+    if (du > eta)
     {
         const int64_t start_ch_ = int64_t(ceil((min_u - u0) / du));
         const int64_t end_ch_ = int64_t(ceil((max_u - u0) / du));
         *start_ch = MAX(*start_ch, start_ch_);
         *end_ch = MIN(*end_ch, end_ch_);
     }
-    else if (u < -eta)
+    else if (du < -eta)
     {
         const int64_t start_ch_ = int64_t(ceil((max_u - u0) / du));
         const int64_t end_ch_ = int64_t(ceil((min_u - u0) / du));
@@ -138,10 +139,10 @@ void sdp_gridder_clamp_channels_inline(
     }
     else
     {
-        // Assume u = 0, which makes this a binary decision:
-        // Does the range include 0 or not? Also let's be careful
-        // just in case somebody puts a subgrid boundary right at zero.
-        if (min_u > 0 || max_u <= 0)
+        // Assume u = u0, which makes this a binary decision:
+        // Does the range include u0 or not? Also let's be careful
+        // just in case somebody puts a subgrid boundary right at u0.
+        if (min_u > u0 || max_u <= u0)
         {
             *start_ch = 0;
             *end_ch = 0;
