@@ -17,8 +17,8 @@
 #include "ska-sdp-func/grid_data/sdp_grid_wstack_wtower.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_direct.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
-#include "ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_wtower_height.h"
+#include "ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.h"
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_mem.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
@@ -161,16 +161,17 @@ static sdp_Mem* generate_reference_image(
         sdp_Error* status
 )
 {
-#ifdef SDP_HAVE_CUDA
-    // Create an image to return.
+    const int64_t num_pixels = image_size * image_size;
     const int64_t image_shape[] = {image_size, image_size};
-    sdp_Mem* image = sdp_mem_create(type, SDP_MEM_GPU, 2, image_shape, status);
-
-    // Get lmn coordinates from image.
-    const int64_t lmn_shape[] = {image_size * image_size, 3};
+    const int64_t lmn_shape[] = {num_pixels, 3};
     sdp_Mem* lmn = sdp_mem_create(
             SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, lmn_shape, status
     );
+#ifdef SDP_HAVE_CUDA
+    // Create an image to return.
+    sdp_Mem* image = sdp_mem_create(type, SDP_MEM_GPU, 2, image_shape, status);
+
+    // Get lmn coordinates from image.
     sdp_gridder_image_to_flmn(
             image, theta, shear_u, shear_v, NULL, NULL, lmn, status
     );
@@ -192,14 +193,9 @@ static sdp_Mem* generate_reference_image(
     return image_cpu;
 #else
     // Create an image to return.
-    const int64_t image_shape[] = {image_size, image_size};
     sdp_Mem* image = sdp_mem_create(type, SDP_MEM_CPU, 2, image_shape, status);
 
     // Get lmn coordinates from image.
-    const int64_t lmn_shape[] = {image_size * image_size, 3};
-    sdp_Mem* lmn = sdp_mem_create(
-            SDP_MEM_DOUBLE, SDP_MEM_CPU, 2, lmn_shape, status
-    );
     sdp_gridder_image_to_flmn(
             image, theta, shear_u, shear_v, NULL, NULL, lmn, status
     );
@@ -374,10 +370,10 @@ static void write_fits_file(
     if (sdp_mem_is_complex(image))
     {
         sdp_MemType type = (
-                sdp_mem_is_double(image) ? SDP_MEM_DOUBLE : SDP_MEM_FLOAT
+            sdp_mem_is_double(image) ? SDP_MEM_DOUBLE : SDP_MEM_FLOAT
         );
         const int64_t shape[] = {
-                sdp_mem_shape_dim(image, 0), sdp_mem_shape_dim(image, 1)
+            sdp_mem_shape_dim(image, 0), sdp_mem_shape_dim(image, 1)
         };
         sdp_Mem* temp = sdp_mem_create(type, SDP_MEM_CPU, 2, shape, &status);
         convert_complex(image, temp, 0, &status);
