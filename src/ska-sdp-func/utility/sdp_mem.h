@@ -244,6 +244,21 @@ void sdp_mem_clear_portion(
 );
 
 /**
+ * @brief Converts double to single precision, or vice versa.
+ *
+ * This function is mainly used in tests.
+ *
+ * @param src Source data to convert.
+ * @param output_type Required type of output data to return.
+ * @param status Error status.
+ */
+sdp_Mem* sdp_mem_convert_precision(
+        const sdp_Mem* src,
+        sdp_MemType output_type,
+        sdp_Error* status
+);
+
+/**
  * @brief Copies memory contents from one block to another.
  *
  * @param dst Handle to destination memory block.
@@ -460,6 +475,15 @@ void sdp_mem_ref_dec(sdp_Mem* mem);
  * @return ::sdp_Mem* Handle to memory block (same as @p mem).
  */
 sdp_Mem* sdp_mem_ref_inc(sdp_Mem* mem);
+
+/**
+ * @brief Multiplies all elements in an array by the given value.
+ *
+ * @param mem Array to be updated.
+ * @param value Value by which to multiply each element.
+ * @param status Error status.
+ */
+void sdp_mem_scale_real(sdp_Mem* mem, double value, sdp_Error* status);
 
 /**
  * @brief Set the flag specifying whether the memory should be read-only.

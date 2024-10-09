@@ -33,7 +33,8 @@ static void report_timing(
         sdp_Timer* tmr_zero,
         int num_threads,
         sdp_GridderWtowerUVW** kernel,
-        int gridding
+        int gridding,
+        sdp_Error* status
 );
 
 
@@ -292,7 +293,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         report_timing(num_w_planes, num_subgrids_u, num_subgrids_v,
                 image_size, subgrid_size, w_step, w_tower_height,
                 vis, tmr_fft_grid, tmr_total, tmr_w_stack, tmr_zero,
-                num_threads, &kernel[0], 0
+                num_threads, &kernel[0], 0, status
         );
     }
     for (int i = 0; i < num_threads; ++i)
@@ -534,7 +535,7 @@ void sdp_grid_wstack_wtower_grid_all(
         report_timing(num_w_planes, num_subgrids_u, num_subgrids_v,
                 image_size, subgrid_size, w_step, w_tower_height,
                 vis, tmr_fft_grid, tmr_total, tmr_w_stack, tmr_zero,
-                num_threads, &kernel[0], 1
+                num_threads, &kernel[0], 1, status
         );
     }
     for (int i = 0; i < num_threads; ++i)
@@ -568,9 +569,11 @@ static void report_timing(
         sdp_Timer* tmr_zero,
         int num_threads,
         sdp_GridderWtowerUVW** kernel,
-        int gridding
+        int gridding,
+        sdp_Error* status
 )
 {
+    if (*status) return;
     int total_w_planes = 0;
     double t_total = sdp_timer_elapsed(tmr_total);
     double t_fft_grid = sdp_timer_elapsed(tmr_fft_grid);

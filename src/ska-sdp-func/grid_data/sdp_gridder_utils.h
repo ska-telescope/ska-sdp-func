@@ -114,6 +114,48 @@ void sdp_gridder_dft(
 );
 
 /**
+ * @brief Perform imaging of visibilities via direct Fourier transform.
+ *
+ * Used primarily to generate reference data for testing.
+ *
+ * If @p start_chs and @p end_chs are NULL, all visibilities will be used.
+ *
+ * @param uvws ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).
+ * @param vis ``complex[uvw_count, ch_count]`` Input visibilities.
+ * @param start_chs ``int[uvw_count]`` First channel to degrid for every uvw.
+ * @param end_chs ``int[uvw_count]`` Channel at which to stop degridding for every uvw.
+ * @param lmn ``float[source_count, 3]`` Direction cosine of each source component.
+ * @param image_taper_1d Optional separable taper to apply across
+ *                       both dimensions of the image. May be NULL.
+ * @param subgrid_offset_u Offset of subgrid centre relative to grid centre.
+ * @param subgrid_offset_v Offset of subgrid centre relative to grid centre.
+ * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
+ * @param theta Total image size in direction cosines.
+ * @param w_step Spacing between w-planes.
+ * @param freq0_hz Frequency of first channel (Hz).
+ * @param dfreq_hz Channel separation (Hz).
+ * @param image Output image.
+ * @param status Error status.
+ */
+void sdp_gridder_idft(
+        const sdp_Mem* uvws,
+        const sdp_Mem* vis,
+        const sdp_Mem* start_chs,
+        const sdp_Mem* end_chs,
+        const sdp_Mem* lmn,
+        const sdp_Mem* image_taper_1d,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double theta,
+        double w_step,
+        double freq0_hz,
+        double dfreq_hz,
+        sdp_Mem* image,
+        sdp_Error* status
+);
+
+/**
  * @brief Convert image pixels to coordinates and optionally, fluxes.
  *
  * If the @p flux parameter is not NULL, then only the non-zero pixel values

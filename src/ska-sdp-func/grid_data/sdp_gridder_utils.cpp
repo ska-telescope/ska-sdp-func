@@ -211,6 +211,108 @@ void dft(
 }
 
 
+// Local function to generate image by direct FT.
+template<
+        typename DIR_TYPE,
+        typename FLUX_TYPE,
+        typename UVW_TYPE,
+        typename VIS_TYPE
+>
+void idft(
+        const sdp_Mem* uvw,
+        const sdp_Mem* vis,
+        const sdp_Mem* start_chs,
+        const sdp_Mem* end_chs,
+        const sdp_Mem* lmn,
+        const sdp_Mem* image_taper_1d,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double theta,
+        double w_step,
+        double freq0_hz,
+        double dfreq_hz,
+        sdp_Mem* image,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+
+    // Get views to data.
+    const int64_t num_uvw = sdp_mem_shape_dim(uvw, 0);
+    const int64_t image_size = sdp_mem_shape_dim(image, 0);
+    const int num_chan = (int) sdp_mem_shape_dim(vis, 1);
+    sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvw_;
+    sdp_MemViewCpu<const complex<VIS_TYPE>, 2> vis_;
+    sdp_MemViewCpu<const DIR_TYPE, 2> lmn_;
+    sdp_MemViewCpu<FLUX_TYPE, 2> image_;
+    sdp_MemViewCpu<const double, 1> taper_;
+    if (start_chs && end_chs)
+    {
+        sdp_mem_check_and_view(start_chs, &start_chs_, status);
+        sdp_mem_check_and_view(end_chs, &end_chs_, status);
+    }
+    sdp_mem_check_and_view(uvw, &uvw_, status);
+    sdp_mem_check_and_view(vis, &vis_, status);
+    sdp_mem_check_and_view(lmn, &lmn_, status);
+    sdp_mem_check_and_view(image, &image_, status);
+    if (image_taper_1d) sdp_mem_check_and_view(image_taper_1d, &taper_, status);
+    if (*status) return;
+
+    // Scale subgrid offset values.
+    double du = 0, dv = 0, dw = 0;
+    if (theta > 0)
+    {
+        du = (double) subgrid_offset_u / theta;
+        dv = (double) subgrid_offset_v / theta;
+        dw = (double) subgrid_offset_w * w_step;
+    }
+
+    // Loop over pixels.
+    #pragma omp parallel for collapse(2)
+    for (int64_t il = 0; il < image_size; ++il)
+    {
+        for (int64_t im = 0; im < image_size; ++im)
+        {
+            FLUX_TYPE local_pix = 0;
+            const int64_t s = il * image_size + im; // Linearised pixel index.
+
+            // Loop over uvw values.
+            for (int64_t i = 0; i < num_uvw; ++i)
+            {
+                // Skip if there's no visibility to grid.
+                if (start_chs && end_chs && start_chs_(i) >= end_chs_(i))
+                {
+                    continue;
+                }
+
+                // Loop over channels.
+                for (int c = 0; c < num_chan; ++c)
+                {
+                    const double inv_wave = (freq0_hz + dfreq_hz * c) / C_0;
+
+                    // Scale and shift uvws.
+                    const double u = uvw_(i, 0) * inv_wave - du;
+                    const double v = uvw_(i, 1) * inv_wave - dv;
+                    const double w = uvw_(i, 2) * inv_wave - dw;
+
+                    const double phase = 2.0 * M_PI *
+                            (lmn_(s, 0) * u + lmn_(s, 1) * v + lmn_(s, 2) * w);
+                    const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
+                    local_pix += vis_(i, c) * phasor;
+                }
+            }
+
+            // Store local pixel value, appropriately tapered.
+            // We can't taper afterwards, as the input image may be nonzero.
+            double taper_val = image_taper_1d ? taper_(il) * taper_(im) : 1.0;
+            image_(il, im) += local_pix * (FLUX_TYPE) taper_val;
+        }
+    }
+}
+
+
 // Local function to convert image pixels to coordinates and optionally, fluxes.
 template<typename IMAGE_TYPE, typename FLUX_TYPE, typename DIR_TYPE>
 void image_to_flmn(
@@ -225,12 +327,8 @@ void image_to_flmn(
 )
 {
     if (*status) return;
-    sdp_MemViewCpu<const IMAGE_TYPE, 2> image_;
-    sdp_MemViewCpu<FLUX_TYPE, 1> flux_;
     sdp_MemViewCpu<DIR_TYPE, 2> lmn_;
     sdp_MemViewCpu<const double, 1> taper_;
-    sdp_mem_check_and_view(image, &image_, status);
-    if (flux) sdp_mem_check_and_view(flux, &flux_, status);
     sdp_mem_check_and_view(lmn, &lmn_, status);
     if (image_taper_1d) sdp_mem_check_and_view(image_taper_1d, &taper_, status);
 
@@ -241,6 +339,10 @@ void image_to_flmn(
     const int size_m = (int) sdp_mem_shape_dim(image, 1);
     if (flux)
     {
+        sdp_MemViewCpu<const IMAGE_TYPE, 2> image_;
+        sdp_MemViewCpu<FLUX_TYPE, 1> flux_;
+        sdp_mem_check_and_view(image, &image_, status);
+        sdp_mem_check_and_view(flux, &flux_, status);
         for (int il = 0; il < size_l; ++il)
         {
             const double l = (il - size_l / 2) * theta / size_l;
@@ -328,6 +430,7 @@ void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
 template<typename TYPE_A, typename TYPE_B>
 double rms_diff(const sdp_Mem* a, const sdp_Mem* b, sdp_Error* status)
 {
+    if (*status) return INFINITY;
     sdp_MemViewCpu<const TYPE_A, 2> a_;
     sdp_MemViewCpu<const TYPE_B, 2> b_;
     sdp_mem_check_and_view(a, &a_, status);
@@ -342,7 +445,7 @@ double rms_diff(const sdp_Mem* a, const sdp_Mem* b, sdp_Error* status)
     {
         for (int j = 0; j < num_y; ++j)
         {
-            sum_sq_diff += std::norm(a_(i, j) - b_(i, j));
+            sum_sq_diff += std::norm(a_(i, j) - (TYPE_A) b_(i, j));
         }
     }
     return sqrt(sum_sq_diff / size);
@@ -914,6 +1017,145 @@ void sdp_gridder_dft(
 }
 
 
+void sdp_gridder_idft(
+        const sdp_Mem* uvws,
+        const sdp_Mem* vis,
+        const sdp_Mem* start_chs,
+        const sdp_Mem* end_chs,
+        const sdp_Mem* lmn,
+        const sdp_Mem* image_taper_1d,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double theta,
+        double w_step,
+        double freq0_hz,
+        double dfreq_hz,
+        sdp_Mem* image,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(vis);
+    const sdp_MemType img_type = sdp_mem_type(image);
+    const sdp_MemType dir_type = sdp_mem_type(lmn);
+    const sdp_MemType uvw_type = sdp_mem_type(uvws);
+    const sdp_MemType vis_type = sdp_mem_type(vis);
+    if (loc == SDP_MEM_CPU)
+    {
+        if (dir_type == SDP_MEM_DOUBLE &&
+                img_type == SDP_MEM_COMPLEX_DOUBLE &&
+                uvw_type == SDP_MEM_DOUBLE &&
+                vis_type == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            idft<double, complex<double>, double, double>(
+                    uvws, vis, start_chs, end_chs, lmn, image_taper_1d,
+                    subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                    theta, w_step, freq0_hz, dfreq_hz, image, status
+            );
+        }
+        else if (dir_type == SDP_MEM_FLOAT &&
+                img_type == SDP_MEM_COMPLEX_FLOAT &&
+                uvw_type == SDP_MEM_FLOAT &&
+                vis_type == SDP_MEM_COMPLEX_FLOAT)
+        {
+            idft<float, complex<float>, float, float>(
+                    uvws, vis, start_chs, end_chs, lmn, image_taper_1d,
+                    subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                    theta, w_step, freq0_hz, dfreq_hz, image, status
+            );
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data types");
+        }
+    }
+    else
+    {
+        uint64_t num_threads[] = {16, 16, 1}, num_blocks[] = {1, 1, 1};
+        const uint64_t shape0 = (uint64_t) sdp_mem_shape_dim(image, 0);
+        const uint64_t shape1 = (uint64_t) sdp_mem_shape_dim(image, 1);
+        num_blocks[0] = (shape0 + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (shape1 + num_threads[1] - 1) / num_threads[1];
+        sdp_MemViewGpu<complex<double>, 2> img_dbl;
+        sdp_MemViewGpu<const complex<double>, 2> vis_dbl;
+        sdp_MemViewGpu<complex<float>, 2> img_flt;
+        sdp_MemViewGpu<const complex<float>, 2> vis_flt;
+        sdp_MemViewGpu<const double, 2> lmn_dbl, uvw_dbl;
+        sdp_MemViewGpu<const float, 2> lmn_flt, uvw_flt;
+        sdp_MemViewGpu<const int, 1> start_ch, end_ch;
+        sdp_MemViewGpu<const double, 1> taper;
+        int is_dbl = 0, use_start_end_ch = 0, use_taper = 0;
+        const char* kernel_name = 0;
+        if (dir_type == SDP_MEM_DOUBLE &&
+                img_type == SDP_MEM_COMPLEX_DOUBLE &&
+                uvw_type == SDP_MEM_DOUBLE &&
+                vis_type == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            is_dbl = 1;
+            sdp_mem_check_and_view(image, &img_dbl, status);
+            sdp_mem_check_and_view(lmn, &lmn_dbl, status);
+            sdp_mem_check_and_view(uvws, &uvw_dbl, status);
+            sdp_mem_check_and_view(vis, &vis_dbl, status);
+            kernel_name = "sdp_gridder_idft"
+                    "<double, complex<double>, double, double>";
+        }
+        else if (dir_type == SDP_MEM_FLOAT &&
+                img_type == SDP_MEM_COMPLEX_FLOAT &&
+                uvw_type == SDP_MEM_FLOAT &&
+                vis_type == SDP_MEM_COMPLEX_FLOAT)
+        {
+            is_dbl = 0;
+            sdp_mem_check_and_view(image, &img_flt, status);
+            sdp_mem_check_and_view(lmn, &lmn_flt, status);
+            sdp_mem_check_and_view(uvws, &uvw_flt, status);
+            sdp_mem_check_and_view(vis, &vis_flt, status);
+            kernel_name = "sdp_gridder_idft"
+                    "<float, complex<float>, float, float>";
+        }
+        else
+        {
+            *status = SDP_ERR_DATA_TYPE;
+            SDP_LOG_ERROR("Unsupported data types");
+            return;
+        }
+        if (start_chs && end_chs)
+        {
+            use_start_end_ch = 1;
+            sdp_mem_check_and_view(start_chs, &start_ch, status);
+            sdp_mem_check_and_view(end_chs, &end_ch, status);
+        }
+        if (image_taper_1d)
+        {
+            use_taper = 1;
+            sdp_mem_check_and_view(image_taper_1d, &taper, status);
+        }
+        const void* arg[] = {
+            is_dbl ? (const void*) &uvw_dbl : (const void*) &uvw_flt,
+            is_dbl ? (const void*) &vis_dbl : (const void*) &vis_flt,
+            (const void*) &start_ch,
+            (const void*) &end_ch,
+            is_dbl ? (const void*) &lmn_dbl : (const void*) &lmn_flt,
+            (const void*) &taper,
+            (const void*) &subgrid_offset_u,
+            (const void*) &subgrid_offset_v,
+            (const void*) &subgrid_offset_w,
+            (const void*) &theta,
+            (const void*) &w_step,
+            (const void*) &freq0_hz,
+            (const void*) &dfreq_hz,
+            is_dbl ? (const void*) &img_dbl : (const void*) &img_flt,
+            (const void*) &use_start_end_ch,
+            (const void*) &use_taper
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+    }
+}
+
+
 void sdp_gridder_image_to_flmn(
         const sdp_Mem* image,
         double theta,
@@ -1061,14 +1303,12 @@ double sdp_gridder_rms_diff(
         sdp_Error* status
 )
 {
+    const sdp_Mem* p_a = a;
+    const sdp_Mem* p_b = b;
+    sdp_Mem* temp_a = 0;
+    sdp_Mem* temp_b = 0;
+    double out = INFINITY;
     if (*status) return INFINITY;
-    if (sdp_mem_location(a) != SDP_MEM_CPU ||
-            sdp_mem_location(b) != SDP_MEM_CPU)
-    {
-        SDP_LOG_ERROR("Input arrays must be in CPU memory");
-        *status = SDP_ERR_MEM_LOCATION;
-        return INFINITY;
-    }
     const sdp_MemType t_a = sdp_mem_type(a);
     const sdp_MemType t_b = sdp_mem_type(b);
     if (sdp_mem_num_dims(a) != 2 || sdp_mem_num_dims(b) != 2)
@@ -1084,28 +1324,48 @@ double sdp_gridder_rms_diff(
         *status = SDP_ERR_INVALID_ARGUMENT;
         return INFINITY;
     }
+    if (sdp_mem_location(a) != SDP_MEM_CPU)
+    {
+        temp_a = sdp_mem_create_copy(a, SDP_MEM_CPU, status);
+        p_a = temp_a;
+    }
+    if (sdp_mem_location(b) != SDP_MEM_CPU)
+    {
+        temp_b = sdp_mem_create_copy(b, SDP_MEM_CPU, status);
+        p_b = temp_b;
+    }
     if (t_a == SDP_MEM_COMPLEX_DOUBLE && t_b == SDP_MEM_COMPLEX_DOUBLE)
     {
-        return rms_diff<complex<double>, complex<double> >(a, b, status);
+        out = rms_diff<complex<double>, complex<double> >(p_a, p_b, status);
     }
     else if (t_a == SDP_MEM_COMPLEX_FLOAT && t_b == SDP_MEM_COMPLEX_FLOAT)
     {
-        return rms_diff<complex<float>, complex<float> >(a, b, status);
+        out = rms_diff<complex<float>, complex<float> >(p_a, p_b, status);
+    }
+    else if (t_a == SDP_MEM_COMPLEX_DOUBLE && t_b == SDP_MEM_COMPLEX_FLOAT)
+    {
+        out = rms_diff<complex<double>, complex<float> >(p_a, p_b, status);
     }
     else if (t_a == SDP_MEM_DOUBLE && t_b == SDP_MEM_DOUBLE)
     {
-        return rms_diff<double, double>(a, b, status);
+        out = rms_diff<double, double>(p_a, p_b, status);
     }
     else if (t_a == SDP_MEM_FLOAT && t_b == SDP_MEM_FLOAT)
     {
-        return rms_diff<float, float>(a, b, status);
+        out = rms_diff<float, float>(p_a, p_b, status);
+    }
+    else if (t_a == SDP_MEM_DOUBLE && t_b == SDP_MEM_FLOAT)
+    {
+        out = rms_diff<double, float>(p_a, p_b, status);
     }
     else
     {
         SDP_LOG_ERROR("Unsupported data types for RMS difference calculation");
         *status = SDP_ERR_DATA_TYPE;
     }
-    return INFINITY;
+    sdp_mem_free(temp_a);
+    sdp_mem_free(temp_b);
+    return out;
 }
 
 
