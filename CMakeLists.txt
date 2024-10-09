@@ -91,11 +91,6 @@ if (CUDAToolkit_FOUND)
     list(APPEND ${PROJECT_NAME}_SRC ${${PROJECT_NAME}_CUDA_SRC})
     add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
     target_link_libraries(${PROJECT_NAME} CUDA::cufft CUDA::cudart_static)
-    set_target_properties(${PROJECT_NAME}
-        PROPERTIES
-            CUDA_SEPARABLE_COMPILATION ON
-            CUDA_RESOLVE_DEVICE_SYMBOLS ON
-    )
 else()
     add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 endif()
