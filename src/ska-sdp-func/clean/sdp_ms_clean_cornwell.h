@@ -21,8 +21,8 @@ extern "C"
 
 /**
  * @brief Perform the msCLEAN algorithm on a dirty image.
- * 
- * Based on the version decribed by T. J. Cornwell, "Multiscale CLEAN Deconvolution of Radio Synthesis Images," 
+ *
+ * Based on the version decribed by T. J. Cornwell, "Multiscale CLEAN Deconvolution of Radio Synthesis Images,"
  * in IEEE Journal of Selected Topics in Signal Processing, vol. 2, no. 5, pp. 793-801, Oct. 2008,
  * doi: 10.1109/JSTSP.2008.2006388. https://ieeexplore.ieee.org/document/4703304
  *
