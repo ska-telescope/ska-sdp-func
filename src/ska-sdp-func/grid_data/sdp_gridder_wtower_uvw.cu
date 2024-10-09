@@ -10,9 +10,9 @@
 using thrust::complex;
 
 
-template<typename UVW_TYPE, typename VIS_TYPE>
+template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 __global__ void sdp_gridder_wtower_degrid(
-        const VIS_TYPE* const __restrict__ subgrids, // internal data
+        const SUBGRID_TYPE* const __restrict__ subgrids, // internal data
         const int w_plane,
         const int subgrid_offset_u,
         const int subgrid_offset_v,
@@ -99,7 +99,7 @@ __global__ void sdp_gridder_wtower_degrid(
         const int w_off = (iw0_ov % w_oversample) * w_support;
 
         // Degrid visibility.
-        VIS_TYPE local_vis = (VIS_TYPE) 0;
+        SUBGRID_TYPE local_vis = (SUBGRID_TYPE) 0;
         for (int iw = 0; iw < w_support; ++iw)
         {
             const double kern_w = w_kernel[w_off + iw];
@@ -114,18 +114,18 @@ __global__ void sdp_gridder_wtower_degrid(
                     const int64_t idx = (
                         iw * subgrid_square + ix_u * subgrid_size + ix_v
                     );
-                    local_vis += ((VIS_TYPE) kern_wuv * subgrids[idx]);
+                    local_vis += ((SUBGRID_TYPE) kern_wuv * subgrids[idx]);
                 }
             }
         }
-        vis(i_row, c) += local_vis;
+        vis(i_row, c) += (VIS_TYPE) local_vis;
     }
 }
 
 
-template<typename UVW_TYPE, typename VIS_TYPE>
+template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 __global__ void sdp_gridder_wtower_grid(
-        VIS_TYPE* __restrict__ subgrids, // internal data
+        SUBGRID_TYPE* __restrict__ subgrids, // internal data
         const int w_plane,
         const int subgrid_offset_u,
         const int subgrid_offset_v,
@@ -144,7 +144,7 @@ __global__ void sdp_gridder_wtower_grid(
         const int w_oversample,
         const double theta,
         const double w_step,
-        const sdp_MemViewGpu<const complex<VIS_TYPE>, 2> vis // external data
+        const sdp_MemViewGpu<const VIS_TYPE, 2> vis // external data
 )
 {
     const int64_t i_row = blockDim.x * blockIdx.x + threadIdx.x;
@@ -212,7 +212,9 @@ __global__ void sdp_gridder_wtower_grid(
         const int w_off = (iw0_ov % w_oversample) * w_support;
 
         // Grid visibility.
-        const complex<VIS_TYPE> local_vis = vis(i_row, c);
+        const complex<SUBGRID_TYPE> local_vis = (
+            (complex<SUBGRID_TYPE>) vis(i_row, c)
+        );
         for (int iw = 0; iw < w_support; ++iw)
         {
             const double kern_w = w_kernel[w_off + iw];
@@ -227,8 +229,8 @@ __global__ void sdp_gridder_wtower_grid(
                     const int64_t idx = 2 * (
                         iw * subgrid_square + ix_u * subgrid_size + ix_v
                     );
-                    const complex<VIS_TYPE> grid_val = (
-                        (complex<VIS_TYPE>) kern_wuv * local_vis
+                    const complex<SUBGRID_TYPE> grid_val = (
+                        (complex<SUBGRID_TYPE>) kern_wuv * local_vis
                     );
                     // The atomic adds will be very slow.
                     sdp_atomic_add(&subgrids[idx],     grid_val.real());
@@ -240,7 +242,14 @@ __global__ void sdp_gridder_wtower_grid(
 }
 
 
-SDP_CUDA_KERNEL(sdp_gridder_wtower_degrid<double, complex<double> >)
-SDP_CUDA_KERNEL(sdp_gridder_wtower_degrid<float, complex<float> >)
-SDP_CUDA_KERNEL(sdp_gridder_wtower_grid<double, double>)
-SDP_CUDA_KERNEL(sdp_gridder_wtower_grid<float, float>)
+// *INDENT-OFF*
+SDP_CUDA_KERNEL(sdp_gridder_wtower_degrid<complex<double>, double, complex<double> >)
+SDP_CUDA_KERNEL(sdp_gridder_wtower_degrid<complex<double>, double, complex<float> >)
+SDP_CUDA_KERNEL(sdp_gridder_wtower_degrid<complex<float>, double, complex<float> >)
+SDP_CUDA_KERNEL(sdp_gridder_wtower_degrid<complex<float>, float, complex<float> >)
+
+SDP_CUDA_KERNEL(sdp_gridder_wtower_grid<double, double, complex<double> >)
+SDP_CUDA_KERNEL(sdp_gridder_wtower_grid<double, double, complex<float> >)
+SDP_CUDA_KERNEL(sdp_gridder_wtower_grid<float, double, complex<float> >)
+SDP_CUDA_KERNEL(sdp_gridder_wtower_grid<float, float, complex<float> >)
+// *INDENT-ON*

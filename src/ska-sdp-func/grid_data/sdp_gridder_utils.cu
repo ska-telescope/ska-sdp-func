@@ -51,6 +51,83 @@ __global__ void sdp_gridder_accum_complex_real_array(
 }
 
 
+template<
+        typename DIR_TYPE,
+        typename FLUX_TYPE,
+        typename UVW_TYPE,
+        typename VIS_TYPE
+>
+__global__ void sdp_gridder_idft(
+        const sdp_MemViewGpu<const UVW_TYPE, 2> uvw,
+        const sdp_MemViewGpu<const complex<VIS_TYPE>, 2> vis,
+        const sdp_MemViewGpu<const int, 1> start_chs,
+        const sdp_MemViewGpu<const int, 1> end_chs,
+        const sdp_MemViewGpu<const DIR_TYPE, 2> lmn,
+        const sdp_MemViewGpu<const double, 1> image_taper_1d,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double theta,
+        double w_step,
+        double freq0_hz,
+        double dfreq_hz,
+        sdp_MemViewGpu<FLUX_TYPE, 2> image,
+        int use_start_end_chs,
+        int use_taper
+)
+{
+    const int64_t il = blockDim.x * blockIdx.x + threadIdx.x;
+    const int64_t im = blockDim.y * blockIdx.y + threadIdx.y;
+    const int64_t image_size = image.shape[0];
+    if (il >= image_size || im >= image_size) return;
+    const int64_t num_uvw = uvw.shape[0];
+    const int num_chan = (int) vis.shape[1];
+
+    // Scale subgrid offset values.
+    double du = 0, dv = 0, dw = 0;
+    if (theta > 0)
+    {
+        du = (double) subgrid_offset_u / theta;
+        dv = (double) subgrid_offset_v / theta;
+        dw = (double) subgrid_offset_w * w_step;
+    }
+
+    FLUX_TYPE local_pix = 0;
+    const int64_t s = il * image_size + im; // Linearised pixel index.
+
+    // Loop over uvw values.
+    for (int64_t i = 0; i < num_uvw; ++i)
+    {
+        // Skip if there's no visibility to grid.
+        if (use_start_end_chs && start_chs(i) >= end_chs(i))
+        {
+            continue;
+        }
+
+        // Loop over channels.
+        for (int c = 0; c < num_chan; ++c)
+        {
+            const double inv_wave = (freq0_hz + dfreq_hz * c) / C_0;
+
+            // Scale and shift uvws.
+            const double u = uvw(i, 0) * inv_wave - du;
+            const double v = uvw(i, 1) * inv_wave - dv;
+            const double w = uvw(i, 2) * inv_wave - dw;
+
+            const double phase = 2.0 * M_PI *
+                    (lmn(s, 0) * u + lmn(s, 1) * v + lmn(s, 2) * w);
+            const complex<VIS_TYPE> phasor(cos(phase), sin(phase));
+            local_pix += vis(i, c) * phasor;
+        }
+    }
+
+    // Store local pixel value, appropriately tapered.
+    // We can't taper afterwards, as the input image may be nonzero.
+    double taper_val = use_taper ? image_taper_1d(il) * image_taper_1d(im) : 1.;
+    image(il, im) += local_pix * (FLUX_TYPE) taper_val;
+}
+
+
 template<typename OUT_TYPE, typename IN1_TYPE, typename IN2_TYPE>
 __global__ void sdp_gridder_scale_inv_array(
         sdp_MemViewGpu<OUT_TYPE, 2> out,
@@ -228,6 +305,9 @@ SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<double, complex<double> >)
 SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<float, complex<float> >)
 SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<double, complex<float> >)
 SDP_CUDA_KERNEL(sdp_gridder_accum_complex_real_array<float, complex<double> >)
+
+SDP_CUDA_KERNEL(sdp_gridder_idft<double, complex<double>, double, double>)
+SDP_CUDA_KERNEL(sdp_gridder_idft<float, complex<float>, float, float>)
 
 SDP_CUDA_KERNEL(sdp_gridder_scale_inv_array<complex<double>, double, complex<double> >)
 SDP_CUDA_KERNEL(sdp_gridder_scale_inv_array<complex<float>, float, complex<double> >)

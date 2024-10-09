@@ -141,7 +141,7 @@ build-test-debug:
     - apt-get -y install build-essential cmake lcov python3
     - nvidia-smi
     - mkdir debug && cd debug/
-    - cmake ../ -DCOVERAGE_REPORT=ON -DCUDA_ARCH=$CUDA_ARCH
+    - cmake ../ -DCOVERAGE_REPORT=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCUDA_ARCH=$CUDA_ARCH
   script:
     - make -j
     - make coverage

@@ -1,0 +1,15 @@
+include(FindPackageHandleStandardArgs)
+
+find_path(CFITSIO_INCLUDE_DIR fitsio.h HINTS ${CFITSIO_ROOT_DIR}
+    PATH_SUFFIXES include
+)
+find_library(CFITSIO_LIBRARY cfitsio HINTS ${CFITSIO_ROOT_DIR}
+    PATH_SUFFIXES lib
+)
+
+find_package_handle_standard_args(CFITSIO DEFAULT_MSG
+    CFITSIO_LIBRARY CFITSIO_INCLUDE_DIR
+)
+
+set(CFITSIO_INCLUDE_DIRS ${CFITSIO_INCLUDE_DIR})
+set(CFITSIO_LIBRARIES ${CFITSIO_LIBRARY})

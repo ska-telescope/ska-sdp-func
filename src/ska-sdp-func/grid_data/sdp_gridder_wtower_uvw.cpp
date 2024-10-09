@@ -43,29 +43,35 @@ struct sdp_GridderWtowerUVW
 namespace {
 
 // Local function to do the degridding.
-template<typename UVW_TYPE, typename VIS_TYPE>
+template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void degrid(
         const sdp_GridderWtowerUVW* plan,
-        const sdp_MemViewCpu<const VIS_TYPE, 3>& subgrids,
+        const sdp_Mem* subgrids,
         int w_plane,
         int subgrid_offset_u,
         int subgrid_offset_v,
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
-        const sdp_MemViewCpu<const UVW_TYPE, 2>& uvws,
+        const sdp_Mem* uvws,
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
-        sdp_MemViewCpu<VIS_TYPE, 2>& vis,
-        const sdp_Error* status
+        sdp_Mem* vis,
+        sdp_Error* status
 )
 {
     if (*status) return;
+    sdp_MemViewCpu<const SUBGRID_TYPE, 3> subgrids_;
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<VIS_TYPE, 2> vis_;
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(vis, &vis_, status);
     const double* RESTRICT uv_kernel =
             (const double*) sdp_mem_data_const(plan->uv_kernel);
     const double* RESTRICT w_kernel =
             (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_uvw = uvws.shape[0];
+    const int64_t num_uvw = uvws_.shape[0];
     const int half_subgrid = plan->subgrid_size / 2;
     const int oversample = plan->oversampling;
     const int w_oversample = plan->w_oversampling;
@@ -86,7 +92,9 @@ void degrid(
         if (start_ch >= end_ch) continue;
 
         // Select only visibilities on this w-plane.
-        const UVW_TYPE uvw[] = {uvws(i_row, 0), uvws(i_row, 1), uvws(i_row, 2)};
+        const UVW_TYPE uvw[] = {
+            uvws_(i_row, 0), uvws_(i_row, 1), uvws_(i_row, 2)
+        };
         const double min_w = (w_plane + subgrid_offset_w - 1) * w_step;
         const double max_w = (w_plane + subgrid_offset_w) * w_step;
         sdp_gridder_clamp_channels_inline(
@@ -135,7 +143,7 @@ void degrid(
             const int w_off = (iw0_ov % w_oversample) * w_support;
 
             // Degrid visibility.
-            VIS_TYPE local_vis = (VIS_TYPE) 0;
+            SUBGRID_TYPE local_vis = (SUBGRID_TYPE) 0;
             for (int iw = 0; iw < w_support; ++iw)
             {
                 const double kern_w = w_kernel[w_off + iw];
@@ -148,12 +156,12 @@ void degrid(
                         const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
                         const int ix_v = iv0 + iv;
                         local_vis += (
-                            (VIS_TYPE) kern_wuv * subgrids(iw, ix_u, ix_v)
+                            (SUBGRID_TYPE) kern_wuv * subgrids_(iw, ix_u, ix_v)
                         );
                     }
                 }
             }
-            vis(i_row, c) += local_vis;
+            vis_(i_row, c) += (VIS_TYPE) local_vis;
         }
     }
 }
@@ -180,39 +188,42 @@ void degrid_cpu(
     sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
     sdp_mem_check_and_view(start_chs, &start_chs_, status);
     sdp_mem_check_and_view(end_chs, &end_chs_, status);
-    if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
+    if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_DOUBLE &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
     {
-        sdp_MemViewCpu<complex<double>, 2> vis_;
-        sdp_MemViewCpu<const double, 2> uvws_;
-        sdp_MemViewCpu<const complex<double>, 3> subgrids_;
-        sdp_mem_check_and_view(vis, &vis_, status);
-        sdp_mem_check_and_view(uvws, &uvws_, status);
-        sdp_mem_check_and_view(subgrids, &subgrids_, status);
-        degrid<double, complex<double> >(
-                plan, subgrids_,
+        degrid<complex<double>, double, complex<double> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws_, start_chs_, end_chs_, vis_, status
+                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
         );
     }
-    else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
     {
-        sdp_MemViewCpu<complex<float>, 2> vis_;
-        sdp_MemViewCpu<const float, 2> uvws_;
-        sdp_MemViewCpu<const complex<float>, 3> subgrids_;
-        sdp_mem_check_and_view(vis, &vis_, status);
-        sdp_mem_check_and_view(uvws, &uvws_, status);
-        sdp_mem_check_and_view(subgrids, &subgrids_, status);
-        degrid<float, complex<float> >(
-                plan, subgrids_,
+        degrid<complex<float>, double, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws_, start_chs_, end_chs_, vis_, status
+                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+        );
+    }
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        degrid<complex<float>, float, complex<float> >(plan, subgrids,
+                w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
         );
     }
     else
     {
         *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types: "
+                "subgrids has type %s; uvws has type %s; vis has type %s",
+                sdp_mem_type_name(sdp_mem_type(subgrids)),
+                sdp_mem_type_name(sdp_mem_type(uvws)),
+                sdp_mem_type_name(sdp_mem_type(vis))
+        );
     }
 }
 
@@ -237,7 +248,8 @@ void degrid_gpu(
     if (*status) return;
     uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
     const char* kernel_name = 0;
-    int is_dbl = 0;
+    int is_dbl_uvw = 0;
+    int is_dbl_vis = 0;
     const int64_t num_rows = sdp_mem_shape_dim(vis, 0);
     sdp_MemViewGpu<const double, 2> uvws_dbl;
     sdp_MemViewGpu<const float, 2> uvws_flt;
@@ -246,25 +258,48 @@ void degrid_gpu(
     sdp_MemViewGpu<const int, 1> start_chs_, end_chs_;
     sdp_mem_check_and_view(start_chs, &start_chs_, status);
     sdp_mem_check_and_view(end_chs, &end_chs_, status);
-    if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
+    if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_DOUBLE &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
     {
-        is_dbl = 1;
+        is_dbl_uvw = 1;
+        is_dbl_vis = 1;
         sdp_mem_check_and_view(uvws, &uvws_dbl, status);
         sdp_mem_check_and_view(vis, &vis_dbl, status);
-        kernel_name = "sdp_gridder_wtower_degrid<double, complex<double> >";
+        kernel_name = "sdp_gridder_wtower_degrid"
+                "<complex<double>, double, complex<double> >";
     }
-    else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
     {
-        is_dbl = 0;
+        is_dbl_uvw = 1;
+        is_dbl_vis = 0;
+        sdp_mem_check_and_view(uvws, &uvws_dbl, status);
+        sdp_mem_check_and_view(vis, &vis_flt, status);
+        kernel_name = "sdp_gridder_wtower_degrid"
+                "<complex<float>, double, complex<float> >";
+    }
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        is_dbl_uvw = 0;
+        is_dbl_vis = 0;
         sdp_mem_check_and_view(uvws, &uvws_flt, status);
         sdp_mem_check_and_view(vis, &vis_flt, status);
-        kernel_name = "sdp_gridder_wtower_degrid<float, complex<float> >";
+        kernel_name = "sdp_gridder_wtower_degrid"
+                "<complex<float>, float, complex<float> >";
     }
     else
     {
         *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types: "
+                "subgrids has type %s; uvws has type %s; vis has type %s",
+                sdp_mem_type_name(sdp_mem_type(subgrids)),
+                sdp_mem_type_name(sdp_mem_type(uvws)),
+                sdp_mem_type_name(sdp_mem_type(vis))
+        );
     }
     const void* arg[] = {
         sdp_mem_gpu_buffer_const(subgrids, status),
@@ -274,7 +309,7 @@ void degrid_gpu(
         &subgrid_offset_w,
         (const void*) &freq0_hz,
         (const void*) &dfreq_hz,
-        is_dbl ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
+        is_dbl_uvw ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
         (const void*) &start_chs_,
         (const void*) &end_chs_,
         sdp_mem_gpu_buffer_const(plan->uv_kernel_gpu, status),
@@ -286,7 +321,7 @@ void degrid_gpu(
         &plan->w_oversampling,
         (const void*) &plan->theta,
         (const void*) &plan->w_step,
-        is_dbl ? (const void*) &vis_dbl : (const void*) &vis_flt
+        is_dbl_vis ? (const void*) &vis_dbl : (const void*) &vis_flt
     };
     num_blocks[0] = (num_rows + num_threads[0] - 1) / num_threads[0];
     sdp_launch_cuda_kernel(kernel_name,
@@ -296,29 +331,35 @@ void degrid_gpu(
 
 
 // Local function to do the gridding.
-template<typename UVW_TYPE, typename VIS_TYPE>
+template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid(
         const sdp_GridderWtowerUVW* plan,
-        sdp_MemViewCpu<VIS_TYPE, 3>& subgrids,
+        sdp_Mem* subgrids,
         int w_plane,
         int subgrid_offset_u,
         int subgrid_offset_v,
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
-        const sdp_MemViewCpu<const UVW_TYPE, 2>& uvws,
+        const sdp_Mem* uvws,
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
-        const sdp_MemViewCpu<const VIS_TYPE, 2>& vis,
-        const sdp_Error* status
+        const sdp_Mem* vis,
+        sdp_Error* status
 )
 {
     if (*status) return;
+    sdp_MemViewCpu<SUBGRID_TYPE, 3> subgrids_;
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<const VIS_TYPE, 2> vis_;
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(vis, &vis_, status);
     const double* RESTRICT uv_kernel =
             (const double*) sdp_mem_data_const(plan->uv_kernel);
     const double* RESTRICT w_kernel =
             (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_uvw = uvws.shape[0];
+    const int64_t num_uvw = uvws_.shape[0];
     const int half_subgrid = plan->subgrid_size / 2;
     const int oversample = plan->oversampling;
     const int w_oversample = plan->w_oversampling;
@@ -338,7 +379,9 @@ void grid(
         if (start_ch >= end_ch) continue;
 
         // Select only visibilities on this w-plane.
-        const UVW_TYPE uvw[] = {uvws(i_row, 0), uvws(i_row, 1), uvws(i_row, 2)};
+        const UVW_TYPE uvw[] = {
+            uvws_(i_row, 0), uvws_(i_row, 1), uvws_(i_row, 2)
+        };
         const double min_w = (w_plane + subgrid_offset_w - 1) * w_step;
         const double max_w = (w_plane + subgrid_offset_w) * w_step;
         sdp_gridder_clamp_channels_inline(
@@ -392,7 +435,7 @@ void grid(
             const int w_off = (iw0_ov % w_oversample) * w_support;
 
             // Grid visibility.
-            const VIS_TYPE local_vis = vis(i_row, c);
+            const SUBGRID_TYPE local_vis = (SUBGRID_TYPE) vis_(i_row, c);
             for (int iw = 0; iw < w_support; ++iw)
             {
                 const double kern_w = w_kernel[w_off + iw];
@@ -404,8 +447,8 @@ void grid(
                     {
                         const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
                         const int ix_v = iv0 + iv;
-                        subgrids(iw, ix_u, ix_v) += (
-                            (VIS_TYPE) kern_wuv * local_vis
+                        subgrids_(iw, ix_u, ix_v) += (
+                            (SUBGRID_TYPE) kern_wuv * local_vis
                         );
                     }
                 }
@@ -436,39 +479,42 @@ void grid_cpu(
     sdp_MemViewCpu<const int, 1> start_chs_, end_chs_;
     sdp_mem_check_and_view(start_chs, &start_chs_, status);
     sdp_mem_check_and_view(end_chs, &end_chs_, status);
-    if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
+    if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_DOUBLE &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
     {
-        sdp_MemViewCpu<const complex<double>, 2> vis_;
-        sdp_MemViewCpu<const double, 2> uvws_;
-        sdp_MemViewCpu<complex<double>, 3> subgrids_;
-        sdp_mem_check_and_view(vis, &vis_, status);
-        sdp_mem_check_and_view(uvws, &uvws_, status);
-        sdp_mem_check_and_view(subgrids, &subgrids_, status);
-        grid<double, complex<double> >(
-                plan, subgrids_,
+        grid<complex<double>, double, complex<double> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws_, start_chs_, end_chs_, vis_, status
+                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
         );
     }
-    else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
     {
-        sdp_MemViewCpu<const complex<float>, 2> vis_;
-        sdp_MemViewCpu<const float, 2> uvws_;
-        sdp_MemViewCpu<complex<float>, 3> subgrids_;
-        sdp_mem_check_and_view(vis, &vis_, status);
-        sdp_mem_check_and_view(uvws, &uvws_, status);
-        sdp_mem_check_and_view(subgrids, &subgrids_, status);
-        grid<float, complex<float> >(
-                plan, subgrids_,
+        grid<complex<float>, double, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws_, start_chs_, end_chs_, vis_, status
+                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+        );
+    }
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        grid<complex<float>, float, complex<float> >(plan, subgrids,
+                w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
+                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
         );
     }
     else
     {
         *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types: "
+                "subgrids has type %s; uvws has type %s; vis has type %s",
+                sdp_mem_type_name(sdp_mem_type(subgrids)),
+                sdp_mem_type_name(sdp_mem_type(uvws)),
+                sdp_mem_type_name(sdp_mem_type(vis))
+        );
     }
 }
 
@@ -493,7 +539,8 @@ void grid_gpu(
     if (*status) return;
     uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
     const char* kernel_name = 0;
-    int is_dbl = 0;
+    int is_dbl_uvw = 0;
+    int is_dbl_vis = 0;
     const int64_t num_rows = sdp_mem_shape_dim(vis, 0);
     sdp_MemViewGpu<const double, 2> uvws_dbl;
     sdp_MemViewGpu<const float, 2> uvws_flt;
@@ -502,25 +549,48 @@ void grid_gpu(
     sdp_MemViewGpu<const int, 1> start_chs_, end_chs_;
     sdp_mem_check_and_view(start_chs, &start_chs_, status);
     sdp_mem_check_and_view(end_chs, &end_chs_, status);
-    if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
+    if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_DOUBLE &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_DOUBLE)
     {
-        is_dbl = 1;
+        is_dbl_uvw = 1;
+        is_dbl_vis = 1;
         sdp_mem_check_and_view(uvws, &uvws_dbl, status);
         sdp_mem_check_and_view(vis, &vis_dbl, status);
-        kernel_name = "sdp_gridder_wtower_grid<double, double>";
+        kernel_name = "sdp_gridder_wtower_grid"
+                "<double, double, complex<double> >";
     }
-    else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_DOUBLE &&
             sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
     {
-        is_dbl = 0;
+        is_dbl_uvw = 1;
+        is_dbl_vis = 0;
+        sdp_mem_check_and_view(uvws, &uvws_dbl, status);
+        sdp_mem_check_and_view(vis, &vis_flt, status);
+        kernel_name = "sdp_gridder_wtower_grid"
+                "<float, double, complex<float> >";
+    }
+    else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(uvws) == SDP_MEM_FLOAT &&
+            sdp_mem_type(vis) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        is_dbl_uvw = 0;
+        is_dbl_vis = 0;
         sdp_mem_check_and_view(uvws, &uvws_flt, status);
         sdp_mem_check_and_view(vis, &vis_flt, status);
-        kernel_name = "sdp_gridder_wtower_grid<float, float>";
+        kernel_name = "sdp_gridder_wtower_grid"
+                "<float, float, complex<float> >";
     }
     else
     {
         *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types: "
+                "subgrids has type %s; uvws has type %s; vis has type %s",
+                sdp_mem_type_name(sdp_mem_type(subgrids)),
+                sdp_mem_type_name(sdp_mem_type(uvws)),
+                sdp_mem_type_name(sdp_mem_type(vis))
+        );
     }
     const void* arg[] = {
         sdp_mem_gpu_buffer(subgrids, status),
@@ -530,7 +600,7 @@ void grid_gpu(
         &subgrid_offset_w,
         (const void*) &freq0_hz,
         (const void*) &dfreq_hz,
-        is_dbl ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
+        is_dbl_uvw ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
         (const void*) &start_chs_,
         (const void*) &end_chs_,
         sdp_mem_gpu_buffer_const(plan->uv_kernel_gpu, status),
@@ -542,7 +612,7 @@ void grid_gpu(
         &plan->w_oversampling,
         (const void*) &plan->theta,
         (const void*) &plan->w_step,
-        is_dbl ? (const void*) &vis_dbl : (const void*) &vis_flt
+        is_dbl_vis ? (const void*) &vis_dbl : (const void*) &vis_flt
     };
     num_blocks[0] = (num_rows + num_threads[0] - 1) / num_threads[0];
     sdp_launch_cuda_kernel(kernel_name,
@@ -934,7 +1004,7 @@ void sdp_gridder_wtower_uvw_grid(
 
     // Create the iFFT plan and scratch buffer.
     sdp_Mem* fft_buffer = sdp_mem_create(
-            sdp_mem_type(vis), loc, 2, subgrid_shape, status
+            sdp_mem_type(subgrids), loc, 2, subgrid_shape, status
     );
     sdp_Fft* fft = sdp_fft_create(fft_buffer, fft_buffer, 2, false, status);
 

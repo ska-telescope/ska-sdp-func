@@ -88,6 +88,20 @@ void sdp_mem_alloc(sdp_Mem* mem, sdp_Error* status)
 }
 
 
+// Multiply all elements of an array by the specified value.
+template<typename T>
+void scale_real(sdp_Mem* mem, double value)
+{
+    T* mem_ = (T*) sdp_mem_data(mem);
+    const int64_t num_elements = sdp_mem_num_elements(mem);
+    #pragma omp parallel for
+    for (int64_t i = 0; i < num_elements; ++i)
+    {
+        mem_[i] *= (T) value;
+    }
+}
+
+
 // Set all elements of a 1D array to specified value.
 template<typename T>
 void set_value_1d(sdp_Mem* mem, int value, sdp_Error* status)
@@ -345,6 +359,85 @@ void sdp_mem_clear_portion(
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_CRITICAL("Unsupported memory location");
     }
+}
+
+
+sdp_Mem* sdp_mem_convert_precision(
+        const sdp_Mem* src,
+        sdp_MemType output_type,
+        sdp_Error* status
+)
+{
+    if (*status) return 0;
+    if (!sdp_mem_is_c_contiguous(src))
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_ERROR("Array must be C contiguous");
+        return 0;
+    }
+    const sdp_MemType input_type = sdp_mem_type(src);
+    if (input_type == output_type)
+    {
+        return sdp_mem_create_copy(src, SDP_MEM_CPU, status);
+    }
+    sdp_Mem* src_temp = 0;
+    const sdp_Mem* src_ptr = src;
+    if (sdp_mem_location(src) != SDP_MEM_CPU)
+    {
+        src_temp = sdp_mem_create_copy(src, SDP_MEM_CPU, status);
+        src_ptr = src_temp;
+    }
+    sdp_Mem* output = sdp_mem_create(
+            output_type, SDP_MEM_CPU, src->num_dims, src->shape, status
+    );
+    const int64_t num_elements = sdp_mem_num_elements(src);
+    if (input_type == SDP_MEM_COMPLEX_DOUBLE &&
+            output_type == SDP_MEM_COMPLEX_FLOAT)
+    {
+        const complex<double>* in_ = (const complex<double>*) src_ptr->data;
+        complex<float>* out_ = (complex<float>*) output->data;
+        for (int64_t i = 0; i < num_elements; ++i)
+        {
+            out_[i] = (complex<float>) in_[i];
+        }
+    }
+    else if (input_type == SDP_MEM_COMPLEX_FLOAT &&
+            output_type == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        const complex<float>* in_ = (const complex<float>*) src_ptr->data;
+        complex<double>* out_ = (complex<double>*) output->data;
+        for (int64_t i = 0; i < num_elements; ++i)
+        {
+            out_[i] = (complex<double>) in_[i];
+        }
+    }
+    else if (input_type == SDP_MEM_DOUBLE &&
+            output_type == SDP_MEM_FLOAT)
+    {
+        const double* in_ = (const double*) src_ptr->data;
+        float* out_ = (float*) output->data;
+        for (int64_t i = 0; i < num_elements; ++i)
+        {
+            out_[i] = (float) in_[i];
+        }
+    }
+    else if (input_type == SDP_MEM_FLOAT &&
+            output_type == SDP_MEM_DOUBLE)
+    {
+        const float* in_ = (const float*) src_ptr->data;
+        double* out_ = (double*) output->data;
+        for (int64_t i = 0; i < num_elements; ++i)
+        {
+            out_[i] = (double) in_[i];
+        }
+    }
+    else
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types");
+    }
+    sdp_mem_free(src_temp);
+    return output;
 }
 
 
@@ -656,6 +749,76 @@ sdp_Mem* sdp_mem_ref_inc(sdp_Mem* mem)
     if (!mem) return 0;
     mem->ref_count++;
     return mem;
+}
+
+
+void sdp_mem_scale_real(sdp_Mem* mem, double value, sdp_Error* status)
+{
+    if (*status) return;
+    if (!sdp_mem_is_c_contiguous(mem))
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_ERROR("Array must be C contiguous");
+        return;
+    }
+    const sdp_MemLocation loc = sdp_mem_location(mem);
+    if (loc == SDP_MEM_CPU)
+    {
+        switch (sdp_mem_type(mem))
+        {
+        case SDP_MEM_COMPLEX_DOUBLE:
+            scale_real<complex<double> >(mem, value);
+            break;
+        case SDP_MEM_COMPLEX_FLOAT:
+            scale_real<complex<float> >(mem, value);
+            break;
+        case SDP_MEM_DOUBLE:
+            scale_real<double>(mem, value);
+            break;
+        case SDP_MEM_FLOAT:
+            scale_real<float>(mem, value);
+            break;
+        default:
+            SDP_LOG_ERROR("Unsupported data type");
+            *status = SDP_ERR_DATA_TYPE;
+            return;
+        }
+    }
+    else
+    {
+        // Call the kernel.
+        uint64_t num_threads[] = {256, 1, 1}, num_blocks[] = {1, 1, 1};
+        const int64_t num_elements = sdp_mem_num_elements(mem);
+        num_blocks[0] = (num_elements + num_threads[0] - 1) / num_threads[0];
+        const char* kernel_name = 0;
+        switch (sdp_mem_type(mem))
+        {
+        case SDP_MEM_COMPLEX_DOUBLE:
+            kernel_name = "sdp_mem_scale_real<complex<double> >";
+            break;
+        case SDP_MEM_COMPLEX_FLOAT:
+            kernel_name = "sdp_mem_scale_real<complex<float> >";
+            break;
+        case SDP_MEM_DOUBLE:
+            kernel_name = "sdp_mem_scale_real<double>";
+            break;
+        case SDP_MEM_FLOAT:
+            kernel_name = "sdp_mem_scale_real<float>";
+            break;
+        default:
+            SDP_LOG_ERROR("Unsupported data type");
+            *status = SDP_ERR_DATA_TYPE;
+            return;
+        }
+        const void* arg[] = {
+            sdp_mem_gpu_buffer(mem, status),
+            (const void*) &num_elements,
+            (const void*) &value
+        };
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+    }
 }
 
 

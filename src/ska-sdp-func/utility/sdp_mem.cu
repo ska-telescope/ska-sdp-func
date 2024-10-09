@@ -9,6 +9,15 @@ using thrust::complex;
 
 
 template<typename T>
+__global__ void sdp_mem_scale_real(T* mem, int64_t num_elements, double value)
+{
+    const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i >= num_elements) return;
+    mem[i] *= (T) value;
+}
+
+
+template<typename T>
 __global__ void sdp_mem_set_value_1d(sdp_MemViewGpu<T, 1> mem, int value)
 {
     const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -39,6 +48,11 @@ __global__ void sdp_mem_set_value_3d(sdp_MemViewGpu<T, 3> mem, int value)
 
 
 // *INDENT-OFF*
+SDP_CUDA_KERNEL(sdp_mem_scale_real<complex<double> >)
+SDP_CUDA_KERNEL(sdp_mem_scale_real<complex<float> >)
+SDP_CUDA_KERNEL(sdp_mem_scale_real<double>)
+SDP_CUDA_KERNEL(sdp_mem_scale_real<float>)
+
 SDP_CUDA_KERNEL(sdp_mem_set_value_1d<complex<double> >)
 SDP_CUDA_KERNEL(sdp_mem_set_value_1d<complex<float> >)
 SDP_CUDA_KERNEL(sdp_mem_set_value_1d<double>)
