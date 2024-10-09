@@ -39,11 +39,7 @@ static void create_test_data(
     const double channel_start_hz = 100e6;
     const double channel_step_hz = 100e3;
 
-    // // calculate useful shapes and sizes
-    // const int64_t dirty_img_size = dirty_img_dim * dirty_img_dim;
-    // const int64_t psf_size = psf_dim * psf_dim;
-    // const int64_t dirty_img_shape[] = {dirty_img_dim, dirty_img_dim};
-    // const int64_t psf_shape[] = {psf_dim, psf_dim};
+    // calculate useful shapes and sizes
     const int64_t vis_shape[] =
     {num_times, num_baselines, num_channels, num_pols};
     const int64_t fluxes_shape[] = {num_components, num_channels, num_pols};
@@ -619,18 +615,6 @@ int main()
         );
         assert(status == SDP_ERR_MEM_LOCATION);
     }
-
-    // #ifdef SDP_HAVE_CUDA
-    // // Happy paths
-    // {
-    //     sdp_Error status = SDP_SUCCESS;
-    //     run_and_check("GPU, double precision", false,
-    //                   SDP_MEM_DOUBLE, SDP_MEM_DOUBLE,
-    //                   SDP_MEM_GPU, SDP_MEM_GPU, &status);
-    //     assert(status == SDP_SUCCESS);
-    // }
-
-    // #endif
 
     return 0;
 }

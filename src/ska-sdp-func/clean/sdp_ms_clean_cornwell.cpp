@@ -116,6 +116,8 @@ inline void sdp_create_scale_kern(
         int64_t length
 )
 {
+    // create the scale kernels used to scale the dirty images and PSFs
+    // based on the scale list passed to the function
     T sigma = 0;
     int center_x = length / 2;
     int center_y = length / 2;
@@ -509,7 +511,6 @@ static void ms_clean_cornwell(
                         y
                 );
                 scaled_residuals_ptr[i_list] = cur_scaled_residual_ptr[i_cur];
-                // skymodel_ptr[i_cur] = std::real(scaled_residuals_ptr[i_cur]);
             }
         }
     }
@@ -595,7 +596,6 @@ static void ms_clean_cornwell(
         for (int i = 0; i < scale_dim; i++)
         {
             const unsigned int i_cur = INDEX_2D(scale_dim, scale_dim, i, i);
-            // SDP_LOG_DEBUG("Current max pre bias %f" , std::real(peak_per_scale_ptr[i]));
             peak_per_scale_ptr[i] /= coupling_matrix_ptr[i_cur];
         }
 
@@ -620,7 +620,6 @@ static void ms_clean_cornwell(
         );
         if (std::real(scaled_residuals_ptr[i]) < threshold)
         {
-            // stop = 1;
             SDP_LOG_DEBUG("msClean stopped at %f",
                     std::real(scaled_residuals_ptr[i])
             );
@@ -699,9 +698,6 @@ static void ms_clean_cornwell(
                 }
             }
         }
-
-        // SDP_LOG_DEBUG("End of cycle %d", cur_cycle);
-
         cur_cycle += 1;
     }
 
