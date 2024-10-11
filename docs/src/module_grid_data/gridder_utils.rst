@@ -5,7 +5,7 @@ Gridder utility functions
 These functions are mainly internal utilities for the w-towers
 sub-grid gridder and degridder. The most useful ones are likely to be
 :func:`ska_sdp_func.grid_data.determine_w_step` and
-:func:`ska_sdp_func.grid_data.find_max_w_tower_height`, which can
+:func:`ska_sdp_func.grid_data.determine_max_w_tower_height`, which can
 be used to evaluate those parameters which the gridder requires.
 
 All the Python functions call the underlying C versions, which
@@ -19,7 +19,7 @@ C/C++
 
 .. doxygenfunction:: sdp_gridder_determine_w_step
 
-.. doxygenfunction:: sdp_gridder_find_max_w_tower_height
+.. doxygenfunction:: sdp_gridder_determine_max_w_tower_height
 
 .. doxygenfunction:: sdp_gridder_make_kernel
 
@@ -42,6 +42,8 @@ Python
 .. autofunction:: ska_sdp_func.grid_data.clamp_channels_single
 
 .. autofunction:: ska_sdp_func.grid_data.clamp_channels_uv
+
+.. autofunction:: ska_sdp_func.grid_data.determine_max_w_tower_height
 
 .. autofunction:: ska_sdp_func.grid_data.determine_w_step
 

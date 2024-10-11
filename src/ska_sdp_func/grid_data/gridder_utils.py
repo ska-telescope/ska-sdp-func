@@ -2,6 +2,7 @@
 """Module for (de)gridding utility functions used by w-towers gridders."""
 
 import ctypes
+from typing import Optional
 
 import numpy
 
@@ -88,9 +89,76 @@ def clamp_channels_uv(
     )
 
 
+def determine_max_w_tower_height(
+    subgrid_size: int,
+    theta: float,
+    fov: float,
+    w_step: float,
+    support: int,
+    oversampling: int,
+    w_support: int,
+    w_oversampling: int,
+    image_size: Optional[int] = None,
+    shear_u: float = 0.0,
+    shear_v: float = 0.0,
+    subgrid_frac: float = 2.0 / 3.0,
+    num_samples: int = 3,
+    target_err: Optional[float] = None,
+) -> float:
+    """
+    Find maximum w-tower height of a given configuration by trial-and-error.
+
+    This is the same as :func:`find_max_w_tower_height()`,
+    but without needing to create and supply a gridder kernel.
+
+    :param subgrid_size: Sub-grid size in pixels.
+    :param theta: Total image size in direction cosines.
+    :param fov: Un-padded image field of view, in direction cosines.
+    :param w_step: Spacing between w-planes.
+    :param support: Kernel support size in (u, v).
+    :param oversampling: Oversampling factor for uv-kernel.
+    :param w_support: Support size in w.
+    :param w_oversampling: Oversampling factor for w-kernel.
+    :param image_size: Size of test image, in pixels.
+        If not specified, defaults to twice the subgrid size.
+    :param shear_u: Shear parameter in u (use zero for no shear).
+    :param shear_v: Shear parameter in v (use zero for no shear).
+    :param subgrid_frac: Fraction of sub-grid to use.
+    :param num_samples: Number of sample points to test in u and v directions.
+    :param target_err: Target error to use.
+        If None, it is determined automatically.
+
+    :return: The maximum w-tower height in units of `w_step`.
+    """
+    if not image_size:
+        image_size = 2 * subgrid_size
+    if not target_err:
+        target_err = 0.0
+    return Lib.sdp_gridder_determine_max_w_tower_height(
+        image_size,
+        subgrid_size,
+        theta,
+        w_step,
+        shear_u,
+        shear_v,
+        support,
+        oversampling,
+        w_support,
+        w_oversampling,
+        fov,
+        subgrid_frac,
+        num_samples,
+        target_err,
+    )
+
+
 def determine_w_step(
-    theta: float, fov: float, shear_u: float, shear_v: float, x_0: float = 0.0
-):
+    theta: float,
+    fov: float,
+    shear_u: float = 0.0,
+    shear_v: float = 0.0,
+    x_0: Optional[float] = None,
+) -> float:
     """
     Determine a value for the w_step parameter.
 
@@ -98,9 +166,12 @@ def determine_w_step(
     :param fov: Size of imaged field of view, in direction cosines.
     :param shear_u: Shear parameter in u (use zero for no shear).
     :param shear_v: Shear parameter in v (use zero for no shear).
-    :param x_0: If not zero, scaling factor for fov_n; if zero, this
-        will be calculated as fov / theta.
+    :param x_0: Scaling factor for fov_n; defaults to fov / theta.
+
+    :return: An adequate value for w_step in units of wavelengths.
     """
+    if not x_0:
+        x_0 = 0.0
     return float(
         Lib.sdp_gridder_determine_w_step(theta, fov, shear_u, shear_v, x_0)
     )
@@ -111,18 +182,25 @@ def find_max_w_tower_height(
     fov: float,
     subgrid_frac: float = 2.0 / 3.0,
     num_samples: int = 3,
-    target_err: float = 0.0,
+    target_err: Optional[float] = None,
 ):
     """
-    Find the maximum w-tower height by trial-and-error.
+    Find maximum w-tower height of a given configuration by trial-and-error.
+
+    This matches the interface with the function in the notebook.
 
     :param grid_kernel: Gridder kernel to use for the evaluation.
     :param fov: Un-padded image field of view, in direction cosines.
     :param subgrid_frac: Fraction of sub-grid to use.
     :param num_samples: Number of sample points to test in u and v directions.
-    :param target_err: Target error to use. If 0, determined automatically.
+    :param target_err: Target error to use.
+        If None, it is determined automatically.
+
+    :return: The maximum w-tower height in units of `grid_kernel.w_step`.
     """
-    return Lib.sdp_gridder_find_max_w_tower_height(
+    if not target_err:
+        target_err = 0.0
+    return Lib.sdp_gridder_determine_max_w_tower_height(
         grid_kernel.image_size,
         grid_kernel.subgrid_size,
         grid_kernel.theta,
@@ -329,7 +407,7 @@ Lib.wrap_func(
 )
 
 Lib.wrap_func(
-    "sdp_gridder_find_max_w_tower_height",
+    "sdp_gridder_determine_max_w_tower_height",
     restype=ctypes.c_double,
     argtypes=[
         ctypes.c_int,
