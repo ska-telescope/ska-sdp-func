@@ -128,7 +128,7 @@ def determine_max_w_tower_height(
     """
     if image_size <= 0:
         image_size = 2 * subgrid_size
-    return Lib.sdp_determine_find_max_w_tower_height(
+    return Lib.sdp_gridder_determine_max_w_tower_height(
         image_size,
         subgrid_size,
         theta,
