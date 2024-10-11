@@ -39,7 +39,7 @@ extern "C" {
  * @param target_err Optional target error (if 0, will be evaluated internally).
  * @param status Error status.
  */
-double sdp_gridder_find_max_w_tower_height(
+double sdp_gridder_determine_max_w_tower_height(
         int image_size,
         int subgrid_size,
         double theta,

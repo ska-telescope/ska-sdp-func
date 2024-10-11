@@ -184,7 +184,7 @@ double find_gridder_accuracy(
 } // End anonymous namespace for file-local functions.
 
 
-double sdp_gridder_find_max_w_tower_height(
+double sdp_gridder_determine_max_w_tower_height(
         int image_size,
         int subgrid_size,
         double theta,

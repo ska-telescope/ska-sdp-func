@@ -11,6 +11,7 @@ from .gridder_direct import GridderDirect
 from .gridder_utils import (
     clamp_channels_single,
     clamp_channels_uv,
+    determine_max_w_tower_height,
     determine_w_step,
     find_max_w_tower_height,
     make_kernel,

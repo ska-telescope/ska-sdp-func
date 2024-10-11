@@ -434,7 +434,7 @@ static void run_and_check(
     double w_step = sdp_gridder_determine_w_step(
             theta, fov, shear_u, shear_v, 0
     );
-    double w_tower_height = sdp_gridder_find_max_w_tower_height(
+    double w_tower_height = sdp_gridder_determine_max_w_tower_height(
             2 * subgrid_size, subgrid_size, theta, w_step, shear_u, shear_v,
             support, oversampling, w_support, w_oversampling,
             fov, subgrid_frac, 0, 0, status
