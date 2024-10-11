@@ -104,7 +104,7 @@ def determine_max_w_tower_height(
     subgrid_frac: float = 2.0 / 3.0,
     num_samples: int = 3,
     target_err: Optional[float] = None,
-):
+) -> float:
     """
     Find maximum w-tower height of a given configuration by trial-and-error.
 
@@ -127,6 +127,8 @@ def determine_max_w_tower_height(
     :param num_samples: Number of sample points to test in u and v directions.
     :param target_err: Target error to use.
         If None, it is determined automatically.
+
+    :return: The maximum w-tower height in units of `w_step`.
     """
     if not image_size:
         image_size = 2 * subgrid_size
@@ -156,7 +158,7 @@ def determine_w_step(
     shear_u: float = 0.0,
     shear_v: float = 0.0,
     x_0: Optional[float] = None,
-):
+) -> float:
     """
     Determine a value for the w_step parameter.
 
@@ -165,6 +167,8 @@ def determine_w_step(
     :param shear_u: Shear parameter in u (use zero for no shear).
     :param shear_v: Shear parameter in v (use zero for no shear).
     :param x_0: Scaling factor for fov_n; defaults to fov / theta.
+
+    :return: An adequate value for w_step in units of wavelengths.
     """
     if not x_0:
         x_0 = 0.0
@@ -191,6 +195,8 @@ def find_max_w_tower_height(
     :param num_samples: Number of sample points to test in u and v directions.
     :param target_err: Target error to use.
         If None, it is determined automatically.
+
+    :return: The maximum w-tower height in units of `grid_kernel.w_step`.
     """
     if not target_err:
         target_err = 0.0
