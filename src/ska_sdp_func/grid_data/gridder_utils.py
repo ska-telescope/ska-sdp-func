@@ -105,7 +105,7 @@ def determine_max_w_tower_height(
     target_err: float = 0.0,
 ):
     """
-    Find the maximum w-tower height of a given configuration by trial-and-error.
+    Find maximum w-tower height of a given configuration by trial-and-error.
 
     This is the same as :func:`find_max_w_tower_height()`,
     but without needing to create and supply a gridder kernel.
@@ -172,7 +172,7 @@ def find_max_w_tower_height(
     target_err: float = 0.0,
 ):
     """
-    Find the maximum w-tower height of a given configuration by trial-and-error.
+    Find maximum w-tower height of a given configuration by trial-and-error.
 
     This matches the interface with the function in the notebook.
 
