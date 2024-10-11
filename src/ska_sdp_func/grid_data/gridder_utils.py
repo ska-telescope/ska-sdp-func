@@ -2,6 +2,7 @@
 """Module for (de)gridding utility functions used by w-towers gridders."""
 
 import ctypes
+from typing import Optional
 
 import numpy
 
@@ -97,12 +98,12 @@ def determine_max_w_tower_height(
     oversampling: int,
     w_support: int,
     w_oversampling: int,
-    image_size: int = None,
+    image_size: Optional[int] = None,
     shear_u: float = 0.0,
     shear_v: float = 0.0,
     subgrid_frac: float = 2.0 / 3.0,
     num_samples: int = 3,
-    target_err: float = None,
+    target_err: Optional[float] = None,
 ):
     """
     Find maximum w-tower height of a given configuration by trial-and-error.
@@ -153,7 +154,7 @@ def determine_w_step(
     fov: float,
     shear_u: float = 0.0,
     shear_v: float = 0.0,
-    x_0: float = None,
+    x_0: Optional[float] = None,
 ):
     """
     Determine a value for the w_step parameter.
@@ -176,7 +177,7 @@ def find_max_w_tower_height(
     fov: float,
     subgrid_frac: float = 2.0 / 3.0,
     num_samples: int = 3,
-    target_err: float = None,
+    target_err: Optional[float] = None,
 ):
     """
     Find maximum w-tower height of a given configuration by trial-and-error.
