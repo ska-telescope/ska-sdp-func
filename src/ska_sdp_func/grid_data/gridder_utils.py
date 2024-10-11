@@ -126,6 +126,7 @@ def determine_max_w_tower_height(
     :param subgrid_frac: Fraction of sub-grid to use.
     :param num_samples: Number of sample points to test in u and v directions.
     :param target_err: Target error to use.
+        If None, it is determined automatically.
     """
     if not image_size:
         image_size = 2 * subgrid_size
@@ -189,6 +190,7 @@ def find_max_w_tower_height(
     :param subgrid_frac: Fraction of sub-grid to use.
     :param num_samples: Number of sample points to test in u and v directions.
     :param target_err: Target error to use.
+        If None, it is determined automatically.
     """
     if not target_err:
         target_err = 0.0
