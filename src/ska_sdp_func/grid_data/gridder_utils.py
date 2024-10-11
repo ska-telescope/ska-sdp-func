@@ -147,7 +147,11 @@ def determine_max_w_tower_height(
 
 
 def determine_w_step(
-    theta: float, fov: float, shear_u: float, shear_v: float, x_0: float = 0.0
+    theta: float,
+    fov: float,
+    shear_u: float = 0.0,
+    shear_v: float = 0.0,
+    x_0: float = 0.0,
 ):
     """
     Determine a value for the w_step parameter.
