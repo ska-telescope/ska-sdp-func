@@ -65,6 +65,7 @@ include:
 
 .build-manylinux-wheels: &build_wheels
   - dnf -y install zip
+  - export PATH=/usr/local/cuda/bin:$PATH
   - export CMAKE_BUILD_PARALLEL_LEVEL=16
   - export CMAKE_ARGS="-DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DMKL_LINK=static -DNVCC_COMPILER_BINDIR=/usr/bin/g++ -DBUILD_INFO=ON"
   # Build a single wheel for all Python 3 versions on Linux.

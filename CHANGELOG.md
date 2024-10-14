@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+- Add new version of RFI flagger.
+- Add Hogbom clean and MS clean functions.
+- Fix FFT shift to work with large images.
+- Add helper functions for optimally choosing w-towers gridder parameters.
+- Refactor w-towers gridder kernel interfaces for consistency with notebook
+  versions.
+- Optimise initialisation of large arrays.
+- Fix clamp_channels functions used by w-towers.
+- Add support for passing mixed precision arrays to w-towers functions.
+- Add support for CUDA architectures 8.9 and 9.0.
+
 ## 1.1.7
 
 - Add GPU support in w-towers wrapper functions.
