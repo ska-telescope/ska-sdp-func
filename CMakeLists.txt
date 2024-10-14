@@ -45,9 +45,10 @@ include(set_version)
 
 # Find dependencies.
 if (FIND_CUDA OR NOT DEFINED FIND_CUDA)
-    find_package(CUDA 7.0)
+    find_package(CUDAToolkit 7.0)
 endif()
-if (CUDA_FOUND)
+if (CUDAToolkit_FOUND)
+    enable_language(CUDA)
     add_definitions(-DSDP_HAVE_CUDA)
 endif()
 find_package(CFITSIO QUIET)
@@ -85,13 +86,11 @@ endif()
 add_subdirectory(src)
 
 # Build library using list of source files.
-if (CUDA_FOUND)
+if (CUDAToolkit_FOUND)
     # Add CUDA kernel sources.
     list(APPEND ${PROJECT_NAME}_SRC ${${PROJECT_NAME}_CUDA_SRC})
-    set(CUDA_GENERATED_OUTPUT_DIR
-        ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${PROJECT_NAME}.dir/src)
-    cuda_add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
-    target_link_libraries(${PROJECT_NAME} ${CUDA_CUFFT_LIBRARIES})
+    add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
+    target_link_libraries(${PROJECT_NAME} CUDA::cufft CUDA::cudart_static)
 else()
     add_library(${PROJECT_NAME} ${${PROJECT_NAME}_SRC})
 endif()
