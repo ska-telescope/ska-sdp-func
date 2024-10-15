@@ -71,9 +71,10 @@ double sdp_pswf_aswfa(int m, int n, double c, const double* ck, double x)
     // NOLINTBEGIN(clang-analyzer-core.uninitialized.Assign)
     double su1 = ck[0];
     // NOLINTEND(clang-analyzer-core.uninitialized.Assign)
-    for (int k = 1; k <= nm2; ++k)
+    double x1p = x1;
+    for (int k = 1; k <= nm2; ++k, x1p *= x1)
     {
-        const double r_ = ck[k] * sdp_pswf_cipow(x1, k);
+        const double r_ = ck[k] * x1p;
         su1 += r_;
         const double t_ = r_ / su1;
         if (k >= 10 && abs(t_) < 1e-14) break;
