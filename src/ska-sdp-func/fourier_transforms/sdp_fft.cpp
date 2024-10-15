@@ -16,6 +16,13 @@
 
 #ifdef SDP_HAVE_MKL
 #include "mkl.h"
+#ifdef SDP_USE_POCKETFFT
+#undef SDP_USE_POCKETFFT
+#endif
+#endif
+
+#ifdef SDP_USE_POCKETFFT
+#include "pocketfft_hdronly.h"
 #endif
 
 using std::complex;
@@ -260,7 +267,6 @@ static void sdp_2d_fft(
     sdp_2d_fft_inplace(output, temp, num_x, num_y, batch_size, do_inverse);
 }
 
-
 struct sdp_Fft
 {
     sdp_Mem* input;
@@ -271,9 +277,17 @@ struct sdp_Fft
     int num_y;
     int batch_size;
     int is_forward;
+#ifdef SDP_HAVE_CUDA
     int cufft_plan;
+#endif
 #ifdef SDP_HAVE_MKL
     DFTI_DESCRIPTOR_HANDLE mkl_plan;
+#endif
+#ifdef SDP_USE_POCKETFFT
+    pocketfft::shape_t shape;
+    pocketfft::stride_t stride_in;
+    pocketfft::stride_t stride_out;
+    pocketfft::shape_t axes;
 #endif
 };
 
@@ -341,6 +355,463 @@ static void check_params(
     }
 }
 
+#ifdef SDP_HAVE_CUDA
+
+
+static
+void sdp_fft_create_cuda(
+        sdp_Fft* fft,
+        const sdp_Mem* input,
+        const sdp_Mem* output,
+        int32_t num_dims_fft,
+        int32_t /* is_forward */,
+        sdp_Error* status
+)
+{
+    const int32_t num_dims = sdp_mem_num_dims(input);
+    const int32_t last_dim = num_dims - 1;
+
+    int idist = 0, istride = 0, odist = 0, ostride = 0;
+    cufftType cufft_type = CUFFT_C2C;
+    if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+            sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        cufft_type = CUFFT_Z2Z;
+    }
+    else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        cufft_type = CUFFT_C2C;
+    }
+    else
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types");
+        return;
+    }
+    int* dim_size = (int*) calloc(num_dims_fft, sizeof(int));
+    int* inembed = (int*) calloc(num_dims_fft, sizeof(int));
+    int* onembed = (int*) calloc(num_dims_fft, sizeof(int));
+    for (int i = 0; i < num_dims_fft; ++i)
+    {
+        dim_size[i] = sdp_mem_shape_dim(input, i + num_dims - num_dims_fft);
+
+        // Set default values for inembed and onembed to dimension sizes.
+        // TODO: This will need to be changed for non-standard strides.
+        inembed[i] = dim_size[i];
+        onembed[i] = dim_size[i];
+    }
+    istride = sdp_mem_stride_elements_dim(input, last_dim);
+    ostride = sdp_mem_stride_elements_dim(output, last_dim);
+    idist = sdp_mem_stride_elements_dim(input, 0);
+    odist = sdp_mem_stride_elements_dim(output, 0);
+    const cufftResult error = cufftPlanMany(
+            &fft->cufft_plan, num_dims_fft, dim_size,
+            inembed, istride, idist, onembed, ostride, odist,
+            cufft_type, fft->batch_size
+    );
+    free(onembed);
+    free(inembed);
+    free(dim_size);
+    if (error != CUFFT_SUCCESS)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("cufftPlanMany error (code %d)", error);
+    }
+}
+
+
+static
+void sdp_fft_exec_cuda(
+        sdp_Fft* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        sdp_Error* status
+)
+{
+    cufftResult error = CUFFT_SUCCESS;
+    const int fft_dir = fft->is_forward ? CUFFT_FORWARD : CUFFT_INVERSE;
+    if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        error = cufftExecC2C(fft->cufft_plan,
+                (cufftComplex*)sdp_mem_data(input),
+                (cufftComplex*)sdp_mem_data(output), fft_dir
+        );
+    }
+    else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+            sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        error = cufftExecZ2Z(fft->cufft_plan,
+                (cufftDoubleComplex*)sdp_mem_data(input),
+                (cufftDoubleComplex*)sdp_mem_data(output), fft_dir
+        );
+    }
+    if (error != CUFFT_SUCCESS)
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("cufftExec error (code %d)", error);
+    }
+}
+#endif // SDP_HAVE_CUDA
+
+#ifdef SDP_HAVE_MKL
+
+
+static
+void sdp_fft_create_mkl(
+        sdp_Fft* fft,
+        const sdp_Mem* input,
+        const sdp_Mem* output,
+        int32_t num_dims_fft,
+        int32_t is_forward,
+        sdp_Error* status
+)
+{
+    const int32_t num_dims = sdp_mem_num_dims(input);
+    const int32_t last_dim = num_dims - 1;
+
+    MKL_LONG mkl_status = 0;
+    DFTI_CONFIG_VALUE precision = DFTI_DOUBLE;
+    if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
+            sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        precision = DFTI_DOUBLE;
+    }
+    else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
+            sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        precision = DFTI_SINGLE;
+    }
+    else
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data types");
+        return fft;
+    }
+
+    // Create descriptor.
+    MKL_LONG* dim_size = (MKL_LONG*) calloc(
+            num_dims_fft, sizeof(MKL_LONG)
+    );
+    MKL_LONG num_elem_fft = 1;
+    for (int i = 0; i < num_dims_fft; ++i)
+    {
+        dim_size[i] = sdp_mem_shape_dim(
+                input, i + num_dims - num_dims_fft
+        );
+        num_elem_fft *= dim_size[i];
+    }
+    if (num_dims_fft == 1)
+    {
+        mkl_status = DftiCreateDescriptor(
+                &fft->mkl_plan, precision, DFTI_COMPLEX,
+                1, (MKL_LONG) sdp_mem_shape_dim(input, last_dim)
+        );
+    }
+    else
+    {
+        mkl_status = DftiCreateDescriptor(
+                &fft->mkl_plan, precision, DFTI_COMPLEX,
+                num_dims_fft, dim_size
+        );
+    }
+    free(dim_size);
+
+    // Check for any errors from MKL.
+    if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Error in DftiCreateDescriptor (code %lld): %s",
+                mkl_status, DftiErrorMessage(mkl_status)
+        );
+        return fft;
+    }
+
+    // Set descriptor parameters.
+    DftiSetValue(fft->mkl_plan, DFTI_NUMBER_OF_TRANSFORMS,
+            (MKL_LONG) fft->batch_size
+    );
+    DftiSetValue(fft->mkl_plan, DFTI_INPUT_DISTANCE, num_elem_fft);
+    DftiSetValue(fft->mkl_plan, DFTI_OUTPUT_DISTANCE, num_elem_fft);
+}
+
+
+static
+void sdp_fft_exec_mkl(
+        sdp_Fft* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        sdp_Error* status
+)
+{
+    MKL_LONG mkl_status = 0;
+
+    // Check if transform should be in-place or out-of-place.
+    DFTI_CONFIG_VALUE placement = DFTI_NOT_INPLACE;
+    if (sdp_mem_data(output) == sdp_mem_data(input))
+    {
+        placement = DFTI_INPLACE;
+    }
+    DftiSetValue(fft->mkl_plan, DFTI_PLACEMENT, placement);
+
+    // Commit descriptor.
+    mkl_status = DftiCommitDescriptor(fft->mkl_plan);
+    if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+    {
+        *status = SDP_ERR_RUNTIME;
+        SDP_LOG_ERROR("Error in DftiCommitDescriptor (code %lld): %s",
+                mkl_status, DftiErrorMessage(mkl_status)
+        );
+    }
+
+    // Compute FFT.
+    if (fft->is_forward)
+    {
+        mkl_status = DftiComputeForward(
+                fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
+        );
+        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+        {
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Error in DftiComputeForward (code %lld): %s",
+                    mkl_status, DftiErrorMessage(mkl_status)
+            );
+        }
+    }
+    else
+    {
+        mkl_status = DftiComputeBackward(
+                fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
+        );
+        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
+        {
+            *status = SDP_ERR_RUNTIME;
+            SDP_LOG_ERROR("Error in DftiComputeBackward (code %lld): %s",
+                    mkl_status, DftiErrorMessage(mkl_status)
+            );
+        }
+    }
+}
+#endif // SDP_HAVE_MKL
+
+
+#ifdef SDP_USE_POCKETFFT
+
+
+static
+void sdp_fft_create_pocketfft(
+        sdp_Fft* fft,
+        const sdp_Mem* input,
+        const sdp_Mem* output,
+        int32_t num_dims_fft,
+        int32_t /* is_forward */,
+        sdp_Error* /* status */
+)
+{
+    const int32_t num_dims = sdp_mem_num_dims(input);
+
+    // Allocate information about data layout.
+    // (Note that this is a std::vector, but was originally allocated
+    //  using calloc. There's a chance this might cause problems with
+    //  certain standard library implementations!)
+    for (int i = 0; i < num_dims; i++)
+    {
+        fft->shape.push_back(sdp_mem_shape_dim(input, i));
+        fft->stride_in.push_back(sdp_mem_stride_bytes_dim(input, i));
+        fft->stride_out.push_back(sdp_mem_stride_bytes_dim(output, i));
+    }
+    for (int i = 0; i < num_dims_fft; i++)
+    {
+        fft->axes.push_back(num_dims - num_dims_fft + i);
+    }
+}
+
+
+static
+void sdp_fft_exec_pocketfft(
+        sdp_Fft* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        sdp_Error* status
+)
+{
+    if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT
+            && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+    {
+        pocketfft::c2c<float>(
+                fft->shape,
+                fft->stride_in,
+                fft->stride_out,
+                fft->axes,
+                fft->is_forward ? pocketfft::FORWARD : pocketfft::BACKWARD,
+                (std::complex<float>*) sdp_mem_data(input),
+                (std::complex<float>*) sdp_mem_data(output),
+                1.0
+        );
+    }
+    else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
+            && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        pocketfft::c2c<double>(
+                fft->shape,
+                fft->stride_in,
+                fft->stride_out,
+                fft->axes,
+                fft->is_forward ? pocketfft::FORWARD : pocketfft::BACKWARD,
+                (std::complex<double>*) sdp_mem_data(input),
+                (std::complex<double>*) sdp_mem_data(output),
+                1.0
+        );
+    }
+    else
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_ERROR("Inconsistent input and output buffer types.");
+    }
+}
+
+
+#else
+
+
+static
+void sdp_fft_create_native(
+        sdp_Fft* fft,
+        const sdp_Mem* input,
+        const sdp_Mem* output,
+        int32_t num_dims_fft,
+        int32_t is_forward,
+        sdp_Error* status
+)
+{
+    // No MKL available.
+    const int32_t num_dims = sdp_mem_num_dims(input);
+    const int32_t last_dim = num_dims - 1;
+    int64_t num_x_stride = 0, num_y_stride = 0, batch_stride = 0;
+    if (num_dims_fft == 1)
+    {
+        fft->num_x = sdp_mem_shape_dim(input, last_dim);
+        num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
+        fft->num_y = 1;
+        num_y_stride = fft->num_x;
+    }
+    if (num_dims_fft == 2)
+    {
+        fft->num_x = sdp_mem_shape_dim(input, last_dim - 1);
+        fft->num_y = sdp_mem_shape_dim(input, last_dim);
+        num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
+        num_y_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
+    }
+    if (num_dims_fft > 2)
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported FFT dimension");
+    }
+    batch_stride = fft->num_x * fft->num_y;
+    if (num_dims != num_dims_fft)
+    {
+        batch_stride = sdp_mem_stride_elements_dim(input, 0);
+    }
+
+    if (num_x_stride != 1
+            && num_y_stride != fft->num_x
+            && batch_stride != fft->num_x * fft->num_y)
+    {
+        *status = SDP_ERR_DATA_TYPE;
+        SDP_LOG_ERROR("Unsupported data strides");
+    }
+
+    if (!*status)
+    {
+        int64_t* shape = (int64_t*) calloc(num_dims, sizeof(int64_t));
+        for (int f = 0; f < num_dims; f++)
+        {
+            shape[f] = sdp_mem_shape_dim(input, f);
+        }
+        fft->temp = sdp_mem_create(
+                sdp_mem_type(input), SDP_MEM_CPU, num_dims, shape, status
+        );
+        free(shape);
+    }
+}
+
+
+static
+void sdp_fft_exec_native(
+        sdp_Fft* fft,
+        sdp_Mem* input,
+        sdp_Mem* output,
+        sdp_Error* status
+)
+{
+    int do_inverse = (fft->is_forward == 1 ? 0 : 1);
+
+    if (fft->num_dims == 1)
+    {
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            sdp_1d_fft(
+                    (sdp_Float2*) sdp_mem_data(output),
+                    (sdp_Float2*) sdp_mem_data(input),
+                    (sdp_Float2*) sdp_mem_data(fft->temp),
+                    fft->num_x,
+                    fft->batch_size,
+                    do_inverse
+            );
+        }
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            sdp_1d_fft(
+                    (sdp_Double2*) sdp_mem_data(output),
+                    (sdp_Double2*) sdp_mem_data(input),
+                    (sdp_Double2*) sdp_mem_data(fft->temp),
+                    fft->num_x,
+                    fft->batch_size,
+                    do_inverse
+            );
+        }
+    }
+    if (fft->num_dims == 2)
+    {
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            sdp_2d_fft(
+                    (sdp_Float2*) sdp_mem_data(output),
+                    (sdp_Float2*) sdp_mem_data(input),
+                    (sdp_Float2*) sdp_mem_data(fft->temp),
+                    fft->num_x,
+                    fft->num_y,
+                    fft->batch_size,
+                    do_inverse
+            );
+        }
+        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
+                && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            sdp_2d_fft(
+                    (sdp_Double2*) sdp_mem_data(output),
+                    (sdp_Double2*) sdp_mem_data(input),
+                    (sdp_Double2*) sdp_mem_data(fft->temp),
+                    fft->num_x,
+                    fft->num_y,
+                    fft->batch_size,
+                    do_inverse
+            );
+        }
+    }
+    if (fft->num_dims > 2)
+    {
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        SDP_LOG_ERROR("3D FFT is not supported on host memory.");
+    }
+}
+
+#endif
+
 
 sdp_Fft* sdp_fft_create(
         const sdp_Mem* input,
@@ -363,7 +834,6 @@ sdp_Fft* sdp_fft_create(
 
     // Set up the batch size.
     const int32_t num_dims = sdp_mem_num_dims(input);
-    const int32_t last_dim = num_dims - 1;
     if (num_dims != num_dims_fft)
     {
         fft->batch_size = sdp_mem_shape_dim(input, 0);
@@ -372,54 +842,9 @@ sdp_Fft* sdp_fft_create(
     if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
 #ifdef SDP_HAVE_CUDA
-        int idist = 0, istride = 0, odist = 0, ostride = 0;
-        cufftType cufft_type = CUFFT_C2C;
-        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
-        {
-            cufft_type = CUFFT_Z2Z;
-        }
-        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
-                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
-        {
-            cufft_type = CUFFT_C2C;
-        }
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
-            SDP_LOG_ERROR("Unsupported data types");
-            return fft;
-        }
-        int* dim_size = (int*) calloc(num_dims_fft, sizeof(int));
-        int* inembed = (int*) calloc(num_dims_fft, sizeof(int));
-        int* onembed = (int*) calloc(num_dims_fft, sizeof(int));
-        for (int i = 0; i < num_dims_fft; ++i)
-        {
-            dim_size[i] = sdp_mem_shape_dim(input, i + num_dims - num_dims_fft);
-
-            // Set default values for inembed and onembed to dimension sizes.
-            // TODO: This will need to be changed for non-standard strides.
-            inembed[i] = dim_size[i];
-            onembed[i] = dim_size[i];
-        }
-        istride = sdp_mem_stride_elements_dim(input, last_dim);
-        ostride = sdp_mem_stride_elements_dim(output, last_dim);
-        idist = sdp_mem_stride_elements_dim(input, 0);
-        odist = sdp_mem_stride_elements_dim(output, 0);
-        const cufftResult error = cufftPlanMany(
-                &fft->cufft_plan, num_dims_fft, dim_size,
-                inembed, istride, idist, onembed, ostride, odist,
-                cufft_type, fft->batch_size
+        sdp_fft_create_cuda(fft, input, output, num_dims_fft, is_forward,
+                status
         );
-        free(onembed);
-        free(inembed);
-        free(dim_size);
-        if (error != CUFFT_SUCCESS)
-        {
-            *status = SDP_ERR_RUNTIME;
-            SDP_LOG_ERROR("cufftPlanMany error (code %d)", error);
-            return fft;
-        }
 #else
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The processing function library was compiled "
@@ -430,118 +855,20 @@ sdp_Fft* sdp_fft_create(
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
     {
 #ifdef SDP_HAVE_MKL
-        // Use MKL if available.
-        MKL_LONG mkl_status = 0;
-        DFTI_CONFIG_VALUE precision = DFTI_DOUBLE;
-        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
-        {
-            precision = DFTI_DOUBLE;
-        }
-        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
-                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
-        {
-            precision = DFTI_SINGLE;
-        }
-        else
-        {
-            *status = SDP_ERR_DATA_TYPE;
-            SDP_LOG_ERROR("Unsupported data types");
-            return fft;
-        }
-
-        // Create descriptor.
-        MKL_LONG* dim_size = (MKL_LONG*) calloc(
-                num_dims_fft, sizeof(MKL_LONG)
+        sdp_fft_create_mkl(fft, input, output, num_dims_fft, is_forward,
+                status
         );
-        MKL_LONG num_elem_fft = 1;
-        for (int i = 0; i < num_dims_fft; ++i)
-        {
-            dim_size[i] = sdp_mem_shape_dim(
-                    input, i + num_dims - num_dims_fft
-            );
-            num_elem_fft *= dim_size[i];
-        }
-        if (num_dims_fft == 1)
-        {
-            mkl_status = DftiCreateDescriptor(
-                    &fft->mkl_plan, precision, DFTI_COMPLEX,
-                    1, (MKL_LONG) sdp_mem_shape_dim(input, last_dim)
-            );
-        }
-        else
-        {
-            mkl_status = DftiCreateDescriptor(
-                    &fft->mkl_plan, precision, DFTI_COMPLEX,
-                    num_dims_fft, dim_size
-            );
-        }
-        free(dim_size);
 
-        // Check for any errors from MKL.
-        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
-        {
-            *status = SDP_ERR_RUNTIME;
-            SDP_LOG_ERROR("Error in DftiCreateDescriptor (code %lld): %s",
-                    mkl_status, DftiErrorMessage(mkl_status)
-            );
-            return fft;
-        }
-
-        // Set descriptor parameters.
-        DftiSetValue(fft->mkl_plan, DFTI_NUMBER_OF_TRANSFORMS,
-                (MKL_LONG) fft->batch_size
+#elif defined(SDP_USE_POCKETFFT)
+        sdp_fft_create_pocketfft(fft, input, output, num_dims_fft, is_forward,
+                status
         );
-        DftiSetValue(fft->mkl_plan, DFTI_INPUT_DISTANCE, num_elem_fft);
-        DftiSetValue(fft->mkl_plan, DFTI_OUTPUT_DISTANCE, num_elem_fft);
+
 #else
-        // No MKL available.
-        int64_t num_x_stride = 0, num_y_stride = 0, batch_stride = 0;
-        if (num_dims_fft == 1)
-        {
-            fft->num_x = sdp_mem_shape_dim(input, last_dim);
-            num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
-            fft->num_y = 1;
-            num_y_stride = fft->num_x;
-        }
-        if (num_dims_fft == 2)
-        {
-            fft->num_x = sdp_mem_shape_dim(input, last_dim - 1);
-            fft->num_y = sdp_mem_shape_dim(input, last_dim);
-            num_x_stride = sdp_mem_stride_elements_dim(input, last_dim);
-            num_y_stride = sdp_mem_stride_elements_dim(input, last_dim - 1);
-        }
-        if (num_dims_fft > 2)
-        {
-            *status = SDP_ERR_DATA_TYPE;
-            SDP_LOG_ERROR("Unsupported FFT dimension");
-        }
-        batch_stride = fft->num_x * fft->num_y;
-        if (num_dims != num_dims_fft)
-        {
-            batch_stride = sdp_mem_stride_elements_dim(input, 0);
-        }
+        sdp_fft_create_native(fft, input, output, num_dims_fft, is_forward,
+                status
+        );
 
-        if (num_x_stride != 1
-                && num_y_stride != fft->num_x
-                && batch_stride != fft->num_x * fft->num_y)
-        {
-            *status = SDP_ERR_DATA_TYPE;
-            SDP_LOG_ERROR("Unsupported data strides");
-        }
-
-        if (!*status)
-        {
-            int64_t* shape = (int64_t*) calloc(num_dims, sizeof(int64_t));
-            for (int f = 0; f < num_dims; f++)
-            {
-                shape[f] = sdp_mem_shape_dim(input, f);
-            }
-            fft->temp = sdp_mem_create(
-                    sdp_mem_type(input), SDP_MEM_CPU, num_dims, shape, status
-            );
-            free(shape);
-        }
 #endif
     }
     else
@@ -573,29 +900,7 @@ void sdp_fft_exec(
     if (sdp_mem_location(input) == SDP_MEM_GPU)
     {
 #ifdef SDP_HAVE_CUDA
-        cufftResult error = CUFFT_SUCCESS;
-        const int fft_dir = fft->is_forward ? CUFFT_FORWARD : CUFFT_INVERSE;
-        if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT &&
-                sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
-        {
-            error = cufftExecC2C(fft->cufft_plan,
-                    (cufftComplex*)sdp_mem_data(input),
-                    (cufftComplex*)sdp_mem_data(output), fft_dir
-            );
-        }
-        else if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE &&
-                sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
-        {
-            error = cufftExecZ2Z(fft->cufft_plan,
-                    (cufftDoubleComplex*)sdp_mem_data(input),
-                    (cufftDoubleComplex*)sdp_mem_data(output), fft_dir
-            );
-        }
-        if (error != CUFFT_SUCCESS)
-        {
-            *status = SDP_ERR_RUNTIME;
-            SDP_LOG_ERROR("cufftExec error (code %d)", error);
-        }
+        sdp_fft_exec_cuda(fft, input, output, status);
 #else
         *status = SDP_ERR_RUNTIME;
         SDP_LOG_ERROR("The processing function library was compiled "
@@ -606,119 +911,11 @@ void sdp_fft_exec(
     else if (sdp_mem_location(input) == SDP_MEM_CPU)
     {
 #ifdef SDP_HAVE_MKL
-        // Use MKL if available.
-        MKL_LONG mkl_status = 0;
-
-        // Check if transform should be in-place or out-of-place.
-        DFTI_CONFIG_VALUE placement = DFTI_NOT_INPLACE;
-        if (sdp_mem_data(output) == sdp_mem_data(input))
-        {
-            placement = DFTI_INPLACE;
-        }
-        DftiSetValue(fft->mkl_plan, DFTI_PLACEMENT, placement);
-
-        // Commit descriptor.
-        mkl_status = DftiCommitDescriptor(fft->mkl_plan);
-        if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
-        {
-            *status = SDP_ERR_RUNTIME;
-            SDP_LOG_ERROR("Error in DftiCommitDescriptor (code %lld): %s",
-                    mkl_status, DftiErrorMessage(mkl_status)
-            );
-        }
-
-        // Compute FFT.
-        if (fft->is_forward)
-        {
-            mkl_status = DftiComputeForward(
-                    fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
-            );
-            if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
-            {
-                *status = SDP_ERR_RUNTIME;
-                SDP_LOG_ERROR("Error in DftiComputeForward (code %lld): %s",
-                        mkl_status, DftiErrorMessage(mkl_status)
-                );
-            }
-        }
-        else
-        {
-            mkl_status = DftiComputeBackward(
-                    fft->mkl_plan, sdp_mem_data(input), sdp_mem_data(output)
-            );
-            if (mkl_status && !DftiErrorClass(mkl_status, DFTI_NO_ERROR))
-            {
-                *status = SDP_ERR_RUNTIME;
-                SDP_LOG_ERROR("Error in DftiComputeBackward (code %lld): %s",
-                        mkl_status, DftiErrorMessage(mkl_status)
-                );
-            }
-        }
+        sdp_fft_exec_mkl(fft, input, output, status);
+#elif defined(SDP_USE_POCKETFFT)
+        sdp_fft_exec_pocketfft(fft, input, output, status);
 #else
-        // No MKL available.
-        int do_inverse = (fft->is_forward == 1 ? 0 : 1);
-
-        if (fft->num_dims == 1)
-        {
-            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT
-                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
-            {
-                sdp_1d_fft(
-                        (sdp_Float2*) sdp_mem_data(output),
-                        (sdp_Float2*) sdp_mem_data(input),
-                        (sdp_Float2*) sdp_mem_data(fft->temp),
-                        fft->num_x,
-                        fft->batch_size,
-                        do_inverse
-                );
-            }
-            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
-                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
-            {
-                sdp_1d_fft(
-                        (sdp_Double2*) sdp_mem_data(output),
-                        (sdp_Double2*) sdp_mem_data(input),
-                        (sdp_Double2*) sdp_mem_data(fft->temp),
-                        fft->num_x,
-                        fft->batch_size,
-                        do_inverse
-                );
-            }
-        }
-        if (fft->num_dims == 2)
-        {
-            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_FLOAT
-                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_FLOAT)
-            {
-                sdp_2d_fft(
-                        (sdp_Float2*) sdp_mem_data(output),
-                        (sdp_Float2*) sdp_mem_data(input),
-                        (sdp_Float2*) sdp_mem_data(fft->temp),
-                        fft->num_x,
-                        fft->num_y,
-                        fft->batch_size,
-                        do_inverse
-                );
-            }
-            if (sdp_mem_type(input) == SDP_MEM_COMPLEX_DOUBLE
-                    && sdp_mem_type(output) == SDP_MEM_COMPLEX_DOUBLE)
-            {
-                sdp_2d_fft(
-                        (sdp_Double2*) sdp_mem_data(output),
-                        (sdp_Double2*) sdp_mem_data(input),
-                        (sdp_Double2*) sdp_mem_data(fft->temp),
-                        fft->num_x,
-                        fft->num_y,
-                        fft->batch_size,
-                        do_inverse
-                );
-            }
-        }
-        if (fft->num_dims > 2)
-        {
-            *status = SDP_ERR_INVALID_ARGUMENT;
-            SDP_LOG_ERROR("3D FFT is not supported on host memory.");
-        }
+        sdp_fft_exec_native(fft, input, output, status);
 #endif
     }
 }
@@ -735,6 +932,12 @@ void sdp_fft_free(sdp_Fft* fft)
 #endif
 #ifdef SDP_HAVE_MKL
     (void) DftiFreeDescriptor(&fft->mkl_plan);
+#endif
+#ifdef SDP_USE_POCKETFFT
+    fft->shape.clear();
+    fft->stride_in.clear();
+    fft->stride_out.clear();
+    fft->axes.clear();
 #endif
     sdp_mem_ref_dec(fft->input);
     sdp_mem_ref_dec(fft->output);

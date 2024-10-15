@@ -56,6 +56,12 @@ if (FIND_MKL OR NOT DEFINED FIND_MKL)
 endif()
 if (MKL_FOUND)
     add_definitions(-DSDP_HAVE_MKL)
+    option(USE_POCKETFFT "Use PocketFFT for FFTs" OFF)
+else()
+    option(USE_POCKETFFT "Use PocketFFT for FFTs" ON)
+endif()
+if (USE_POCKETFFT)
+    add_definitions(-DSDP_USE_POCKETFFT)
 endif()
 
 # Set compiler options.
