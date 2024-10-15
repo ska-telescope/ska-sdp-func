@@ -4248,13 +4248,17 @@ template<>
 struct VTYPE<float>
 {
     using type =
-            float __attribute__ ((vector_size (VLEN<float>::val* sizeof(float))));
+            float __attribute__ ((vector_size (
+            VLEN<float>::val* sizeof(float)
+            )));
 };
 template<>
 struct VTYPE<double>
 {
     using type =
-            double __attribute__ ((vector_size (VLEN<double>::val* sizeof(double))));
+            double __attribute__ ((vector_size (
+            VLEN<double>::val* sizeof(double)
+            )));
 };
 template<>
 struct VTYPE<long double>
@@ -4434,7 +4438,8 @@ POCKETFFT_NOINLINE void general_nd(
                     while (it.remaining() > 0)
                     {
                         it.advance(1);
-                        auto buf = allow_inplace && it.stride_out() == sizeof(T) ?
+                        auto buf = allow_inplace &&
+                        it.stride_out() == sizeof(T) ?
                             &out[it.oofs(
                                     0
                             )] : reinterpret_cast<T*>(storage.data());
