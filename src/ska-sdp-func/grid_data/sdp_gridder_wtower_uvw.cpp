@@ -122,26 +122,27 @@ void degrid_line(
         VIS_TYPE local_vis = (VIS_TYPE) 0;
         for (int iw = 0; iw < w_support; ++iw)
         {
-            const double kern_w = wkern[iw];
+	    VIS_TYPE local_vis_u = (VIS_TYPE) 0;
 
             // We want the following loops to be unrolled entirely
 #pragma GCC ivdep
 #pragma GCC unroll(8)
             for (int iu = 0; iu < support; ++iu)
             {
-                const double kern_wu = kern_w * ukern[iu];
                 const int ix_u = iu0 + iu;
+		VIS_TYPE local_vis_v = (VIS_TYPE) 0;
 #pragma GCC ivdep
 #pragma GCC unroll(8)
                 for (int iv = 0; iv < support; ++iv)
                 {
-                    const double kern_wuv = kern_wu * vkern[iv];
                     const int ix_v = iv0 + iv;
-                    local_vis += (
-                        (VIS_TYPE) kern_wuv * subgrids(iw, ix_u, ix_v)
+                    local_vis_v += (
+                        (VIS_TYPE) vkern[iv] * subgrids(iw, ix_u, ix_v)
                     );
                 }
+		local_vis_u += (VIS_TYPE) ukern[iu] * local_vis_v;
             }
+	    local_vis += (VIS_TYPE) wkern[iw] * local_vis_u;
         }
         vis(i_row, c) += local_vis;
         ukern = next_ukern;
