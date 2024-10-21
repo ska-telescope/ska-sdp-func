@@ -252,7 +252,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         const int gridding = 0;
         double t_total = sdp_timer_elapsed(tmr_total);
         int total_w_planes = sdp_gridder_wtower_uvw_num_w_planes(
-            kernel, gridding
+                kernel, gridding
         );
         report_timing_common(num_w_planes, total_w_planes,
                 num_subgrids_u, num_subgrids_v, image_size, subgrid_size,
@@ -532,7 +532,7 @@ void sdp_grid_wstack_wtower_grid_all(
         for (int i = 0; i < num_threads; ++i)
         {
             total_w_planes += sdp_gridder_wtower_uvw_num_w_planes(
-                kernel[i], gridding
+                    kernel[i], gridding
             );
         }
         report_timing_common(num_w_planes, total_w_planes,
