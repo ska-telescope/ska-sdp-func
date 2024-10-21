@@ -42,6 +42,116 @@ struct sdp_GridderWtowerUVW
 // Begin anonymous namespace for file-local functions.
 namespace {
 
+template<typename UVW_TYPE,
+        typename VIS_TYPE,
+        int SUPPORT = 0,
+        int W_SUPPORT = 0,
+        size_t V_STRIDE = 0>
+inline
+void degrid_line(
+        const sdp_GridderWtowerUVW* plan,
+        sdp_MemViewCpu<const VIS_TYPE, 3> subgrids,
+        const UVW_TYPE* RESTRICT uvw0,
+        const UVW_TYPE* RESTRICT duvw,
+        const double* RESTRICT uv_kernel,
+        const double* RESTRICT w_kernel,
+        const int i_row,
+        const int start_ch,
+        const int end_ch,
+        sdp_MemViewCpu<VIS_TYPE, 2>& vis
+)
+{
+    const int oversample = plan->oversampling;
+    const int w_oversample = plan->w_oversampling;
+
+    // Hardcode values from template parameters so that the optimiser
+    // can assume them. The support sizes are important for unrolling,
+    // and the stride is important for allowing use of vector lengths
+    // beyond the size of a VIS_TYPE.
+    const int support = SUPPORT ? SUPPORT : plan->support;
+    const int w_support = W_SUPPORT ? W_SUPPORT : plan->w_support;
+    if (V_STRIDE) {
+	subgrids.stride[2] = V_STRIDE;
+    }
+
+    double u = uvw0[0] + start_ch * duvw[0];
+    double v = uvw0[1] + start_ch * duvw[1];
+    double w = uvw0[2] + start_ch * duvw[2];
+
+    // Determine top-left corner of grid region centred approximately
+    // on visibility in oversampled coordinates (this is subgrid-local,
+    // so should be safe for overflows).
+    const int iu0_ov = int(round(u));
+    const int iv0_ov = int(round(v));
+    const int iw0_ov = int(round(w));
+    int iu0 = iu0_ov / oversample;
+    int iv0 = iv0_ov / oversample;
+
+    // Determine which kernel to use.
+    const double* ukern = uv_kernel + (iu0_ov % oversample) * support;
+    const double* vkern = uv_kernel + (iv0_ov % oversample) * support;
+    const double* wkern = w_kernel + (iw0_ov % w_oversample) * w_support;
+
+    // Loop over selected channels.
+    for (int64_t c = start_ch; c < end_ch; c++)
+    {
+        u += duvw[0];
+        v += duvw[1];
+        w += duvw[2];
+
+        // Determine top-left corner of grid region centred approximately
+        // on visibility in oversampled coordinates (this is subgrid-local,
+        // so should be safe for overflows).
+        const int iu0_ov = int(round(u));
+        const int iv0_ov = int(round(v));
+        const int iw0_ov = int(round(w));
+        const int next_iu0 = iu0_ov / oversample;
+        const int next_iv0 = iv0_ov / oversample;
+
+        // Determine *next* kernels. Used for prefetching. Only really
+        // buys us something with large vectors.
+        const double* next_ukern = uv_kernel + (iu0_ov % oversample) * support;
+        const double* next_vkern = uv_kernel + (iv0_ov % oversample) * support;
+        const double* next_wkern = w_kernel + (iw0_ov % w_oversample) *
+                w_support;
+        __builtin_prefetch(next_ukern, 0, 3);
+        __builtin_prefetch(next_vkern, 0, 3);
+        __builtin_prefetch(next_wkern, 0, 3);
+
+        // Degrid visibility.
+        VIS_TYPE local_vis = (VIS_TYPE) 0;
+        for (int iw = 0; iw < w_support; ++iw)
+        {
+            const double kern_w = wkern[iw];
+
+            // We want the following loops to be unrolled entirely
+#pragma GCC ivdep
+#pragma GCC unroll(8)
+            for (int iu = 0; iu < support; ++iu)
+            {
+                const double kern_wu = kern_w * ukern[iu];
+                const int ix_u = iu0 + iu;
+#pragma GCC ivdep
+#pragma GCC unroll(8)
+                for (int iv = 0; iv < support; ++iv)
+                {
+                    const double kern_wuv = kern_wu * vkern[iv];
+                    const int ix_v = iv0 + iv;
+                    local_vis += (
+                        (VIS_TYPE) kern_wuv * subgrids(iw, ix_u, ix_v)
+                    );
+                }
+            }
+        }
+        vis(i_row, c) += local_vis;
+        ukern = next_ukern;
+        vkern = next_vkern;
+        wkern = next_wkern;
+        iu0 = next_iu0;
+        iv0 = next_iv0;
+    }
+}
+
 // Local function to do the degridding.
 template<typename UVW_TYPE, typename VIS_TYPE>
 void degrid(
@@ -95,9 +205,9 @@ void degrid(
         if (start_ch >= end_ch) continue;
 
         // Scale + shift UVWs.
-        const double s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
-        double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
-        double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
+        const UVW_TYPE s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
+        UVW_TYPE uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
+        UVW_TYPE duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
         uvw0[0] -= subgrid_offset_u / theta;
         uvw0[1] -= subgrid_offset_v / theta;
         uvw0[2] -= ((subgrid_offset_w + w_plane - 1) * w_step);
@@ -113,48 +223,31 @@ void degrid(
             continue;
         }
 
-        // Loop over selected channels.
-        for (int64_t c = start_ch; c < end_ch; c++)
+        // Scale into oversampled coordinates
+        uvw0[0] *= theta_ov;
+        uvw0[1] *= theta_ov;
+        uvw0[2] *= w_step_ov;
+        duvw[0] *= theta_ov;
+        duvw[1] *= theta_ov;
+        duvw[2] *= w_step_ov;
+        uvw0[0] += half_sg_size_ov;
+        uvw0[1] += half_sg_size_ov;
+        uvw0[2] += half_sg_size_ov;
+
+        // Degrid line. Use specialised versions depending on kernel size.
+#define _PARS_ \
+    plan, subgrids, uvw0, duvw, uv_kernel, w_kernel, \
+    i_row, start_ch, end_ch, vis
+
+        if (support == 8 && w_support == 8 && subgrids.stride[2] == 1)
         {
-            const double u = uvw0[0] + c * duvw[0];
-            const double v = uvw0[1] + c * duvw[1];
-            const double w = uvw0[2] + c * duvw[2];
-
-            // Determine top-left corner of grid region centred approximately
-            // on visibility in oversampled coordinates (this is subgrid-local,
-            // so should be safe for overflows).
-            const int iu0_ov = int(round(u * theta_ov)) + half_sg_size_ov;
-            const int iv0_ov = int(round(v * theta_ov)) + half_sg_size_ov;
-            const int iw0_ov = int(round(w * w_step_ov));
-            const int iu0 = iu0_ov / oversample;
-            const int iv0 = iv0_ov / oversample;
-
-            // Determine which kernel to use.
-            const int u_off = (iu0_ov % oversample) * support;
-            const int v_off = (iv0_ov % oversample) * support;
-            const int w_off = (iw0_ov % w_oversample) * w_support;
-
-            // Degrid visibility.
-            VIS_TYPE local_vis = (VIS_TYPE) 0;
-            for (int iw = 0; iw < w_support; ++iw)
-            {
-                const double kern_w = w_kernel[w_off + iw];
-                for (int iu = 0; iu < support; ++iu)
-                {
-                    const double kern_wu = kern_w * uv_kernel[u_off + iu];
-                    const int ix_u = iu0 + iu;
-                    for (int iv = 0; iv < support; ++iv)
-                    {
-                        const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
-                        const int ix_v = iv0 + iv;
-                        local_vis += (
-                            (VIS_TYPE) kern_wuv * subgrids(iw, ix_u, ix_v)
-                        );
-                    }
-                }
-            }
-            vis(i_row, c) += local_vis;
+            degrid_line<UVW_TYPE, VIS_TYPE, 8, 8, 1>(_PARS_);
         }
+        else
+        {
+            degrid_line<UVW_TYPE, VIS_TYPE>(_PARS_);
+        }
+#undef PARS
     }
 }
 
