@@ -1548,8 +1548,8 @@ void sdp_gridder_shift_subgrids(sdp_Mem* subgrids, sdp_Error* status)
     {
         // Call the kernel.
         uint64_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
-        const int64_t sub_size_u = sdp_mem_shape_dim(subgrids, 0);
-        const int64_t sub_size_v = sdp_mem_shape_dim(subgrids, 1);
+        const int64_t sub_size_u = sdp_mem_shape_dim(subgrids, 1);
+        const int64_t sub_size_v = sdp_mem_shape_dim(subgrids, 2);
         num_blocks[0] = (sub_size_u + num_threads[0] - 1) / num_threads[0];
         num_blocks[1] = (sub_size_v + num_threads[1] - 1) / num_threads[1];
         sdp_MemViewGpu<complex<double>, 3> sub_dbl;

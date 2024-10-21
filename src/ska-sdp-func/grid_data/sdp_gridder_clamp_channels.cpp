@@ -135,18 +135,13 @@ void clamp_channels_uv(
             const int is_positive = dv > 0;
             const int start_ch_ = is_positive ? (int) mins : (int) maxs;
             const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-            start_chs_out_(i) = MAX(start_chs_in_(i), start_ch_);
-            end_chs_out_(i) = MIN(end_chs_in_(i), end_ch_);
+            start_chs_out_(i) = MAX(start_chs_out_(i), start_ch_);
+            end_chs_out_(i) = MIN(end_chs_out_(i), end_ch_);
         }
         else if (min_v > v0 || max_v <= v0)
         {
             start_chs_out_(i) = 0;
             end_chs_out_(i) = 0;
-        }
-        else
-        {
-            start_chs_out_(i) = start_chs_in_(i);
-            end_chs_out_(i) = end_chs_in_(i);
         }
         end_chs_out_(i) = MAX(end_chs_out_(i), start_chs_out_(i));
     }

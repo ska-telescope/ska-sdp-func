@@ -109,18 +109,13 @@ __global__ void sdp_gridder_clamp_channels_uv(
         const int is_positive = dv > 0;
         const int start_ch_ = is_positive ? (int) mins : (int) maxs;
         const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-        start_ch_out(i) = MAX(start_ch_in(i), start_ch_);
-        end_ch_out(i) = MIN(end_ch_in(i), end_ch_);
+        start_ch_out(i) = MAX(start_ch_out(i), start_ch_);
+        end_ch_out(i) = MIN(end_ch_out(i), end_ch_);
     }
     else if (min_v > v0 || max_v <= v0)
     {
         start_ch_out(i) = 0;
         end_ch_out(i) = 0;
-    }
-    else
-    {
-        start_ch_out(i) = start_ch_in(i);
-        end_ch_out(i) = end_ch_in(i);
     }
     end_ch_out(i) = MAX(end_ch_out(i), start_ch_out(i));
 }
