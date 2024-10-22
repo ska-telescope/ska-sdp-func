@@ -154,7 +154,9 @@ int main()
 #ifdef SDP_HAVE_CUDA
     // GPU Happy paths.
     for (int forward = 0; forward < 2; forward++)
+    {
         for (int pattern_x = 0; pattern_x < 4; pattern_x++)
+        {
             for (int pattern_y = 0; pattern_y < 4; pattern_y++)
             {
                 sdp_Error status = SDP_SUCCESS;
@@ -167,8 +169,12 @@ int main()
                 );
                 assert(status == SDP_SUCCESS);
             }
+        }
+    }
     for (int forward = 0; forward < 2; forward++)
+    {
         for (int pattern_x = 0; pattern_x < 4; pattern_x++)
+        {
             for (int pattern_y = 0; pattern_y < 4; pattern_y++)
             {
                 sdp_Error status = SDP_SUCCESS;
@@ -181,6 +187,8 @@ int main()
                 );
                 assert(status == SDP_SUCCESS);
             }
+        }
+    }
 
     // Unhappy paths.
     {
@@ -227,7 +235,9 @@ int main()
 
     // CPU Happy paths.
     for (int forward = 0; forward < 2; forward++)
+    {
         for (int pattern_x = 0; pattern_x < 4; pattern_x++)
+        {
             for (int pattern_y = 0; pattern_y < 4; pattern_y++)
             {
                 sdp_Error status = SDP_SUCCESS;
@@ -240,8 +250,12 @@ int main()
                 );
                 assert(status == SDP_SUCCESS);
             }
+        }
+    }
     for (int forward = 0; forward < 2; forward++)
+    {
         for (int pattern_x = 0; pattern_x < 4; pattern_x++)
+        {
             for (int pattern_y = 0; pattern_y < 4; pattern_y++)
             {
                 sdp_Error status = SDP_SUCCESS;
@@ -254,5 +268,7 @@ int main()
                 );
                 assert(status == SDP_SUCCESS);
             }
+        }
+    }
     return 0;
 }
