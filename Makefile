@@ -37,3 +37,6 @@ build:
 # Add further places where version needs to be propagated to
 post-set-release:
 	@. .make-support; setPyProjectRelease; setDocsRelease; setCMakeRelease; setConanRelease
+
+cpp-format:
+	docker run --rm -v ${PWD}:/code alpine:3.16 /bin/sh -c "apk update && apk add uncrustify && cd code && find src tests -iname '*.h' -o -iname '*.cpp' -o -iname '*.c' -o -iname '*.cu' | xargs uncrustify -c uncrustify.cfg -l CPP --replace --if-changed"
