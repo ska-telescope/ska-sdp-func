@@ -487,7 +487,7 @@ void sdp_fft_create_mkl(
     {
         *status = SDP_ERR_DATA_TYPE;
         SDP_LOG_ERROR("Unsupported data types");
-        return fft;
+        return;
     }
 
     // Create descriptor.
@@ -525,7 +525,7 @@ void sdp_fft_create_mkl(
         SDP_LOG_ERROR("Error in DftiCreateDescriptor (code %lld): %s",
                 mkl_status, DftiErrorMessage(mkl_status)
         );
-        return fft;
+        return;
     }
 
     // Set descriptor parameters.
