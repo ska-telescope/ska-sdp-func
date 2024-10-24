@@ -11,10 +11,12 @@ __global__ void sdp_gridder_clamp_channels_single(
         const int dim,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_MemViewGpu<int, 1> start_ch,
-        sdp_MemViewGpu<int, 1> end_ch,
+        sdp_MemViewGpu<const int, 1> start_ch_in,
+        sdp_MemViewGpu<const int, 1> end_ch_in,
         const double min_u,
-        const double max_u
+        const double max_u,
+        sdp_MemViewGpu<int, 1> start_ch_out,
+        sdp_MemViewGpu<int, 1> end_ch_out
 )
 {
     const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -32,15 +34,20 @@ __global__ void sdp_gridder_clamp_channels_single(
         const int is_positive = du > 0;
         const int start_ch_ = is_positive ? (int) mins : (int) maxs;
         const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-        start_ch(i) = MAX(start_ch(i), start_ch_);
-        end_ch(i) = MIN(end_ch(i), end_ch_);
+        start_ch_out(i) = MAX(start_ch_in(i), start_ch_);
+        end_ch_out(i) = MIN(end_ch_in(i), end_ch_);
     }
     else if (min_u > u0 || max_u <= u0)
     {
-        start_ch(i) = 0;
-        end_ch(i) = 0;
+        start_ch_out(i) = 0;
+        end_ch_out(i) = 0;
     }
-    end_ch(i) = MAX(end_ch(i), start_ch(i));
+    else
+    {
+        start_ch_out(i) = start_ch_in(i);
+        end_ch_out(i) = end_ch_in(i);
+    }
+    end_ch_out(i) = MAX(end_ch_out(i), start_ch_out(i));
 }
 
 
@@ -49,12 +56,14 @@ __global__ void sdp_gridder_clamp_channels_uv(
         sdp_MemViewGpu<const UVW_TYPE, 2> uvws,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_MemViewGpu<int, 1> start_ch,
-        sdp_MemViewGpu<int, 1> end_ch,
+        sdp_MemViewGpu<const int, 1> start_ch_in,
+        sdp_MemViewGpu<const int, 1> end_ch_in,
         const double min_u,
         const double max_u,
         const double min_v,
-        const double max_v
+        const double max_v,
+        sdp_MemViewGpu<int, 1> start_ch_out,
+        sdp_MemViewGpu<int, 1> end_ch_out
 )
 {
     const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -72,16 +81,21 @@ __global__ void sdp_gridder_clamp_channels_uv(
         const int is_positive = du > 0;
         const int start_ch_ = is_positive ? (int) mins : (int) maxs;
         const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-        start_ch(i) = MAX(start_ch(i), start_ch_);
-        end_ch(i) = MIN(end_ch(i), end_ch_);
+        start_ch_out(i) = MAX(start_ch_in(i), start_ch_);
+        end_ch_out(i) = MIN(end_ch_in(i), end_ch_);
     }
     else if (min_u > u0 || max_u <= u0)
     {
-        start_ch(i) = 0;
-        end_ch(i) = 0;
+        start_ch_out(i) = 0;
+        end_ch_out(i) = 0;
     }
-    end_ch(i) = MAX(end_ch(i), start_ch(i));
-    if (start_ch(i) >= end_ch(i)) return;
+    else
+    {
+        start_ch_out(i) = start_ch_in(i);
+        end_ch_out(i) = end_ch_in(i);
+    }
+    end_ch_out(i) = MAX(end_ch_out(i), start_ch_out(i));
+    if (start_ch_out(i) >= end_ch_out(i)) return;
 
     const double v0 = uvws(i, 1) * (freq0_hz / C_0);
     const double dv = uvws(i, 1) * (dfreq_hz / C_0);
@@ -95,15 +109,15 @@ __global__ void sdp_gridder_clamp_channels_uv(
         const int is_positive = dv > 0;
         const int start_ch_ = is_positive ? (int) mins : (int) maxs;
         const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-        start_ch(i) = MAX(start_ch(i), start_ch_);
-        end_ch(i) = MIN(end_ch(i), end_ch_);
+        start_ch_out(i) = MAX(start_ch_out(i), start_ch_);
+        end_ch_out(i) = MIN(end_ch_out(i), end_ch_);
     }
     else if (min_v > v0 || max_v <= v0)
     {
-        start_ch(i) = 0;
-        end_ch(i) = 0;
+        start_ch_out(i) = 0;
+        end_ch_out(i) = 0;
     }
-    end_ch(i) = MAX(end_ch(i), start_ch(i));
+    end_ch_out(i) = MAX(end_ch_out(i), start_ch_out(i));
 }
 
 SDP_CUDA_KERNEL(sdp_gridder_clamp_channels_single<float>)

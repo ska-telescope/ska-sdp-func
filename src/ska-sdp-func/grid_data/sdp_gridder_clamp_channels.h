@@ -29,10 +29,12 @@ extern "C" {
  * @param dim Dimension index (0, 1 or 2) of @p uvws to check.
  * @param freq0_hz Frequency of first channel, in Hz.
  * @param dfreq_hz Channel width, in Hz.
- * @param start_ch Channel range to clamp (excluding end).
- * @param end_ch Channel range to clamp (excluding end).
+ * @param start_ch_in Input channel range to clamp (excluding end).
+ * @param end_ch_in Input channel range to clamp (excluding end).
  * @param min_u Minimum value for u or v or w (inclusive).
  * @param max_u Maximum value for u or v or w (exclusive).
+ * @param start_ch_out Clamped start channel.
+ * @param end_ch_out Clamped end channel (excluding end).
  * @param status Error status.
  */
 void sdp_gridder_clamp_channels_single(
@@ -40,10 +42,12 @@ void sdp_gridder_clamp_channels_single(
         const int dim,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_Mem* start_ch,
-        sdp_Mem* end_ch,
+        const sdp_Mem* start_ch_in,
+        const sdp_Mem* end_ch_in,
         const double min_u,
         const double max_u,
+        sdp_Mem* start_ch_out,
+        sdp_Mem* end_ch_out,
         sdp_Error* status
 );
 
@@ -56,24 +60,28 @@ void sdp_gridder_clamp_channels_single(
  * @param uvws ``float[uvw_count, 3]`` UVW coordinates of visibilities (in m).
  * @param freq0_hz Frequency of first channel, in Hz.
  * @param dfreq_hz Channel width, in Hz.
- * @param start_ch Channel range to clamp (excluding end).
- * @param end_ch Channel range to clamp (excluding end).
+ * @param start_ch_in Input channel range to clamp (excluding end).
+ * @param end_ch_in Input channel range to clamp (excluding end).
  * @param min_u Minimum value for u (inclusive).
  * @param max_u Maximum value for u (exclusive).
  * @param min_v Minimum value for v (inclusive).
  * @param max_v Maximum value for v (exclusive).
+ * @param start_ch_out Clamped start channel.
+ * @param end_ch_out Clamped end channel (excluding end).
  * @param status Error status.
  */
 void sdp_gridder_clamp_channels_uv(
         const sdp_Mem* uvws,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_Mem* start_ch,
-        sdp_Mem* end_ch,
+        const sdp_Mem* start_ch_in,
+        const sdp_Mem* end_ch_in,
         const double min_u,
         const double max_u,
         const double min_v,
         const double max_v,
+        sdp_Mem* start_ch_out,
+        sdp_Mem* end_ch_out,
         sdp_Error* status
 );
 

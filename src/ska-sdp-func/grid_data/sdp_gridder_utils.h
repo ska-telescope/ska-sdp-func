@@ -285,6 +285,14 @@ void sdp_gridder_scale_inv_array(
 );
 
 /**
+ * @brief Shift the contents of the sub-grid stack up by one plane.
+ *
+ * @param subgrids Sub-grid stack.
+ * @param status Error status.
+ */
+void sdp_gridder_shift_subgrids(sdp_Mem* subgrids, sdp_Error* status);
+
+/**
  * @brief Add the supplied sub-grid to the grid.
  *
  * @param grid Output grid.

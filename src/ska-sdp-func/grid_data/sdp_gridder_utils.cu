@@ -150,6 +150,23 @@ __global__ void sdp_gridder_scale_inv_array(
 }
 
 
+template<typename T>
+__global__ void sdp_gridder_shift_subgrids(
+        sdp_MemViewGpu<T, 3> subgrids
+)
+{
+    const int w_support = (int) subgrids.shape[0];
+    const int subgrid_size = (int) subgrids.shape[1];
+    const int i = blockDim.x * blockIdx.x + threadIdx.x;
+    const int j = blockDim.y * blockIdx.y + threadIdx.y;
+    if (i >= subgrid_size || j >= subgrid_size) return;
+    for (int k = 0; k < w_support - 1; ++k)
+    {
+        subgrids(k, j, i) = subgrids(k + 1, j, i);
+    }
+}
+
+
 template<typename GRID_TYPE, typename SUBGRID_TYPE, typename FACTOR_TYPE>
 __global__ void sdp_gridder_subgrid_add(
         sdp_MemViewGpu<GRID_TYPE, 2> grid,
@@ -313,6 +330,9 @@ SDP_CUDA_KERNEL(sdp_gridder_scale_inv_array<complex<double>, double, complex<dou
 SDP_CUDA_KERNEL(sdp_gridder_scale_inv_array<complex<float>, float, complex<double> >)
 SDP_CUDA_KERNEL(sdp_gridder_scale_inv_array<complex<double>, complex<double>, complex<double> >)
 SDP_CUDA_KERNEL(sdp_gridder_scale_inv_array<complex<float>, complex<float>, complex<double> >)
+
+SDP_CUDA_KERNEL(sdp_gridder_shift_subgrids<complex<double> >)
+SDP_CUDA_KERNEL(sdp_gridder_shift_subgrids<complex<float> >)
 
 SDP_CUDA_KERNEL(sdp_gridder_subgrid_add<complex<double>, complex<double>, double>)
 SDP_CUDA_KERNEL(sdp_gridder_subgrid_add<complex<float>, complex<float>, double>)

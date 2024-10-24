@@ -496,6 +496,29 @@ void scale_inv_array(
 }
 
 
+template<typename T>
+void shift_subgrids(sdp_Mem* subgrids, sdp_Error* status)
+{
+    if (*status) return;
+    sdp_MemViewCpu<T, 3> subgrids_;
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    if (*status) return;
+    const int w_support = subgrids_.shape[0];
+    const int subgrid_size = subgrids_.shape[1];
+    for (int k = 0; k < w_support - 1; ++k)
+    {
+        #pragma omp parallel for
+        for (int j = 0; j < subgrid_size; ++j)
+        {
+            for (int i = 0; i < subgrid_size; ++i)
+            {
+                subgrids_(k, j, i) = subgrids_(k + 1, j, i);
+            }
+        }
+    }
+}
+
+
 // Add the supplied sub-grid to the grid.
 template<typename GRID_TYPE, typename SUBGRID_TYPE, typename FACTOR_TYPE>
 void subgrid_add(
@@ -516,6 +539,7 @@ void subgrid_add(
     // This does the equivalent of numpy.roll and a shift in two dimensions.
     const int64_t sub_size_u = sub_.shape[0], sub_size_v = sub_.shape[1];
     const int64_t grid_size_u = grid_.shape[0], grid_size_v = grid_.shape[1];
+    #pragma omp parallel for
     for (int64_t i = 0; i < sub_size_u; ++i)
     {
         int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
@@ -551,6 +575,7 @@ void subgrid_cut_out(
     // This does the equivalent of numpy.roll and a shift in two dimensions.
     const int64_t sub_size_u = sub_.shape[0], sub_size_v = sub_.shape[1];
     const int64_t grid_size_u = grid_.shape[0], grid_size_v = grid_.shape[1];
+    #pragma omp parallel for
     for (int64_t i = 0; i < sub_size_u; ++i)
     {
         int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
@@ -587,6 +612,7 @@ void sum_diff(
     }
     int64_t res = 0;
     const int num = (int) a_.shape[0];
+    #pragma omp parallel for reduction(+:res)
     for (int i = 0; i < num; ++i)
     {
         res += (a_(i) - b_(i));
@@ -1491,6 +1517,65 @@ void sdp_gridder_scale_inv_array(
             SDP_LOG_ERROR("Unsupported image data type");
             *status = SDP_ERR_DATA_TYPE;
         }
+        sdp_launch_cuda_kernel(kernel_name,
+                num_blocks, num_threads, 0, 0, arg, status
+        );
+    }
+}
+
+
+void sdp_gridder_shift_subgrids(sdp_Mem* subgrids, sdp_Error* status)
+{
+    if (*status) return;
+    const sdp_MemLocation loc = sdp_mem_location(subgrids);
+    if (loc == SDP_MEM_CPU)
+    {
+        if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            shift_subgrids<complex<double> >(subgrids, status);
+        }
+        else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            shift_subgrids<complex<float> >(subgrids, status);
+        }
+        else
+        {
+            SDP_LOG_ERROR("Unsupported sub-grid data type");
+            *status = SDP_ERR_DATA_TYPE;
+        }
+    }
+    else
+    {
+        // Call the kernel.
+        uint64_t num_threads[] = {32, 8, 1}, num_blocks[] = {1, 1, 1};
+        const int64_t sub_size_u = sdp_mem_shape_dim(subgrids, 1);
+        const int64_t sub_size_v = sdp_mem_shape_dim(subgrids, 2);
+        num_blocks[0] = (sub_size_u + num_threads[0] - 1) / num_threads[0];
+        num_blocks[1] = (sub_size_v + num_threads[1] - 1) / num_threads[1];
+        sdp_MemViewGpu<complex<double>, 3> sub_dbl;
+        sdp_MemViewGpu<complex<float>, 3> sub_flt;
+        const char* kernel_name = 0;
+        int is_dbl = 0;
+        if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_DOUBLE)
+        {
+            is_dbl = 1;
+            sdp_mem_check_and_view(subgrids, &sub_dbl, status);
+            kernel_name = "sdp_gridder_shift_subgrids<complex<double> >";
+        }
+        else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT)
+        {
+            is_dbl = 0;
+            sdp_mem_check_and_view(subgrids, &sub_flt, status);
+            kernel_name = "sdp_gridder_shift_subgrids<complex<float> >";
+        }
+        else
+        {
+            SDP_LOG_ERROR("Unsupported sub-grid data type");
+            *status = SDP_ERR_DATA_TYPE;
+        }
+        const void* arg[] = {
+            is_dbl ? (const void*)&sub_dbl : (const void*)&sub_flt
+        };
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, arg, status
         );

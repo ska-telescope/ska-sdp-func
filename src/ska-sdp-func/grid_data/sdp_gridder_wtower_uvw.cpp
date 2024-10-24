@@ -84,7 +84,7 @@ void degrid(
     const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
 
     // Loop over rows. Each row contains visibilities for all channels.
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic, 500)
     for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
     {
         // Skip if there's no visibility to degrid.
@@ -828,17 +828,7 @@ void sdp_gridder_wtower_uvw_degrid(
         {
             // Shift subgrids, add new w-plane.
             // subgrids[:-1] = subgrids[1:]
-            for (int i = 0; i < plan->w_support - 1; ++i)
-            {
-                sdp_mem_copy_contents(
-                        subgrids,
-                        subgrids,
-                        num_elements_sg * i,
-                        num_elements_sg * (i + 1),
-                        num_elements_sg,
-                        status
-                );
-            }
+            sdp_gridder_shift_subgrids(subgrids, status);
 
             // subgrids[-1] = fft(w_subgrid_image)
             // Copy w_subgrid_image to last subgrid, and then do FFT in-place.
@@ -1035,17 +1025,7 @@ void sdp_gridder_wtower_uvw_grid(
             );
 
             // subgrids[:-1] = subgrids[1:]
-            for (int i = 0; i < plan->w_support - 1; ++i)
-            {
-                sdp_mem_copy_contents(
-                        subgrids,
-                        subgrids,
-                        num_elements_sg * i,
-                        num_elements_sg * (i + 1),
-                        num_elements_sg,
-                        status
-                );
-            }
+            sdp_gridder_shift_subgrids(subgrids, status);
 
             // subgrids[-1] = 0
             sdp_mem_clear_portion(

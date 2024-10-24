@@ -12,21 +12,28 @@ void clamp_channels_single(
         const int dim,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_Mem* start_ch,
-        sdp_Mem* end_ch,
+        const sdp_Mem* start_ch_in,
+        const sdp_Mem* end_ch_in,
         const double min_u,
         const double max_u,
+        sdp_Mem* start_ch_out,
+        sdp_Mem* end_ch_out,
         sdp_Error* status
 )
 {
     if (*status) return;
     sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
-    sdp_MemViewCpu<int, 1> start_chs_, end_chs_;
+    sdp_MemViewCpu<const int, 1> start_chs_in_, end_chs_in_;
+    sdp_MemViewCpu<int, 1> start_chs_out_, end_chs_out_;
     sdp_mem_check_and_view(uvws, &uvws_, status);
-    sdp_mem_check_and_view(start_ch, &start_chs_, status);
-    sdp_mem_check_and_view(end_ch, &end_chs_, status);
+    sdp_mem_check_and_view(start_ch_in, &start_chs_in_, status);
+    sdp_mem_check_and_view(end_ch_in, &end_chs_in_, status);
+    sdp_mem_check_and_view(start_ch_out, &start_chs_out_, status);
+    sdp_mem_check_and_view(end_ch_out, &end_chs_out_, status);
+    const int64_t num_uvw = uvws_.shape[0];
 
-    for (int64_t i = 0; i < uvws_.shape[0]; ++i)
+    #pragma omp parallel for
+    for (int64_t i = 0; i < num_uvw; ++i)
     {
         const double u0 = uvws_(i, dim) * (freq0_hz / C_0);
         const double du = uvws_(i, dim) * (dfreq_hz / C_0);
@@ -40,15 +47,20 @@ void clamp_channels_single(
             const int is_positive = du > 0;
             const int start_ch_ = is_positive ? (int) mins : (int) maxs;
             const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-            start_chs_(i) = MAX(start_chs_(i), start_ch_);
-            end_chs_(i) = MIN(end_chs_(i), end_ch_);
+            start_chs_out_(i) = MAX(start_chs_in_(i), start_ch_);
+            end_chs_out_(i) = MIN(end_chs_in_(i), end_ch_);
         }
         else if (min_u > u0 || max_u <= u0)
         {
-            start_chs_(i) = 0;
-            end_chs_(i) = 0;
+            start_chs_out_(i) = 0;
+            end_chs_out_(i) = 0;
         }
-        end_chs_(i) = MAX(end_chs_(i), start_chs_(i));
+        else
+        {
+            start_chs_out_(i) = start_chs_in_(i);
+            end_chs_out_(i) = end_chs_in_(i);
+        }
+        end_chs_out_(i) = MAX(end_chs_out_(i), start_chs_out_(i));
     }
 }
 
@@ -58,23 +70,30 @@ void clamp_channels_uv(
         const sdp_Mem* uvws,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_Mem* start_ch,
-        sdp_Mem* end_ch,
+        const sdp_Mem* start_ch_in,
+        const sdp_Mem* end_ch_in,
         const double min_u,
         const double max_u,
         const double min_v,
         const double max_v,
+        sdp_Mem* start_ch_out,
+        sdp_Mem* end_ch_out,
         sdp_Error* status
 )
 {
     if (*status) return;
     sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
-    sdp_MemViewCpu<int, 1> start_chs_, end_chs_;
+    sdp_MemViewCpu<const int, 1> start_chs_in_, end_chs_in_;
+    sdp_MemViewCpu<int, 1> start_chs_out_, end_chs_out_;
     sdp_mem_check_and_view(uvws, &uvws_, status);
-    sdp_mem_check_and_view(start_ch, &start_chs_, status);
-    sdp_mem_check_and_view(end_ch, &end_chs_, status);
+    sdp_mem_check_and_view(start_ch_in, &start_chs_in_, status);
+    sdp_mem_check_and_view(end_ch_in, &end_chs_in_, status);
+    sdp_mem_check_and_view(start_ch_out, &start_chs_out_, status);
+    sdp_mem_check_and_view(end_ch_out, &end_chs_out_, status);
+    const int64_t num_uvw = uvws_.shape[0];
 
-    for (int64_t i = 0; i < uvws_.shape[0]; ++i)
+    #pragma omp parallel for
+    for (int64_t i = 0; i < num_uvw; ++i)
     {
         const double u0 = uvws_(i, 0) * (freq0_hz / C_0);
         const double du = uvws_(i, 0) * (dfreq_hz / C_0);
@@ -88,16 +107,21 @@ void clamp_channels_uv(
             const int is_positive = du > 0;
             const int start_ch_ = is_positive ? (int) mins : (int) maxs;
             const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-            start_chs_(i) = MAX(start_chs_(i), start_ch_);
-            end_chs_(i) = MIN(end_chs_(i), end_ch_);
+            start_chs_out_(i) = MAX(start_chs_in_(i), start_ch_);
+            end_chs_out_(i) = MIN(end_chs_in_(i), end_ch_);
         }
         else if (min_u > u0 || max_u <= u0)
         {
-            start_chs_(i) = 0;
-            end_chs_(i) = 0;
+            start_chs_out_(i) = 0;
+            end_chs_out_(i) = 0;
         }
-        end_chs_(i) = MAX(end_chs_(i), start_chs_(i));
-        if (start_chs_(i) >= end_chs_(i)) continue;
+        else
+        {
+            start_chs_out_(i) = start_chs_in_(i);
+            end_chs_out_(i) = end_chs_in_(i);
+        }
+        end_chs_out_(i) = MAX(end_chs_out_(i), start_chs_out_(i));
+        if (start_chs_out_(i) >= end_chs_out_(i)) continue;
 
         const double v0 = uvws_(i, 1) * (freq0_hz / C_0);
         const double dv = uvws_(i, 1) * (dfreq_hz / C_0);
@@ -111,15 +135,15 @@ void clamp_channels_uv(
             const int is_positive = dv > 0;
             const int start_ch_ = is_positive ? (int) mins : (int) maxs;
             const int end_ch_ = is_positive ? (int) maxs : (int) mins;
-            start_chs_(i) = MAX(start_chs_(i), start_ch_);
-            end_chs_(i) = MIN(end_chs_(i), end_ch_);
+            start_chs_out_(i) = MAX(start_chs_out_(i), start_ch_);
+            end_chs_out_(i) = MIN(end_chs_out_(i), end_ch_);
         }
         else if (min_v > v0 || max_v <= v0)
         {
-            start_chs_(i) = 0;
-            end_chs_(i) = 0;
+            start_chs_out_(i) = 0;
+            end_chs_out_(i) = 0;
         }
-        end_chs_(i) = MAX(end_chs_(i), start_chs_(i));
+        end_chs_out_(i) = MAX(end_chs_out_(i), start_chs_out_(i));
     }
 }
 
@@ -131,10 +155,12 @@ void sdp_gridder_clamp_channels_single(
         const int dim,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_Mem* start_ch,
-        sdp_Mem* end_ch,
+        const sdp_Mem* start_ch_in,
+        const sdp_Mem* end_ch_in,
         const double min_u,
         const double max_u,
+        sdp_Mem* start_ch_out,
+        sdp_Mem* end_ch_out,
         sdp_Error* status
 )
 {
@@ -145,13 +171,15 @@ void sdp_gridder_clamp_channels_single(
         if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
         {
             clamp_channels_single<double>(uvws, dim, freq0_hz, dfreq_hz,
-                    start_ch, end_ch, min_u, max_u, status
+                    start_ch_in, end_ch_in, min_u, max_u,
+                    start_ch_out, end_ch_out, status
             );
         }
         else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
         {
             clamp_channels_single<float>(uvws, dim, freq0_hz, dfreq_hz,
-                    start_ch, end_ch, min_u, max_u, status
+                    start_ch_in, end_ch_in, min_u, max_u,
+                    start_ch_out, end_ch_out, status
             );
         }
         else
@@ -168,9 +196,12 @@ void sdp_gridder_clamp_channels_single(
         num_blocks[0] = (num_elements + num_threads[0] - 1) / num_threads[0];
         sdp_MemViewGpu<const double, 2> uvws_dbl;
         sdp_MemViewGpu<const float, 2> uvws_flt;
-        sdp_MemViewGpu<int, 1> start_chs_, end_chs_;
-        sdp_mem_check_and_view(start_ch, &start_chs_, status);
-        sdp_mem_check_and_view(end_ch, &end_chs_, status);
+        sdp_MemViewGpu<const int, 1> start_chs_in_, end_chs_in_;
+        sdp_MemViewGpu<int, 1> start_chs_out_, end_chs_out_;
+        sdp_mem_check_and_view(start_ch_in, &start_chs_in_, status);
+        sdp_mem_check_and_view(end_ch_in, &end_chs_in_, status);
+        sdp_mem_check_and_view(start_ch_out, &start_chs_out_, status);
+        sdp_mem_check_and_view(end_ch_out, &end_chs_out_, status);
         const char* kernel_name = 0;
         int is_dbl = 0;
         if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
@@ -194,10 +225,12 @@ void sdp_gridder_clamp_channels_single(
             (const void*)&dim,
             (const void*)&freq0_hz,
             (const void*)&dfreq_hz,
-            (const void*)&start_chs_,
-            (const void*)&end_chs_,
+            (const void*)&start_chs_in_,
+            (const void*)&end_chs_in_,
             (const void*)&min_u,
             (const void*)&max_u,
+            (const void*)&start_chs_out_,
+            (const void*)&end_chs_out_
         };
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, arg, status
@@ -210,12 +243,14 @@ void sdp_gridder_clamp_channels_uv(
         const sdp_Mem* uvws,
         const double freq0_hz,
         const double dfreq_hz,
-        sdp_Mem* start_ch,
-        sdp_Mem* end_ch,
+        const sdp_Mem* start_ch_in,
+        const sdp_Mem* end_ch_in,
         const double min_u,
         const double max_u,
         const double min_v,
         const double max_v,
+        sdp_Mem* start_ch_out,
+        sdp_Mem* end_ch_out,
         sdp_Error* status
 )
 {
@@ -226,13 +261,15 @@ void sdp_gridder_clamp_channels_uv(
         if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
         {
             clamp_channels_uv<double>(uvws, freq0_hz, dfreq_hz,
-                    start_ch, end_ch, min_u, max_u, min_v, max_v, status
+                    start_ch_in, end_ch_in, min_u, max_u, min_v, max_v,
+                    start_ch_out, end_ch_out, status
             );
         }
         else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
         {
             clamp_channels_uv<float>(uvws, freq0_hz, dfreq_hz,
-                    start_ch, end_ch, min_u, max_u, min_v, max_v, status
+                    start_ch_in, end_ch_in, min_u, max_u, min_v, max_v,
+                    start_ch_out, end_ch_out, status
             );
         }
         else
@@ -249,9 +286,12 @@ void sdp_gridder_clamp_channels_uv(
         num_blocks[0] = (num_elements + num_threads[0] - 1) / num_threads[0];
         sdp_MemViewGpu<const double, 2> uvws_dbl;
         sdp_MemViewGpu<const float, 2> uvws_flt;
-        sdp_MemViewGpu<int, 1> start_chs_, end_chs_;
-        sdp_mem_check_and_view(start_ch, &start_chs_, status);
-        sdp_mem_check_and_view(end_ch, &end_chs_, status);
+        sdp_MemViewGpu<const int, 1> start_chs_in_, end_chs_in_;
+        sdp_MemViewGpu<int, 1> start_chs_out_, end_chs_out_;
+        sdp_mem_check_and_view(start_ch_in, &start_chs_in_, status);
+        sdp_mem_check_and_view(end_ch_in, &end_chs_in_, status);
+        sdp_mem_check_and_view(start_ch_out, &start_chs_out_, status);
+        sdp_mem_check_and_view(end_ch_out, &end_chs_out_, status);
         const char* kernel_name = 0;
         int is_dbl = 0;
         if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
@@ -274,12 +314,14 @@ void sdp_gridder_clamp_channels_uv(
             is_dbl ? (const void*)&uvws_dbl : (const void*)&uvws_flt,
             (const void*)&freq0_hz,
             (const void*)&dfreq_hz,
-            (const void*)&start_chs_,
-            (const void*)&end_chs_,
+            (const void*)&start_chs_in_,
+            (const void*)&end_chs_in_,
             (const void*)&min_u,
             (const void*)&max_u,
             (const void*)&min_v,
             (const void*)&max_v,
+            (const void*)&start_chs_out_,
+            (const void*)&end_chs_out_
         };
         sdp_launch_cuda_kernel(kernel_name,
                 num_blocks, num_threads, 0, 0, arg, status
