@@ -81,6 +81,24 @@ void sdp_fft_exec(
 );
 
 /**
+ * @brief Wrapper to apply FFT shift, execute FFT, shift again and normalise.
+ *
+ * This is a convenience function to apply the four operations, since they
+ * frequently need to be done together.
+ *
+ * @param fft Handle to FFT plan.
+ * @param data Input and output data.
+ * @param norm If true, the output will be normalised.
+ * @param status Error status.
+ */
+void sdp_fft_exec_shift(
+        sdp_Fft* fft,
+        sdp_Mem* data,
+        int norm,
+        sdp_Error* status
+);
+
+/**
  * @brief Destroys the FFT plan.
  *
  * @param fft Handle to FFT plan.

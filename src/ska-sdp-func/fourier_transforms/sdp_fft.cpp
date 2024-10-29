@@ -921,6 +921,21 @@ void sdp_fft_exec(
 }
 
 
+void sdp_fft_exec_shift(
+        sdp_Fft* fft,
+        sdp_Mem* data,
+        int norm,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_fft_phase(data, status);
+    sdp_fft_exec(fft, data, data, status);
+    sdp_fft_phase(data, status);
+    if (norm) sdp_fft_norm(data, status);
+}
+
+
 void sdp_fft_free(sdp_Fft* fft)
 {
     if (!fft) return;
