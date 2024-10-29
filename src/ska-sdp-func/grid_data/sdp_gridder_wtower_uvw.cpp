@@ -28,8 +28,6 @@ struct sdp_GridderWtowerUVW
     int oversampling;
     int w_support;
     int w_oversampling;
-    double tmr_grid_correct[2];
-    double tmr_process_subgrid_stack[2];
     int num_w_planes[2];
     sdp_Mem* uv_kernel;
     sdp_Mem* uv_kernel_gpu;
@@ -156,7 +154,8 @@ void degrid(
                         const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
                         const int ix_v = iv0 + iv;
                         local_vis += (
-                            (SUBGRID_TYPE) kern_wuv * subgrids_(iw, ix_u, ix_v)
+                            (SUBGRID_TYPE) kern_wuv *
+                            subgrids_(iw, ix_u, ix_v)
                         );
                     }
                 }
@@ -717,13 +716,6 @@ void sdp_gridder_wtower_uvw_degrid(
         return;
     }
 
-    // Set up timer.
-    const sdp_TimerType tmr_type = (
-        loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
-
     // Copy internal arrays to GPU memory as required.
     sdp_Mem* w_pattern_ptr = plan->w_pattern;
     if (loc == SDP_MEM_GPU)
@@ -864,18 +856,14 @@ void sdp_gridder_wtower_uvw_degrid(
         }
     }
 
-    // Update timer.
-    #pragma omp critical
-    {
-        plan->tmr_process_subgrid_stack[0] += sdp_timer_elapsed(tmr);
-        plan->num_w_planes[0] += num_w_planes;
-    }
+    // Update w-plane counter.
+    #pragma omp atomic
+    plan->num_w_planes[0] += num_w_planes;
 
     sdp_mem_free(w_subgrid_image);
     sdp_mem_free(subgrids);
     sdp_mem_free(last_subgrid_ptr);
     sdp_fft_free(fft);
-    sdp_timer_free(tmr);
 }
 
 
@@ -888,11 +876,6 @@ void sdp_gridder_wtower_uvw_degrid_correct(
         sdp_Error* status
 )
 {
-    const sdp_TimerType tmr_type = (sdp_mem_location(facet) == SDP_MEM_CPU ?
-                SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
     sdp_gridder_grid_correct_pswf(plan->image_size, plan->theta, plan->w_step,
             plan->shear_u, plan->shear_v, plan->support, plan->w_support,
             facet, facet_offset_l, facet_offset_m, status
@@ -904,9 +887,6 @@ void sdp_gridder_wtower_uvw_degrid_correct(
                 facet, facet_offset_l, facet_offset_m, w_offset, false, status
         );
     }
-    #pragma omp critical
-    plan->tmr_grid_correct[0] += sdp_timer_elapsed(tmr);
-    sdp_timer_free(tmr);
 }
 
 
@@ -937,13 +917,6 @@ void sdp_gridder_wtower_uvw_grid(
         SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
     }
-
-    // Set up timer.
-    const sdp_TimerType tmr_type = (
-        loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
 
     // Copy internal arrays to GPU memory as required.
     sdp_Mem* w_pattern_ptr = plan->w_pattern;
@@ -1090,18 +1063,14 @@ void sdp_gridder_wtower_uvw_grid(
             subgrid_image, w_subgrid_image, w_pattern_ptr, exponent, status
     );
 
-    // Update timer.
-    #pragma omp critical
-    {
-        plan->tmr_process_subgrid_stack[1] += sdp_timer_elapsed(tmr);
-        plan->num_w_planes[1] += num_w_planes;
-    }
+    // Update w-plane counter.
+    #pragma omp atomic
+    plan->num_w_planes[1] += num_w_planes;
 
     sdp_mem_free(w_subgrid_image);
     sdp_mem_free(subgrids);
     sdp_mem_free(fft_buffer);
     sdp_fft_free(fft);
-    sdp_timer_free(tmr);
 }
 
 
@@ -1114,11 +1083,6 @@ void sdp_gridder_wtower_uvw_grid_correct(
         sdp_Error* status
 )
 {
-    const sdp_TimerType tmr_type = (sdp_mem_location(facet) == SDP_MEM_CPU ?
-                SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
     sdp_gridder_grid_correct_pswf(plan->image_size, plan->theta, plan->w_step,
             plan->shear_u, plan->shear_v, plan->support, plan->w_support,
             facet, facet_offset_l, facet_offset_m, status
@@ -1130,9 +1094,6 @@ void sdp_gridder_wtower_uvw_grid_correct(
                 facet, facet_offset_l, facet_offset_m, w_offset, true, status
         );
     }
-    #pragma omp critical
-    plan->tmr_grid_correct[1] += sdp_timer_elapsed(tmr);
-    sdp_timer_free(tmr);
 }
 
 
@@ -1146,24 +1107,6 @@ void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan)
     sdp_mem_free(plan->w_pattern);
     sdp_mem_free(plan->w_pattern_gpu);
     free(plan);
-}
-
-
-double sdp_gridder_wtower_uvw_elapsed_time(
-        const sdp_GridderWtowerUVW* plan,
-        sdp_GridderWtowerUVWTimer timer,
-        int gridding
-)
-{
-    switch (timer)
-    {
-    case SDP_WTOWER_TMR_GRID_CORRECT:
-        return plan->tmr_grid_correct[gridding];
-    case SDP_WTOWER_TMR_PROCESS_SUBGRID_STACK:
-        return plan->tmr_process_subgrid_stack[gridding];
-    default:
-        return 0.0;
-    }
 }
 
 
