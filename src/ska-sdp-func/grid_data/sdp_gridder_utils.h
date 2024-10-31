@@ -248,6 +248,23 @@ void sdp_gridder_make_w_pattern(
 );
 
 /**
+ * @brief Calculates the residual difference between two 2D arrays: (a - b).
+ *
+ * The arrays must be 2D and have the same shape.
+ *
+ * @param a The first input array.
+ * @param b The second input array.
+ * @param out The output array.
+ * @param status Error status.
+ */
+void sdp_gridder_residual(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        sdp_Mem* out,
+        sdp_Error* status
+);
+
+/**
  * @brief Returns the RMS of the difference between two 2D arrays: rms(a - b).
  *
  * The two arrays must be 2D and have the same shape.
