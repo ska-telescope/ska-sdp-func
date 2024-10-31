@@ -426,6 +426,36 @@ void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
 }
 
 
+// Local function to compute the residual difference between 2D arrays, (a - b).
+template<typename TYPE_A, typename TYPE_B>
+void residual(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        sdp_Mem* out,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_MemViewCpu<const TYPE_A, 2> a_;
+    sdp_MemViewCpu<const TYPE_B, 2> b_;
+    sdp_MemViewCpu<TYPE_A, 2> out_;
+    sdp_mem_check_and_view(a, &a_, status);
+    sdp_mem_check_and_view(b, &b_, status);
+    sdp_mem_check_and_view(out, &out_, status);
+    if (*status) return;
+    const int num_x = (int) a_.shape[0];
+    const int num_y = (int) a_.shape[1];
+    #pragma omp parallel for
+    for (int i = 0; i < num_x; ++i)
+    {
+        for (int j = 0; j < num_y; ++j)
+        {
+            out_(i, j) = a_(i, j) - (TYPE_A) b_(i, j);
+        }
+    }
+}
+
+
 // Local function to compute the RMS difference between 2D arrays, rms(a - b).
 template<typename TYPE_A, typename TYPE_B>
 double rms_diff(const sdp_Mem* a, const sdp_Mem* b, sdp_Error* status)
@@ -1346,6 +1376,92 @@ void sdp_gridder_make_w_pattern(
             w_pattern_(il, im) = complex<double>(cos(phase), sin(phase));
         }
     }
+}
+
+
+void sdp_gridder_residual(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        sdp_Mem* out,
+        sdp_Error* status
+)
+{
+    const sdp_Mem* p_a = a;
+    const sdp_Mem* p_b = b;
+    sdp_Mem* temp_a = 0;
+    sdp_Mem* temp_b = 0;
+    if (*status) return;
+    const sdp_MemType t_a = sdp_mem_type(a);
+    const sdp_MemType t_b = sdp_mem_type(b);
+    if (sdp_mem_num_dims(a) != 2 || sdp_mem_num_dims(b) != 2 ||
+            sdp_mem_num_dims(out) != 2)
+    {
+        SDP_LOG_ERROR("All arrays must be 2D");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (sdp_mem_shape_dim(a, 0) != sdp_mem_shape_dim(b, 0) ||
+            sdp_mem_shape_dim(a, 1) != sdp_mem_shape_dim(b, 1) ||
+            sdp_mem_shape_dim(a, 0) != sdp_mem_shape_dim(out, 0) ||
+            sdp_mem_shape_dim(a, 1) != sdp_mem_shape_dim(out, 1))
+    {
+        SDP_LOG_ERROR("All arrays must have the same shape");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (t_a != sdp_mem_type(out))
+    {
+        SDP_LOG_ERROR("Arrays 'a' and 'out' must be of the same type");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (sdp_mem_location(out) != SDP_MEM_CPU)
+    {
+        SDP_LOG_ERROR("Output residual must be in CPU memory");
+        *status = SDP_ERR_MEM_LOCATION;
+        return;
+    }
+    if (sdp_mem_location(a) != SDP_MEM_CPU)
+    {
+        temp_a = sdp_mem_create_copy(a, SDP_MEM_CPU, status);
+        p_a = temp_a;
+    }
+    if (sdp_mem_location(b) != SDP_MEM_CPU)
+    {
+        temp_b = sdp_mem_create_copy(b, SDP_MEM_CPU, status);
+        p_b = temp_b;
+    }
+    if (t_a == SDP_MEM_COMPLEX_DOUBLE && t_b == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        residual<complex<double>, complex<double> >(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_COMPLEX_FLOAT && t_b == SDP_MEM_COMPLEX_FLOAT)
+    {
+        residual<complex<float>, complex<float> >(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_COMPLEX_DOUBLE && t_b == SDP_MEM_COMPLEX_FLOAT)
+    {
+        residual<complex<double>, complex<float> >(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_DOUBLE && t_b == SDP_MEM_DOUBLE)
+    {
+        residual<double, double>(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_FLOAT && t_b == SDP_MEM_FLOAT)
+    {
+        residual<float, float>(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_DOUBLE && t_b == SDP_MEM_FLOAT)
+    {
+        residual<double, float>(p_a, p_b, out, status);
+    }
+    else
+    {
+        SDP_LOG_ERROR("Unsupported data types for residual calculation");
+        *status = SDP_ERR_DATA_TYPE;
+    }
+    sdp_mem_free(temp_a);
+    sdp_mem_free(temp_b);
 }
 
 
