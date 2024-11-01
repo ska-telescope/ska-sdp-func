@@ -372,6 +372,7 @@ void grid(
     const double w_step_ov = 1.0 / w_step * w_oversample;
     const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
 
+    int64_t start_ch = 0, end_ch = 0;
     std::vector<int64_t> valid_indices;
     std::vector<UVW_TYPE> valid_uvw;
     std::vector<VIS_TYPE> valid_vis;
@@ -380,8 +381,8 @@ void grid(
 
     for(int64_t i_row = 0; i_row < num_uvw; ++i_row)
     {
-        int64_t start_ch = start_chs(i_row);
-        int64_t end_ch = end_chs(i_row);
+        start_ch = start_chs(i_row);
+        end_ch = end_chs(i_row);
         
         valid_indices.push_back(i_row);
         valid_start_chs.push_back(start_ch);
@@ -395,11 +396,13 @@ void grid(
     }
     const int64_t valid_count = valid_indices.size();
     const int64_t valid_shape[] = {valid_count};
-    const int64_t valis_uvw_shape[] = {valid_count, 3};
+    const int64_t valid_uvw_shape[] = {valid_count, 3};
+    const sdp_MemType vis_type = sdp_mem_type(vis);
+    const sdp_MemType uvw_type = sdp_mem_type(uvws);
 
     sdp_Mem* valid_vis_mem = sdp_mem_create_wrapper(
         valid_vis.data(),
-        VIS_TYPE,
+        vis_type,
         SDP_MEM_CPU,
         1,
         valid_shape,
@@ -408,7 +411,7 @@ void grid(
     );
     sdp_Mem* valid_uvw_mem = sdp_mem_create_wrapper(
         valid_uvw.data(),
-        UVW_TYPE,
+        uvw_type,
         SDP_MEM_CPU,
         2,
         valid_uvw_shape,
@@ -434,12 +437,10 @@ void grid(
         status
     );
 
-    // Loop over rows. Each row contains visibilities for all channels.
-    for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
+    // Loop over only valid rows. Each row contains visibilities for all channels.
+    for (int64_t i = 0; i < valid_count; ++i)
     {
-        // Skip if there's no visibility to grid.
-        int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
-        if (start_ch >= end_ch) continue;
+        int64_t i_row = valid_indices[i];
 
         // Select only visibilities on this w-plane.
         const UVW_TYPE uvw[] = {
