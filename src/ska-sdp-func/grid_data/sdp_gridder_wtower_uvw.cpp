@@ -1,4 +1,5 @@
 /* See the LICENSE file at the top-level directory of this distribution. */
+// clang-format off
 
 #include <cmath>
 #include <complex>
@@ -370,6 +371,68 @@ void grid(
     const double theta_ov = theta * oversample;
     const double w_step_ov = 1.0 / w_step * w_oversample;
     const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
+
+    std::vector<int64_t> valid_indices;
+    std::vector<UVW_TYPE> valid_uvw;
+    std::vector<VIS_TYPE> valid_vis;
+    std::vector<int> valid_start_chs;
+    std::vector<int> valid_end_chs;
+
+    for(int64_t i_row = 0; i_row < num_uvw; ++i_row)
+    {
+        int64_t start_ch = start_chs(i_row);
+        int64_t end_ch = end_chs(i_row);
+        
+        valid_indices.push_back(i_row);
+        valid_start_chs.push_back(start_ch);
+        valid_end_chs.push_back(end_ch);
+
+        valid_uvw.push_back(uvws_(i_row, 0));
+        valid_uvw.push_back(uvws_(i_row, 1));
+        valid_uvw.push_back(uvws_(i_row, 2));
+        valid_vis.push_back(vis_(i_row));
+
+    }
+    const int64_t valid_count = valid_indices.size();
+    const int64_t valid_shape[] = {valid_count};
+    const int64_t valis_uvw_shape[] = {valid_count, 3};
+
+    sdp_Mem* valid_vis_mem = sdp_mem_create_wrapper(
+        valid_vis.data(),
+        VIS_TYPE,
+        SDP_MEM_CPU,
+        1,
+        valid_shape,
+        nullptr,
+        status
+    );
+    sdp_Mem* valid_uvw_mem = sdp_mem_create_wrapper(
+        valid_uvw.data(),
+        UVW_TYPE,
+        SDP_MEM_CPU,
+        2,
+        valid_uvw_shape,
+        nullptr,
+        status
+    );
+    sdp_Mem* valid_start_chs_mem = sdp_mem_create_wrapper(
+        valid_start_chs.data(),
+        SDP_MEM_INT,
+        SDP_MEM_CPU,
+        1,
+        valid_shape,
+        nullptr,
+        status
+    );
+    sdp_Mem* valid_end_chs_mem = sdp_mem_create_wrapper(
+        valid_end_chs.data(),
+        SDP_MEM_INT,
+        SDP_MEM_CPU,
+        1,
+        valid_shape,
+        nullptr,
+        status
+    );
 
     // Loop over rows. Each row contains visibilities for all channels.
     for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
