@@ -371,76 +371,19 @@ void grid(
     const double theta_ov = theta * oversample;
     const double w_step_ov = 1.0 / w_step * w_oversample;
     const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
+    const double s_uvw0 = freq0_hz / C_0; 
+    const double s_duvw = dfreq_hz / C_0;
 
-    int64_t start_ch = 0, end_ch = 0;
     std::vector<int64_t> valid_indices;
-    std::vector<UVW_TYPE> valid_uvw;
-    std::vector<VIS_TYPE> valid_vis;
     std::vector<int> valid_start_chs;
     std::vector<int> valid_end_chs;
 
     for(int64_t i_row = 0; i_row < num_uvw; ++i_row)
     {
-        start_ch = start_chs(i_row);
-        end_ch = end_chs(i_row);
-        
-        valid_indices.push_back(i_row);
-        valid_start_chs.push_back(start_ch);
-        valid_end_chs.push_back(end_ch);
-
-        valid_uvw.push_back(uvws_(i_row, 0));
-        valid_uvw.push_back(uvws_(i_row, 1));
-        valid_uvw.push_back(uvws_(i_row, 2));
-        valid_vis.push_back(vis_(i_row));
-
-    }
-    const int64_t valid_count = valid_indices.size();
-    const int64_t valid_shape[] = {valid_count};
-    const int64_t valid_uvw_shape[] = {valid_count, 3};
-    const sdp_MemType vis_type = sdp_mem_type(vis);
-    const sdp_MemType uvw_type = sdp_mem_type(uvws);
-
-    sdp_Mem* valid_vis_mem = sdp_mem_create_wrapper(
-        valid_vis.data(),
-        vis_type,
-        SDP_MEM_CPU,
-        1,
-        valid_shape,
-        nullptr,
-        status
-    );
-    sdp_Mem* valid_uvw_mem = sdp_mem_create_wrapper(
-        valid_uvw.data(),
-        uvw_type,
-        SDP_MEM_CPU,
-        2,
-        valid_uvw_shape,
-        nullptr,
-        status
-    );
-    sdp_Mem* valid_start_chs_mem = sdp_mem_create_wrapper(
-        valid_start_chs.data(),
-        SDP_MEM_INT,
-        SDP_MEM_CPU,
-        1,
-        valid_shape,
-        nullptr,
-        status
-    );
-    sdp_Mem* valid_end_chs_mem = sdp_mem_create_wrapper(
-        valid_end_chs.data(),
-        SDP_MEM_INT,
-        SDP_MEM_CPU,
-        1,
-        valid_shape,
-        nullptr,
-        status
-    );
-
-    // Loop over only valid rows. Each row contains visibilities for all channels.
-    for (int64_t i = 0; i < valid_count; ++i)
-    {
-        int64_t i_row = valid_indices[i];
+        // Select valid visibilities
+        int64_t start_ch = start_chs(i_row);
+        int64_t end_ch = end_chs(i_row);
+        if(start_ch >= end_ch) continue;
 
         // Select only visibilities on this w-plane.
         const UVW_TYPE uvw[] = {
@@ -452,9 +395,8 @@ void grid(
                 uvw[2], freq0_hz, dfreq_hz, &start_ch, &end_ch, min_w, max_w
         );
         if (start_ch >= end_ch) continue;
-
+        
         // Scale + shift UVWs.
-        const double s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
         double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
         double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
         uvw0[0] -= subgrid_offset_u / theta;
@@ -471,9 +413,40 @@ void grid(
         {
             continue;
         }
+        
+        valid_indices.push_back(i_row);
+        valid_start_chs.push_back(start_ch);
+        valid_end_chs.push_back(end_ch);
+    }
+    std::vector<UVW_TYPE> valid_uvw;
+    std::vector<VIS_TYPE> valid_vis;
+    const int64_t valid_count = valid_indices.size();
+    valid_uvw.reserve(valid_count * 3);
+    valid_vis.reserve(valid_count * 2);
+
+    for(const auto& i_row: valid_indices)
+    {
+        valid_uvw.push_back(uvws_(i_row, 0));
+        valid_uvw.push_back(uvws_(i_row, 1));
+        valid_uvw.push_back(uvws_(i_row, 2));
+
+        valid_vis.push_back(vis_(i_row, 0));
+        valid_vis.push_back(vis_(i_row, 1));
+    }
+
+#pragma omp parallel for schedule(dynamic, 500)
+    // Loop over only valid rows. Each row contains visibilities for all channels.
+    for (int64_t i = 0; i < valid_count; ++i)
+    {
+        const UVW_TYPE uvw[] = {valid_uvw[3 * i], valid_uvw[3 * i + 1], valid_uvw[3 * i + 2]};
+        double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
+        double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
+        uvw0[0] -= subgrid_offset_u / theta;
+        uvw0[1] -= subgrid_offset_v / theta;
+        uvw0[2] -= ((subgrid_offset_w + w_plane - 1) * w_step);
 
         // Loop over selected channels.
-        for (int64_t c = start_ch; c < end_ch; c++)
+        for (int64_t c = valid_start_chs[i]; c < valid_end_chs[i]; c++)
         {
             const double u = uvw0[0] + c * duvw[0];
             const double v = uvw0[1] + c * duvw[1];
@@ -499,7 +472,7 @@ void grid(
             const int w_off = (iw0_ov % w_oversample) * w_support;
 
             // Grid visibility.
-            const SUBGRID_TYPE local_vis = (SUBGRID_TYPE) vis_(i_row, c);
+            const SUBGRID_TYPE local_vis = (SUBGRID_TYPE) valid_vis[2 * i + c];
             for (int iw = 0; iw < w_support; ++iw)
             {
                 const double kern_w = w_kernel[w_off + iw];
