@@ -11,6 +11,8 @@ __global__ void sdp_gridder_clamp_channels_single(
         const int dim,
         const double freq0_hz,
         const double dfreq_hz,
+        const int64_t start_row,
+        const int64_t end_row,
         sdp_MemViewGpu<const int, 1> start_ch_in,
         sdp_MemViewGpu<const int, 1> end_ch_in,
         const double min_u,
@@ -19,9 +21,9 @@ __global__ void sdp_gridder_clamp_channels_single(
         sdp_MemViewGpu<int, 1> end_ch_out
 )
 {
-    const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    const int64_t i = blockDim.x * blockIdx.x + threadIdx.x + start_row;
     const int64_t num_uvw = uvws.shape[0];
-    if (i >= num_uvw) return;
+    if (i >= end_row || i >= num_uvw) return;
     const double u0 = uvws(i, dim) * (freq0_hz / C_0);
     const double du = uvws(i, dim) * (dfreq_hz / C_0);
     const double rel_min_u = fabs(min_u - u0);
@@ -56,6 +58,8 @@ __global__ void sdp_gridder_clamp_channels_uv(
         sdp_MemViewGpu<const UVW_TYPE, 2> uvws,
         const double freq0_hz,
         const double dfreq_hz,
+        const int64_t start_row,
+        const int64_t end_row,
         sdp_MemViewGpu<const int, 1> start_ch_in,
         sdp_MemViewGpu<const int, 1> end_ch_in,
         const double min_u,
@@ -66,9 +70,9 @@ __global__ void sdp_gridder_clamp_channels_uv(
         sdp_MemViewGpu<int, 1> end_ch_out
 )
 {
-    const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    const int64_t i = blockDim.x * blockIdx.x + threadIdx.x + start_row;
     const int64_t num_uvw = uvws.shape[0];
-    if (i >= num_uvw) return;
+    if (i >= end_row || i >= num_uvw) return;
     const double u0 = uvws(i, 0) * (freq0_hz / C_0);
     const double du = uvws(i, 0) * (dfreq_hz / C_0);
     const double rel_min_u = fabs(min_u - u0);

@@ -254,19 +254,20 @@ template<typename T, int BLOCK_SIZE>
 __global__ void sdp_gridder_sum_diff(
         sdp_MemViewGpu<const T, 1> a,
         sdp_MemViewGpu<const T, 1> b,
+        int64_t start_row,
+        int64_t end_row,
         T* result
 )
 {
     extern __shared__ T smem[];
-    const int64_t n = MIN(a.shape[0], b.shape[0]);
     const int thread_id = threadIdx.x;
     const int64_t grid_size = BLOCK_SIZE * 2 * gridDim.x;
-    int64_t i = blockIdx.x * (BLOCK_SIZE * 2) + thread_id;
+    int64_t i = blockIdx.x * (BLOCK_SIZE * 2) + thread_id + start_row;
     smem[thread_id] = (T) 0;
-    while (i < n)
+    while (i < end_row)
     {
         smem[thread_id] += a(i) - b(i);
-        if (i + BLOCK_SIZE < n)
+        if (i + BLOCK_SIZE < end_row)
         {
             smem[thread_id] += a(i + BLOCK_SIZE) - b(i + BLOCK_SIZE);
         }

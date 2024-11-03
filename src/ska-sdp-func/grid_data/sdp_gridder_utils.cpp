@@ -653,6 +653,8 @@ void sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
         int64_t* result,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
@@ -667,9 +669,8 @@ void sum_diff(
         return;
     }
     int64_t res = 0;
-    const int num = (int) a_.shape[0];
     #pragma omp parallel for reduction(+:res)
-    for (int i = 0; i < num; ++i)
+    for (int64_t i = start_row; i < end_row; ++i)
     {
         res += (a_(i) - b_(i));
     }
@@ -1919,17 +1920,24 @@ void sdp_gridder_sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
         int64_t* result,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
     if (*status) return;
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(a, 0);
+    }
     const sdp_MemLocation loc = sdp_mem_location(a);
     *result = 0;
     if (loc == SDP_MEM_CPU)
     {
         if (sdp_mem_type(a) == SDP_MEM_INT && sdp_mem_type(b) == SDP_MEM_INT)
         {
-            sum_diff(a, b, result, status);
+            sum_diff(a, b, result, start_row, end_row, status);
         }
         else
         {
@@ -1962,6 +1970,8 @@ void sdp_gridder_sum_diff(
         const void* arg[] = {
             (const void*)&a_int,
             (const void*)&b_int,
+            (const void*)&start_row,
+            (const void*)&end_row,
             sdp_mem_gpu_buffer(result_gpu, status)
         };
         uint64_t shared_mem_bytes = num_threads[0] * sizeof(int);
