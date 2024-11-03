@@ -407,7 +407,7 @@ void grid_opt(
     packed_data.duvw.reserve(est_size * 4);
     
     int64_t valid_count = 0;
-    #pragma omp parallel
+    #pragma omp parallel proc_bind(close)
     {
         // Thread-local storage
         PackedData thread_data;
@@ -599,7 +599,7 @@ void grid_opt(
                             // Load kernel values for 4 v points at once
                             for(int iv = 0; iv < support; iv += 4)
                             {
-                                // Prefetch next kernel values
+                                // Prefetch next kernel values to L1
                                 // Prefetch 16 elements ahead or 4 vectors
                                 if(iv + 16 < support)
                                 {
@@ -631,7 +631,7 @@ void grid_opt(
                             }
                         }
 
-                        // Prefetch next w kernel values
+                        // Prefetch next w kernel values to L1
                         if(iw + 1 < w_support)
                         {
                             _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
