@@ -480,40 +480,64 @@ void grid_opt(
         // Merge thread data into global storage
         #pragma omp critical
         {
-            // TODO: check the performance vs std::memcpy
-            packed_data.u_coords.insert(packed_data.u_coords.end(),
-                                        thread_data.u_coords.begin(),
-                                        thread_data.u_coords.end()
-                                        );
-            packed_data.v_coords.insert(packed_data.v_coords.end(),
-                                        thread_data.v_coords.begin(),
-                                        thread_data.v_coords.end()
-                                        );
-            packed_data.w_coords.insert(packed_data.w_coords.end(),
-                                        thread_data.w_coords.begin(),
-                                        thread_data.w_coords.end()
-                                        );
-            packed_data.start_channels.insert(packed_data.start_channels.end(),
-                                              thread_data.start_channels.begin(),
-                                              thread_data.start_channels.end()
-                                              );
-            packed_data.end_channels.insert(packed_data.end_channels.end(),
-                                            thread_data.end_channels.begin(),
-                                            thread_data.end_channels.end()
-                                            );
-            packed_data.uvw0.insert(packed_data.uvw0.end(),
-                                    thread_data.uvw0.begin(),
-                                    thread_data.uvw0.end()
-                                    );
-            packed_data.duvw.insert(packed_data.duvw.end(),
-                                    thread_data.duvw.begin(),
-                                    thread_data.duvw.end()
-                                    );
-            packed_data.vis_data.insert(packed_data.vis_data.end(),
-                                        thread_data.vis_data.begin(),
-                                        thread_data.vis_data.end()
-                                        );
-            valid_count = packed_data.u_coords.size();
+            try
+            {
+                const size_t offset = packed_data.u_coords.size();
+                const size_t thread_size = thread_data.u_coords.size();
+                const size_t new_size = offset + thread_size;
+                
+                packed_data.u_coords.resize(new_size);
+                packed_data.v_coords.resize(new_size);
+                packed_data.w_coords.resize(new_size);
+                packed_data.vis_data.resize(new_size * 2);
+                packed_data.start_channels.resize(new_size);
+                packed_data.end_channels.resize(new_size);
+                packed_data.uvw0.resize(new_size * 3);
+                packed_data.duvw.resize(new_size * 3);
+
+                std::memcpy(packed_data.u_coords.data() + offset,
+                            thread_data.u_coords.data(),
+                            thread_size * sizeof(UVW_TYPE)
+                            );
+                std::memcpy(packed_data.v_coords.data() + offset,
+                            thread_data.v_coords.data(),
+                            thread_size * sizeof(UVW_TYPE)
+                            );
+                std::memcpy(packed_data.w_coords.data() + offset,
+                            thread_data.w_coords.data(),
+                            thread_size * sizeof(UVW_TYPE)
+                            );
+                std::memcpy(packed_data.vis_data.data() + offset * 2,
+                            thread_data.vis_data.data(),
+                            thread_size * 2 * sizeof(VIS_TYPE)
+                            );
+                std::memcpy(packed_data.start_channels.data() + offset,
+                            thread_data.start_channels.data(),
+                            thread_size * sizeof(int32_t)
+                            );
+                std::memcpy(packed_data.end_channels.data() + offset,
+                            thread_data.end_channels.data(),
+                            thread_size * sizeof(int32_t)
+                            );
+                std::memcpy(packed_data.uvw0.data() + offset * 3,
+                            thread_data.uvw0.data(),
+                            thread_size * 3 * sizeof(double)
+                            );
+                std::memcpy(packed_data.duvw.data() + offset * 3,
+                            thread_data.duvw.data(),
+                            thread_size * 3 * sizeof(double)
+                            );
+                valid_count = new_size;
+            }
+            catch(const std::bad_alloc&)
+            {
+                *status = SDP_ERR_MEM_ALLOC_FAILURE;
+            }
+            catch(const std::exception&)
+            {
+                *status = SDP_ERROR_RUNTIME;
+            }
+        
         }
 
     }
