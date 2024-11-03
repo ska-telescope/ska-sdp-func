@@ -88,6 +88,8 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
  * @param start_chs ``int[uvw_count]`` First channel to degrid for every uvw.
  * @param end_chs ``int[uvw_count]`` Channel at which to stop degridding for every uvw.
  * @param vis ``complex[uvw_count, ch_count]`` Output degridded visibilities.
+ * @param start_row Row (uvw index) at which to start processing data.
+ * @param end_row Row (uvw index) at which to stop processing data (exclusive).
  * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_degrid(
@@ -102,6 +104,8 @@ void sdp_gridder_wtower_uvw_degrid(
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
         sdp_Mem* vis,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 );
 
@@ -142,6 +146,8 @@ void sdp_gridder_wtower_uvw_degrid_correct(
  * @param subgrid_offset_u Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_v Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
+ * @param start_row Row (uvw index) at which to start processing data.
+ * @param end_row Row (uvw index) at which to stop processing data (exclusive).
  * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_grid(
@@ -156,6 +162,8 @@ void sdp_gridder_wtower_uvw_grid(
         int subgrid_offset_u,
         int subgrid_offset_v,
         int subgrid_offset_w,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 );
 

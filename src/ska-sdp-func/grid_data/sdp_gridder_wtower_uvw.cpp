@@ -51,6 +51,8 @@ void degrid(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
@@ -69,7 +71,6 @@ void degrid(
             (const double*) sdp_mem_data_const(plan->uv_kernel);
     const double* RESTRICT w_kernel =
             (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_uvw = uvws_.shape[0];
     const int half_subgrid = plan->subgrid_size / 2;
     const int oversample = plan->oversampling;
     const int w_oversample = plan->w_oversampling;
@@ -83,7 +84,7 @@ void degrid(
 
     // Loop over rows. Each row contains visibilities for all channels.
     #pragma omp parallel for schedule(dynamic, 500)
-    for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
+    for (int64_t i_row = start_row; i_row < end_row; ++i_row)
     {
         // Skip if there's no visibility to degrid.
         int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
@@ -176,6 +177,8 @@ void degrid_cpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -193,7 +196,8 @@ void degrid_cpu(
     {
         degrid<complex<double>, double, complex<double> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -202,7 +206,8 @@ void degrid_cpu(
     {
         degrid<complex<float>, double, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -211,7 +216,8 @@ void degrid_cpu(
     {
         degrid<complex<float>, float, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else
@@ -237,6 +243,8 @@ void degrid_gpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -308,6 +316,8 @@ void degrid_gpu(
         &subgrid_offset_w,
         (const void*) &freq0_hz,
         (const void*) &dfreq_hz,
+        (const void*) &start_row,
+        (const void*) &end_row,
         is_dbl_uvw ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
         (const void*) &start_chs_,
         (const void*) &end_chs_,
@@ -340,6 +350,8 @@ void grid(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
@@ -358,7 +370,6 @@ void grid(
             (const double*) sdp_mem_data_const(plan->uv_kernel);
     const double* RESTRICT w_kernel =
             (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_uvw = uvws_.shape[0];
     const int half_subgrid = plan->subgrid_size / 2;
     const int oversample = plan->oversampling;
     const int w_oversample = plan->w_oversampling;
@@ -371,7 +382,7 @@ void grid(
     const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
 
     // Loop over rows. Each row contains visibilities for all channels.
-    for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
+    for (int64_t i_row = start_row; i_row < end_row; ++i_row)
     {
         // Skip if there's no visibility to grid.
         int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
@@ -467,6 +478,8 @@ void grid_cpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -484,7 +497,8 @@ void grid_cpu(
     {
         grid<complex<double>, double, complex<double> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -493,7 +507,8 @@ void grid_cpu(
     {
         grid<complex<float>, double, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -502,7 +517,8 @@ void grid_cpu(
     {
         grid<complex<float>, float, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else
@@ -528,6 +544,8 @@ void grid_gpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -599,6 +617,8 @@ void grid_gpu(
         &subgrid_offset_w,
         (const void*) &freq0_hz,
         (const void*) &dfreq_hz,
+        (const void*) &start_row,
+        (const void*) &end_row,
         is_dbl_uvw ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
         (const void*) &start_chs_,
         (const void*) &end_chs_,
@@ -700,6 +720,8 @@ void sdp_gridder_wtower_uvw_degrid(
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
         sdp_Mem* vis,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
@@ -714,6 +736,11 @@ void sdp_gridder_wtower_uvw_degrid(
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
+    }
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(uvws, 0);
     }
 
     // Copy internal arrays to GPU memory as required.
@@ -843,7 +870,7 @@ void sdp_gridder_wtower_uvw_degrid(
             degrid_cpu(
                     plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
         else if (loc == SDP_MEM_GPU)
@@ -851,7 +878,7 @@ void sdp_gridder_wtower_uvw_degrid(
             degrid_gpu(
                     plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
     }
@@ -902,6 +929,8 @@ void sdp_gridder_wtower_uvw_grid(
         int subgrid_offset_u,
         int subgrid_offset_v,
         int subgrid_offset_w,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
@@ -916,6 +945,11 @@ void sdp_gridder_wtower_uvw_grid(
         *status = SDP_ERR_MEM_LOCATION;
         SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
+    }
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(uvws, 0);
     }
 
     // Copy internal arrays to GPU memory as required.
@@ -1013,14 +1047,14 @@ void sdp_gridder_wtower_uvw_grid(
         {
             grid_cpu(plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
         else if (loc == SDP_MEM_GPU)
         {
             grid_gpu(plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
     }
