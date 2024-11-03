@@ -338,10 +338,11 @@ sdp_Timers* sdp_timers_create(
         int num_threads
 )
 {
-    std::stringstream ss;
-    ss << string(name) << string(", ") << num_threads << string(" thread");
-    if (num_threads > 1) ss << string("s");
-    return new sdp_Timers(ss.str(), type);
+    char buf[20];
+    std::snprintf(buf, 20, "%d", num_threads);
+    string str = string(name) + string(", ") + string(buf) + string(" thread");
+    if (num_threads > 1) str += string("s");
+    return new sdp_Timers(str, type);
 }
 
 
