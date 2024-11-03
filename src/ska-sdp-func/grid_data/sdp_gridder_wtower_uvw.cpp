@@ -4,9 +4,11 @@
 #include <cmath>
 #include <complex>
 #include <cstdlib>
+#include <cstring>
 #include <immintrin.h>
-#include <omp.h>
 #include <xmmintrin.h>
+#include <omp.h>
+#include <vector>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -333,7 +335,7 @@ void degrid_gpu(
     );
 }
 
-// TODO: make explicit SIMD processing an optional cmake flag
+// TODO: make explicit SIMD processing an optional cmake flag ifdef AVX2
 // Local function to do the optimized gridding.
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_opt(
