@@ -4,6 +4,7 @@
 #include <cmath>
 #include <complex>
 #include <cstdlib>
+#include <immintrin.h>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -330,6 +331,7 @@ void degrid_gpu(
     );
 }
 
+// TODO: make explicit SIMD processing an optional cmake flag
 // Local function to do the optimized gridding.
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_opt(
@@ -542,7 +544,85 @@ void grid_opt(
 
     }
 
+    // Gridding in blocks for better cache utilization
+    const int BLOCK_SIZE = 32; // typical size of cach lines
+    const int NUM_BLOCKS = (valid_count * BLOCK_SIZE - 1) / BLOCK_SIZE;
+    
+    #pragma omp parallel
+    {
+        // Pre-allocate SIMD vectors and temporary storage per thread
+        alignas(32) double kern_buffer[support];
+        alignas(32) double vis_buffer[4];
+        __m256d kern_vec, vis_vec;
 
+        #pragma omp for schedule(dynamic)
+        for(int block = 0; block < NUM_BLOCKS; block++)
+        {
+            const int block_start = block * BLOCK_SIZE;
+            const int block_end = std::min((block + 1) * BLOCK_SIZE, 
+                                           (int)valid_count
+                                           );
+
+            for(int idx = block_start; idx < block_end; idx++)
+            {
+                const int start_ch = packed_data.start_channels[idx];
+                const int end_ch = packed_data.end_channels[idx];
+                
+                const double* uvw0 = &packed_data.uvw0[idx * 3];
+                const double* duvw = &packed_data.duvw[idx * 3];
+
+                for(int c  = start_ch; c < end_ch; c++)
+                {
+                    const double u = uvw0[0] + c * duvw[0];
+                    const double v = uvw0[1] + c * duvw[1];
+                    const double w = uvw0[2] + c * duvw[2];
+
+                    const int iu0_ov = int(round(u * theta_ov)) + half_sg_size_ov;
+                    const int iv0_ov = int(round(v * theta_ov)) + half_sg_size_ov;
+                    const int iw0_ov = int(round(w * w_step_ov));
+                    const int iu0 = iu0_ov / oversample;
+                    const int iv0 = iv0_ov / oversample;
+
+                    const int u_off = (iu0_ov % oversample) * support;
+                    const int v_off = (iv0_ov % oversample) * support;
+                    const int w_off = (iw0_ov % w_oversample) * w_support;
+
+                    const VIS_TYPE vis_valid = packed_data.vis_data[idx * 2 + c];
+
+                    // Vectorized gridding
+                    for(int iw = 0; iw < w_support; iw++)
+                    {
+                        const double kern_w = w_kernel[w_off + iw];
+                        for(int iu = 0; iu < support; iu++)
+                        {
+                            const double kern_wu = kern_w * uv_kernel[u_off + iu];
+                            const int ix_u = iu0 + iu;
+                            // Load kernel values for 4 v points at once
+                            for(int iv = 0; iv < support; iv += 4)
+                            {
+                                __m256d kernel_vec = _mm256_loadu_pd(
+                                                    &uv_kernel[v_off + iv]);
+                                __m256d kernel_wuv = _mm256_mul_pd(
+                                                    _mm256_set1_pd(kern_wu), 
+                                                    kernel_vec);
+
+                                _mm256_store_pd(kernel_buffer, kernel_wuv);
+
+                                // grid 4 points at once
+                                #pragma omp simd
+                                for(int k = 0; k < 4 && (iv + k) < support; k++)
+                                {
+                                    const int ix_v = iv0 + iv + k;
+                                    subgrids_(iw, ix_u, ix_v) +=
+                                        ((SUBGRID_TYPE)kernel_buffer[k] * vis_valid);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // Local function to do the gridding.
