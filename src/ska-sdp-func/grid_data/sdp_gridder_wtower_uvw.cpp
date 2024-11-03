@@ -330,6 +330,157 @@ void degrid_gpu(
     );
 }
 
+// Local function to do the optimized gridding.
+template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
+void grid_opt(
+        const sdp_GridderWtowerUVW* plan,
+        sdp_Mem* subgrids,
+        int w_plane,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double freq0_hz,
+        double dfreq_hz,
+        const sdp_Mem* uvws,
+        const sdp_MemViewCpu<const int, 1>& start_chs,
+        const sdp_MemViewCpu<const int, 1>& end_chs,
+        const sdp_Mem* vis,
+        sdp_Error* status
+) {
+    if (*status) return;
+
+    sdp_MemViewCpu<SUBGRID_TYPE, 3> subgrids_;
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<const VIS_TYPE, 2> vis_;
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(vis, &vis_, status);
+
+    const double* RESTRICT uv_kernel = 
+        (const double*) sdp_mem_data_const(plan->uv_kernel);
+    const double* RESTRICT w_kernel =
+            (const double*) sdp_mem_data_const(plan->w_kernel);
+    const int64_t num_uvw = uvws_.shape[0];
+    const int half_subgrid = plan->subgrid_size / 2;
+    const int oversample = plan->oversampling;
+    const int w_oversample = plan->w_oversampling;
+    const int support = plan->support;
+    const int w_support = plan->w_support;
+    const double theta = plan->theta;
+    const double w_step = plan->w_step;
+    const double theta_ov = theta * oversample;
+    const double w_step_ov = 1.0 / w_step * w_oversample;
+    const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
+    
+    // Scaling factors
+    const double s_uvw0 = freq0_hz / C_0; 
+    const double s_duvw = dfreq_hz / C_0;
+    
+    // Strcuture for packed data using SoA layout
+    struct alignas(64) PackedData {
+        std::vector<UVW_TYPE> u_coords;
+        std::vector<UVW_TYPE> v_coords;
+        std::vector<UVW_TYPE> w_coords;
+        std::vector<VIS_TYPE> vis_data;
+        std::vector<int32_t> start_channels;
+        std::vector<int32_t> end_channels;
+        std::vector<double> uvw0;
+        std::vector<double> duvw;
+    };
+
+    PackedData packed_data;
+    // Estimated initial padded size to prevent multiple reallocations
+    const int64_t est_size = num_uvw * 2;
+
+    // Pre-allocate vectors with alignment for the first pass of data
+    packed_data.u_coords.reserve(est_size);
+    packed_data.v_coords.reserve(est_size);
+    packed_data.w_coords.reserve(est_size);
+    packed_data.vis_data.reserve(est_size);
+    packed_data.start_channels.reserve(est_size);
+    packed_data.end_channels.reserve(est_size);
+    packed_data.uvw0.reserve(est_size * 3);
+    packed_data.duvw.reserve(est_size * 4);
+    
+    int64_t valid_count = 0;
+    #pragma omp parallel
+    {
+        // Thread-local storage
+        PackedData thread_data;
+        const int num_threads = omp_get_num_threads();
+        thread_data.u_coords.reserve(num_uvw / num_threads);
+        thread_data.v_coords.reserve(num_uvw / num_threads);
+        thread_data.w_coords.reserve(num_uvw / num_threads);
+        thread_data.vis_data.reserve(num_uvw / num_threads);
+        thread_data.start_channels.reserve(num_uvw / num_threads);
+        thread_data.end_channels.reserve(num_uvw / num_threads);
+        thread_data.uvw0.reserve(num_uvw * 3 / num_threads);
+        thread_data.duvw.reserve(num_uvw * 3 / num_threads);
+
+        #pragam omp for
+        for(int64_t i_row = 0; i_row < num_uvw; ++i_row) 
+        {
+            int64_t start_ch = start_chs(i_row);
+            int64_t end_ch = end_chs(i_row);
+            if(start_ch >= end_ch) continue;
+
+            const UVW_TYPE uvw[] = {
+                uvws_(i_row, 0);
+                uvws_(i_row, 1);
+                uvws_(i_row, 2);
+            };
+            
+            const double min_w = (w_plane + subgrid_offset_w - 1) * w_step;
+            const double max_w = (w_plane + subgrid_offset_w) * w_step;
+            sdp_gridder_clamp_channels_inline(
+                uvw[2], freq0_hz, dfreq_hz, &start_ch, &end_ch, min_w, max_w
+            );
+            if(start_ch >= end_ch) continue;
+
+            double uvw0[] = {
+                uvw[0] * s_uvw0 - subgrid_offset_u / theta,
+                uvw[0] * s_uvw0 - subgrid_offset_v / theta,
+                uvw[0] * s_uvw0 - ((subgrid_offset_w + w_plane - 1) * w_step)
+            };
+            double duvw[] = {
+                uvw[0] * s_duvw,
+                uvw[1] * s_duvw,
+                uvw[2] * s_duvw
+            };
+            
+            const double u_min = floor(theta * (uvw0[0] + start_ch * duvw[0]));
+            const double u_max = ceil(theta * (uvw0[0] + (end_ch - 1) * duvw[0]));
+            const double v_min = floor(theta * (uvw0[1] + start_ch * duvw[1]));
+            const double v_max = ceil(theta * (uvw0[1] + (end_ch - 1) * duvw[1]));
+            if(u_min < -half_subgrid || u_max >= half_subgrid 
+                v_min < -half_subgrid || v_max >= half_subgrid)
+            {
+                continue;
+            }
+
+            // Store selected data in thread-local storage
+            thread_data.u_coords.push_back(uvw[0]);
+            thread_data.v_coords.push_back(uvw[1]);
+            thread_data.w_coords.push_back(uvw[2]);
+
+            thread_data.start_channels.push_back(start_ch);
+            thread_data.end_channels.push_back(end_ch);
+            
+            thread_data.uvw0.push_back(uvw0[0]);
+            thread_data.uvw0.push_back(uvw0[1]);
+            thread_data.uvw0.push_back(uvw0[2]);
+            thread_data.duvw.push_back(duvw[0]);
+            thread_data.duvw.push_back(duvw[1]);
+            thread_data.duvw.push_back(duvw[2]);
+
+            thread_data.vis_data.push_back(vis_(i_row, 0));
+            thread_data.vis_data.push_back(vis_(i_row, 1));
+        }
+
+    }
+
+
+}
 
 // Local function to do the gridding.
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
@@ -494,7 +645,7 @@ void grid(
 
             const int vis_idx = info.vis_offset + (c - info.start_ch);
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE) valid_vis[vis_idx];
-            //
+            
             // Grid visibility.
             for (int iw = 0; iw < w_support; ++iw)
             {
