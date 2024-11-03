@@ -477,6 +477,45 @@ void grid_opt(
             thread_data.vis_data.push_back(vis_(i_row, 1));
         }
 
+        // Merge thread data into global storage
+        #pragma omp critical
+        {
+            // TODO: check the performance vs std::memcpy
+            packed_data.u_coords.insert(packed_data.u_coords.end(),
+                                        thread_data.u_coords.begin(),
+                                        thread_data.u_coords.end()
+                                        );
+            packed_data.v_coords.insert(packed_data.v_coords.end(),
+                                        thread_data.v_coords.begin(),
+                                        thread_data.v_coords.end()
+                                        );
+            packed_data.w_coords.insert(packed_data.w_coords.end(),
+                                        thread_data.w_coords.begin(),
+                                        thread_data.w_coords.end()
+                                        );
+            packed_data.start_channels.insert(packed_data.start_channels.end(),
+                                              thread_data.start_channels.begin(),
+                                              thread_data.start_channels.end()
+                                              );
+            packed_data.end_channels.insert(packed_data.end_channels.end(),
+                                            thread_data.end_channels.begin(),
+                                            thread_data.end_channels.end()
+                                            );
+            packed_data.uvw0.insert(packed_data.uvw0.end(),
+                                    thread_data.uvw0.begin(),
+                                    thread_data.uvw0.end()
+                                    );
+            packed_data.duvw.insert(packed_data.duvw.end(),
+                                    thread_data.duvw.begin(),
+                                    thread_data.duvw.end()
+                                    );
+            packed_data.vis_data.insert(packed_data.vis_data.end(),
+                                        thread_data.vis_data.begin(),
+                                        thread_data.vis_data.end()
+                                        );
+            valid_count = packed_data.u_coords.size();
+        }
+
     }
 
 
