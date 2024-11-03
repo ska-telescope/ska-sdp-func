@@ -4,7 +4,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <map>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "ska-sdp-func/utility/sdp_logging.h"
 #include "ska-sdp-func/utility/sdp_timer.h"
@@ -173,39 +176,13 @@ void sdp_timer_start(sdp_Timer* timer)
 }
 
 
-// sdp_Timers (timer hierarchy) method implementations.
-
-
-sdp_Timers::TimerNode::~TimerNode()
-{
-    for (size_t i = 0; i < tmr_.size(); ++i)
-    {
-        sdp_timer_free(tmr_[i]);
-    }
-}
-
-
-double sdp_Timers::TimerNode::get_max_time(const TimerNode* node)
-{
-    vector<double> time(node->tmr_.size());
-    for (size_t i = 0; i < time.size(); ++i)
-    {
-        time[i] = node->tmr_[i] ? sdp_timer_elapsed(node->tmr_[i]) : 0;
-    }
-    return *(std::max_element(time.begin(), time.end()));
-}
-
-
-int sdp_Timers::TimerNode::cmp_fn(const PairType& a, const PairType& b)
-{
-    return a.second > b.second;
-}
+// sdp_TimerNode implementation.
 
 
 #define WRITE_LINE(TXT, TIME) \
     sdp_log_message(SDP_LOG_LEVEL_INFO, stdout, func, file, line, \
         "| %s%c %-22s: %.3f sec (%.1f%%)", \
-        space.c_str(), symbol, TXT, TIME, 100 * TIME / total \
+        space.c_str(), symbol, TXT, TIME, 100 * (TIME) / total \
     )
 
 #define WRITE_TIME(TXT, TIME) \
@@ -214,146 +191,237 @@ int sdp_Timers::TimerNode::cmp_fn(const PairType& a, const PairType& b)
     )
 
 
-void sdp_Timers::TimerNode::report(
-        const string& root_name,
-        int depth,
-        const char* func,
-        const char* file,
-        int line
-) const
+struct sdp_TimerNode
 {
-    const double total = get_max_time(this);
-    const char symbols[] = {'+', '-', '*'};
-    const char symbol = symbols[depth % 3];
-    string space;
-    if (depth == 0) WRITE_TIME(root_name.c_str(), total);
-    vector<PairType> child_data;
-    for (MapType::const_iterator it = child_.cbegin();
-            it != child_.cend(); ++it)
+    typedef std::map<string, sdp_TimerNode> MapType;
+    typedef std::pair<MapType::const_iterator, double> PairType;
+    sdp_TimerNode* parent;
+    vector<sdp_Timer*> tmr;
+    MapType child;
+
+    // Creates a timer node.
+    sdp_TimerNode(sdp_TimerNode* parent = 0) : parent(parent)
     {
-        child_data.push_back(std::make_pair(it, get_max_time(&(it->second))));
     }
-    if (child_data.size() > 0)
+
+    // Destroys a timer node.
+    ~sdp_TimerNode()
     {
-        std::sort(child_data.begin(), child_data.end(), cmp_fn);
-    }
-    double sum = 0;
-    space = string((depth + 1) * 2, ' ');
-    for (size_t i = 0; i < child_data.size(); ++i)
-    {
-        const string& tm_name = child_data[i].first->first;
-        const TimerNode& node = child_data[i].first->second;
-        const double elapsed  = child_data[i].second;
-        WRITE_LINE(tm_name.c_str(), elapsed);
-        sum += elapsed;
-        if (node.tmr_.size() > 1)
+        for (size_t i = 0; i < tmr.size(); ++i)
         {
-            const int num = (int) node.tmr_.size(), quart = num / 4;
-            vector<double> time(num);
-            for (int i = 0; i < num; ++i)
+            sdp_timer_free(tmr[i]);
+        }
+    }
+
+    // Internal function used to sort elapsed times for the report.
+    static int cmp_fn(const PairType& a, const PairType& b)
+    {
+        return a.second > b.second;
+    }
+
+    // Internal function to return a timer node pointer for the named timer.
+    static sdp_TimerNode* get(const string& name, sdp_TimerNode* parent)
+    {
+        sdp_TimerNode::MapType::iterator it = parent->child.find(name);
+        if (it == parent->child.end())
+        {
+            it = parent->child.insert(
+                    std::make_pair(name, sdp_TimerNode(parent))
+            ).first;
+        }
+        return &(it->second);
+    }
+
+    // Get the maximum elapsed time from the set of timers in the node.
+    static double get_max_time(const sdp_TimerNode* node)
+    {
+        vector<double> time(node->tmr.size());
+        for (size_t i = 0; i < time.size(); ++i)
+        {
+            time[i] = node->tmr[i] ? sdp_timer_elapsed(node->tmr[i]) : 0;
+        }
+        return *(std::max_element(time.begin(), time.end()));
+    }
+
+    // Print a timing report for this node and its child nodes.
+    void report(
+            const string& root_name,
+            int depth,
+            const char* func,
+            const char* file,
+            int line
+    ) const
+    {
+        const double total = get_max_time(this);
+        const char symbols[] = {'+', '-', '*'};
+        const char symbol = symbols[depth % 3];
+        string space;
+        if (depth == 0) WRITE_TIME(root_name.c_str(), total);
+        vector<PairType> child_data;
+        for (MapType::const_iterator it = child.cbegin();
+                it != child.cend(); ++it)
+        {
+            child_data.push_back(
+                    std::make_pair(it, get_max_time(&(it->second)))
+            );
+        }
+        if (child_data.size() > 0)
+        {
+            std::sort(child_data.begin(), child_data.end(), cmp_fn);
+        }
+        double sum = 0;
+        space = string((depth + 1) * 2, ' ');
+        for (size_t i = 0; i < child_data.size(); ++i)
+        {
+            const string& tm_name = child_data[i].first->first;
+            const sdp_TimerNode& node = child_data[i].first->second;
+            const double elapsed  = child_data[i].second;
+            WRITE_LINE(tm_name.c_str(), elapsed);
+            sum += elapsed;
+            if (node.tmr.size() > 1)
             {
-                time[i] = node.tmr_[i] ? sdp_timer_elapsed(node.tmr_[i]) : 0;
+                const int num = (int) node.tmr.size(), quart = num / 4;
+                vector<double> time(num);
+                for (int i = 0; i < num; ++i)
+                {
+                    time[i] = node.tmr[i] ? sdp_timer_elapsed(node.tmr[i]) : 0;
+                }
+                std::sort(time.begin(), time.end());
+                const string space = string((depth + 2) * 2, ' ');
+                const char symbol = '>';
+                WRITE_LINE("Minimum", time[0]);
+                WRITE_LINE("Maximum", time[num - 1]);
+                WRITE_LINE("Median",  time[num / 2]);
+                WRITE_TIME("Interquartile range",
+                        (time[3 * quart] - time[quart])
+                );
             }
-            std::sort(time.begin(), time.end());
-            const string space = string((depth + 2) * 2, ' ');
-            const char symbol = '>';
-            WRITE_LINE("Minimum", time[0]);
-            WRITE_LINE("Maximum", time[num - 1]);
-            WRITE_LINE("Median",  time[num / 2]);
-            WRITE_TIME("Interquartile range", (time[3 * quart] - time[quart]));
+            if (node.child.size() > 0)
+            {
+                node.report(root_name, depth + 1, func, file, line);
+            }
         }
-        if (node.child_.size() > 0)
-        {
-            node.report(root_name, depth + 1, func, file, line);
-        }
+        if (sum < 0.99 * total) WRITE_LINE("(unaccounted time)", total - sum);
     }
-    if (sum < 0.99 * total) WRITE_LINE("(unaccounted time)", (total - sum));
-}
+};
 
 
-sdp_Timers::sdp_Timers(const string& name, sdp_TimerType type, int num_threads)
-    : name_(name), type_(type), num_threads_(num_threads), root_(), current_(0)
+// sdp_Timers implementation.
+
+
+struct sdp_Timers
 {
-    current_ = &root_;
-    root_.tmr_.resize(1);
-    root_.tmr_[0] = sdp_timer_create(type_);
-    sdp_timer_resume(root_.tmr_[0]);
-}
+    string name;
+    sdp_TimerType type;
+    sdp_TimerNode* root_node;
+    sdp_TimerNode* current_node;
+
+    sdp_Timers(const string& name, sdp_TimerType type) :
+        name(name), type(type), root_node(0), current_node(0)
+    {
+        current_node = root_node = new sdp_TimerNode;
+        root_node->tmr.resize(1);
+        root_node->tmr[0] = sdp_timer_create(type);
+        sdp_timer_resume(root_node->tmr[0]);
+    }
+
+    ~sdp_Timers()
+    {
+        delete root_node;
+    }
+};
 
 
-sdp_Timers::TimerNode* sdp_Timers::create_timers(
-        const string& name,
-        int num,
-        TimerNode* parent
+sdp_Timers* sdp_timers_create(
+        const char* name,
+        sdp_TimerType type,
+        int num_threads
 )
 {
-    TimerNode* node = timer_node(name, parent ? parent : current_);
-    if (node->tmr_.size() == 0) node->tmr_.resize(num, NULL);
+    std::stringstream ss;
+    ss << string(name) << string(", ") << num_threads << string(" thread");
+    if (num_threads > 1) ss << string("s");
+    return new sdp_Timers(ss.str(), type);
+}
+
+
+void sdp_timers_free(sdp_Timers* timers)
+{
+    delete timers;
+}
+
+
+sdp_TimerNode* sdp_timers_create_set(
+        sdp_Timers* timers,
+        const char* name,
+        int num,
+        sdp_TimerNode* parent
+)
+{
+    sdp_TimerNode* node = sdp_TimerNode::get(
+            name, parent ? parent : timers->current_node
+    );
+    if (node->tmr.size() == 0) node->tmr.resize(num, NULL);
     return node;
 }
 
 
-sdp_Timers::TimerNode* sdp_Timers::pop(int idx, TimerNode* timer)
+sdp_TimerNode* sdp_timers_pop(
+        sdp_Timers* timers,
+        int idx,
+        sdp_TimerNode* timer
+)
 {
-    TimerNode* node = timer ? timer : current_;
-    if (node == &root_) return timer ? node : NULL;
-    sdp_timer_pause(node->tmr_[idx]);
-    if (!timer) current_ = node->parent_;
-    return timer ? node->parent_ : NULL;
+    sdp_TimerNode* node = timer ? timer : timers->current_node;
+    if (node == timers->root_node) return timer ? node : NULL;
+    sdp_timer_pause(node->tmr[idx]);
+    if (!timer) timers->current_node = node->parent;
+    return timer ? node->parent : NULL;
 }
 
 
-sdp_Timers::TimerNode* sdp_Timers::pop_push(
-        const string& name,
+sdp_TimerNode* sdp_timers_pop_push(
+        sdp_Timers* timers,
+        const char* name,
         int idx,
-        TimerNode* timer
+        sdp_TimerNode* timer
 )
 {
-    return push(name, idx, pop(idx, timer));
+    sdp_TimerNode* node = sdp_timers_pop(timers, idx, timer);
+    return sdp_timers_push(timers, name, idx, node);
 }
 
 
-sdp_Timers::TimerNode* sdp_Timers::push(
-        const string& name,
+sdp_TimerNode* sdp_timers_push(
+        sdp_Timers* timers,
+        const char* name,
         int idx,
-        TimerNode* parent
+        sdp_TimerNode* parent
 )
 {
-    TimerNode* node = timer_node(name, parent ? parent : current_);
-    if (node->tmr_.size() == 0) node->tmr_.resize(1, NULL);
-    if (!node->tmr_[idx]) node->tmr_[idx] = sdp_timer_create(type_);
-    sdp_timer_resume(node->tmr_[idx]);
-    if (!parent) current_ = node;
+    sdp_TimerNode* node = sdp_TimerNode::get(
+            name, parent ? parent : timers->current_node
+    );
+    if (node->tmr.size() == 0) node->tmr.resize(1, NULL);
+    if (!node->tmr[idx]) node->tmr[idx] = sdp_timer_create(timers->type);
+    sdp_timer_resume(node->tmr[idx]);
+    if (!parent) timers->current_node = node;
     return parent ? node : NULL;
 }
 
 
-void sdp_Timers::report(const char* func, const char* file, int line) const
-{
-    std::stringstream ss;
-    ss << name_ << ", " << num_threads_ << " thread";
-    if (num_threads_ > 1) ss << "s";
-    root_.report(ss.str(), 0, func, file, line);
-}
-
-
-sdp_Timers::TimerNode* sdp_Timers::root()
-{
-    return &root_;
-}
-
-
-sdp_Timers::TimerNode* sdp_Timers::timer_node(
-        const string& name,
-        TimerNode* parent
+void sdp_timers_report(
+        const sdp_Timers* timers,
+        const char* func,
+        const char* file,
+        int line
 )
 {
-    TimerNode::MapType::iterator it = parent->child_.find(name);
-    if (it == parent->child_.end())
-    {
-        it = parent->child_.insert(
-                std::make_pair(name, TimerNode(parent))
-        ).first;
-    }
-    return &(it->second);
+    timers->root_node->report(timers->name, 0, func, file, line);
+}
+
+
+sdp_TimerNode* sdp_timers_root(sdp_Timers* timers)
+{
+    return timers->root_node;
 }
