@@ -4,7 +4,6 @@
 #include <omp.h>
 #endif
 
-#include <algorithm>
 #include <inttypes.h>
 #include <vector>
 
@@ -28,9 +27,127 @@ static void report_timing(
         double w_step,
         double w_tower_height,
         const sdp_Mem* vis,
-        const sdp_Timers& timers,
+        const sdp_Timers* timers,
         sdp_Error* status
 );
+
+
+struct sdp_SubgridTask
+{
+    static const int64_t min_chunk_size = 2000;
+    int64_t iu;
+    int64_t iv;
+    int64_t num_chunks;
+    int64_t num_rows_per_chunk;
+    int64_t num_rows_total;
+    int64_t num_vis;
+    int64_t row_start;
+    int64_t row_end;
+
+    sdp_SubgridTask() :
+        iu(0), iv(0), num_chunks(0), num_rows_per_chunk(0),
+        num_rows_total(0), num_vis(0), row_start(0), row_end(0)
+    {
+    }
+
+    sdp_SubgridTask(
+            int64_t iu,
+            int64_t iv,
+            int64_t num_vis,
+            int64_t num_rows,
+            int64_t num_vis_per_chunk
+    ) : iu(iu), iv(iv), num_chunks(0), num_rows_per_chunk(0),
+        num_rows_total(num_rows), num_vis(num_vis), row_start(0), row_end(0)
+    {
+        if (num_vis_per_chunk < min_chunk_size)
+        {
+            num_vis_per_chunk = min_chunk_size;
+        }
+        num_chunks = (num_vis + num_vis_per_chunk - 1) / num_vis_per_chunk;
+        num_rows_per_chunk = (
+            num_chunks > 0 ? num_rows_total / num_chunks : num_rows_total
+        );
+    }
+};
+
+
+struct sdp_Mutex
+{
+private:
+#ifdef _OPENMP
+    omp_lock_t lock_;
+#else
+    int dummy; // Avoid an empty struct.
+#endif
+
+public:
+    sdp_Mutex()
+    {
+#ifdef _OPENMP
+        omp_init_lock(&lock_);
+#endif
+    }
+
+    ~sdp_Mutex()
+    {
+#ifdef _OPENMP
+        omp_destroy_lock(&lock_);
+#endif
+    }
+
+    void lock()
+    {
+#ifdef _OPENMP
+        omp_set_lock(&lock_);
+#endif
+    }
+
+    void unlock()
+    {
+#ifdef _OPENMP
+        omp_unset_lock(&lock_);
+#endif
+    }
+};
+
+#ifdef _OPENMP
+#define GET_THREAD_NUM omp_get_thread_num()
+#else
+#define GET_THREAD_NUM 0
+#endif
+
+
+static sdp_SubgridTask pick_task(
+        vector<sdp_SubgridTask>& subgrids,
+        sdp_Mutex& mutex
+)
+{
+    sdp_SubgridTask task;
+    mutex.lock();
+    {
+        for (size_t i = 0; i < subgrids.size(); ++i)
+        {
+            // Find a subgrid with work still to do.
+            if (subgrids[i].num_chunks > 0)
+            {
+                // Set up the current task.
+                task = subgrids[i];
+                task.row_end = task.row_start + subgrids[i].num_rows_per_chunk;
+                if (task.row_end > task.num_rows_total)
+                {
+                    task.row_end = task.num_rows_total;
+                }
+
+                // Update the subgrid data for the next worker.
+                subgrids[i].num_chunks--;
+                subgrids[i].row_start += subgrids[i].num_rows_per_chunk;
+                break;
+            }
+        }
+    }
+    mutex.unlock();
+    return task;
+}
 
 
 void sdp_grid_wstack_wtower_degrid_all(
@@ -81,10 +198,9 @@ void sdp_grid_wstack_wtower_degrid_all(
 #endif
 
     // Set up timers.
-    const sdp_TimerType tmr_type = (
-        loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
+    SDP_TMR_CREATE("Degridding",
+            loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA, num_threads
     );
-    sdp_Timers timers("Degridding", tmr_type, num_threads);
 
     // Assume we're using all visibilities.
     const int64_t num_rows = sdp_mem_shape_dim(vis, 0);
@@ -145,9 +261,9 @@ void sdp_grid_wstack_wtower_degrid_all(
     sdp_Fft* fft = sdp_fft_create(grid, grid, 2, true, status);
 
     // Clear output visibilities.
-    timers.push("Zeroing arrays");
+    SDP_TMR_PUSH("Zeroing arrays");
     sdp_mem_set_value(vis, 0, status);
-    timers.pop();
+    SDP_TMR_POP;
 
     // Loop over w-planes.
     if (verbosity > 0)
@@ -164,24 +280,25 @@ void sdp_grid_wstack_wtower_degrid_all(
         double min_w = iw * w_stack_dist - w_stack_dist / 2;
         double max_w = (iw + 1) * w_stack_dist - w_stack_dist / 2;
         sdp_gridder_clamp_channels_single(uvw, 2, freq0_hz, dfreq_hz,
-                start_ch, end_ch, min_w, max_w, start_ch_w, end_ch_w, status
+                start_ch, end_ch, min_w, max_w, start_ch_w, end_ch_w,
+                -1, -1, status
         );
         int64_t num_vis = 0;
-        sdp_gridder_sum_diff(end_ch_w, start_ch_w, &num_vis, status);
+        sdp_gridder_sum_diff(end_ch_w, start_ch_w, &num_vis, -1, -1, status);
         if (num_vis == 0) continue;
 
         // Do image correction / w-stacking.
-        timers.push("Zeroing arrays");
+        SDP_TMR_PUSH("Zeroing arrays");
         sdp_mem_set_value(grid, 0, status);
-        timers.pop_push("W-stacking");
+        SDP_TMR_POP_PUSH("W-stacking");
         sdp_gridder_accumulate_scaled_arrays(grid, image, NULL, 0, status);
-        timers.pop_push("Degrid correct");
+        SDP_TMR_POP_PUSH("Degrid correct");
         sdp_gridder_wtower_uvw_degrid_correct(
                 kernel, grid, 0, 0, iw * w_tower_height, status
         );
-        timers.pop_push("FFT(grid)");
+        SDP_TMR_POP_PUSH("FFT(grid)");
         sdp_fft_exec_shift(fft, grid, 0, status);
-        timers.pop();
+        SDP_TMR_POP;
 
         // Loop over sub-grid (towers) in u and v.
         for (int64_t iu = min_iu; iu <= max_iu; ++iu)
@@ -194,14 +311,16 @@ void sdp_grid_wstack_wtower_degrid_all(
                 double max_u = (iu + 1) * eff_sg_dist - eff_sg_dist / 2;
                 double min_v = iv * eff_sg_dist - eff_sg_dist / 2;
                 double max_v = (iv + 1) * eff_sg_dist - eff_sg_dist / 2;
-                timers.push("Clamp channels");
+                SDP_TMR_PUSH("Clamp channels");
                 sdp_gridder_clamp_channels_uv(uvw, freq0_hz, dfreq_hz,
                         start_ch_w, end_ch_w, min_u, max_u, min_v, max_v,
-                        start_ch_uv, end_ch_uv, status
+                        start_ch_uv, end_ch_uv, -1, -1, status
                 );
-                timers.pop_push("Count visibilities");
-                sdp_gridder_sum_diff(end_ch_uv, start_ch_uv, &num_vis, status);
-                timers.pop();
+                SDP_TMR_POP_PUSH("Count visibilities");
+                sdp_gridder_sum_diff(end_ch_uv, start_ch_uv, &num_vis,
+                        -1, -1, status
+                );
+                SDP_TMR_POP;
                 if (num_vis == 0) continue;
                 if (verbosity > 1)
                 {
@@ -218,13 +337,13 @@ void sdp_grid_wstack_wtower_degrid_all(
                 sdp_fft_exec_shift(ifft_subgrid, subgrid, 1, status);
 
                 // Degrid visibilities from sub-grid.
-                timers.push("Process sub-grid stack");
+                SDP_TMR_PUSH("Process sub-grid stack");
                 sdp_gridder_wtower_uvw_degrid(kernel, subgrid,
                         iu * eff_sg_size, iv * eff_sg_size, iw * w_tower_height,
-                        freq0_hz, dfreq_hz, uvw,
-                        start_ch_uv, end_ch_uv, vis, status
+                        freq0_hz, dfreq_hz, uvw, start_ch_uv, end_ch_uv,
+                        vis, -1, -1, status
                 );
-                timers.pop();
+                SDP_TMR_POP;
             }
         }
     }
@@ -235,7 +354,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         report_timing(
                 num_w_planes, sdp_gridder_wtower_uvw_num_w_planes(kernel, 0),
                 num_subgrids_u, num_subgrids_v, image_size, subgrid_size,
-                w_step, w_tower_height, vis, timers, status
+                w_step, w_tower_height, vis, SDP_TMR_HANDLE, status
         );
     }
     sdp_gridder_wtower_uvw_free(kernel);
@@ -249,6 +368,7 @@ void sdp_grid_wstack_wtower_degrid_all(
     sdp_mem_free(end_ch_uv);
     sdp_fft_free(fft);
     sdp_fft_free(ifft_subgrid);
+    SDP_TMR_FREE;
 }
 
 
@@ -301,21 +421,21 @@ void sdp_grid_wstack_wtower_grid_all(
 #endif
 
     // Set up timers.
-    const sdp_TimerType tmr_type = (
-        loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
+    SDP_TMR_CREATE("Gridding",
+            loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA, num_threads
     );
-    sdp_Timers timers("Gridding", tmr_type, num_threads);
-    timers.create_timers("Process sub-grid stack", num_threads);
+    SDP_TMR_CREATE_SET("Process sub-grid stack", num_threads);
 
     // Assume we're using all visibilities.
     const int64_t num_rows = sdp_mem_shape_dim(vis, 0);
+    const int64_t num_chan = sdp_mem_shape_dim(vis, 1);
     sdp_Mem* start_ch = 0, * end_ch = 0, * start_ch_w = 0, * end_ch_w = 0;
     start_ch = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     end_ch = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     start_ch_w = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     end_ch_w = sdp_mem_create(SDP_MEM_INT, loc, 1, &num_rows, status);
     sdp_mem_set_value(start_ch, 0, status);
-    sdp_mem_set_value(end_ch, (int) sdp_mem_shape_dim(vis, 1), status);
+    sdp_mem_set_value(end_ch, (int) num_chan, status);
 
     // Create gridder kernels, sub-grids and sub-grid FFT plans, per thread.
     vector<sdp_GridderWtowerUVW*> kernel(num_threads, 0);
@@ -373,9 +493,9 @@ void sdp_grid_wstack_wtower_grid_all(
     sdp_Fft* ifft = sdp_fft_create(grid, grid, 2, false, status);
 
     // Clear the output image.
-    timers.push("Zeroing arrays");
+    SDP_TMR_PUSH("Zeroing arrays");
     sdp_mem_set_value(image, 0, status);
-    timers.pop();
+    SDP_TMR_POP;
 
     // Loop over w-planes.
     if (verbosity > 0)
@@ -392,81 +512,139 @@ void sdp_grid_wstack_wtower_grid_all(
         double min_w = iw * w_stack_dist - w_stack_dist / 2;
         double max_w = (iw + 1) * w_stack_dist - w_stack_dist / 2;
         sdp_gridder_clamp_channels_single(uvw, 2, freq0_hz, dfreq_hz,
-                start_ch, end_ch, min_w, max_w, start_ch_w, end_ch_w, status
+                start_ch, end_ch, min_w, max_w, start_ch_w, end_ch_w,
+                -1, -1, status
         );
         int64_t num_vis = 0;
-        sdp_gridder_sum_diff(end_ch_w, start_ch_w, &num_vis, status);
+        sdp_gridder_sum_diff(end_ch_w, start_ch_w, &num_vis, -1, -1, status);
         if (num_vis == 0) continue;
 
         // Clear the grid for this w-plane.
-        timers.push("Zeroing arrays");
+        SDP_TMR_PUSH("Zeroing arrays");
         sdp_mem_set_value(grid, 0, status);
-        timers.pop();
+        SDP_TMR_POP;
 
-        // Loop over sub-grid (towers) in u and v.
-        #pragma \
-        omp parallel for schedule(dynamic) num_threads(num_threads) collapse(2)
+        // Count visibilities in each sub-grid and create tasks.
+        sdp_Mutex mutex;
+        SDP_TMR_PUSH("Count visibilities");
+        const int64_t num_vis_per_chunk = (
+            (num_rows * num_chan) / (int64_t) num_threads
+        );
+        vector<sdp_SubgridTask> tasks(num_subgrids);
+        #pragma omp parallel for num_threads(num_threads) collapse(2)
         for (int64_t iu = min_iu; iu <= max_iu; ++iu)
         {
             for (int64_t iv = min_iv; iv <= max_iv; ++iv)
             {
-                sdp_Timers::TimerNode* node = timers.root();
-                int tid = 0;
-#ifdef _OPENMP
-                tid = omp_get_thread_num();
-#endif
+                int tid = GET_THREAD_NUM;
+
                 // Select visibilities in sub-grid.
                 int64_t num_vis = 0;
-                double min_u = iu * eff_sg_dist - eff_sg_dist / 2;
-                double max_u = (iu + 1) * eff_sg_dist - eff_sg_dist / 2;
-                double min_v = iv * eff_sg_dist - eff_sg_dist / 2;
-                double max_v = (iv + 1) * eff_sg_dist - eff_sg_dist / 2;
+                const double min_u = iu * eff_sg_dist - eff_sg_dist / 2;
+                const double max_u = (iu + 1) * eff_sg_dist - eff_sg_dist / 2;
+                const double min_v = iv * eff_sg_dist - eff_sg_dist / 2;
+                const double max_v = (iv + 1) * eff_sg_dist - eff_sg_dist / 2;
                 sdp_gridder_clamp_channels_uv(uvw, freq0_hz, dfreq_hz,
                         start_ch_w, end_ch_w, min_u, max_u, min_v, max_v,
-                        start_ch_uv[tid], end_ch_uv[tid], status
+                        start_ch_uv[tid], end_ch_uv[tid], -1, -1, status
                 );
-                sdp_gridder_sum_diff(
-                        end_ch_uv[tid], start_ch_uv[tid], &num_vis, status
+                sdp_gridder_sum_diff(end_ch_uv[tid], start_ch_uv[tid],
+                        &num_vis, -1, -1, status
+                );
+                int64_t subgrid = (iu - min_iu) * num_subgrids_v + iv - min_iv;
+                tasks[subgrid] = sdp_SubgridTask(
+                        iu, iv, num_vis, num_rows, num_vis_per_chunk
+                );
+                if (verbosity > 1 && num_vis > 0)
+                {
+                    mutex.lock();
+                    SDP_LOG_INFO(
+                            "subgrid %d/%d/%d: "
+                            "%" PRId64 " visibilities in %" PRId64 " chunks",
+                            iu, iv, iw, num_vis, tasks[subgrid].num_chunks
+                    );
+                    mutex.unlock();
+                }
+            }
+        }
+        SDP_TMR_POP;
+
+        // Start a parallel region to process all tasks.
+        int64_t vis_count_check = 0;
+        #pragma omp parallel num_threads(num_threads)
+        {
+            for (;;)
+            {
+                if (*status) break;
+                sdp_TimerNode* node = SDP_TMR_ROOT;
+                int tid = GET_THREAD_NUM;
+
+                // Pick up a task from the subgrid list.
+                sdp_SubgridTask task = pick_task(tasks, mutex);
+                if (task.num_chunks <= 0) break;
+
+                // Select visibilities in sub-grid.
+                int64_t num_vis = 0;
+                const int64_t iu = task.iu;
+                const int64_t iv = task.iv;
+                const int64_t start_row = task.row_start;
+                const int64_t end_row = task.row_end;
+                const double min_u = iu * eff_sg_dist - eff_sg_dist / 2;
+                const double max_u = (iu + 1) * eff_sg_dist - eff_sg_dist / 2;
+                const double min_v = iv * eff_sg_dist - eff_sg_dist / 2;
+                const double max_v = (iv + 1) * eff_sg_dist - eff_sg_dist / 2;
+                sdp_gridder_clamp_channels_uv(uvw, freq0_hz, dfreq_hz,
+                        start_ch_w, end_ch_w, min_u, max_u, min_v, max_v,
+                        start_ch_uv[tid], end_ch_uv[tid],
+                        start_row, end_row, status
+                );
+                sdp_gridder_sum_diff(end_ch_uv[tid], start_ch_uv[tid],
+                        &num_vis, start_row, end_row, status
                 );
                 if (num_vis == 0) continue;
-                if (verbosity > 1)
-                {
-                    SDP_LOG_INFO("subgrid %d/%d/%d: %" PRId64 " visibilities",
-                            iu, iv, iw, num_vis
-                    );
-                }
+                #pragma omp atomic
+                vis_count_check += num_vis;
 
                 // Grid onto sub-grid.
                 sdp_mem_set_value(subgrid[tid], 0, status);
-                node = timers.push("Process sub-grid stack", tid, node);
+                node = sdp_timers_push(
+                        SDP_TMR_HANDLE, "Process sub-grid stack", tid, node
+                );
                 sdp_gridder_wtower_uvw_grid(kernel[tid], vis, uvw,
                         start_ch_uv[tid], end_ch_uv[tid], freq0_hz, dfreq_hz,
                         subgrid[tid], iu * eff_sg_size, iv * eff_sg_size,
-                        iw * w_tower_height, status
+                        iw * w_tower_height, start_row, end_row, status
                 );
-                node = timers.pop(tid, node);
+                node = sdp_timers_pop(SDP_TMR_HANDLE, tid, node);
 
                 // FFT sub-grid, and add to grid.
                 sdp_fft_exec_shift(fft_subgrid[tid], subgrid[tid], 0, status);
-                #pragma omp critical
+                #pragma omp critical(subgrid_add)
                 sdp_gridder_subgrid_add(
                         grid, -iu * eff_sg_size, -iv * eff_sg_size,
                         subgrid[tid], sg_factor, status
                 );
             }
         }
+        if (vis_count_check != num_vis)
+        {
+            SDP_LOG_CRITICAL("Processed %d but expected %d visibilities",
+                    (int) vis_count_check, (int) num_vis
+            );
+            exit(1);
+        }
 
         // Do image correction / w-stacking.
         // image += kernel.grid_correct(ifft(grid), 0, 0, iw * w_tower_height)
-        timers.push("FFT(grid)");
+        SDP_TMR_PUSH("FFT(grid)");
         sdp_fft_exec_shift(ifft, grid, 1, status);
-        timers.pop_push("Grid correct");
+        SDP_TMR_POP_PUSH("Grid correct");
         sdp_gridder_wtower_uvw_grid_correct(
                 kernel[0], grid, 0, 0, iw * w_tower_height, status
         );
-        timers.pop_push("W-stacking");
+        SDP_TMR_POP_PUSH("W-stacking");
         sdp_gridder_accumulate_scaled_arrays(image, grid, NULL, 0, status);
-        timers.pop();
+        SDP_TMR_POP;
     }
     sdp_mem_free(grid);
     sdp_mem_free(start_ch);
@@ -485,7 +663,7 @@ void sdp_grid_wstack_wtower_grid_all(
         report_timing(
                 num_w_planes, total_w_planes,
                 num_subgrids_u, num_subgrids_v, image_size, subgrid_size,
-                w_step, w_tower_height, vis, timers, status
+                w_step, w_tower_height, vis, SDP_TMR_HANDLE, status
         );
     }
     for (int i = 0; i < num_threads; ++i)
@@ -497,6 +675,7 @@ void sdp_grid_wstack_wtower_grid_all(
         sdp_mem_free(end_ch_uv[i]);
     }
     sdp_fft_free(ifft);
+    SDP_TMR_FREE;
 }
 
 
@@ -510,14 +689,14 @@ static void report_timing(
         double w_step,
         double w_tower_height,
         const sdp_Mem* vis,
-        const sdp_Timers& timers,
+        const sdp_Timers* SDP_TMR_HANDLE,
         sdp_Error* status
 )
 {
     if (*status) return;
     SDP_LOG_INFO("Timing report for w-stacking with w-towers");
     SDP_LOG_INFO("| Number of large w-planes  : %d", num_w_planes);
-    SDP_LOG_INFO("| Number of small w-planes  : %d (in gridder kernel)",
+    SDP_LOG_INFO("| Total w-layers processed  : %d (in gridder kernels)",
             total_w_planes
     );
     SDP_LOG_INFO("| Number of sub-grids (u, v): (%d, %d)",
@@ -534,5 +713,5 @@ static void report_timing(
     );
     SDP_LOG_INFO("| Value of w_step           : %.3e", w_step);
     SDP_LOG_INFO("| Value of w_tower_height   : %.3e", w_tower_height);
-    timers.report(__func__, FILENAME, __LINE__);
+    SDP_TMR_REPORT;
 }
