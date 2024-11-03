@@ -374,9 +374,15 @@ void grid(
     const double s_uvw0 = freq0_hz / C_0; 
     const double s_duvw = dfreq_hz / C_0;
 
-    std::vector<int64_t> valid_indices;
-    std::vector<int> valid_start_chs;
-    std::vector<int> valid_end_chs;
+    struct ValidVis
+    {
+        int64_t row_idx;
+        int64_t start_ch;
+        int64_t end_ch;
+        int64_t vis_offset; // Offset into packed visibility array
+    };
+    std::vector<ValidVis> valid_vis_info;
+    int64_t total_valid_vis_count = 0;
 
     for(int64_t i_row = 0; i_row < num_uvw; ++i_row)
     {
@@ -397,11 +403,16 @@ void grid(
         if (start_ch >= end_ch) continue;
         
         // Scale + shift UVWs.
-        double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
-        double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
-        uvw0[0] -= subgrid_offset_u / theta;
-        uvw0[1] -= subgrid_offset_v / theta;
-        uvw0[2] -= ((subgrid_offset_w + w_plane - 1) * w_step);
+        double uvw0[] = { 
+            uvw[0] * s_uvw0 - subgrid_offset_u / theta, 
+            uvw[1] * s_uvw0 - subgrid_offset_v / theta, 
+            uvw[2] * s_uvw0 - ((subgrid_offset_w + w_plane - 1) * w_step)
+        };
+        double duvw[] = { 
+            uvw[0] * s_duvw, 
+            uvw[1] * s_duvw, 
+            uvw[2] * s_duvw
+        };
 
         // Bounds check.
         const double u_min = floor(theta * (uvw0[0] + start_ch * duvw[0]));
@@ -413,40 +424,50 @@ void grid(
         {
             continue;
         }
-        
-        valid_indices.push_back(i_row);
-        valid_start_chs.push_back(start_ch);
-        valid_end_chs.push_back(end_ch);
+
+        valid_vis_info.push_back({
+            i_row, start_ch, end_ch, total_valid_vis_count
+        });
+        total_valid_vis_count += (end_ch - start_ch);
     }
+    
+    // Pack masked uvw and visibility data into contiguous arrays
     std::vector<UVW_TYPE> valid_uvw;
     std::vector<VIS_TYPE> valid_vis;
-    const int64_t valid_count = valid_indices.size();
+    const int64_t valid_count = valid_vis_info.size();
     valid_uvw.reserve(valid_count * 3);
-    valid_vis.reserve(valid_count * 2);
+    valid_vis.reserve(total_valid_vis_count);
 
-    for(const auto& i_row: valid_indices)
+    for(const auto& info: valid_vis_info)
     {
-        valid_uvw.push_back(uvws_(i_row, 0));
-        valid_uvw.push_back(uvws_(i_row, 1));
-        valid_uvw.push_back(uvws_(i_row, 2));
-
-        valid_vis.push_back(vis_(i_row, 0));
-        valid_vis.push_back(vis_(i_row, 1));
+        valid_uvw.push_back(uvws_(info.row_idx, 0));
+        valid_uvw.push_back(uvws_(info.row_idx, 1));
+        valid_uvw.push_back(uvws_(info.row_idx, 2));
+        for(int64_t c = info.start_ch; c < info.end_ch; ++c)
+        {
+            valid_vis.push_back(vis_(info.row_idx, c));
+        }
     }
 
 #pragma omp parallel for schedule(dynamic, 500)
     // Loop over only valid rows. Each row contains visibilities for all channels.
     for (int64_t i = 0; i < valid_count; ++i)
     {
-        const UVW_TYPE uvw[] = {valid_uvw[3 * i], valid_uvw[3 * i + 1], valid_uvw[3 * i + 2]};
-        double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
-        double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
-        uvw0[0] -= subgrid_offset_u / theta;
-        uvw0[1] -= subgrid_offset_v / theta;
-        uvw0[2] -= ((subgrid_offset_w + w_plane - 1) * w_step);
+        const auto& info = valid_vis_info[i];
+        const UVW_TYPE* uvw = &valid_uvw[3 * i];
+        double uvw0[] = { 
+            uvw[0] * s_uvw0 - subgrid_offset_u / theta, 
+            uvw[1] * s_uvw0 - subgrid_offset_v / theta, 
+            uvw[2] * s_uvw0 - ((subgrid_offset_w + w_plane - 1) * w_step)
+        };
+        double duvw[] = { 
+            uvw[0] * s_duvw, 
+            uvw[1] * s_duvw, 
+            uvw[2] * s_duvw
+        };
 
         // Loop over selected channels.
-        for (int64_t c = valid_start_chs[i]; c < valid_end_chs[i]; c++)
+        for (int64_t c = info.start_ch; c < info.end_ch; ++c)
         {
             const double u = uvw0[0] + c * duvw[0];
             const double v = uvw0[1] + c * duvw[1];
@@ -471,8 +492,10 @@ void grid(
             const int v_off = (iv0_ov % oversample) * support;
             const int w_off = (iw0_ov % w_oversample) * w_support;
 
+            const int vis_idx = info.vis_offset + (c - info.start_ch);
+            const SUBGRID_TYPE local_vis = (SUBGRID_TYPE) valid_vis[vis_idx];
+            //
             // Grid visibility.
-            const SUBGRID_TYPE local_vis = (SUBGRID_TYPE) valid_vis[2 * i + c];
             for (int iw = 0; iw < w_support; ++iw)
             {
                 const double kern_w = w_kernel[w_off + iw];
