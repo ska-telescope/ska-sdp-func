@@ -5,6 +5,8 @@
 #include <complex>
 #include <cstdlib>
 #include <immintrin.h>
+#include <omp.h>
+#include <xmmintrin.h>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -419,7 +421,7 @@ void grid_opt(
         thread_data.uvw0.reserve(num_uvw * 3 / num_threads);
         thread_data.duvw.reserve(num_uvw * 3 / num_threads);
 
-        #pragam omp for
+        #pragma omp for
         for(int64_t i_row = 0; i_row < num_uvw; ++i_row) 
         {
             int64_t start_ch = start_chs(i_row);
@@ -427,9 +429,9 @@ void grid_opt(
             if(start_ch >= end_ch) continue;
 
             const UVW_TYPE uvw[] = {
-                uvws_(i_row, 0);
-                uvws_(i_row, 1);
-                uvws_(i_row, 2);
+                uvws_(i_row, 0),
+                uvws_(i_row, 1),
+                uvws_(i_row, 2),
             };
             
             const double min_w = (w_plane + subgrid_offset_w - 1) * w_step;
@@ -454,7 +456,7 @@ void grid_opt(
             const double u_max = ceil(theta * (uvw0[0] + (end_ch - 1) * duvw[0]));
             const double v_min = floor(theta * (uvw0[1] + start_ch * duvw[1]));
             const double v_max = ceil(theta * (uvw0[1] + (end_ch - 1) * duvw[1]));
-            if(u_min < -half_subgrid || u_max >= half_subgrid 
+            if(u_min < -half_subgrid || u_max >= half_subgrid ||
                 v_min < -half_subgrid || v_max >= half_subgrid)
             {
                 continue;
@@ -537,7 +539,7 @@ void grid_opt(
             }
             catch(const std::exception&)
             {
-                *status = SDP_ERROR_RUNTIME;
+                *status = SDP_ERR_RUNTIME;
             }
         
         }
@@ -550,10 +552,7 @@ void grid_opt(
     
     #pragma omp parallel
     {
-        // Pre-allocate SIMD vectors and temporary storage per thread
-        alignas(32) double kern_buffer[support];
-        alignas(32) double vis_buffer[4];
-        __m256d kern_vec, vis_vec;
+        alignas(32) double kernel_buffer[support];
 
         #pragma omp for schedule(dynamic)
         for(int block = 0; block < NUM_BLOCKS; block++)
@@ -600,6 +599,19 @@ void grid_opt(
                             // Load kernel values for 4 v points at once
                             for(int iv = 0; iv < support; iv += 4)
                             {
+                                // Prefetch next kernel values
+                                // Prefetch 16 elements ahead or 4 vectors
+                                if(iv + 16 < support)
+                                {
+                                    _mm_prefetch(&uv_kernel[v_off + iv + 16], _MM_HINT_T0);
+                                }
+
+                                // Prefetch next subgrid values
+                                if(ix_u < subgrids_.shape[1] - 1)
+                                {
+                                    __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                }
+
                                 __m256d kernel_vec = _mm256_loadu_pd(
                                                     &uv_kernel[v_off + iv]);
                                 __m256d kernel_wuv = _mm256_mul_pd(
@@ -617,6 +629,12 @@ void grid_opt(
                                         ((SUBGRID_TYPE)kernel_buffer[k] * vis_valid);
                                 }
                             }
+                        }
+
+                        // Prefetch next w kernel values
+                        if(iw + 1 < w_support)
+                        {
+                            _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
                         }
                     }
                 }
