@@ -20,6 +20,12 @@
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 #include "ska-sdp-func/utility/sdp_timer.h"
 
+#ifdef AVX512
+#define SIMD_WIDTH 8
+#else
+#define SIMD_WIDTH 4
+#endif // AVX512
+
 using std::complex;
 
 struct sdp_GridderWtowerUVW
@@ -406,13 +412,13 @@ void grid_opt_tasks(
         std::vector<PackedData> task_buffers;
         int num_tasks;
 
-        TasksData(int max_tasks) : num_tasks(max_tasks) {
+        TaskData(int max_tasks) : num_tasks(max_tasks) {
             task_buffers.resize(max_tasks);
         }
     };
 
     // Pack valid data with dynamic task creation
-    int64_t estimated_tasks = (num_uvw + Min_TASK_SIZE - 1) / MIN_TASK_SIZE;
+    int64_t estimated_tasks = (num_uvw + MIN_TASK_SIZE - 1) / MIN_TASK_SIZE;
     TaskData task_data(estimated_tasks);
 
     #pragma omp parallel
@@ -504,16 +510,18 @@ void grid_opt_tasks(
 
                 // Tasks for blocks within each buffer
                 const int num_blocks = (buffer.size + BLOCK_SIZE - 1) / BLOCK_SIZE;
-                for(int block = 0; block < num_blocks; blocks++) {
+                for(int block = 0; block < num_blocks; block++) {
                     #pragma omp task shared(buffer, subgrids_) firstprivate(block)
                     {
                         const int block_start = block * BLOCK_SIZE;
                         const int block_end = std::min(block_start + BLOCK_SIZE, 
                                                        (int)buffer.size);
 
+#ifdef AVX512
+                        alignas(64) double kern_buffer[support];
+#else
                         alignas(32) double kern_buffer[support];
-                        alignas(32) double vis_buffer[4];
-                        __m256d kern_vec, vis_vec;
+#endif // AVX512
 
                         for(int idx = block_start; idx < block_end; idx++) {
                             const int start_ch = buffer.start_channels[idx];
@@ -529,6 +537,7 @@ void grid_opt_tasks(
 
                                 const int iu0_ov = int(round(u * theta_ov)) + half_sg_size_ov;
                                 const int iv0_ov = int(round(v * theta_ov)) + half_sg_size_ov;
+                                const int iw0_ov = int(round(w * w_step_ov));
                                 const int iu0 = iu0_ov / oversample;
                                 const int iv0 = iv0_ov / oversample;
 
@@ -543,13 +552,31 @@ void grid_opt_tasks(
                                     
                                     for(int iu = 0; iu < support; iu++) {
                                         const double kern_wu = kern_w * uv_kernel[u_off + iu];
-                                        const intt ix_u = iu0 + iu;
+                                        const int ix_u = iu0 + iu;
+#ifdef AVX512
+                                        for(int iv = 0; iv < support; iv += 8) {
+                                            __m512d kernel_vec = _mm512_loadu_pd(
+                                                &uv_kernel[v_off + iv]);
+                                            __m512d kern_wuv = _mm512_mul_pd(
+                                                _mm512_set1_pd(kern_wu), kernel_vec);
 
+                                            _mm512_store_pd(kern_buffer, kern_wuv);
+
+                                            #pragma omp simd
+                                            for(int k = 0; k < 8 && (iv + k) < support; k++) {
+                                                const int ix_v = iv0 + iv + k;
+
+                                                #pragma omp atomic update
+                                                subgrids_(iw, ix_u, ix_v) += 
+                                                    ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                            }
+                                        }
+#else
                                         // AVX2 instructions
                                         for(int iv = 0; iv < support; iv += 4) {
                                             __m256d kernel_vec = _mm256_loadu_pd(
                                                 &uv_kernel[v_off + iv]);
-                                            __mm256d kern_wuv = _mm256_mul_pd(
+                                            __m256d kern_wuv = _mm256_mul_pd(
                                                 _mm256_set1_pd(kern_wu), kernel_vec);
 
                                             // Store intermediate kernel values into kernel_buffer
@@ -564,6 +591,7 @@ void grid_opt_tasks(
                                                     ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
                                             }
                                         }
+#endif //AVX512
                                     }
                                 }
                             }
@@ -577,8 +605,7 @@ void grid_opt_tasks(
 
 
 
-// TODO: make explicit SIMD processing an optional cmake flag ifdef AVX2
-// TODO: add AVX512 support
+// TODO: make explicit SIMD processing an optional cmake flag ifdef AVX512
 // TODO: add find-grained timings
 // Local function to do the optimized gridding.
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
@@ -703,8 +730,7 @@ void grid_opt(
             const double v_min = floor(theta * (uvw0[1] + start_ch * duvw[1]));
             const double v_max = ceil(theta * (uvw0[1] + (end_ch - 1) * duvw[1]));
             if(u_min < -half_subgrid || u_max >= half_subgrid ||
-                v_min < -half_subgrid || v_max >= half_subgrid)
-            {
+                v_min < -half_subgrid || v_max >= half_subgrid) {
                 continue;
             }
 
@@ -730,8 +756,7 @@ void grid_opt(
         // Merge thread data into global storage
         #pragma omp critical
         {
-            try
-            {
+            try {
                 const size_t offset = packed_data.u_coords.size();
                 const size_t thread_size = thread_data.u_coords.size();
                 const size_t new_size = offset + thread_size;
@@ -779,12 +804,10 @@ void grid_opt(
                             );
                 valid_count = new_size;
             }
-            catch(const std::bad_alloc&)
-            {
+            catch(const std::bad_alloc&) {
                 *status = SDP_ERR_MEM_ALLOC_FAILURE;
             }
-            catch(const std::exception&)
-            {
+            catch(const std::exception&) {
                 *status = SDP_ERR_RUNTIME;
             }
         
@@ -798,26 +821,28 @@ void grid_opt(
     
     #pragma omp parallel
     {
-        alignas(32) double kernel_buffer[support];
+#ifdef AVX512
+        alignas(64) double kern_buffer[support];
+#else
+        alignas(32) double kern_buffer[support];
+#endif // AVX512
+
 
         #pragma omp for schedule(dynamic)
-        for(int block = 0; block < NUM_BLOCKS; block++)
-        {
+        for(int block = 0; block < NUM_BLOCKS; block++) {
             const int block_start = block * BLOCK_SIZE;
             const int block_end = std::min((block + 1) * BLOCK_SIZE, 
                                            (int)valid_count
                                            );
 
-            for(int idx = block_start; idx < block_end; idx++)
-            {
+            for(int idx = block_start; idx < block_end; idx++) {
                 const int start_ch = packed_data.start_channels[idx];
                 const int end_ch = packed_data.end_channels[idx];
                 
                 const double* uvw0 = &packed_data.uvw0[idx * 3];
-                const double* duvw = &packed_data.duvw[idx * 3]
+                const double* duvw = &packed_data.duvw[idx * 3];
 
-                for(int c  = start_ch; c < end_ch; c++)
-                {
+                for(int c  = start_ch; c < end_ch; c++) {
                     const double u = uvw0[0] + c * duvw[0];
                     const double v = uvw0[1] + c * duvw[1];
                     const double w = uvw0[2] + c * duvw[2];
@@ -835,26 +860,51 @@ void grid_opt(
                     const VIS_TYPE vis_valid = packed_data.vis_data[idx * 2 + c];
 
                     // Vectorized gridding
-                    for(int iw = 0; iw < w_support; iw++)
-                    {
+                    for(int iw = 0; iw < w_support; iw++) {
                         const double kern_w = w_kernel[w_off + iw];
-                        for(int iu = 0; iu < support; iu++)
-                        {
+                        for(int iu = 0; iu < support; iu++) {
                             const double kern_wu = kern_w * uv_kernel[u_off + iu];
                             const int ix_u = iu0 + iu;
-                            // Load kernel values for 4 v points at once
-                            for(int iv = 0; iv < support; iv += 4)
-                            {
+#ifdef AVX512
+                            for(int iv = 0; iv < support; iv += 8) {
                                 // Prefetch next kernel values to L1
                                 // Prefetch 16 elements ahead or 4 vectors
-                                if(iv + 16 < support)
-                                {
+                                if(iv + 32 < support) {
+                                    _mm_prefetch(&uv_kernel[v_off + iv + 32], _MM_HINT_T0);
+                                }
+
+                                // Prefetch next subgrid values
+                                if(ix_u < subgrids_.shape[1] - 1) {
+                                    __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                }
+
+                                __m512d kernel_vec = _mm512_loadu_pd(
+                                                    &uv_kernel[v_off + iv]);
+                                __m512d kernel_wuv = _mm512_mul_pd(
+                                                    _mm512_set1_pd(kern_wu), 
+                                                    kernel_vec);
+
+                                _mm512_store_pd(kern_buffer, kernel_wuv);
+
+                                // grid 4 points at once
+                                #pragma omp simd
+                                for(int k = 0; k < 4 && (iv + k) < support; k++) {
+                                    const int ix_v = iv0 + iv + k;
+                                    subgrids_(iw, ix_u, ix_v) +=
+                                        ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                }
+                            }
+#else
+                            // Load kernel values for 4 v points at once
+                            for(int iv = 0; iv < support; iv += 4) {
+                                // Prefetch next kernel values to L1
+                                // Prefetch 16 elements ahead or 4 vectors
+                                if(iv + 16 < support) {
                                     _mm_prefetch(&uv_kernel[v_off + iv + 16], _MM_HINT_T0);
                                 }
 
                                 // Prefetch next subgrid values
-                                if(ix_u < subgrids_.shape[1] - 1)
-                                {
+                                if(ix_u < subgrids_.shape[1] - 1) {
                                     __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
                                 }
 
@@ -864,22 +914,21 @@ void grid_opt(
                                                     _mm256_set1_pd(kern_wu), 
                                                     kernel_vec);
 
-                                _mm256_store_pd(kernel_buffer, kernel_wuv);
+                                _mm256_store_pd(kern_buffer, kernel_wuv);
 
                                 // grid 4 points at once
                                 #pragma omp simd
-                                for(int k = 0; k < 4 && (iv + k) < support; k++)
-                                {
+                                for(int k = 0; k < 4 && (iv + k) < support; k++) {
                                     const int ix_v = iv0 + iv + k;
                                     subgrids_(iw, ix_u, ix_v) +=
-                                        ((SUBGRID_TYPE)kernel_buffer[k] * vis_valid);
+                                        ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
                                 }
                             }
+#endif // AVX512
                         }
 
                         // Prefetch next w kernel values to L1
-                        if(iw + 1 < w_support)
-                        {
+                        if(iw + 1 < w_support) {
                             _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
                         }
                     }
