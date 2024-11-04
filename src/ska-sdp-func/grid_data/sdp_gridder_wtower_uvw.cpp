@@ -146,20 +146,29 @@ void degrid(
             SUBGRID_TYPE local_vis = (SUBGRID_TYPE) 0;
             for (int iw = 0; iw < w_support; ++iw)
             {
-                const double kern_w = w_kernel[w_off + iw];
+                SUBGRID_TYPE local_vis_u = (SUBGRID_TYPE) 0;
+                #pragma GCC ivdep
+                #pragma GCC unroll(8)
                 for (int iu = 0; iu < support; ++iu)
                 {
-                    const double kern_wu = kern_w * uv_kernel[u_off + iu];
                     const int ix_u = iu0 + iu;
+                    SUBGRID_TYPE local_vis_v = (SUBGRID_TYPE) 0;
+                    #pragma GCC ivdep
+                    #pragma GCC unroll(8)
                     for (int iv = 0; iv < support; ++iv)
                     {
-                        const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
                         const int ix_v = iv0 + iv;
-                        local_vis += (
-                            (SUBGRID_TYPE) kern_wuv * subgrids_(iw, ix_u, ix_v)
+                        local_vis_v += (
+                            (SUBGRID_TYPE) uv_kernel[v_off + iv] *
+                            subgrids_(iw, ix_u, ix_v)
                         );
                     }
+                    local_vis_u += (
+                        (SUBGRID_TYPE) uv_kernel[u_off + iu] *
+                        local_vis_v
+                    );
                 }
+                local_vis += (SUBGRID_TYPE) w_kernel[w_off + iw] * local_vis_u;
             }
             vis_(i_row, c) += (VIS_TYPE) local_vis;
         }
@@ -438,17 +447,24 @@ void grid(
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE) vis_(i_row, c);
             for (int iw = 0; iw < w_support; ++iw)
             {
-                const double kern_w = w_kernel[w_off + iw];
+                const SUBGRID_TYPE local_vis_w = (
+                    (SUBGRID_TYPE) w_kernel[w_off + iw] * local_vis
+                );
+                #pragma GCC ivdep
+                #pragma GCC unroll(8)
                 for (int iu = 0; iu < support; ++iu)
                 {
-                    const double kern_wu = kern_w * uv_kernel[u_off + iu];
+                    const SUBGRID_TYPE local_vis_u = (
+                        (SUBGRID_TYPE) uv_kernel[u_off + iu] * local_vis_w
+                    );
                     const int ix_u = iu0 + iu;
+                    #pragma GCC ivdep
+                    #pragma GCC unroll(8)
                     for (int iv = 0; iv < support; ++iv)
                     {
-                        const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
                         const int ix_v = iv0 + iv;
                         subgrids_(iw, ix_u, ix_v) += (
-                            (SUBGRID_TYPE) kern_wuv * local_vis
+                            (SUBGRID_TYPE) uv_kernel[v_off + iv] * local_vis_u
                         );
                     }
                 }
