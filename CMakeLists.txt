@@ -161,6 +161,9 @@ write_basic_package_version_file(
     VERSION "${SDP_FUNC_VERSION_MAJOR}.${SDP_FUNC_VERSION_MINOR}.${SDP_FUNC_VERSION_PATCH}"
     COMPATIBILITY AnyNewerVersion)
 
+set_source_files_properties("${PROJECT_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp" PROPERTIES COMPILE_FLAGS 
+    "-O3 -qopenmp -xCORE-AVX2 -fma -fp-model=fast=2 -std=c++17 -unroll -ftz -fno-exceptions -ipo -qopt-zmm-usage=high -qopt-prefetch=5 -qopt-dynamic-align -vec-threshold0 -qoverride-limits")
+
 # The config file in the source tree has the suffix ".in" to keep
 # find_package from mistaking the source tree for installed location.
 # The suffix is removed upon installation
