@@ -335,7 +335,251 @@ void degrid_gpu(
     );
 }
 
+// Local function to do the optimized gridding with OpenMP task groups
+template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
+void grid_opt_tasks(
+        const sdp_GridderWtowerUVW* plan,
+        sdp_Mem* subgrids,
+        int w_plane,
+        int subgrid_offset_u,
+        int subgrid_offset_v,
+        int subgrid_offset_w,
+        double freq0_hz,
+        double dfreq_hz,
+        const sdp_Mem* uvws,
+        const sdp_MemViewCpu<const int, 1>& start_chs,
+        const sdp_MemViewCpu<const int, 1>& end_chs,
+        const sdp_Mem* vis,
+        sdp_Error* status
+) {
+    if (*status) return;
+
+    sdp_MemViewCpu<SUBGRID_TYPE, 3> subgrids_;
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<const VIS_TYPE, 2> vis_;
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(vis, &vis_, status);
+
+    const double* RESTRICT uv_kernel = 
+        (const double*) sdp_mem_data_const(plan->uv_kernel);
+    const double* RESTRICT w_kernel =
+            (const double*) sdp_mem_data_const(plan->w_kernel);
+    const int64_t num_uvw = uvws_.shape[0];
+    const int half_subgrid = plan->subgrid_size / 2;
+    const int oversample = plan->oversampling;
+    const int w_oversample = plan->w_oversampling;
+    const int support = plan->support;
+    const int w_support = plan->w_support;
+    const double theta = plan->theta;
+    const double w_step = plan->w_step;
+    const double theta_ov = theta * oversample;
+    const double w_step_ov = 1.0 / w_step * w_oversample;
+    const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
+    
+    // Scaling factors
+    const double s_uvw0 = freq0_hz / C_0; 
+    const double s_duvw = dfreq_hz / C_0;
+    
+    // Strcuture for packed data using SoA layout
+    struct alignas(64) PackedData {
+        std::vector<UVW_TYPE> u_coords;
+        std::vector<UVW_TYPE> v_coords;
+        std::vector<UVW_TYPE> w_coords;
+        std::vector<VIS_TYPE> vis_data;
+        std::vector<int32_t> start_channels;
+        std::vector<int32_t> end_channels;
+        std::vector<double> uvw0;
+        std::vector<double> duvw;
+        size_t size;
+
+        PackedData() : size(0) {}
+    };
+
+    // Grid in blocks for better cache efficiency
+    constexpr int BLOCK_SIZE = 32;
+    constexpr int MIN_TASK_SIZE = 1024; // Minimum size for task creation
+    constexpr int CACHE_LINE_SIZE = 64;
+
+    struct TaskData {
+        alignas(CACHE_LINE_SIZE) std::atomic<int> completed_tasks{0};
+        std::vector<PackedData> task_buffers;
+        int num_tasks;
+
+        TasksData(int max_tasks) : num_tasks(max_tasks) {
+            task_buffers.resize(max_tasks);
+        }
+    };
+
+    // Pack valid data with dynamic task creation
+    int64_t estimated_tasks = (num_uvw + Min_TASK_SIZE - 1) / MIN_TASK_SIZE;
+    TaskData task_data(estimated_tasks);
+
+    #pragma omp parallel
+    #pragma omp single
+    {
+        for(int64_t start = 0; start < num_uvw; start += MIN_TASK_SIZE) {
+            int64_t end = std::min(start + MIN_TASK_SIZE, num_uvw);
+
+            #pragma omp task shared(task_data) firstprivate(start, end)
+            {
+                PackedData& local_buffer = task_data.task_buffers[task_data.completed_tasks.fetch_add(1)];
+
+                const size_t est_size = end - start;
+                local_buffer.u_coords.reserve(est_size);
+                local_buffer.v_coords.reserve(est_size);
+                local_buffer.w_coords.reserve(est_size);
+                local_buffer.vis_data.reserve(est_size * 2);
+                local_buffer.start_channels.reserve(est_size);
+                local_buffer.end_channels.reserve(est_size);
+                local_buffer.uvw0.reserve(est_size * 3);
+                local_buffer.duvw.reserve(est_size * 3);
+                
+                for(int64_t i_row = start; i_row < end; i_row++) {
+                    int64_t start_ch = start_chs(i_row);
+                    int64_t end_ch = end_chs(i_row);
+                    if(start_ch >= end_ch) continue;
+
+                    const UVW_TYPE uvw[] = {
+                        uvws_(i_row, 0),
+                        uvws_(i_row, 1),
+                        uvws_(i_row, 2)
+                    };
+
+                    const double min_w = (w_plane + subgrid_offset_w - 1) * w_step;
+                    const double max_w = (w_plane + subgrid_offset_w) * w_step;
+                    sdp_gridder_clamp_channels_inline(uvw[2], freq0_hz, dfreq_hz, 
+                                                      &start_ch, &end_ch, min_w, max_w);
+                    if(start_ch >= end_ch) continue;
+
+                    double uvw0[] = {
+                        uvw[0] * s_uvw0 - subgrid_offset_u / theta,
+                        uvw[1] * s_uvw0 - subgrid_offset_v / theta,
+                        uvw[2] * s_uvw0 - ((subgrid_offset_w + w_plane - 1) * w_step)
+                    };
+                    double duvw[] = {
+                        uvw[0] * s_duvw,
+                        uvw[1] * s_duvw,
+                        uvw[2] * s_duvw
+                    };
+
+                    const double u_min = floor(theta * (uvw0[0] + start_ch * duvw[0]));
+                    const double u_max = ceil(theta * (uvw0[0] + (end_ch - 1) * duvw[0]));
+                    const double v_min = floor(theta * (uvw0[1] + start_ch * duvw[1]));
+                    const double v_max = ceil(theta * (uvw0[1] + (end_ch - 1) * duvw[1]));
+
+                    if(u_min < -half_subgrid || u_max >= half_subgrid || 
+                       v_min < -half_subgrid || v_max >= half_subgrid) {
+                        continue;
+                    }
+
+                    local_buffer.u_coords.push_back(uvw[0]);
+                    local_buffer.v_coords.push_back(uvw[1]);
+                    local_buffer.w_coords.push_back(uvw[2]);
+                    local_buffer.start_channels.push_back(start_ch);
+                    local_buffer.end_channels.push_back(end_ch);
+
+                    local_buffer.uvw0.push_back(uvw0[0]);
+                    local_buffer.uvw0.push_back(uvw0[1]);
+                    local_buffer.uvw0.push_back(uvw0[2]);
+                    local_buffer.duvw.push_back(duvw[0]);
+                    local_buffer.duvw.push_back(duvw[1]);
+                    local_buffer.duvw.push_back(duvw[2]);
+
+                    // TODO: check that we do indeed always have 2 polarizations?!
+                    local_buffer.vis_data.push_back(vis_(i_row, 0));
+                    local_buffer.vis_data.push_back(vis_(i_row, 1));
+
+                }
+                local_buffer.size = local_buffer.u_coords.size();
+            }
+        }
+        #pragma omp taskwait
+
+        #pragma omp taskgroup
+        {
+            for(int task_id = 0; task_id < task_data.completed_tasks; task_id++) {
+                const PackedData& buffer = task_data.task_buffers[task_id];
+                if(buffer.size == 0) continue;
+
+                // Tasks for blocks within each buffer
+                const int num_blocks = (buffer.size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+                for(int block = 0; block < num_blocks; blocks++) {
+                    #pragma omp task shared(buffer, subgrids_) firstprivate(block)
+                    {
+                        const int block_start = block * BLOCK_SIZE;
+                        const int block_end = std::min(block_start + BLOCK_SIZE, 
+                                                       (int)buffer.size);
+
+                        alignas(32) double kern_buffer[support];
+                        alignas(32) double vis_buffer[4];
+                        __m256d kern_vec, vis_vec;
+
+                        for(int idx = block_start; idx < block_end; idx++) {
+                            const int start_ch = buffer.start_channels[idx];
+                            const int end_ch = buffer.end_channels[idx];
+
+                            const double* uvw0 = &buffer.uvw0[idx * 3];
+                            const double* duvw = &buffer.duvw[idx * 3];
+
+                            for(int c = start_ch; c < end_ch; c++) {
+                                const double u = uvw0[0] + c * duvw[0];
+                                const double v = uvw0[1] + c * duvw[1];
+                                const double w = uvw0[2] + c * duvw[2];                            
+
+                                const int iu0_ov = int(round(u * theta_ov)) + half_sg_size_ov;
+                                const int iv0_ov = int(round(v * theta_ov)) + half_sg_size_ov;
+                                const int iu0 = iu0_ov / oversample;
+                                const int iv0 = iv0_ov / oversample;
+
+                                const int u_off = (iu0_ov % oversample) * support;
+                                const int v_off = (iv0_ov % oversample) * support;
+                                const int w_off = (iw0_ov % w_oversample) * w_support;
+
+                                const VIS_TYPE vis_valid = buffer.vis_data[idx * 2 + c];
+
+                                for(int iw = 0; iw < w_support; iw++) {
+                                    const double kern_w = w_kernel[w_off + iw];
+                                    
+                                    for(int iu = 0; iu < support; iu++) {
+                                        const double kern_wu = kern_w * uv_kernel[u_off + iu];
+                                        const intt ix_u = iu0 + iu;
+
+                                        // AVX2 instructions
+                                        for(int iv = 0; iv < support; iv += 4) {
+                                            __m256d kernel_vec = _mm256_loadu_pd(
+                                                &uv_kernel[v_off + iv]);
+                                            __mm256d kern_wuv = _mm256_mul_pd(
+                                                _mm256_set1_pd(kern_wu), kernel_vec);
+
+                                            // Store intermediate kernel values into kernel_buffer
+                                            _mm256_store_pd(kern_buffer, kern_wuv);
+
+                                            #pragma omp simd
+                                            for(int k = 0; k < 4 && (iv + k) < support; k++) {
+                                                const int ix_v = iv0 + iv + k;
+
+                                                #pragma omp atomic update
+                                                subgrids_(iw, ix_u, ix_v) += 
+                                                    ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
 // TODO: make explicit SIMD processing an optional cmake flag ifdef AVX2
+// TODO: add AVX512 support
+// TODO: add find-grained timings
 // Local function to do the optimized gridding.
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_opt(
@@ -570,7 +814,7 @@ void grid_opt(
                 const int end_ch = packed_data.end_channels[idx];
                 
                 const double* uvw0 = &packed_data.uvw0[idx * 3];
-                const double* duvw = &packed_data.duvw[idx * 3];
+                const double* duvw = &packed_data.duvw[idx * 3]
 
                 for(int c  = start_ch; c < end_ch; c++)
                 {
