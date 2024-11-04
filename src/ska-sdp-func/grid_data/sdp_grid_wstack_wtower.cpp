@@ -233,6 +233,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         double w_tower_height,
         int verbosity,
         sdp_Mem* vis,
+        int num_threads,
         sdp_Error* status
 )
 {
@@ -257,11 +258,12 @@ void sdp_grid_wstack_wtower_degrid_all(
         return;
     }
     if (subgrid_frac == 0.0) subgrid_frac = 2.0 / 3.0;
-    int num_threads = 1;
+    int max_threads = 1;
 #ifdef _OPENMP
     omp_set_max_active_levels(1);
-    num_threads = (loc == SDP_MEM_CPU) ? omp_get_max_threads() : 1;
+    max_threads = (loc == SDP_MEM_CPU) ? omp_get_max_threads() : 1;
 #endif
+    if (num_threads <= 0) num_threads = max_threads;
 
     // Set up timers.
     SDP_TMR_CREATE("Degridding",
@@ -488,6 +490,7 @@ void sdp_grid_wstack_wtower_grid_all(
         double w_tower_height,
         int verbosity,
         sdp_Mem* image,
+        int num_threads,
         sdp_Error* status
 )
 {
@@ -512,11 +515,12 @@ void sdp_grid_wstack_wtower_grid_all(
         return;
     }
     if (subgrid_frac == 0.0) subgrid_frac = 2.0 / 3.0;
-    int num_threads = 1;
+    int max_threads = 1;
 #ifdef _OPENMP
     omp_set_max_active_levels(1);
-    num_threads = (loc == SDP_MEM_CPU) ? omp_get_max_threads() : 1;
+    max_threads = (loc == SDP_MEM_CPU) ? omp_get_max_threads() : 1;
 #endif
+    if (num_threads <= 0) num_threads = max_threads;
 
     // Set up timers.
     SDP_TMR_CREATE("Gridding",

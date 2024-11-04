@@ -38,6 +38,7 @@ extern "C" {
  * @param w_tower_height Height of w-tower to use.
  * @param verbosity Verbosity level.
  * @param vis ``complex[uvw_count, ch_count]`` Output degridded visibilities.
+ * @param num_threads The number of CPU threads to use. Automatic if <= 0.
  * @param status Error status.
  */
 void sdp_grid_wstack_wtower_degrid_all(
@@ -58,6 +59,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         double w_tower_height,
         int verbosity,
         sdp_Mem* vis,
+        int num_threads,
         sdp_Error* status
 );
 
@@ -81,6 +83,7 @@ void sdp_grid_wstack_wtower_degrid_all(
  * @param w_tower_height Height of w-tower to use.
  * @param verbosity Verbosity level.
  * @param image Output image.
+ * @param num_threads The number of CPU threads to use. Automatic if <= 0.
  * @param status Error status.
  */
 void sdp_grid_wstack_wtower_grid_all(
@@ -101,6 +104,7 @@ void sdp_grid_wstack_wtower_grid_all(
         double w_tower_height,
         int verbosity,
         sdp_Mem* image,
+        int num_threads,
         sdp_Error* status
 );
 
