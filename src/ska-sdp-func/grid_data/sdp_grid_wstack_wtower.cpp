@@ -13,23 +13,13 @@
 #include "ska-sdp-func/grid_data/sdp_gridder_utils.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
+#include "ska-sdp-func/utility/sdp_thread_support.h"
 #include "ska-sdp-func/utility/sdp_timer.h"
 
 using std::vector;
 
-static void report_timing(
-        const vector<sdp_GridderWtowerUVW*> kernel,
-        int verbosity,
-        int gridding,
-        int num_w_planes,
-        int num_subgrids_u,
-        int num_subgrids_v,
-        double w_tower_height,
-        const sdp_Mem* vis,
-        const sdp_Timers* timers,
-        sdp_Error* status
-);
-
+// Begin anonymous namespace for file-local functions.
+namespace {
 
 struct sdp_SubgridTask
 {
@@ -72,53 +62,8 @@ struct sdp_SubgridTask
 };
 
 
-struct sdp_Mutex
-{
-private:
-#ifdef _OPENMP
-    omp_lock_t lock_;
-#else
-    int dummy; // Avoid an empty struct.
-#endif
-
-public:
-    sdp_Mutex()
-    {
-#ifdef _OPENMP
-        omp_init_lock(&lock_);
-#endif
-    }
-
-    ~sdp_Mutex()
-    {
-#ifdef _OPENMP
-        omp_destroy_lock(&lock_);
-#endif
-    }
-
-    void lock()
-    {
-#ifdef _OPENMP
-        omp_set_lock(&lock_);
-#endif
-    }
-
-    void unlock()
-    {
-#ifdef _OPENMP
-        omp_unset_lock(&lock_);
-#endif
-    }
-};
-
-#ifdef _OPENMP
-#define GET_THREAD_NUM omp_get_thread_num()
-#else
-#define GET_THREAD_NUM 0
-#endif
-
-
-static vector<sdp_SubgridTask> count_visibilities(
+// Count visibilities in each sub-grid, create and return a list of tasks.
+vector<sdp_SubgridTask> count_visibilities(
         const sdp_Mem* uvw,
         const sdp_Mem* vis,
         const sdp_Mem* start_ch_w,
@@ -148,13 +93,13 @@ static vector<sdp_SubgridTask> count_visibilities(
     const int num_subgrids_u = int(1 + max_iu - min_iu);
     const int num_subgrids_v = int(1 + max_iv - min_iv);
     vector<sdp_SubgridTask> tasks(num_subgrids_u * num_subgrids_v);
-    sdp_Mutex mutex;
+    sdp_Mutex* mutex = (verbosity > 1) ? sdp_mutex_create() : 0;
     #pragma omp parallel for num_threads(num_threads) collapse(2)
     for (int64_t iu = min_iu; iu <= max_iu; ++iu)
     {
         for (int64_t iv = min_iv; iv <= max_iv; ++iv)
         {
-            int tid = GET_THREAD_NUM;
+            int tid = SDP_GET_THREAD_NUM;
 
             // Select visibilities in sub-grid.
             int64_t num_vis = 0;
@@ -175,28 +120,27 @@ static vector<sdp_SubgridTask> count_visibilities(
             );
             if (verbosity > 1 && num_vis > 0)
             {
-                mutex.lock();
+                sdp_mutex_lock(mutex);
                 SDP_LOG_INFO(
                         "subgrid %d/%d/%d: "
                         "%" PRId64 " visibilities in %" PRId64 " chunks",
                         iu, iv, iw, num_vis, tasks[subgrid].num_chunks
                 );
-                mutex.unlock();
+                sdp_mutex_unlock(mutex);
             }
         }
     }
     SDP_TMR_POP;
+    sdp_mutex_free(mutex);
     return tasks;
 }
 
 
-static sdp_SubgridTask pick_task(
-        vector<sdp_SubgridTask>& subgrids,
-        sdp_Mutex& mutex
-)
+// Pick the next task to work on from the list.
+sdp_SubgridTask pick_task(vector<sdp_SubgridTask>& subgrids, sdp_Mutex* mutex)
 {
     sdp_SubgridTask task;
-    mutex.lock();
+    sdp_mutex_lock(mutex);
     for (size_t i = 0; i < subgrids.size(); ++i)
     {
         // Find a subgrid with work still to do.
@@ -216,9 +160,59 @@ static sdp_SubgridTask pick_task(
             break;
         }
     }
-    mutex.unlock();
+    sdp_mutex_unlock(mutex);
     return task;
 }
+
+
+// Report run parameters and timing data.
+void report_timing(
+        const vector<sdp_GridderWtowerUVW*> kernel,
+        int verbosity,
+        int gridding,
+        int num_w_planes,
+        int num_subgrids_u,
+        int num_subgrids_v,
+        double w_tower_height,
+        const sdp_Mem* vis,
+        const sdp_Timers* SDP_TMR_HANDLE,
+        sdp_Error* status
+)
+{
+    if (*status || verbosity == 0) return;
+    int total_w_planes = 0;
+    for (size_t i = 0; i < kernel.size(); ++i)
+    {
+        total_w_planes += sdp_gridder_wtower_uvw_num_w_planes(
+                kernel[i], gridding
+        );
+    }
+    const int image_size = sdp_gridder_wtower_uvw_image_size(kernel[0]);
+    const int subgrid_size = sdp_gridder_wtower_uvw_subgrid_size(kernel[0]);
+    const double w_step = sdp_gridder_wtower_uvw_w_step(kernel[0]);
+    SDP_LOG_INFO("Timing report for w-stacking with w-towers");
+    SDP_LOG_INFO("| Number of large w-planes  : %d", num_w_planes);
+    SDP_LOG_INFO("| Total w-layers processed  : %d (in gridder kernels)",
+            total_w_planes
+    );
+    SDP_LOG_INFO("| Number of sub-grids (u, v): (%d, %d)",
+            num_subgrids_u, num_subgrids_v
+    );
+    SDP_LOG_INFO("| Image size (pixels)       : (%d, %d)",
+            image_size, image_size
+    );
+    SDP_LOG_INFO("| Sub-grid size (pixels)    : (%d, %d)",
+            subgrid_size, subgrid_size
+    );
+    SDP_LOG_INFO("| Vis shape (rows, chans)   : (%d, %d)",
+            sdp_mem_shape_dim(vis, 0), sdp_mem_shape_dim(vis, 1)
+    );
+    SDP_LOG_INFO("| Value of w_step           : %.3e", w_step);
+    SDP_LOG_INFO("| Value of w_tower_height   : %.3e", w_tower_height);
+    SDP_TMR_REPORT;
+}
+
+} // End anonymous namespace for file-local functions.
 
 
 void sdp_grid_wstack_wtower_degrid_all(
@@ -387,7 +381,7 @@ void sdp_grid_wstack_wtower_degrid_all(
         );
 
         // Start a parallel region to process all tasks.
-        sdp_Mutex mutex;
+        sdp_Mutex* mutex = sdp_mutex_create();
         int64_t vis_count_check = 0;
         #pragma omp parallel num_threads(num_threads)
         {
@@ -395,7 +389,7 @@ void sdp_grid_wstack_wtower_degrid_all(
             {
                 if (*status) break;
                 sdp_TimerNode* node = SDP_TMR_ROOT;
-                int tid = GET_THREAD_NUM;
+                int tid = SDP_GET_THREAD_NUM;
 
                 // Pick up a task from the subgrid list.
                 sdp_SubgridTask task = pick_task(tasks, mutex);
@@ -442,6 +436,7 @@ void sdp_grid_wstack_wtower_degrid_all(
                 node = sdp_timers_pop(SDP_TMR_HANDLE, tid, node);
             }
         }
+        sdp_mutex_free(mutex);
         if (vis_count_check != num_vis)
         {
             SDP_LOG_CRITICAL("Processed %d but expected %d visibilities",
@@ -634,7 +629,7 @@ void sdp_grid_wstack_wtower_grid_all(
         );
 
         // Start a parallel region to process all tasks.
-        sdp_Mutex mutex;
+        sdp_Mutex* mutex = sdp_mutex_create();
         int64_t vis_count_check = 0;
         #pragma omp parallel num_threads(num_threads)
         {
@@ -642,7 +637,7 @@ void sdp_grid_wstack_wtower_grid_all(
             {
                 if (*status) break;
                 sdp_TimerNode* node = SDP_TMR_ROOT;
-                int tid = GET_THREAD_NUM;
+                int tid = SDP_GET_THREAD_NUM;
 
                 // Pick up a task from the subgrid list.
                 sdp_SubgridTask task = pick_task(tasks, mutex);
@@ -691,6 +686,7 @@ void sdp_grid_wstack_wtower_grid_all(
                 );
             }
         }
+        sdp_mutex_free(mutex);
         if (vis_count_check != num_vis)
         {
             SDP_LOG_CRITICAL("Processed %d but expected %d visibilities",
@@ -733,51 +729,4 @@ void sdp_grid_wstack_wtower_grid_all(
     sdp_mem_free(start_ch_w);
     sdp_mem_free(end_ch_w);
     SDP_TMR_FREE;
-}
-
-
-static void report_timing(
-        const vector<sdp_GridderWtowerUVW*> kernel,
-        int verbosity,
-        int gridding,
-        int num_w_planes,
-        int num_subgrids_u,
-        int num_subgrids_v,
-        double w_tower_height,
-        const sdp_Mem* vis,
-        const sdp_Timers* SDP_TMR_HANDLE,
-        sdp_Error* status
-)
-{
-    if (*status || verbosity == 0) return;
-    int total_w_planes = 0;
-    for (size_t i = 0; i < kernel.size(); ++i)
-    {
-        total_w_planes += sdp_gridder_wtower_uvw_num_w_planes(
-                kernel[i], gridding
-        );
-    }
-    const int image_size = sdp_gridder_wtower_uvw_image_size(kernel[0]);
-    const int subgrid_size = sdp_gridder_wtower_uvw_subgrid_size(kernel[0]);
-    const double w_step = sdp_gridder_wtower_uvw_w_step(kernel[0]);
-    SDP_LOG_INFO("Timing report for w-stacking with w-towers");
-    SDP_LOG_INFO("| Number of large w-planes  : %d", num_w_planes);
-    SDP_LOG_INFO("| Total w-layers processed  : %d (in gridder kernels)",
-            total_w_planes
-    );
-    SDP_LOG_INFO("| Number of sub-grids (u, v): (%d, %d)",
-            num_subgrids_u, num_subgrids_v
-    );
-    SDP_LOG_INFO("| Image size (pixels)       : (%d, %d)",
-            image_size, image_size
-    );
-    SDP_LOG_INFO("| Sub-grid size (pixels)    : (%d, %d)",
-            subgrid_size, subgrid_size
-    );
-    SDP_LOG_INFO("| Vis shape (rows, chans)   : (%d, %d)",
-            sdp_mem_shape_dim(vis, 0), sdp_mem_shape_dim(vis, 1)
-    );
-    SDP_LOG_INFO("| Value of w_step           : %.3e", w_step);
-    SDP_LOG_INFO("| Value of w_tower_height   : %.3e", w_tower_height);
-    SDP_TMR_REPORT;
 }
