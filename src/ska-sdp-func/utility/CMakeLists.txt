@@ -5,5 +5,6 @@ SKA_SDP_FUNC_SRC(
     sdp_mem.cpp
     sdp_mem.cu
     sdp_sky_coord.c
-    sdp_timer.c
+    sdp_thread_support.cpp
+    sdp_timer.cpp
 )

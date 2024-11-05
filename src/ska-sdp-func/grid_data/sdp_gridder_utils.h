@@ -351,12 +351,16 @@ void sdp_gridder_subgrid_cut_out(
  * @param a First input array.
  * @param b Second input array.
  * @param result Sum of a - b.
+ * @param start_row Row at which to start processing data.
+ * @param end_row Row at which to stop processing data (exclusive).
  * @param status Error status.
  */
 void sdp_gridder_sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
         int64_t* result,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 );
 

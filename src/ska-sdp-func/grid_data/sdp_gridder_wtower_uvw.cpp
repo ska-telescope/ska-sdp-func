@@ -28,8 +28,6 @@ struct sdp_GridderWtowerUVW
     int oversampling;
     int w_support;
     int w_oversampling;
-    double tmr_grid_correct[2];
-    double tmr_process_subgrid_stack[2];
     int num_w_planes[2];
     sdp_Mem* uv_kernel;
     sdp_Mem* uv_kernel_gpu;
@@ -53,6 +51,8 @@ void degrid(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
@@ -71,7 +71,6 @@ void degrid(
             (const double*) sdp_mem_data_const(plan->uv_kernel);
     const double* RESTRICT w_kernel =
             (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_uvw = uvws_.shape[0];
     const int half_subgrid = plan->subgrid_size / 2;
     const int oversample = plan->oversampling;
     const int w_oversample = plan->w_oversampling;
@@ -85,7 +84,7 @@ void degrid(
 
     // Loop over rows. Each row contains visibilities for all channels.
     #pragma omp parallel for schedule(dynamic, 500)
-    for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
+    for (int64_t i_row = start_row; i_row < end_row; ++i_row)
     {
         // Skip if there's no visibility to degrid.
         int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
@@ -186,6 +185,8 @@ void degrid_cpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -203,7 +204,8 @@ void degrid_cpu(
     {
         degrid<complex<double>, double, complex<double> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -212,7 +214,8 @@ void degrid_cpu(
     {
         degrid<complex<float>, double, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -221,7 +224,8 @@ void degrid_cpu(
     {
         degrid<complex<float>, float, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else
@@ -247,6 +251,8 @@ void degrid_gpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -318,6 +324,8 @@ void degrid_gpu(
         &subgrid_offset_w,
         (const void*) &freq0_hz,
         (const void*) &dfreq_hz,
+        (const void*) &start_row,
+        (const void*) &end_row,
         is_dbl_uvw ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
         (const void*) &start_chs_,
         (const void*) &end_chs_,
@@ -350,6 +358,8 @@ void grid(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_MemViewCpu<const int, 1>& start_chs,
         const sdp_MemViewCpu<const int, 1>& end_chs,
@@ -368,7 +378,6 @@ void grid(
             (const double*) sdp_mem_data_const(plan->uv_kernel);
     const double* RESTRICT w_kernel =
             (const double*) sdp_mem_data_const(plan->w_kernel);
-    const int64_t num_uvw = uvws_.shape[0];
     const int half_subgrid = plan->subgrid_size / 2;
     const int oversample = plan->oversampling;
     const int w_oversample = plan->w_oversampling;
@@ -381,7 +390,7 @@ void grid(
     const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
 
     // Loop over rows. Each row contains visibilities for all channels.
-    for (int64_t i_row = 0; i_row < num_uvw; ++i_row)
+    for (int64_t i_row = start_row; i_row < end_row; ++i_row)
     {
         // Skip if there's no visibility to grid.
         int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
@@ -484,6 +493,8 @@ void grid_cpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -501,7 +512,8 @@ void grid_cpu(
     {
         grid<complex<double>, double, complex<double> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -510,7 +522,8 @@ void grid_cpu(
     {
         grid<complex<float>, double, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else if (sdp_mem_type(subgrids) == SDP_MEM_COMPLEX_FLOAT &&
@@ -519,7 +532,8 @@ void grid_cpu(
     {
         grid<complex<float>, float, complex<float> >(plan, subgrids,
                 w_plane, subgrid_offset_u, subgrid_offset_v, subgrid_offset_w,
-                freq0_hz, dfreq_hz, uvws, start_chs_, end_chs_, vis, status
+                freq0_hz, dfreq_hz, start_row, end_row, uvws,
+                start_chs_, end_chs_, vis, status
         );
     }
     else
@@ -545,6 +559,8 @@ void grid_gpu(
         int subgrid_offset_w,
         double freq0_hz,
         double dfreq_hz,
+        int64_t start_row,
+        int64_t end_row,
         const sdp_Mem* uvws,
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
@@ -616,6 +632,8 @@ void grid_gpu(
         &subgrid_offset_w,
         (const void*) &freq0_hz,
         (const void*) &dfreq_hz,
+        (const void*) &start_row,
+        (const void*) &end_row,
         is_dbl_uvw ? (const void*) &uvws_dbl : (const void*) &uvws_flt,
         (const void*) &start_chs_,
         (const void*) &end_chs_,
@@ -717,6 +735,8 @@ void sdp_gridder_wtower_uvw_degrid(
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
         sdp_Mem* vis,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
@@ -732,13 +752,11 @@ void sdp_gridder_wtower_uvw_degrid(
         SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
     }
-
-    // Set up timer.
-    const sdp_TimerType tmr_type = (
-        loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(uvws, 0);
+    }
 
     // Copy internal arrays to GPU memory as required.
     sdp_Mem* w_pattern_ptr = plan->w_pattern;
@@ -867,7 +885,7 @@ void sdp_gridder_wtower_uvw_degrid(
             degrid_cpu(
                     plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
         else if (loc == SDP_MEM_GPU)
@@ -875,23 +893,19 @@ void sdp_gridder_wtower_uvw_degrid(
             degrid_gpu(
                     plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
     }
 
-    // Update timer.
-    #pragma omp critical
-    {
-        plan->tmr_process_subgrid_stack[0] += sdp_timer_elapsed(tmr);
-        plan->num_w_planes[0] += num_w_planes;
-    }
+    // Update w-plane counter.
+    #pragma omp atomic
+    plan->num_w_planes[0] += num_w_planes;
 
     sdp_mem_free(w_subgrid_image);
     sdp_mem_free(subgrids);
     sdp_mem_free(last_subgrid_ptr);
     sdp_fft_free(fft);
-    sdp_timer_free(tmr);
 }
 
 
@@ -904,11 +918,6 @@ void sdp_gridder_wtower_uvw_degrid_correct(
         sdp_Error* status
 )
 {
-    const sdp_TimerType tmr_type = (sdp_mem_location(facet) == SDP_MEM_CPU ?
-                SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
     sdp_gridder_grid_correct_pswf(plan->image_size, plan->theta, plan->w_step,
             plan->shear_u, plan->shear_v, plan->support, plan->w_support,
             facet, facet_offset_l, facet_offset_m, status
@@ -920,9 +929,6 @@ void sdp_gridder_wtower_uvw_degrid_correct(
                 facet, facet_offset_l, facet_offset_m, w_offset, false, status
         );
     }
-    #pragma omp critical
-    plan->tmr_grid_correct[0] += sdp_timer_elapsed(tmr);
-    sdp_timer_free(tmr);
 }
 
 
@@ -938,6 +944,8 @@ void sdp_gridder_wtower_uvw_grid(
         int subgrid_offset_u,
         int subgrid_offset_v,
         int subgrid_offset_w,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
@@ -953,13 +961,11 @@ void sdp_gridder_wtower_uvw_grid(
         SDP_LOG_ERROR("All arrays must be in the same memory space");
         return;
     }
-
-    // Set up timer.
-    const sdp_TimerType tmr_type = (
-        loc == SDP_MEM_CPU ? SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(uvws, 0);
+    }
 
     // Copy internal arrays to GPU memory as required.
     sdp_Mem* w_pattern_ptr = plan->w_pattern;
@@ -1056,14 +1062,14 @@ void sdp_gridder_wtower_uvw_grid(
         {
             grid_cpu(plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
         else if (loc == SDP_MEM_GPU)
         {
             grid_gpu(plan, subgrids, w_plane, subgrid_offset_u,
                     subgrid_offset_v, subgrid_offset_w, freq0_hz, dfreq_hz,
-                    uvws, start_chs, end_chs, vis, status
+                    start_row, end_row, uvws, start_chs, end_chs, vis, status
             );
         }
     }
@@ -1106,18 +1112,14 @@ void sdp_gridder_wtower_uvw_grid(
             subgrid_image, w_subgrid_image, w_pattern_ptr, exponent, status
     );
 
-    // Update timer.
-    #pragma omp critical
-    {
-        plan->tmr_process_subgrid_stack[1] += sdp_timer_elapsed(tmr);
-        plan->num_w_planes[1] += num_w_planes;
-    }
+    // Update w-plane counter.
+    #pragma omp atomic
+    plan->num_w_planes[1] += num_w_planes;
 
     sdp_mem_free(w_subgrid_image);
     sdp_mem_free(subgrids);
     sdp_mem_free(fft_buffer);
     sdp_fft_free(fft);
-    sdp_timer_free(tmr);
 }
 
 
@@ -1130,11 +1132,6 @@ void sdp_gridder_wtower_uvw_grid_correct(
         sdp_Error* status
 )
 {
-    const sdp_TimerType tmr_type = (sdp_mem_location(facet) == SDP_MEM_CPU ?
-                SDP_TIMER_NATIVE : SDP_TIMER_CUDA
-    );
-    sdp_Timer* tmr = sdp_timer_create(tmr_type);
-    sdp_timer_resume(tmr);
     sdp_gridder_grid_correct_pswf(plan->image_size, plan->theta, plan->w_step,
             plan->shear_u, plan->shear_v, plan->support, plan->w_support,
             facet, facet_offset_l, facet_offset_m, status
@@ -1146,9 +1143,6 @@ void sdp_gridder_wtower_uvw_grid_correct(
                 facet, facet_offset_l, facet_offset_m, w_offset, true, status
         );
     }
-    #pragma omp critical
-    plan->tmr_grid_correct[1] += sdp_timer_elapsed(tmr);
-    sdp_timer_free(tmr);
 }
 
 
@@ -1162,24 +1156,6 @@ void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan)
     sdp_mem_free(plan->w_pattern);
     sdp_mem_free(plan->w_pattern_gpu);
     free(plan);
-}
-
-
-double sdp_gridder_wtower_uvw_elapsed_time(
-        const sdp_GridderWtowerUVW* plan,
-        sdp_GridderWtowerUVWTimer timer,
-        int gridding
-)
-{
-    switch (timer)
-    {
-    case SDP_WTOWER_TMR_GRID_CORRECT:
-        return plan->tmr_grid_correct[gridding];
-    case SDP_WTOWER_TMR_PROCESS_SUBGRID_STACK:
-        return plan->tmr_process_subgrid_stack[gridding];
-    default:
-        return 0.0;
-    }
 }
 
 

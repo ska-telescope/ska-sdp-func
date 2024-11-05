@@ -496,7 +496,7 @@ static void run_and_check(
     sdp_grid_wstack_wtower_degrid_all(ptr_img, freq0_hz, dfreq_hz, ptr_uvws,
             subgrid_size, theta, w_step, shear_u, shear_v, support,
             oversampling, w_support, w_oversampling, subgrid_frac,
-            w_tower_height, verbosity, vis_wtower, status
+            w_tower_height, verbosity, vis_wtower, 0, status
     );
 
     // Check against reference data.
@@ -512,7 +512,7 @@ static void run_and_check(
     sdp_grid_wstack_wtower_grid_all(ptr_vis, freq0_hz, dfreq_hz, ptr_uvws,
             subgrid_size, theta, w_step, shear_u, shear_v, support,
             oversampling, w_support, w_oversampling, subgrid_frac,
-            w_tower_height, verbosity, img_wtower, status
+            w_tower_height, verbosity, img_wtower, 0, status
     );
     sdp_mem_scale_real(img_wtower, 1.0 / (num_rows * num_chan), status);
 
