@@ -556,6 +556,7 @@ void grid_opt_tasks(
 #ifdef AVX512
                                         for(int iv = 0; iv < support; iv += 8) {
 
+                                            // TODO: make prefetching an optional ifdef flag
                                             // Prefetch 8 vectors into L1
                                             if(iv + 32 < support) {
                                                 _mm_prefetch(&uv_kernel[v_off + iv + 32], _MM_HINT_T0);
@@ -964,7 +965,7 @@ void grid_opt(
 
 // Local function to do the gridding.
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
-void grid(
+void grid_masked(
         const sdp_GridderWtowerUVW* plan,
         sdp_Mem* subgrids,
         int w_plane,
@@ -1141,6 +1142,117 @@ void grid(
                         subgrids_(iw, ix_u, ix_v) += (
                             (SUBGRID_TYPE) kern_wuv * local_vis
                         );
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Local function to do the gridding.
+template <typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
+void grid_orig(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
+          int subgrid_offset_u, int subgrid_offset_v, int subgrid_offset_w,
+          double freq0_hz, double dfreq_hz, const sdp_Mem *uvws,
+          const sdp_MemViewCpu<const int, 1> &start_chs,
+          const sdp_MemViewCpu<const int, 1> &end_chs, const sdp_Mem *vis,
+          sdp_Error *status) {
+    if (*status)
+        return;
+    sdp_MemViewCpu<SUBGRID_TYPE, 3> subgrids_;
+    sdp_MemViewCpu<const UVW_TYPE, 2> uvws_;
+    sdp_MemViewCpu<const VIS_TYPE, 2> vis_;
+    sdp_mem_check_and_view(subgrids, &subgrids_, status);
+    sdp_mem_check_and_view(uvws, &uvws_, status);
+    sdp_mem_check_and_view(vis, &vis_, status);
+    const double *RESTRICT uv_kernel =
+        (const double *)sdp_mem_data_const(plan->uv_kernel);
+    const double *RESTRICT w_kernel =
+        (const double *)sdp_mem_data_const(plan->w_kernel);
+    const int64_t num_uvw = uvws_.shape[0];
+    const int half_subgrid = plan->subgrid_size / 2;
+    const int oversample = plan->oversampling;
+    const int w_oversample = plan->w_oversampling;
+    const int support = plan->support;
+    const int w_support = plan->w_support;
+    const double theta = plan->theta;
+    const double w_step = plan->w_step;
+    const double theta_ov = theta * oversample;
+    const double w_step_ov = 1.0 / w_step * w_oversample;
+    const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
+
+    // Loop over rows. Each row contains visibilities for all channels.
+    for (int64_t i_row = 0; i_row < num_uvw; ++i_row) {
+        // Skip if there's no visibility to grid.
+        int64_t start_ch = start_chs(i_row), end_ch = end_chs(i_row);
+        if (start_ch >= end_ch)
+            continue;
+
+        // Select only visibilities on this w-plane.
+        const UVW_TYPE uvw[] = {uvws_(i_row, 0), uvws_(i_row, 1),
+                                uvws_(i_row, 2)};
+        const double min_w = (w_plane + subgrid_offset_w - 1) * w_step;
+        const double max_w = (w_plane + subgrid_offset_w) * w_step;
+        sdp_gridder_clamp_channels_inline(uvw[2], freq0_hz, dfreq_hz, &start_ch,
+                                          &end_ch, min_w, max_w);
+        if (start_ch >= end_ch)
+            continue;
+
+        // Scale + shift UVWs.
+        const double s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
+        double uvw0[] = {uvw[0] * s_uvw0, uvw[1] * s_uvw0, uvw[2] * s_uvw0};
+        double duvw[] = {uvw[0] * s_duvw, uvw[1] * s_duvw, uvw[2] * s_duvw};
+        uvw0[0] -= subgrid_offset_u / theta;
+        uvw0[1] -= subgrid_offset_v / theta;
+        uvw0[2] -= ((subgrid_offset_w + w_plane - 1) * w_step);
+
+        // Bounds check.
+        const double u_min = floor(theta * (uvw0[0] + start_ch * duvw[0]));
+        const double u_max = ceil(theta * (uvw0[0] + (end_ch - 1) * duvw[0]));
+        const double v_min = floor(theta * (uvw0[1] + start_ch * duvw[1]));
+        const double v_max = ceil(theta * (uvw0[1] + (end_ch - 1) * duvw[1]));
+        if (u_min < -half_subgrid || u_max >= half_subgrid ||
+            v_min < -half_subgrid || v_max >= half_subgrid) {
+            continue;
+        }
+
+        // Loop over selected channels.
+        for (int64_t c = start_ch; c < end_ch; c++) {
+            const double u = uvw0[0] + c * duvw[0];
+            const double v = uvw0[1] + c * duvw[1];
+            const double w = uvw0[2] + c * duvw[2];
+
+            // Determine top-left corner of grid region centred approximately
+            // on visibility in oversampled coordinates (this is subgrid-local,
+            // so should be safe for overflows).
+            const int iu0_ov = int(round(u * theta_ov)) + half_sg_size_ov;
+            const int iv0_ov = int(round(v * theta_ov)) + half_sg_size_ov;
+            const int iw0_ov = int(round(w * w_step_ov));
+            const int iu0 = iu0_ov / oversample;
+            const int iv0 = iv0_ov / oversample;
+
+            // Determine which kernel to use.
+            // Comment from Peter:
+            // For future reference - at least on CPU the memory latency for
+            // accessing the kernel is the main bottleneck of (de)gridding.
+            // This can be mitigated quite well by pre-fetching the next kernel
+            // value before starting to (de)grid the current one.
+            const int u_off = (iu0_ov % oversample) * support;
+            const int v_off = (iv0_ov % oversample) * support;
+            const int w_off = (iw0_ov % w_oversample) * w_support;
+
+            // Grid visibility.
+            const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
+            for (int iw = 0; iw < w_support; ++iw) {
+                const double kern_w = w_kernel[w_off + iw];
+                for (int iu = 0; iu < support; ++iu) {
+                    const double kern_wu = kern_w * uv_kernel[u_off + iu];
+                    const int ix_u = iu0 + iu;
+                    for (int iv = 0; iv < support; ++iv) {
+                        const double kern_wuv = kern_wu * uv_kernel[v_off + iv];
+                        const int ix_v = iv0 + iv;
+                        subgrids_(iw, ix_u, ix_v) +=
+                            ((SUBGRID_TYPE)kern_wuv * local_vis);
                     }
                 }
             }
