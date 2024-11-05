@@ -555,6 +555,16 @@ void grid_opt_tasks(
                                         const int ix_u = iu0 + iu;
 #ifdef AVX512
                                         for(int iv = 0; iv < support; iv += 8) {
+
+                                            // Prefetch 8 vectors into L1
+                                            if(iv + 32 < support) {
+                                                _mm_prefetch(&uv_kernel[v_off + iv + 32], _MM_HINT_T0);
+                                            }
+                                            // Prefetch next subgrid values
+                                            if(ix_u < subgrids_.shape[1] - 1) {
+                                                __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                            }
+
                                             __m512d kernel_vec = _mm512_loadu_pd(
                                                 &uv_kernel[v_off + iv]);
                                             __m512d kern_wuv = _mm512_mul_pd(
@@ -566,6 +576,7 @@ void grid_opt_tasks(
                                             for(int k = 0; k < 8 && (iv + k) < support; k++) {
                                                 const int ix_v = iv0 + iv + k;
 
+                                                //TODO: Do we really need the atomic updates here?!
                                                 #pragma omp atomic update
                                                 subgrids_(iw, ix_u, ix_v) += 
                                                     ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
@@ -574,6 +585,16 @@ void grid_opt_tasks(
 #else
                                         // AVX2 instructions
                                         for(int iv = 0; iv < support; iv += 4) {
+
+                                            // Prefetch 4 vectors into L1
+                                            if(iv + 16 < support) {
+                                                _mm_prefetch(&uv_kernel[v_off + iv + 16], _MM_HINT_T0);
+                                            }
+                                            // Prefetch next subgrid values
+                                            if(ix_u < subgrids_.shape[1] - 1) {
+                                                __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                            }
+
                                             __m256d kernel_vec = _mm256_loadu_pd(
                                                 &uv_kernel[v_off + iv]);
                                             __m256d kern_wuv = _mm256_mul_pd(
@@ -593,7 +614,10 @@ void grid_opt_tasks(
                                         }
 #endif //AVX512
                                     }
-                                }
+                                    // Prefetch next w kernel values to L1
+                                    if(iw + 1 < w_support) {
+                                        _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
+                                    }
                             }
                         }
                     }
@@ -862,17 +886,17 @@ void grid_opt(
                     // Vectorized gridding
                     for(int iw = 0; iw < w_support; iw++) {
                         const double kern_w = w_kernel[w_off + iw];
+
                         for(int iu = 0; iu < support; iu++) {
                             const double kern_wu = kern_w * uv_kernel[u_off + iu];
                             const int ix_u = iu0 + iu;
 #ifdef AVX512
                             for(int iv = 0; iv < support; iv += 8) {
                                 // Prefetch next kernel values to L1
-                                // Prefetch 16 elements ahead or 4 vectors
+                                // Prefetch 32 elements ahead or 8 vectors
                                 if(iv + 32 < support) {
                                     _mm_prefetch(&uv_kernel[v_off + iv + 32], _MM_HINT_T0);
                                 }
-
                                 // Prefetch next subgrid values
                                 if(ix_u < subgrids_.shape[1] - 1) {
                                     __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
@@ -890,6 +914,7 @@ void grid_opt(
                                 #pragma omp simd
                                 for(int k = 0; k < 4 && (iv + k) < support; k++) {
                                     const int ix_v = iv0 + iv + k;
+                                    // TODO: Here we don't do atomic update, this needs checking!
                                     subgrids_(iw, ix_u, ix_v) +=
                                         ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
                                 }
@@ -902,7 +927,6 @@ void grid_opt(
                                 if(iv + 16 < support) {
                                     _mm_prefetch(&uv_kernel[v_off + iv + 16], _MM_HINT_T0);
                                 }
-
                                 // Prefetch next subgrid values
                                 if(ix_u < subgrids_.shape[1] - 1) {
                                     __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
