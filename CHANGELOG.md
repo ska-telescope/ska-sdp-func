@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+- Fix build of Python wheel in CI pipeline to cater for GCC 13 using CUDA 12.4.
+
 ## 1.2.1
 
 - Improve load-balancing between CPU threads for w-towers gridder and degridder.
