@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.1
+
+- Improve load-balancing between CPU threads for w-towers gridder and degridder.
+- Allow number of CPU threads to be set when calling the gridder and degridder.
+- Use PocketFFT by default if MKL is not available.
+- Fix crash encountered when using some sub-grid sizes.
+- Apply optimisations to the degridder and grid correction functions.
+
 ## 1.2.0
 
 - Add new version of RFI flagger.
