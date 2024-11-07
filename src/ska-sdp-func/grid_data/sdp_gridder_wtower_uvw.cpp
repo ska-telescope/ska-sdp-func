@@ -9,6 +9,7 @@
 #include <xmmintrin.h>
 #include <omp.h>
 #include <vector>
+#include <set>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -19,6 +20,7 @@
 #include "ska-sdp-func/sdp_func_global.h"
 #include "ska-sdp-func/utility/sdp_mem_view.h"
 #include "ska-sdp-func/utility/sdp_timer.h"
+
 
 #ifdef AVX512
 #define SIMD_WIDTH 8
@@ -593,7 +595,7 @@ void grid_opt_tasks(
                                             }
                                             // Prefetch next subgrid values
                                             if(ix_u < subgrids_.shape[1] - 1) {
-                                                __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                                _mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
                                             }
 
                                             __m256d kernel_vec = _mm256_loadu_pd(
@@ -619,6 +621,7 @@ void grid_opt_tasks(
                                     if(iw + 1 < w_support) {
                                         _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
                                     }
+                                }
                             }
                         }
                     }
@@ -629,12 +632,12 @@ void grid_opt_tasks(
 }
 
 
-
 // TODO: make explicit SIMD processing an optional cmake flag ifdef AVX512
 // TODO: add find-grained timings
 // Local function to do the optimized gridding.
+// void grid_opt(
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
-void grid_opt(
+void grid(
         const sdp_GridderWtowerUVW* plan,
         sdp_Mem* subgrids,
         int w_plane,
@@ -781,7 +784,7 @@ void grid_opt(
         // Merge thread data into global storage
         #pragma omp critical
         {
-            try {
+//            try {
                 const size_t offset = packed_data.u_coords.size();
                 const size_t thread_size = thread_data.u_coords.size();
                 const size_t new_size = offset + thread_size;
@@ -828,13 +831,13 @@ void grid_opt(
                             thread_size * 3 * sizeof(double)
                             );
                 valid_count = new_size;
-            }
-            catch(const std::bad_alloc&) {
-                *status = SDP_ERR_MEM_ALLOC_FAILURE;
-            }
-            catch(const std::exception&) {
-                *status = SDP_ERR_RUNTIME;
-            }
+           // }
+           // catch(const std::bad_alloc&) {
+           //     *status = SDP_ERR_MEM_ALLOC_FAILURE;
+           // }
+           // catch(const std::exception&) {
+           //     *status = SDP_ERR_RUNTIME;
+           // }
         
         }
 
@@ -900,7 +903,7 @@ void grid_opt(
                                 }
                                 // Prefetch next subgrid values
                                 if(ix_u < subgrids_.shape[1] - 1) {
-                                    __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                    _mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
                                 }
 
                                 __m512d kernel_vec = _mm512_loadu_pd(
@@ -911,9 +914,10 @@ void grid_opt(
 
                                 _mm512_store_pd(kern_buffer, kernel_wuv);
 
-                                // grid 4 points at once
+                                const int remain = std::min(8, support - iv);
+                                // grid 8 points at once
                                 #pragma omp simd
-                                for(int k = 0; k < 4 && (iv + k) < support; k++) {
+                                for(int k = 0; k < remain; k++) {
                                     const int ix_v = iv0 + iv + k;
                                     // TODO: Here we don't do atomic update, this needs checking!
                                     subgrids_(iw, ix_u, ix_v) +=
@@ -930,7 +934,7 @@ void grid_opt(
                                 }
                                 // Prefetch next subgrid values
                                 if(ix_u < subgrids_.shape[1] - 1) {
-                                    __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                    _mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
                                 }
 
                                 __m256d kernel_vec = _mm256_loadu_pd(
@@ -941,9 +945,10 @@ void grid_opt(
 
                                 _mm256_store_pd(kern_buffer, kernel_wuv);
 
+                                const int remain = std::min(4, support - iv);
                                 // grid 4 points at once
                                 #pragma omp simd
-                                for(int k = 0; k < 4 && (iv + k) < support; k++) {
+                                for(int k = 0; k < remain; k++) {
                                     const int ix_v = iv0 + iv + k;
                                     subgrids_(iw, ix_u, ix_v) +=
                                         ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
@@ -1150,6 +1155,7 @@ void grid_masked(
 }
 
 // Local function to do the gridding.
+// void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
 template <typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_orig(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
           int subgrid_offset_u, int subgrid_offset_v, int subgrid_offset_w,
