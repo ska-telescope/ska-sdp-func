@@ -10,6 +10,7 @@
 #include <omp.h>
 #include <vector>
 #include <set>
+#include <atomic>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -344,6 +345,7 @@ void degrid_gpu(
 }
 
 // Local function to do the optimized gridding with OpenMP task groups
+// void grid_opt_tasks(
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_opt_tasks(
         const sdp_GridderWtowerUVW* plan,
@@ -565,7 +567,7 @@ void grid_opt_tasks(
                                             }
                                             // Prefetch next subgrid values
                                             if(ix_u < subgrids_.shape[1] - 1) {
-                                                __mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
+                                                _mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
                                             }
 
                                             __m512d kernel_vec = _mm512_loadu_pd(
@@ -575,14 +577,18 @@ void grid_opt_tasks(
 
                                             _mm512_store_pd(kern_buffer, kern_wuv);
 
+                                            const int remain = std::min(8, support - iv);
                                             #pragma omp simd
-                                            for(int k = 0; k < 8 && (iv + k) < support; k++) {
+                                            for(int k = 0; k < remain; k++) {
                                                 const int ix_v = iv0 + iv + k;
 
-                                                //TODO: Do we really need the atomic updates here?!
+                                                const SUBGRID_TYPE update_val = ((SUBGRID_TYPE)kern_buffer[k] * vis_valid); 
+                                                double* subgrid_ptr_real = reinterpret_cast<double*>(&subgrids_(iw, ix_u, ix_v));
+                                                double* subgrid_ptr_imag = subgrid_ptr_real + 1;
                                                 #pragma omp atomic update
-                                                subgrids_(iw, ix_u, ix_v) += 
-                                                    ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                                *subgrid_ptr_real += update_val.real();
+                                                #pragma omp atomic update
+                                                *subgrid_ptr_imag += update_val.imag();
                                             }
                                         }
 #else
@@ -606,13 +612,18 @@ void grid_opt_tasks(
                                             // Store intermediate kernel values into kernel_buffer
                                             _mm256_store_pd(kern_buffer, kern_wuv);
 
+                                            const int remain = std::min(4, support - iv);
                                             #pragma omp simd
-                                            for(int k = 0; k < 4 && (iv + k) < support; k++) {
+                                            for(int k = 0; k < remain < support; k++) {
                                                 const int ix_v = iv0 + iv + k;
 
+                                                const SUBGRID_TYPE update_val = ((SUBGRID_TYPE)kern_buffer[k] * vis_valid); 
+                                                SUBGRID_TYPE* subgrid_ptr_real = reinterpret_cast<double*>(&subgrids_(iw, ix_u, ix_v));
+                                                SUBGRID_TYPE* subgrid_ptr_imag = subgrid_ptr_real + 1;
                                                 #pragma omp atomic update
-                                                subgrids_(iw, ix_u, ix_v) += 
-                                                    ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                                *subgrid_ptr_real += update_val.real();
+                                                #pragma omp atomic update
+                                                *subgrid_ptr_imag += update_val.imag();
                                             }
                                         }
 #endif //AVX512
@@ -637,7 +648,7 @@ void grid_opt_tasks(
 // Local function to do the optimized gridding.
 // void grid_opt(
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
-void grid(
+  void grid(
         const sdp_GridderWtowerUVW* plan,
         sdp_Mem* subgrids,
         int w_plane,
@@ -696,16 +707,17 @@ void grid(
     PackedData packed_data;
     // Estimated initial padded size to prevent multiple reallocations
     const int64_t est_size = num_uvw * 2;
+    const int64_t num_channels = vis_.shape[1];
 
     // Pre-allocate vectors with alignment for the first pass of data
     packed_data.u_coords.reserve(est_size);
     packed_data.v_coords.reserve(est_size);
     packed_data.w_coords.reserve(est_size);
-    packed_data.vis_data.reserve(est_size);
+    packed_data.vis_data.reserve(est_size * num_channels);
     packed_data.start_channels.reserve(est_size);
     packed_data.end_channels.reserve(est_size);
     packed_data.uvw0.reserve(est_size * 3);
-    packed_data.duvw.reserve(est_size * 4);
+    packed_data.duvw.reserve(est_size * 3);
     
     int64_t valid_count = 0;
     #pragma omp parallel proc_bind(close)
@@ -716,7 +728,7 @@ void grid(
         thread_data.u_coords.reserve(num_uvw / num_threads);
         thread_data.v_coords.reserve(num_uvw / num_threads);
         thread_data.w_coords.reserve(num_uvw / num_threads);
-        thread_data.vis_data.reserve(num_uvw / num_threads);
+        thread_data.vis_data.reserve((num_uvw * num_channels) / num_threads);
         thread_data.start_channels.reserve(num_uvw / num_threads);
         thread_data.end_channels.reserve(num_uvw / num_threads);
         thread_data.uvw0.reserve(num_uvw * 3 / num_threads);
@@ -776,9 +788,11 @@ void grid(
             thread_data.duvw.push_back(duvw[0]);
             thread_data.duvw.push_back(duvw[1]);
             thread_data.duvw.push_back(duvw[2]);
-
-            thread_data.vis_data.push_back(vis_(i_row, 0));
-            thread_data.vis_data.push_back(vis_(i_row, 1));
+            
+            int min_channel = std::min(end_ch, num_channels);
+            for(int c = start_ch; c < min_channel; c++){
+                thread_data.vis_data.push_back(vis_(i_row, c));
+            }
         }
 
         // Merge thread data into global storage
@@ -788,11 +802,14 @@ void grid(
                 const size_t offset = packed_data.u_coords.size();
                 const size_t thread_size = thread_data.u_coords.size();
                 const size_t new_size = offset + thread_size;
+                const size_t vis_offset = offset * num_channels;
+                const size_t vis_thread_size = thread_data.vis_data.size();
+                const size_t new_vis_size = vis_offset + vis_thread_size;
                 
                 packed_data.u_coords.resize(new_size);
                 packed_data.v_coords.resize(new_size);
                 packed_data.w_coords.resize(new_size);
-                packed_data.vis_data.resize(new_size * 2);
+                packed_data.vis_data.resize(new_vis_size);
                 packed_data.start_channels.resize(new_size);
                 packed_data.end_channels.resize(new_size);
                 packed_data.uvw0.resize(new_size * 3);
@@ -810,9 +827,9 @@ void grid(
                             thread_data.w_coords.data(),
                             thread_size * sizeof(UVW_TYPE)
                             );
-                std::memcpy(packed_data.vis_data.data() + offset * 2,
+                std::memcpy(packed_data.vis_data.data() + vis_offset ,
                             thread_data.vis_data.data(),
-                            thread_size * 2 * sizeof(VIS_TYPE)
+                            vis_thread_size * sizeof(VIS_TYPE)
                             );
                 std::memcpy(packed_data.start_channels.data() + offset,
                             thread_data.start_channels.data(),
@@ -885,7 +902,8 @@ void grid(
                     const int v_off = (iv0_ov % oversample) * support;
                     const int w_off = (iw0_ov % w_oversample) * w_support;
 
-                    const VIS_TYPE vis_valid = packed_data.vis_data[idx * 2 + c];
+                    const int num_pols = vis_.shape[1];
+                    const VIS_TYPE vis_valid = packed_data.vis_data[idx * num_pols + c];
 
                     // Vectorized gridding
                     for(int iw = 0; iw < w_support; iw++) {
@@ -969,6 +987,7 @@ void grid(
 }
 
 // Local function to do the gridding.
+// void grid_masked(
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_masked(
         const sdp_GridderWtowerUVW* plan,
@@ -1155,7 +1174,7 @@ void grid_masked(
 }
 
 // Local function to do the gridding.
-// void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
+// void grid_orig(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
 template <typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_orig(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
           int subgrid_offset_u, int subgrid_offset_v, int subgrid_offset_w,
