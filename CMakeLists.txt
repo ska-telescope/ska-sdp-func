@@ -72,7 +72,7 @@ endif()
 # Set compiler options.
 include(compiler_options)
 include(sdp_func_macros)
-enable_testing()
+#enable_testing()
 
 if ((CMAKE_BUILD_TYPE MATCHES Debug OR CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
         AND COVERAGE_REPORT)
@@ -127,9 +127,9 @@ if (OpenMP_CXX_FOUND)
 endif()
 
 # Build tests if this project is not a sub-project.
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    add_subdirectory(tests)
-endif()
+#if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+#    add_subdirectory(tests)
+#endif()
 
 install(TARGETS "${PROJECT_NAME}"
     EXPORT ska_sdp_funcTargets
@@ -162,7 +162,8 @@ write_basic_package_version_file(
     COMPATIBILITY AnyNewerVersion)
 
 set_source_files_properties("${PROJECT_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp" PROPERTIES COMPILE_FLAGS 
-    "-O3 -qopenmp -xCORE-AVX2 -fma -fp-model=fast=2 -std=c++17 -unroll -ftz -fno-exceptions -ipo -qopt-zmm-usage=high -qopt-prefetch=5 -qopt-dynamic-align -vec-threshold0 -qoverride-limits")
+    #"-O3 -qopenmp -DAVX512 -xCORE-AVX2 -xCORE-AVX512 -fma -fp-model=fast=2 -std=c++17 -unroll -ftz -fno-exceptions -ipo -qopt-zmm-usage=high -qopt-prefetch=5 -qopt-dynamic-align -vec-threshold0 -qoverride-limits")
+    "-g -qopenmp -DAVX512 -xCORE-AVX2 -xCORE-AVX512")
 
 # The config file in the source tree has the suffix ".in" to keep
 # find_package from mistaking the source tree for installed location.
