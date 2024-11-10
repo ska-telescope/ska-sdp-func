@@ -1170,11 +1170,6 @@ void grid_opt_tasks(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids,
     }
 }
 
-inline void prefetch_kernel_line(const double* kernel_data, int offset) {
-    // 64-byte cache line size
-    _mm_prefetch(reinterpret_cast<const char*>(kernel_data + offset), _MM_HINT_T0);
-}
-
 // Local function to do the gridding.
 // void grid_vectorized(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
 template <typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
@@ -1207,12 +1202,6 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
     const double w_step_ov = 1.0 / w_step * w_oversample;
     const int half_sg_size_ov = (half_subgrid - support / 2 + 1) * oversample;
 
-#ifdef PREFETCH
-    constexpr int DOUBLES_PER_CACHELINE = 64 / sizeof(double);
-    constexpr int KERNEL_PREFETCH_DISTANCE = DOUBLES_PER_CACHELINE;
-#endif // PREFETCH
-
-
     // Loop over rows. Each row contains visibilities for all channels.
     for (int64_t i_row = start_row; i_row < end_row; ++i_row) {
         // Skip if there's no visibility to grid.
@@ -1229,12 +1218,6 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                                           &end_ch, min_w, max_w);
         if (start_ch >= end_ch)
             continue;
-
-#ifdef PREFETCH
-        if (i_row + 1 < end_row) {
-            prefetch_kernel_line((const double*)&uvws_(i_row + 1, 0), 0);
-        }
-#endif // PREFETCH
 
         // Scale + shift UVWs.
         const double s_uvw0 = freq0_hz / C_0, s_duvw = dfreq_hz / C_0;
@@ -1256,11 +1239,6 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
 
         // Loop over selected channels.
         for (int64_t c = start_ch; c < end_ch; c++) {
-#ifdef PREFETCH
-            if (c + 1 < end_ch) {
-                prefetch_kernel_line((const double*)&vis_(i_row, c + 1), 0);
-            }
-#endif // PREFETCH
             const double u = uvw0[0] + c * duvw[0];
             const double v = uvw0[1] + c * duvw[1];
             const double w = uvw0[2] + c * duvw[2];
@@ -1286,20 +1264,38 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
 
             // Grid visibility.
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
+
 #if defined(AVX512)
             alignas(64) double kern_buffer[support * 2];
             for (int iw = 0; iw < w_support; ++iw) {
 				const double kern_w = w_kernel[w_off + iw];
+#ifdef PREFETCH
+                if (iw + 1 < w_support) {
+                    _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
+                }
+#endif // PREFETCH
+                
                 __m512d w_kern_vec = _mm512_set1_pd(kern_w);
                 
                 for (int iu = 0; iu < support; ++iu) {
                     const int ix_u = iu0 + iu;
+#ifdef PREFETCH
+                    if (iu + 1 < support) {
+                        _mm_prefetch(&uv_kernel[u_off + iu + 1], _MM_HINT_T0);
+                    }
+#endif // PREFETCH
                     
                     __m512d u_kern_vec = _mm512_set1_pd(uv_kernel[u_off + iu]);
                     __m512d wu_kern_vec = _mm512_mul_pd(w_kern_vec, u_kern_vec);
                     
                     // Process v coordinates 8 at a time
                     for (int iv = 0; iv < support; iv += 8) {
+#ifdef PREFETCH
+                        if (iv + 8 < support) {
+                            _mm_prefetch(&uv_kernel[v_off + iv + 8], _MM_HINT_T0);
+                        }
+#endif // PREFETCH
+
                         __m512d v_kern_vec = _mm512_loadu_pd(&uv_kernel[v_off + iv]);
                         __m512d full_kern = _mm512_mul_pd(wu_kern_vec, v_kern_vec);
 
@@ -1322,18 +1318,35 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                 }
             }
 #elif defined(AVX2)
-            alignas(64) double kern_buffer[support * 2];
+            alignas(32) double kern_buffer[support * 2];
 			for (int iw = 0; iw < w_support; ++iw) {
 				const double kern_w = w_kernel[w_off + iw];
+#ifdef PREFETCH
+                if (iw + 1 < w_support) {
+                    _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
+                }
+#endif // PREFETCH
+
 				__m256d w_kern_vec = _mm256_set1_pd(kern_w);
 
 				for (int iu = 0; iu < support; ++iu) {
 					const int ix_u = iu0 + iu;
+#ifdef PREFETCH
+                    if (iu + 1 < support) {
+                        _mm_prefetch(&uv_kernel[u_off + iu + 1], _MM_HINT_T0);
+                    }
+#endif // PREFETCH
 
 					__m256d u_kern_vec = _mm256_set1_pd(uv_kernel[u_off + iu]);
 					__m256d wu_kern_vec = _mm256_mul_pd(w_kern_vec, u_kern_vec);
 
 					for (int iv = 0; iv < support; iv += 4) {
+#ifdef PREFETCH 
+                        if (iv + 4 < support) {
+                            _mm_prefetch(&uv_kernel[v_off + iv + 4], _MM_HINT_T0);
+                        }
+#endif // PREFETCH
+
 						__m256d v_kern_vec = _mm256_loadu_pd(&uv_kernel[v_off + iv]);
 						__m256d full_kern = _mm256_mul_pd(wu_kern_vec, v_kern_vec);
 
@@ -1355,13 +1368,23 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
 					}
 				}
 			}
-#else
+#else // AVX2 || AVX512
             for (int iw = 0; iw < w_support; ++iw) {
+#ifdef PREFETCH
+                if (iw + 1 < w_support) {
+                    __builtin_prefetch(&w_kernel[w_off + iw + 1], 0, 3);
+                }
+#endif // PREFETCH
                 const SUBGRID_TYPE local_vis_w =
                     ((SUBGRID_TYPE)w_kernel[w_off + iw] * local_vis);
                 #pragma GCC ivdep
                 #pragma GCC unroll(8)
                 for (int iu = 0; iu < support; ++iu) {
+#ifdef PREFETCH
+                    if (iu + 1 < support) {
+                        __builtin_prefetch(&uv_kernel[u_off + iu + 1], 0, 3);
+                    }
+#endif // PREFETCH
                     const SUBGRID_TYPE local_vis_u =
                         ((SUBGRID_TYPE)uv_kernel[u_off + iu] * local_vis_w);
                     const int ix_u = iu0 + iu;
