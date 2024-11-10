@@ -314,12 +314,16 @@ void grid_masked(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids,
     const double s_uvw0 = freq0_hz / C_0;
     const double s_duvw = dfreq_hz / C_0;
 
-<<<<<<< HEAD
     struct ValidVis
-=======
+    {
+        int64_t row_idx;
+        int64_t start_ch;
+        int64_t end_ch;
+        int64_t vis_offset; // Offset into packed visibility array
+    };
+
     // Loop over rows. Each row contains visibilities for all channels.
     for (int64_t i_row = start_row; i_row < end_row; ++i_row)
->>>>>>> main
     {
             int64_t row_idx;
             int64_t start_ch;
@@ -1259,14 +1263,14 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
             for (int iw = 0; iw < w_support; ++iw) {
                 const SUBGRID_TYPE local_vis_w =
                     ((SUBGRID_TYPE)w_kernel[w_off + iw] * local_vis);
-#pragma GCC ivdep
-#pragma GCC unroll(8)
+                #pragma GCC ivdep
+                #pragma GCC unroll(8)
                 for (int iu = 0; iu < support; ++iu) {
                     const SUBGRID_TYPE local_vis_u =
                         ((SUBGRID_TYPE)uv_kernel[u_off + iu] * local_vis_w);
                     const int ix_u = iu0 + iu;
-#pragma GCC ivdep
-#pragma GCC unroll(8)
+                    #pragma GCC ivdep
+                    #pragma GCC unroll(8)
                     for (int iv = 0; iv < support; ++iv) {
                         const int ix_v = iv0 + iv;
                         subgrids_(iw, ix_u, ix_v) +=
