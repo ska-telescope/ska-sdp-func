@@ -573,7 +573,8 @@ void grid_opt_tasks(
                                             __m512d kernel_vec = _mm512_loadu_pd(
                                                 &uv_kernel[v_off + iv]);
                                             __m512d kern_wuv = _mm512_mul_pd(
-                                                _mm512_set1_pd(kern_wu), kernel_vec);
+                                                _mm512_set1_pd(kern_wu), 
+                                                kernel_vec);
 
                                             _mm512_store_pd(kern_buffer, kern_wuv);
 
@@ -691,7 +692,10 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
     // Scaling factors
     const double s_uvw0 = freq0_hz / C_0; 
     const double s_duvw = dfreq_hz / C_0;
-    
+
+    const int64_t w_kernel_size = sdp_mem_num_elements(plan->w_kernel);
+    const int64_t uv_kernel_size = sdp_mem_num_elements(plan->uv_kernel);
+
     // Strcuture for packed data using SoA layout
     struct alignas(64) PackedData {
         std::vector<UVW_TYPE> u_coords;
@@ -706,29 +710,29 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 
     PackedData packed_data;
     // Estimated initial padded size to prevent multiple reallocations
-    const int64_t est_size = num_uvw * 2;
-    const int64_t num_channels = vis_.shape[1];
+    const int64_t est_size = num_uvw;
+    const int64_t num_pols = vis_.shape[1];
 
     // Pre-allocate vectors with alignment for the first pass of data
     packed_data.u_coords.reserve(est_size);
     packed_data.v_coords.reserve(est_size);
     packed_data.w_coords.reserve(est_size);
-    packed_data.vis_data.reserve(est_size * num_channels);
+    packed_data.vis_data.reserve(est_size * num_pols);
     packed_data.start_channels.reserve(est_size);
     packed_data.end_channels.reserve(est_size);
     packed_data.uvw0.reserve(est_size * 3);
     packed_data.duvw.reserve(est_size * 3);
+    const int num_threads = omp_get_num_threads();
     
     int64_t valid_count = 0;
     #pragma omp parallel proc_bind(close)
     {
         // Thread-local storage
         PackedData thread_data;
-        const int num_threads = omp_get_num_threads();
         thread_data.u_coords.reserve(num_uvw / num_threads);
         thread_data.v_coords.reserve(num_uvw / num_threads);
         thread_data.w_coords.reserve(num_uvw / num_threads);
-        thread_data.vis_data.reserve((num_uvw * num_channels) / num_threads);
+        thread_data.vis_data.reserve((num_uvw * num_pols) / num_threads);
         thread_data.start_channels.reserve(num_uvw / num_threads);
         thread_data.end_channels.reserve(num_uvw / num_threads);
         thread_data.uvw0.reserve(num_uvw * 3 / num_threads);
@@ -756,8 +760,8 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 
             double uvw0[] = {
                 uvw[0] * s_uvw0 - subgrid_offset_u / theta,
-                uvw[0] * s_uvw0 - subgrid_offset_v / theta,
-                uvw[0] * s_uvw0 - ((subgrid_offset_w + w_plane - 1) * w_step)
+                uvw[1] * s_uvw0 - subgrid_offset_v / theta,
+                uvw[2] * s_uvw0 - ((subgrid_offset_w + w_plane - 1) * w_step)
             };
             double duvw[] = {
                 uvw[0] * s_duvw,
@@ -789,8 +793,8 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
             thread_data.duvw.push_back(duvw[1]);
             thread_data.duvw.push_back(duvw[2]);
             
-            int min_channel = std::min(end_ch, num_channels);
-            for(int c = start_ch; c < min_channel; c++){
+            int min_channel = std::min(end_ch, num_pols);
+            for(int c = start_ch; c < min_channel; c++) {
                 thread_data.vis_data.push_back(vis_(i_row, c));
             }
         }
@@ -798,78 +802,68 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
         // Merge thread data into global storage
         #pragma omp critical
         {
-//            try {
-                const size_t offset = packed_data.u_coords.size();
-                const size_t thread_size = thread_data.u_coords.size();
-                const size_t new_size = offset + thread_size;
-                const size_t vis_offset = offset * num_channels;
-                const size_t vis_thread_size = thread_data.vis_data.size();
-                const size_t new_vis_size = vis_offset + vis_thread_size;
-                
-                packed_data.u_coords.resize(new_size);
-                packed_data.v_coords.resize(new_size);
-                packed_data.w_coords.resize(new_size);
-                packed_data.vis_data.resize(new_vis_size);
-                packed_data.start_channels.resize(new_size);
-                packed_data.end_channels.resize(new_size);
-                packed_data.uvw0.resize(new_size * 3);
-                packed_data.duvw.resize(new_size * 3);
+            const size_t offset = packed_data.u_coords.size();
+            const size_t thread_size = thread_data.u_coords.size();
+            const size_t new_size = offset + thread_size;
+            const size_t vis_offset = offset * num_pols;
+            const size_t vis_thread_size = thread_data.vis_data.size();
+            const size_t new_vis_size = vis_offset + vis_thread_size;
 
-                std::memcpy(packed_data.u_coords.data() + offset,
-                            thread_data.u_coords.data(),
-                            thread_size * sizeof(UVW_TYPE)
-                            );
-                std::memcpy(packed_data.v_coords.data() + offset,
-                            thread_data.v_coords.data(),
-                            thread_size * sizeof(UVW_TYPE)
-                            );
-                std::memcpy(packed_data.w_coords.data() + offset,
-                            thread_data.w_coords.data(),
-                            thread_size * sizeof(UVW_TYPE)
-                            );
-                std::memcpy(packed_data.vis_data.data() + vis_offset ,
-                            thread_data.vis_data.data(),
-                            vis_thread_size * sizeof(VIS_TYPE)
-                            );
-                std::memcpy(packed_data.start_channels.data() + offset,
-                            thread_data.start_channels.data(),
-                            thread_size * sizeof(int32_t)
-                            );
-                std::memcpy(packed_data.end_channels.data() + offset,
-                            thread_data.end_channels.data(),
-                            thread_size * sizeof(int32_t)
-                            );
-                std::memcpy(packed_data.uvw0.data() + offset * 3,
-                            thread_data.uvw0.data(),
-                            thread_size * 3 * sizeof(double)
-                            );
-                std::memcpy(packed_data.duvw.data() + offset * 3,
-                            thread_data.duvw.data(),
-                            thread_size * 3 * sizeof(double)
-                            );
-                valid_count = new_size;
-           // }
-           // catch(const std::bad_alloc&) {
-           //     *status = SDP_ERR_MEM_ALLOC_FAILURE;
-           // }
-           // catch(const std::exception&) {
-           //     *status = SDP_ERR_RUNTIME;
-           // }
-        
+            packed_data.u_coords.resize(new_size);
+            packed_data.v_coords.resize(new_size);
+            packed_data.w_coords.resize(new_size);
+            packed_data.vis_data.resize(new_vis_size);
+            packed_data.start_channels.resize(new_size);
+            packed_data.end_channels.resize(new_size);
+            packed_data.uvw0.resize(new_size * 3);
+            packed_data.duvw.resize(new_size * 3);
+
+            std::memcpy(packed_data.u_coords.data() + offset,
+                    thread_data.u_coords.data(),
+                    thread_size * sizeof(UVW_TYPE)
+                    );
+            std::memcpy(packed_data.v_coords.data() + offset,
+                    thread_data.v_coords.data(),
+                    thread_size * sizeof(UVW_TYPE)
+                    );
+            std::memcpy(packed_data.w_coords.data() + offset,
+                    thread_data.w_coords.data(),
+                    thread_size * sizeof(UVW_TYPE)
+                    );
+            std::memcpy(packed_data.vis_data.data() + vis_offset ,
+                    thread_data.vis_data.data(),
+                    vis_thread_size * sizeof(VIS_TYPE)
+                    );
+            std::memcpy(packed_data.start_channels.data() + offset,
+                    thread_data.start_channels.data(),
+                    thread_size * sizeof(int32_t)
+                    );
+            std::memcpy(packed_data.end_channels.data() + offset,
+                    thread_data.end_channels.data(),
+                    thread_size * sizeof(int32_t)
+                    );
+            std::memcpy(packed_data.uvw0.data() + offset * 3,
+                    thread_data.uvw0.data(),
+                    thread_size * 3 * sizeof(double)
+                    );
+            std::memcpy(packed_data.duvw.data() + offset * 3,
+                    thread_data.duvw.data(),
+                    thread_size * 3 * sizeof(double)
+                    );
+            valid_count = new_size;
         }
-
     }
 
     // Gridding in blocks for better cache utilization
     const int BLOCK_SIZE = 32; // typical size of cach lines
     const int NUM_BLOCKS = (valid_count * BLOCK_SIZE - 1) / BLOCK_SIZE;
-    
+
     #pragma omp parallel
     {
 #ifdef AVX512
-        alignas(64) double kern_buffer[support];
+        alignas(64) double kern_buffer[8];
 #else
-        alignas(32) double kern_buffer[support];
+        alignas(32) double kern_buffer[4];
 #endif // AVX512
 
 
@@ -924,22 +918,39 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
                                     _mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
                                 }
 
-                                __m512d kernel_vec = _mm512_loadu_pd(
-                                                    &uv_kernel[v_off + iv]);
-                                __m512d kernel_wuv = _mm512_mul_pd(
-                                                    _mm512_set1_pd(kern_wu), 
-                                                    kernel_vec);
+                                if(iv + 8 <= support) {
+                                    // Check if the address if properly aligned
+                                    if(((uintptr_t)(&uv_kernel[v_off + iv]) & 63) == 0) {
+                                        __m512d kernel_vec = _mm512_load_pd(&uv_kernel[v_off + iv]);
+                                        __m512d kernel_wuv = _mm512_mul_pd(_mm512_set1_pd(kern_wu), kernel_vec);
+                                        _mm512_store_pd(kern_buffer, kernel_wuv);
+                                    }
+                                    else {
+                                        __m512d kernel_vec = _mm512_loadu_pd(&uv_kernel[v_off + iv]);
+                                        __m512d kernel_wuv = _mm512_mul_pd(_mm512_set1_pd(kern_wu), kernel_vec);
+                                        _mm512_storeu_pd(kern_buffer, kernel_wuv);
+                                    }
 
-                                _mm512_store_pd(kern_buffer, kernel_wuv);
-
-                                const int remain = std::min(8, support - iv);
-                                // grid 8 points at once
-                                #pragma omp simd
-                                for(int k = 0; k < remain; k++) {
-                                    const int ix_v = iv0 + iv + k;
-                                    // TODO: Here we don't do atomic update, this needs checking!
-                                    subgrids_(iw, ix_u, ix_v) +=
-                                        ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                    // grid 8 points at once
+                                    #pragma omp simd
+                                    for(int k = 1; k < 8; k++) {
+                                        const int ix_v = iv0 + iv + k;
+                                        // TODO: maybe this bound check can be removed
+                                        if(ix_v < subgrids_.shape[2]) {
+                                        // TODO: Here we don't do atomic update, this needs checking!
+                                        subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                        }
+                                    }
+                                }
+                                else {
+                                    // Handle remaining elemenets in scalar fashion
+                                    for(int k = 0; iv + k < support; k++ ) {
+                                        const double kern_v = uv_kernel[v_off + iv + k];
+                                        const int ix_v = iv0 + iv + k;
+                                        if(ix_v < subgrids_.shape[2]) {
+                                            subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)(kern_wu * kern_v) * vis_valid);
+                                        }
+                                    }
                                 }
                             }
 #else
@@ -955,23 +966,28 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
                                     _mm_prefetch(&subgrids_(iw, ix_u + 1, iv0 + iv), _MM_HINT_T0);
                                 }
 
-                                __m256d kernel_vec = _mm256_loadu_pd(
-                                                    &uv_kernel[v_off + iv]);
-                                __m256d kernel_wuv = _mm256_mul_pd(
-                                                    _mm256_set1_pd(kern_wu), 
-                                                    kernel_vec);
+                                if(iv + 4 <= support) {
+                                    __m256d kernel_vec = _mm256_loadu_pd(&uv_kernel[v_off + iv]);
+                                    __m256d kernel_wuv = _mm256_mul_pd(_mm256_set1_pd(kern_wu), kernel_vec);
+                                    _mm256_store_pd(kern_buffer, kernel_wuv);
 
-                                _mm256_store_pd(kern_buffer, kernel_wuv);
-
-                                const int remain = std::min(4, support - iv);
-                                // grid 4 points at once
-                                #pragma omp simd
-                                for(int k = 0; k < remain; k++) {
+                                    #pragma omp simd
+                                    for(int k = 0; k < 4; k++) {
+                                        const int ix_v = iv0 + iv + k;
+                                        subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                    }
+                                }
+                                else {
+                                // Handle remaining elements
+                                for (int k = 0; iv + k < support; k++) {
+                                    const double kern_v = uv_kernel[v_off + iv + k];
                                     const int ix_v = iv0 + iv + k;
-                                    subgrids_(iw, ix_u, ix_v) +=
-                                        ((SUBGRID_TYPE)kern_buffer[k] * vis_valid);
+                                    if (ix_v < subgrids_.shape[2]) {
+                                        subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)(kern_wu * kern_v) * vis_valid);
+                                    }
                                 }
                             }
+                         }
 #endif // AVX512
                         }
 
@@ -986,8 +1002,10 @@ template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
     }
 }
 
+
 // Local function to do the gridding.
 // void grid_masked(
+// TODO: try the mask version _mm256_maskload_pd, or use the index array as the bitwise ...
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void grid_masked(
         const sdp_GridderWtowerUVW* plan,
