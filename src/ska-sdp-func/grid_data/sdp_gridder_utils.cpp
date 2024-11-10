@@ -426,6 +426,36 @@ void make_kernel(const sdp_Mem* window, sdp_Mem* kernel, sdp_Error* status)
 }
 
 
+// Local function to compute the residual difference between 2D arrays, (a - b).
+template<typename TYPE_A, typename TYPE_B>
+void residual(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        sdp_Mem* out,
+        sdp_Error* status
+)
+{
+    if (*status) return;
+    sdp_MemViewCpu<const TYPE_A, 2> a_;
+    sdp_MemViewCpu<const TYPE_B, 2> b_;
+    sdp_MemViewCpu<TYPE_A, 2> out_;
+    sdp_mem_check_and_view(a, &a_, status);
+    sdp_mem_check_and_view(b, &b_, status);
+    sdp_mem_check_and_view(out, &out_, status);
+    if (*status) return;
+    const int num_x = (int) a_.shape[0];
+    const int num_y = (int) a_.shape[1];
+    #pragma omp parallel for
+    for (int i = 0; i < num_x; ++i)
+    {
+        for (int j = 0; j < num_y; ++j)
+        {
+            out_(i, j) = a_(i, j) - (TYPE_A) b_(i, j);
+        }
+    }
+}
+
+
 // Local function to compute the RMS difference between 2D arrays, rms(a - b).
 template<typename TYPE_A, typename TYPE_B>
 double rms_diff(const sdp_Mem* a, const sdp_Mem* b, sdp_Error* status)
@@ -537,19 +567,32 @@ void subgrid_add(
     sdp_mem_check_and_view(subgrid, &sub_, status);
     if (*status) return;
     // This does the equivalent of numpy.roll and a shift in two dimensions.
+    // The "while" loops below really are needed.
     const int64_t sub_size_u = sub_.shape[0], sub_size_v = sub_.shape[1];
     const int64_t grid_size_u = grid_.shape[0], grid_size_v = grid_.shape[1];
     #pragma omp parallel for
     for (int64_t i = 0; i < sub_size_u; ++i)
     {
         int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
-        if (i1 < 0) i1 += grid_size_u;
-        if (i1 >= grid_size_u) i1 -= grid_size_u;
+        while (i1 < 0)
+        {
+            i1 += grid_size_u;
+        }
+        while (i1 >= grid_size_u)
+        {
+            i1 -= grid_size_u;
+        }
         for (int64_t j = 0; j < sub_size_v; ++j)
         {
             int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 - offset_v;
-            if (j1 < 0) j1 += grid_size_v;
-            if (j1 >= grid_size_v) j1 -= grid_size_v;
+            while (j1 < 0)
+            {
+                j1 += grid_size_v;
+            }
+            while (j1 >= grid_size_v)
+            {
+                j1 -= grid_size_v;
+            }
             grid_(i1, j1) += sub_(i, j) * factor;
         }
     }
@@ -573,19 +616,32 @@ void subgrid_cut_out(
     sdp_mem_check_and_view(subgrid, &sub_, status);
     if (*status) return;
     // This does the equivalent of numpy.roll and a shift in two dimensions.
+    // The "while" loops below really are needed.
     const int64_t sub_size_u = sub_.shape[0], sub_size_v = sub_.shape[1];
     const int64_t grid_size_u = grid_.shape[0], grid_size_v = grid_.shape[1];
     #pragma omp parallel for
     for (int64_t i = 0; i < sub_size_u; ++i)
     {
         int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
-        if (i1 < 0) i1 += grid_size_u;
-        if (i1 >= grid_size_u) i1 -= grid_size_u;
+        while (i1 < 0)
+        {
+            i1 += grid_size_u;
+        }
+        while (i1 >= grid_size_u)
+        {
+            i1 -= grid_size_u;
+        }
         for (int64_t j = 0; j < sub_size_v; ++j)
         {
             int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 + offset_v;
-            if (j1 < 0) j1 += grid_size_v;
-            if (j1 >= grid_size_v) j1 -= grid_size_v;
+            while (j1 < 0)
+            {
+                j1 += grid_size_v;
+            }
+            while (j1 >= grid_size_v)
+            {
+                j1 -= grid_size_v;
+            }
             sub_(i, j) = grid_(i1, j1);
         }
     }
@@ -597,6 +653,8 @@ void sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
         int64_t* result,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
@@ -611,9 +669,8 @@ void sum_diff(
         return;
     }
     int64_t res = 0;
-    const int num = (int) a_.shape[0];
     #pragma omp parallel for reduction(+:res)
-    for (int i = 0; i < num; ++i)
+    for (int64_t i = start_row; i < end_row; ++i)
     {
         res += (a_(i) - b_(i));
     }
@@ -1323,6 +1380,92 @@ void sdp_gridder_make_w_pattern(
 }
 
 
+void sdp_gridder_residual(
+        const sdp_Mem* a,
+        const sdp_Mem* b,
+        sdp_Mem* out,
+        sdp_Error* status
+)
+{
+    const sdp_Mem* p_a = a;
+    const sdp_Mem* p_b = b;
+    sdp_Mem* temp_a = 0;
+    sdp_Mem* temp_b = 0;
+    if (*status) return;
+    const sdp_MemType t_a = sdp_mem_type(a);
+    const sdp_MemType t_b = sdp_mem_type(b);
+    if (sdp_mem_num_dims(a) != 2 || sdp_mem_num_dims(b) != 2 ||
+            sdp_mem_num_dims(out) != 2)
+    {
+        SDP_LOG_ERROR("All arrays must be 2D");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (sdp_mem_shape_dim(a, 0) != sdp_mem_shape_dim(b, 0) ||
+            sdp_mem_shape_dim(a, 1) != sdp_mem_shape_dim(b, 1) ||
+            sdp_mem_shape_dim(a, 0) != sdp_mem_shape_dim(out, 0) ||
+            sdp_mem_shape_dim(a, 1) != sdp_mem_shape_dim(out, 1))
+    {
+        SDP_LOG_ERROR("All arrays must have the same shape");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (t_a != sdp_mem_type(out))
+    {
+        SDP_LOG_ERROR("Arrays 'a' and 'out' must be of the same type");
+        *status = SDP_ERR_INVALID_ARGUMENT;
+        return;
+    }
+    if (sdp_mem_location(out) != SDP_MEM_CPU)
+    {
+        SDP_LOG_ERROR("Output residual must be in CPU memory");
+        *status = SDP_ERR_MEM_LOCATION;
+        return;
+    }
+    if (sdp_mem_location(a) != SDP_MEM_CPU)
+    {
+        temp_a = sdp_mem_create_copy(a, SDP_MEM_CPU, status);
+        p_a = temp_a;
+    }
+    if (sdp_mem_location(b) != SDP_MEM_CPU)
+    {
+        temp_b = sdp_mem_create_copy(b, SDP_MEM_CPU, status);
+        p_b = temp_b;
+    }
+    if (t_a == SDP_MEM_COMPLEX_DOUBLE && t_b == SDP_MEM_COMPLEX_DOUBLE)
+    {
+        residual<complex<double>, complex<double> >(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_COMPLEX_FLOAT && t_b == SDP_MEM_COMPLEX_FLOAT)
+    {
+        residual<complex<float>, complex<float> >(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_COMPLEX_DOUBLE && t_b == SDP_MEM_COMPLEX_FLOAT)
+    {
+        residual<complex<double>, complex<float> >(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_DOUBLE && t_b == SDP_MEM_DOUBLE)
+    {
+        residual<double, double>(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_FLOAT && t_b == SDP_MEM_FLOAT)
+    {
+        residual<float, float>(p_a, p_b, out, status);
+    }
+    else if (t_a == SDP_MEM_DOUBLE && t_b == SDP_MEM_FLOAT)
+    {
+        residual<double, float>(p_a, p_b, out, status);
+    }
+    else
+    {
+        SDP_LOG_ERROR("Unsupported data types for residual calculation");
+        *status = SDP_ERR_DATA_TYPE;
+    }
+    sdp_mem_free(temp_a);
+    sdp_mem_free(temp_b);
+}
+
+
 double sdp_gridder_rms_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
@@ -1777,17 +1920,24 @@ void sdp_gridder_sum_diff(
         const sdp_Mem* a,
         const sdp_Mem* b,
         int64_t* result,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
     if (*status) return;
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(a, 0);
+    }
     const sdp_MemLocation loc = sdp_mem_location(a);
     *result = 0;
     if (loc == SDP_MEM_CPU)
     {
         if (sdp_mem_type(a) == SDP_MEM_INT && sdp_mem_type(b) == SDP_MEM_INT)
         {
-            sum_diff(a, b, result, status);
+            sum_diff(a, b, result, start_row, end_row, status);
         }
         else
         {
@@ -1820,6 +1970,8 @@ void sdp_gridder_sum_diff(
         const void* arg[] = {
             (const void*)&a_int,
             (const void*)&b_int,
+            (const void*)&start_row,
+            (const void*)&end_row,
             sdp_mem_gpu_buffer(result_gpu, status)
         };
         uint64_t shared_mem_bytes = num_threads[0] * sizeof(int);

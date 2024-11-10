@@ -19,6 +19,8 @@ __global__ void sdp_gridder_wtower_degrid(
         const int subgrid_offset_w,
         const double freq0_hz,
         const double dfreq_hz,
+        const int64_t start_row,
+        const int64_t end_row,
         const sdp_MemViewGpu<const UVW_TYPE, 2> uvws, // external data
         const sdp_MemViewGpu<const int, 1> start_chs, // external data
         const sdp_MemViewGpu<const int, 1> end_chs, // external data
@@ -34,9 +36,9 @@ __global__ void sdp_gridder_wtower_degrid(
         sdp_MemViewGpu<VIS_TYPE, 2> vis // external data
 )
 {
-    const int64_t i_row = blockDim.x * blockIdx.x + threadIdx.x;
+    const int64_t i_row = blockDim.x * blockIdx.x + threadIdx.x + start_row;
     const int64_t num_uvw = uvws.shape[0];
-    if (i_row >= num_uvw) return;
+    if (i_row >= end_row || i_row >= num_uvw) return;
 
     // Each row contains visibilities for all channels.
     // Skip if there's no visibility to degrid.
@@ -132,6 +134,8 @@ __global__ void sdp_gridder_wtower_grid(
         const int subgrid_offset_w,
         const double freq0_hz,
         const double dfreq_hz,
+        const int64_t start_row,
+        const int64_t end_row,
         const sdp_MemViewGpu<const UVW_TYPE, 2> uvws, // external data
         const sdp_MemViewGpu<const int, 1> start_chs, // external data
         const sdp_MemViewGpu<const int, 1> end_chs, // external data
@@ -147,9 +151,9 @@ __global__ void sdp_gridder_wtower_grid(
         const sdp_MemViewGpu<const VIS_TYPE, 2> vis // external data
 )
 {
-    const int64_t i_row = blockDim.x * blockIdx.x + threadIdx.x;
+    const int64_t i_row = blockDim.x * blockIdx.x + threadIdx.x + start_row;
     const int64_t num_uvw = uvws.shape[0];
-    if (i_row >= num_uvw) return;
+    if (i_row >= end_row || i_row >= num_uvw) return;
 
     // Each row contains visibilities for all channels.
     // Skip if there's no visibility to grid.

@@ -118,7 +118,7 @@ static void convert_complex(
 }
 
 
-// Generate a test image with two sources.
+// Generate a test image with a few sources.
 static sdp_Mem* generate_model_image(
         sdp_MemType type,
         int image_size,
@@ -135,6 +135,8 @@ static sdp_Mem* generate_model_image(
         sdp_mem_check_and_view(image, &image_, status);
         image_(half + image_size / 4, half + 2) = 2;
         image_(half - image_size / 4 + 2, half + image_size / 4 - 12) = 1;
+        image_(half - image_size / 3 - 12, half - image_size / 4 - 12) = 1.6;
+        image_(half - 12, half - image_size / 3 - 12) = 2.3;
     }
     else if (type == SDP_MEM_COMPLEX_FLOAT)
     {
@@ -142,6 +144,8 @@ static sdp_Mem* generate_model_image(
         sdp_mem_check_and_view(image, &image_, status);
         image_(half + image_size / 4, half + 2) = 2;
         image_(half - image_size / 4 + 2, half + image_size / 4 - 12) = 1;
+        image_(half - image_size / 3 - 12, half - image_size / 4 - 12) = 1.6;
+        image_(half - 12, half - image_size / 3 - 12) = 2.3;
     }
     return image;
 }
@@ -290,7 +294,7 @@ static sdp_Mem* generate_uvw(sdp_MemType type)
         {-1651.4637, 18863.4683, -9.2248}
     };
     const int num_antennas = 27;
-    const int num_times = 32;
+    const int num_times = 16;
     const int num_baselines = num_antennas * (num_antennas - 1) / 2;
     const double ha_inc_rad = (M_PI / 2.0) / num_times;
     const double dec_rad = 40.0 * M_PI / 180.0;
@@ -367,29 +371,36 @@ static void write_fits_file(
 )
 {
     sdp_Error status = SDP_SUCCESS;
-    if (sdp_mem_is_complex(image))
+    sdp_Mem* image_cpu = 0;
+    const sdp_Mem* ptr = image;
+    if (sdp_mem_location(image) != SDP_MEM_CPU)
+    {
+        ptr = image_cpu = sdp_mem_create_copy(image, SDP_MEM_CPU, &status);
+    }
+    if (sdp_mem_is_complex(ptr))
     {
         sdp_MemType type = (
-            sdp_mem_is_double(image) ? SDP_MEM_DOUBLE : SDP_MEM_FLOAT
+            sdp_mem_is_double(ptr) ? SDP_MEM_DOUBLE : SDP_MEM_FLOAT
         );
         const int64_t shape[] = {
-            sdp_mem_shape_dim(image, 0), sdp_mem_shape_dim(image, 1)
+            sdp_mem_shape_dim(ptr, 0), sdp_mem_shape_dim(ptr, 1)
         };
         sdp_Mem* temp = sdp_mem_create(type, SDP_MEM_CPU, 2, shape, &status);
-        convert_complex(image, temp, 0, &status);
+        convert_complex(ptr, temp, 0, &status);
         write_data_to_fits(temp, filename + "_REAL.fits");
-        convert_complex(image, temp, 1, &status);
+        convert_complex(ptr, temp, 1, &status);
         write_data_to_fits(temp, filename + "_IMAG.fits");
         sdp_mem_free(temp);
     }
     else
     {
-        write_data_to_fits(image, filename + ".fits");
+        write_data_to_fits(ptr, filename + ".fits");
     }
+    sdp_mem_free(image_cpu);
 }
 
 
-static const double cell_size_arcsec = 0.8;
+static const double cell_size_arcsec = 3.2;
 static const double freq0_hz = C_0;
 static const double dfreq_hz = C_0 / 100;
 
@@ -418,7 +429,7 @@ static void run_and_check(
     int w_oversampling = 16 * 1024;
     double padding_factor = 1.2;
     double subgrid_frac = 2.0 / 3.0;
-    int verbosity = 0;
+    int verbosity = 1;
 
     // Get padded grid size.
     const int grid_size = 2 * sdp_fft_padded_size(
@@ -485,13 +496,13 @@ static void run_and_check(
     sdp_grid_wstack_wtower_degrid_all(ptr_img, freq0_hz, dfreq_hz, ptr_uvws,
             subgrid_size, theta, w_step, shear_u, shear_v, support,
             oversampling, w_support, w_oversampling, subgrid_frac,
-            w_tower_height, verbosity, vis_wtower, status
+            w_tower_height, verbosity, vis_wtower, 0, status
     );
 
     // Check against reference data.
     double rms_vis_wtower = sdp_gridder_rms_diff(ref_vis, vis_wtower, status);
     SDP_LOG_INFO("RMS difference (visibilities): %.3e", rms_vis_wtower);
-    assert(rms_vis_wtower < 0.05);
+    assert(rms_vis_wtower < 1e-3);
 
     // Call the gridder.
     sdp_Mem* img_wtower = sdp_mem_create(
@@ -501,7 +512,7 @@ static void run_and_check(
     sdp_grid_wstack_wtower_grid_all(ptr_vis, freq0_hz, dfreq_hz, ptr_uvws,
             subgrid_size, theta, w_step, shear_u, shear_v, support,
             oversampling, w_support, w_oversampling, subgrid_frac,
-            w_tower_height, verbosity, img_wtower, status
+            w_tower_height, verbosity, img_wtower, 0, status
     );
     sdp_mem_scale_real(img_wtower, 1.0 / (num_rows * num_chan), status);
 
@@ -513,16 +524,22 @@ static void run_and_check(
     sdp_gridder_subgrid_cut_out(img_wtower, 0, 0, img_wtower_trimmed, status);
 
     // Check against reference data.
+    sdp_Mem* residual = sdp_mem_create(
+            sdp_mem_type(ref_img), SDP_MEM_CPU, 2, image_shape, status
+    );
     double rms_img_wtower = sdp_gridder_rms_diff(
             ref_img, img_wtower_trimmed, status
     );
+    sdp_gridder_residual(ref_img, img_wtower_trimmed, residual, status);
     SDP_LOG_INFO("RMS difference (image): %.3e", rms_img_wtower);
-    assert(rms_img_wtower < 1e-3);
 #ifdef SDP_HAVE_CFITSIO
-    write_fits_file(ref_img, string("test_wtowers_") + test_name);
+    write_fits_file(img_wtower_trimmed, string("test_wtowers_") + test_name);
+    write_fits_file(residual, string("test_wtowers_residual_") + test_name);
 #endif
+    assert(rms_img_wtower < 1e-3);
 
     // Free scratch arrays.
+    sdp_mem_free(residual);
     sdp_mem_free(ref_vis_converted);
     sdp_mem_free(temp_image);
     sdp_mem_free(temp_uvws);
@@ -559,7 +576,7 @@ int main()
     SDP_LOG_INFO("  took %.3f s.", sdp_timer_elapsed(tmr));
 
     SDP_LOG_INFO("Generating reference image using DFT "
-            "(takes around 10 seconds)..."
+            "(takes around 5 seconds)..."
     );
     sdp_timer_start(tmr);
     sdp_Mem* ref_img = generate_reference_image(uvws, ref_vis, fov, 0.0, 0.0,

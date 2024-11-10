@@ -12,6 +12,8 @@ void clamp_channels_single(
         const int dim,
         const double freq0_hz,
         const double dfreq_hz,
+        const int64_t start_row,
+        const int64_t end_row,
         const sdp_Mem* start_ch_in,
         const sdp_Mem* end_ch_in,
         const double min_u,
@@ -30,10 +32,9 @@ void clamp_channels_single(
     sdp_mem_check_and_view(end_ch_in, &end_chs_in_, status);
     sdp_mem_check_and_view(start_ch_out, &start_chs_out_, status);
     sdp_mem_check_and_view(end_ch_out, &end_chs_out_, status);
-    const int64_t num_uvw = uvws_.shape[0];
 
     #pragma omp parallel for
-    for (int64_t i = 0; i < num_uvw; ++i)
+    for (int64_t i = start_row; i < end_row; ++i)
     {
         const double u0 = uvws_(i, dim) * (freq0_hz / C_0);
         const double du = uvws_(i, dim) * (dfreq_hz / C_0);
@@ -70,6 +71,8 @@ void clamp_channels_uv(
         const sdp_Mem* uvws,
         const double freq0_hz,
         const double dfreq_hz,
+        const int64_t start_row,
+        const int64_t end_row,
         const sdp_Mem* start_ch_in,
         const sdp_Mem* end_ch_in,
         const double min_u,
@@ -90,10 +93,9 @@ void clamp_channels_uv(
     sdp_mem_check_and_view(end_ch_in, &end_chs_in_, status);
     sdp_mem_check_and_view(start_ch_out, &start_chs_out_, status);
     sdp_mem_check_and_view(end_ch_out, &end_chs_out_, status);
-    const int64_t num_uvw = uvws_.shape[0];
 
     #pragma omp parallel for
-    for (int64_t i = 0; i < num_uvw; ++i)
+    for (int64_t i = start_row; i < end_row; ++i)
     {
         const double u0 = uvws_(i, 0) * (freq0_hz / C_0);
         const double du = uvws_(i, 0) * (dfreq_hz / C_0);
@@ -161,24 +163,31 @@ void sdp_gridder_clamp_channels_single(
         const double max_u,
         sdp_Mem* start_ch_out,
         sdp_Mem* end_ch_out,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
     if (*status) return;
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(uvws, 0);
+    }
     const sdp_MemLocation loc = sdp_mem_location(uvws);
     if (loc == SDP_MEM_CPU)
     {
         if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
         {
             clamp_channels_single<double>(uvws, dim, freq0_hz, dfreq_hz,
-                    start_ch_in, end_ch_in, min_u, max_u,
+                    start_row, end_row, start_ch_in, end_ch_in, min_u, max_u,
                     start_ch_out, end_ch_out, status
             );
         }
         else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
         {
             clamp_channels_single<float>(uvws, dim, freq0_hz, dfreq_hz,
-                    start_ch_in, end_ch_in, min_u, max_u,
+                    start_row, end_row, start_ch_in, end_ch_in, min_u, max_u,
                     start_ch_out, end_ch_out, status
             );
         }
@@ -225,6 +234,8 @@ void sdp_gridder_clamp_channels_single(
             (const void*)&dim,
             (const void*)&freq0_hz,
             (const void*)&dfreq_hz,
+            (const void*)&start_row,
+            (const void*)&end_row,
             (const void*)&start_chs_in_,
             (const void*)&end_chs_in_,
             (const void*)&min_u,
@@ -251,25 +262,32 @@ void sdp_gridder_clamp_channels_uv(
         const double max_v,
         sdp_Mem* start_ch_out,
         sdp_Mem* end_ch_out,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 )
 {
     if (*status) return;
+    if (start_row < 0 || end_row < 0)
+    {
+        start_row = 0;
+        end_row = sdp_mem_shape_dim(uvws, 0);
+    }
     const sdp_MemLocation loc = sdp_mem_location(uvws);
     if (loc == SDP_MEM_CPU)
     {
         if (sdp_mem_type(uvws) == SDP_MEM_DOUBLE)
         {
             clamp_channels_uv<double>(uvws, freq0_hz, dfreq_hz,
-                    start_ch_in, end_ch_in, min_u, max_u, min_v, max_v,
-                    start_ch_out, end_ch_out, status
+                    start_row, end_row, start_ch_in, end_ch_in, min_u, max_u,
+                    min_v, max_v, start_ch_out, end_ch_out, status
             );
         }
         else if (sdp_mem_type(uvws) == SDP_MEM_FLOAT)
         {
             clamp_channels_uv<float>(uvws, freq0_hz, dfreq_hz,
-                    start_ch_in, end_ch_in, min_u, max_u, min_v, max_v,
-                    start_ch_out, end_ch_out, status
+                    start_row, end_row, start_ch_in, end_ch_in, min_u, max_u,
+                    min_v, max_v, start_ch_out, end_ch_out, status
             );
         }
         else
@@ -314,6 +332,8 @@ void sdp_gridder_clamp_channels_uv(
             is_dbl ? (const void*)&uvws_dbl : (const void*)&uvws_flt,
             (const void*)&freq0_hz,
             (const void*)&dfreq_hz,
+            (const void*)&start_row,
+            (const void*)&end_row,
             (const void*)&start_chs_in_,
             (const void*)&end_chs_in_,
             (const void*)&min_u,

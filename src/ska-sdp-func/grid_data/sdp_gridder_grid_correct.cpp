@@ -105,9 +105,8 @@ void grid_corr_w_stack(
             const int pm = im - num_m / 2 + facet_offset_m;
             const double m_ = pm * theta / image_size;
             const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
-            const double phase = 2.0 * M_PI * w_step * n_;
+            const double phase = 2.0 * M_PI * w_step * n_ * w_offset;
             complex<double> w = complex<double>(cos(phase), sin(phase));
-            w = std::pow(w, w_offset);
             w = !inverse ? 1.0 / w : w;
             facet_(il, im) *= (T) w;
         }

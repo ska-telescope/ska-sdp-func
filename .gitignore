@@ -33,3 +33,10 @@ CMakeCache.txt
 
 # Version file
 sdp_func_version.h
+.cache/
+compile_commands.json
+opt_grid.cpp
+opt_grid_2.cpp
+src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp.backup
+tasked_grid.cpp
+
