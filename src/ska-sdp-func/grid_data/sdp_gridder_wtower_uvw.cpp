@@ -1176,8 +1176,9 @@ inline void prefetch_kernel_line(const double* kernel_data, int offset) {
 }
 
 // Local function to do the gridding.
+// void grid_vectorized(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
 template <typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
-void grid_vectorized(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
+void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
           int subgrid_offset_u, int subgrid_offset_v, int subgrid_offset_w,
           double freq0_hz, double dfreq_hz, int64_t start_row, int64_t end_row,
           const sdp_Mem *uvws, const sdp_MemViewCpu<const int, 1> &start_chs,
@@ -1211,11 +1212,6 @@ void grid_vectorized(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_
     constexpr int KERNEL_PREFETCH_DISTANCE = DOUBLES_PER_CACHELINE;
 #endif // PREFETCH
 
-#if defined(AVX512)
-    alignas(64) double kern_buffer[support];
-    alignas(64) SUBGRID_TYPE vis_buffer[8];
-    __m512d kern_vec, vis_vec;
-#endif // AVX512
 
     // Loop over rows. Each row contains visibilities for all channels.
     for (int64_t i_row = start_row; i_row < end_row; ++i_row) {
@@ -1291,6 +1287,7 @@ void grid_vectorized(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_
             // Grid visibility.
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
 #if defined(AVX512)
+            alignas(64) double kern_buffer[support * 2];
             for (int iw = 0; iw < w_support; ++iw) {
 				const double kern_w = w_kernel[w_off + iw];
                 __m512d w_kern_vec = _mm512_set1_pd(kern_w);
@@ -1305,20 +1302,27 @@ void grid_vectorized(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_
                     for (int iv = 0; iv < support; iv += 8) {
                         __m512d v_kern_vec = _mm512_loadu_pd(&uv_kernel[v_off + iv]);
                         __m512d full_kern = _mm512_mul_pd(wu_kern_vec, v_kern_vec);
-                        __m512d vis_vec = _mm512_set1_pd((double)local_vis);
-                        __m512d result = _mm512_mul_pd(full_kern, vis_vec);
 
-                        _mm512_store_pd(kern_buffer, result);
+                        __m512d vis_real_vec = _mm512_set1_pd(local_vis.real());
+                        __m512d vis_imag_vec = _mm512_set1_pd(local_vis.imag());
+
+                        __m512d result_real = _mm512_mul_pd(full_kern, vis_real_vec);
+                        __m512d result_imag = _mm512_mul_pd(full_kern, vis_imag_vec);
+
+                        _mm512_store_pd(kern_buffer, result_real);
+                        _mm512_store_pd(kern_buffer + 8, result_imag);
                         
+                        const int k_min = std::min(8, support - iv);
                         #pragma omp simd
-                        for (int k = 0; k < 8 && (iv + k) < support; k++) {
+                        for (int k = 0; k < k_min; k++) {
                             const int ix_v = iv0 + iv + k;
-                            subgrids_(iw, ix_u, ix_v) += (SUBGRID_TYPE)kern_buffer[k];
+                            subgrids_(iw, ix_u, ix_v) += (SUBGRID_TYPE)(kern_buffer[k], kern_buffer[k + 8]);
                         }
                     }
                 }
             }
 #elif defined(AVX2)
+            alignas(64) double kern_buffer[support * 2];
 			for (int iw = 0; iw < w_support; ++iw) {
 				const double kern_w = w_kernel[w_off + iw];
 				__m256d w_kern_vec = _mm256_set1_pd(kern_w);
@@ -1332,15 +1336,21 @@ void grid_vectorized(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_
 					for (int iv = 0; iv < support; iv += 4) {
 						__m256d v_kern_vec = _mm256_loadu_pd(&uv_kernel[v_off + iv]);
 						__m256d full_kern = _mm256_mul_pd(wu_kern_vec, v_kern_vec);
-						__m256d vis_vec = _mm256_set1_pd((double)local_vis);
-						__m256d result = _mm256_mul_pd(full_kern, vis_vec);
 
-						_mm256_store_pd(kern_buffer, result);
+						__m256d vis_real_vec = _mm256_set1_pd(local_vis.real());
+						__m256d vis_imag_vec = _mm256_set1_pd(local_vis.imag());
 
+						__m256d result_real = _mm256_mul_pd(full_kern, vis_real_vec);
+						__m256d result_imag = _mm256_mul_pd(full_kern, vis_imag_vec);
+
+						_mm256_store_pd(kern_buffer, result_real);
+						_mm256_store_pd(kern_buffer + 4, result_imag);
+
+                        const int k_min = std::min(4, support - iv);
 						#pragma omp simd
-						for (int k = 0; k < 4 && (iv + k) < support; k++) {
+						for (int k = 0; k < k_min; k++) {
 							const int ix_v = iv0 + iv + k;
-							subgrids_(iw, ix_u, ix_v) += (SUBGRID_TYPE)kern_buffer[k];
+                            subgrids_(iw, ix_u, ix_v) += (SUBGRID_TYPE)(kern_buffer[k], kern_buffer[k + 4]);
 						}
 					}
 				}
