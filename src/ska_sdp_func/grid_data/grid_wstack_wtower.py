@@ -2,6 +2,7 @@
 """Module for (de)gridding functions using w-stacking with w-towers."""
 
 import ctypes
+from typing import Optional
 
 import numpy
 
@@ -26,6 +27,7 @@ def wstack_wtower_degrid_all(
     w_tower_height: float,
     verbosity: int,
     vis: numpy.ndarray,
+    num_threads: Optional[int] = None,
 ):
     """
     Degrid visibilities using w-stacking with w-towers.
@@ -47,7 +49,11 @@ def wstack_wtower_degrid_all(
     :param w_tower_height: Height of w-tower to use.
     :param verbosity: Verbosity level.
     :param vis: ``complex[uvw_count, ch_count]`` Output degridded visibilities.
+    :param num_threads: Number of threads to use.
+        If 0 or None, all available threads will be used.
     """
+    if not num_threads:
+        num_threads = 0
     Lib.sdp_grid_wstack_wtower_degrid_all(
         Mem(image),
         freq0_hz,
@@ -66,6 +72,7 @@ def wstack_wtower_degrid_all(
         w_tower_height,
         verbosity,
         Mem(vis),
+        num_threads,
     )
 
 
@@ -87,6 +94,7 @@ def wstack_wtower_grid_all(
     w_tower_height: float,
     verbosity: int,
     image: numpy.ndarray,
+    num_threads: Optional[int] = None,
 ):
     """
     Grid visibilities using w-stacking with w-towers.
@@ -108,7 +116,11 @@ def wstack_wtower_grid_all(
     :param w_tower_height: Height of w-tower to use.
     :param verbosity: Verbosity level.
     :param image: Output image.
+    :param num_threads: Number of threads to use.
+        If 0 or None, all available threads will be used.
     """
+    if not num_threads:
+        num_threads = 0
     Lib.sdp_grid_wstack_wtower_grid_all(
         Mem(vis),
         freq0_hz,
@@ -127,6 +139,7 @@ def wstack_wtower_grid_all(
         w_tower_height,
         verbosity,
         Mem(image),
+        num_threads,
     )
 
 
@@ -151,6 +164,7 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_int,
         Mem.handle_type(),
+        ctypes.c_int,
     ],
     check_errcode=True,
 )
@@ -176,6 +190,7 @@ Lib.wrap_func(
         ctypes.c_double,
         ctypes.c_int,
         Mem.handle_type(),
+        ctypes.c_int,
     ],
     check_errcode=True,
 )

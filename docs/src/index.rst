@@ -25,6 +25,7 @@ SDP Processing Function Library
   kernels
   errors
   logging
+  timing
   data_models
   sky_coord
 

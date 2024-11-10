@@ -183,10 +183,22 @@ __global__ void sdp_gridder_subgrid_add(
     if (i >= sub_size_u || j >= sub_size_v) return;
     int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 - offset_u;
     int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 - offset_v;
-    if (i1 < 0) i1 += grid_size_u;
-    if (i1 >= grid_size_u) i1 -= grid_size_u;
-    if (j1 < 0) j1 += grid_size_v;
-    if (j1 >= grid_size_v) j1 -= grid_size_v;
+    while (i1 < 0)
+    {
+        i1 += grid_size_u;
+    }
+    while (i1 >= grid_size_u)
+    {
+        i1 -= grid_size_u;
+    }
+    while (j1 < 0)
+    {
+        j1 += grid_size_v;
+    }
+    while (j1 >= grid_size_v)
+    {
+        j1 -= grid_size_v;
+    }
     grid(i1, j1) += subgrid(i, j) * factor;
 }
 
@@ -206,10 +218,22 @@ __global__ void sdp_gridder_subgrid_cut_out(
     if (i >= sub_size_u || j >= sub_size_v) return;
     int64_t i1 = i + grid_size_u / 2 - sub_size_u / 2 + offset_u;
     int64_t j1 = j + grid_size_v / 2 - sub_size_v / 2 + offset_v;
-    if (i1 < 0) i1 += grid_size_u;
-    if (i1 >= grid_size_u) i1 -= grid_size_u;
-    if (j1 < 0) j1 += grid_size_v;
-    if (j1 >= grid_size_v) j1 -= grid_size_v;
+    while (i1 < 0)
+    {
+        i1 += grid_size_u;
+    }
+    while (i1 >= grid_size_u)
+    {
+        i1 -= grid_size_u;
+    }
+    while (j1 < 0)
+    {
+        j1 += grid_size_v;
+    }
+    while (j1 >= grid_size_v)
+    {
+        j1 -= grid_size_v;
+    }
     subgrid(i, j) = grid(i1, j1);
 }
 
@@ -230,19 +254,20 @@ template<typename T, int BLOCK_SIZE>
 __global__ void sdp_gridder_sum_diff(
         sdp_MemViewGpu<const T, 1> a,
         sdp_MemViewGpu<const T, 1> b,
+        int64_t start_row,
+        int64_t end_row,
         T* result
 )
 {
     extern __shared__ T smem[];
-    const int64_t n = MIN(a.shape[0], b.shape[0]);
     const int thread_id = threadIdx.x;
     const int64_t grid_size = BLOCK_SIZE * 2 * gridDim.x;
-    int64_t i = blockIdx.x * (BLOCK_SIZE * 2) + thread_id;
+    int64_t i = blockIdx.x * (BLOCK_SIZE * 2) + thread_id + start_row;
     smem[thread_id] = (T) 0;
-    while (i < n)
+    while (i < end_row)
     {
         smem[thread_id] += a(i) - b(i);
-        if (i + BLOCK_SIZE < n)
+        if (i + BLOCK_SIZE < end_row)
         {
             smem[thread_id] += a(i + BLOCK_SIZE) - b(i + BLOCK_SIZE);
         }

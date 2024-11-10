@@ -74,9 +74,8 @@ __global__ void sdp_gridder_grid_correct_w_stack(
     const double l_ = pl * theta / image_size;
     const double m_ = pm * theta / image_size;
     const double n_ = lm_to_n(l_, m_, shear_u, shear_v);
-    const double phase = 2.0 * M_PI * w_step * n_;
+    const double phase = 2.0 * M_PI * w_step * n_ * w_offset;
     complex<double> w = complex<double>(cos(phase), sin(phase));
-    w = pow(w, w_offset);
     w = !inverse ? 1.0 / w : w;
     facet(il, im) *= (T) w;
 }

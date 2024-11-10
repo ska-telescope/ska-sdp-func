@@ -21,6 +21,8 @@ def clamp_channels_single(
     max_u: float,
     start_ch_out: numpy.ndarray,
     end_ch_out: numpy.ndarray,
+    start_row: int = -1,
+    end_row: int = -1,
 ):
     """
     Clamp channels for a single dimension of an array of uvw coordinates.
@@ -39,6 +41,9 @@ def clamp_channels_single(
     :param max_u: Maximum value for u or v or w (exclusive).
     :param start_ch_out: Clamped start channel.
     :param end_ch_out: Clamped end channel (excluding end).
+    :param start_row: Row (uvw index) at which to start processing data.
+    :param end_row: Row (uvw index) at which to stop processing data
+        (exclusive).
     """
     Lib.sdp_gridder_clamp_channels_single(
         Mem(uvws),
@@ -51,6 +56,8 @@ def clamp_channels_single(
         max_u,
         Mem(start_ch_out),
         Mem(end_ch_out),
+        start_row,
+        end_row,
     )
 
 
@@ -66,6 +73,8 @@ def clamp_channels_uv(
     max_v: float,
     start_ch_out: numpy.ndarray,
     end_ch_out: numpy.ndarray,
+    start_row: int = -1,
+    end_row: int = -1,
 ):
     """
     Clamp channels for (u,v) in an array of uvw coordinates.
@@ -85,6 +94,9 @@ def clamp_channels_uv(
     :param max_v: Maximum value for v (exclusive).
     :param start_ch_out: Clamped start channel.
     :param end_ch_out: Clamped end channel (excluding end).
+    :param start_row: Row (uvw index) at which to start processing data.
+    :param end_row: Row (uvw index) at which to stop processing data
+        (exclusive).
     """
     Lib.sdp_gridder_clamp_channels_uv(
         Mem(uvws),
@@ -98,6 +110,8 @@ def clamp_channels_uv(
         max_v,
         Mem(start_ch_out),
         Mem(end_ch_out),
+        start_row,
+        end_row,
     )
 
 
@@ -386,6 +400,8 @@ Lib.wrap_func(
         ctypes.c_double,
         Mem.handle_type(),
         Mem.handle_type(),
+        ctypes.c_int64,
+        ctypes.c_int64,
     ],
     check_errcode=True,
 )
@@ -405,6 +421,8 @@ Lib.wrap_func(
         ctypes.c_double,
         Mem.handle_type(),
         Mem.handle_type(),
+        ctypes.c_int64,
+        ctypes.c_int64,
     ],
     check_errcode=True,
 )

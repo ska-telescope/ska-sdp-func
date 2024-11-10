@@ -71,6 +71,8 @@ class GridderWtowerUVW(StructWrapper):
         start_chs: numpy.ndarray,
         end_chs: numpy.ndarray,
         vis: numpy.ndarray,
+        start_row: int = -1,
+        end_row: int = -1,
     ):
         """
         .. deprecated:: 1.2.0
@@ -98,6 +100,9 @@ class GridderWtowerUVW(StructWrapper):
         :param end_chs: ``int[uvw_count]``
             Channel at which to stop degridding for every uvw
         :param vis: ``complex[uvw_count, ch_count]`` Output visibilities
+        :param start_row: Row (uvw index) at which to start processing data.
+        :param end_row: Row (uvw index) at which to stop processing data
+            (exclusive).
         """
         Lib.sdp_gridder_wtower_uvw_degrid(
             self,
@@ -111,6 +116,8 @@ class GridderWtowerUVW(StructWrapper):
             Mem(start_chs),
             Mem(end_chs),
             Mem(vis),
+            start_row,
+            end_row,
         )
 
     def degrid_subgrid(
@@ -124,6 +131,8 @@ class GridderWtowerUVW(StructWrapper):
         start_chs: numpy.ndarray,
         end_chs: numpy.ndarray,
         vis: numpy.ndarray = None,
+        start_row: int = -1,
+        end_row: int = -1,
     ):
         """Degrid visibilities using w-stacking/towers.
 
@@ -148,6 +157,9 @@ class GridderWtowerUVW(StructWrapper):
         :param end_chs: ``int[uvw_count]``
             Channel at which to stop degridding for every uvw
         :param vis: ``complex[uvw_count, ch_count]`` Output visibilities
+        :param start_row: Row (uvw index) at which to start processing data.
+        :param end_row: Row (uvw index) at which to stop processing data
+            (exclusive).
         """
         (subgrid_offset_u, subgrid_offset_v, subgrid_offset_w) = subgrid_offset
         return_vis = False
@@ -168,6 +180,8 @@ class GridderWtowerUVW(StructWrapper):
             Mem(start_chs),
             Mem(end_chs),
             Mem(vis),
+            start_row,
+            end_row,
         )
         if return_vis:
             return vis
@@ -207,6 +221,8 @@ class GridderWtowerUVW(StructWrapper):
         subgrid_offset_u: int,
         subgrid_offset_v: int,
         subgrid_offset_w: int,
+        start_row: int = -1,
+        end_row: int = -1,
     ):
         """
         .. deprecated:: 1.2.0
@@ -234,6 +250,9 @@ class GridderWtowerUVW(StructWrapper):
             Offset of subgrid centre relative to grid centre.
         :param subgrid_offset_w:
             Offset of subgrid centre relative to grid centre.
+        :param start_row: Row (uvw index) at which to start processing data.
+        :param end_row: Row (uvw index) at which to stop processing data
+            (exclusive).
         """
         Lib.sdp_gridder_wtower_uvw_grid(
             self,
@@ -247,6 +266,8 @@ class GridderWtowerUVW(StructWrapper):
             subgrid_offset_u,
             subgrid_offset_v,
             subgrid_offset_w,
+            start_row,
+            end_row,
         )
 
     def grid_subgrid(
@@ -260,6 +281,8 @@ class GridderWtowerUVW(StructWrapper):
         dfreq_hz: float,
         subgrid_image: numpy.ndarray,
         subgrid_offset: tuple[int, int, int],
+        start_row: int = -1,
+        end_row: int = -1,
     ):
         """Grid visibilities using w-stacking/towers.
 
@@ -283,6 +306,9 @@ class GridderWtowerUVW(StructWrapper):
         :param subgrid_offset:
             Tuple of integers containing offset of subgrid in (u, v, w)
             relative to grid centre.
+        :param start_row: Row (uvw index) at which to start processing data.
+        :param end_row: Row (uvw index) at which to stop processing data
+            (exclusive).
         """
         (subgrid_offset_u, subgrid_offset_v, subgrid_offset_w) = subgrid_offset
         if ch_count and vis.shape[1] != ch_count:
@@ -299,6 +325,8 @@ class GridderWtowerUVW(StructWrapper):
             subgrid_offset_u,
             subgrid_offset_v,
             subgrid_offset_w,
+            start_row,
+            end_row,
         )
 
     def grid_correct(
@@ -427,6 +455,8 @@ Lib.wrap_func(
         Mem.handle_type(),
         Mem.handle_type(),
         Mem.handle_type(),
+        ctypes.c_int64,
+        ctypes.c_int64,
     ],
     check_errcode=True,
 )
@@ -459,6 +489,8 @@ Lib.wrap_func(
         ctypes.c_int,
         ctypes.c_int,
         ctypes.c_int,
+        ctypes.c_int64,
+        ctypes.c_int64,
     ],
     check_errcode=True,
 )

@@ -31,22 +31,8 @@ struct sdp_GridderWtowerUVW;
 
 /** @} */ /* End group GridderWtowerUVW_struct. */
 
-/**
- * @defgroup GridderWtowerUVW_enum
- * @{
- */
-
-enum sdp_GridderWtowerUVWTimer
-{
-    SDP_WTOWER_TMR_GRID_CORRECT,
-    SDP_WTOWER_TMR_PROCESS_SUBGRID_STACK
-};
-
-/** @} */ /* End group GridderWtowerUVW_enum. */
-
 /* Typedefs. */
 typedef struct sdp_GridderWtowerUVW sdp_GridderWtowerUVW;
-typedef enum sdp_GridderWtowerUVWTimer sdp_GridderWtowerUVWTimer;
 
 /**
  * @defgroup GridderWtowerUVW_func
@@ -102,6 +88,8 @@ sdp_GridderWtowerUVW* sdp_gridder_wtower_uvw_create(
  * @param start_chs ``int[uvw_count]`` First channel to degrid for every uvw.
  * @param end_chs ``int[uvw_count]`` Channel at which to stop degridding for every uvw.
  * @param vis ``complex[uvw_count, ch_count]`` Output degridded visibilities.
+ * @param start_row Row (uvw index) at which to start processing data.
+ * @param end_row Row (uvw index) at which to stop processing data (exclusive).
  * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_degrid(
@@ -116,6 +104,8 @@ void sdp_gridder_wtower_uvw_degrid(
         const sdp_Mem* start_chs,
         const sdp_Mem* end_chs,
         sdp_Mem* vis,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 );
 
@@ -156,6 +146,8 @@ void sdp_gridder_wtower_uvw_degrid_correct(
  * @param subgrid_offset_u Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_v Offset of subgrid centre relative to grid centre.
  * @param subgrid_offset_w Offset of subgrid centre relative to grid centre.
+ * @param start_row Row (uvw index) at which to start processing data.
+ * @param end_row Row (uvw index) at which to stop processing data (exclusive).
  * @param status Error status.
  */
 void sdp_gridder_wtower_uvw_grid(
@@ -170,6 +162,8 @@ void sdp_gridder_wtower_uvw_grid(
         int subgrid_offset_u,
         int subgrid_offset_v,
         int subgrid_offset_w,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 );
 
@@ -198,19 +192,6 @@ void sdp_gridder_wtower_uvw_grid_correct(
  * @param plan Handle to gridder plan.
  */
 void sdp_gridder_wtower_uvw_free(sdp_GridderWtowerUVW* plan);
-
-/**
- * @brief Report elapsed time taken in the specified part of the gridder.
- *
- * @param plan Handle to gridder plan.
- * @param timer Timer enumeration to return.
- * @param gridding 0 for degridding time, 1 for gridding time.
- */
-double sdp_gridder_wtower_uvw_elapsed_time(
-        const sdp_GridderWtowerUVW* plan,
-        sdp_GridderWtowerUVWTimer timer,
-        int gridding
-);
 
 /**
  * @brief Report total number of w-planes processed in the sub-grid stack.

@@ -35,6 +35,8 @@ extern "C" {
  * @param max_u Maximum value for u or v or w (exclusive).
  * @param start_ch_out Clamped start channel.
  * @param end_ch_out Clamped end channel (excluding end).
+ * @param start_row Row (uvw index) at which to start processing data.
+ * @param end_row Row (uvw index) at which to stop processing data (exclusive).
  * @param status Error status.
  */
 void sdp_gridder_clamp_channels_single(
@@ -48,6 +50,8 @@ void sdp_gridder_clamp_channels_single(
         const double max_u,
         sdp_Mem* start_ch_out,
         sdp_Mem* end_ch_out,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 );
 
@@ -68,6 +72,8 @@ void sdp_gridder_clamp_channels_single(
  * @param max_v Maximum value for v (exclusive).
  * @param start_ch_out Clamped start channel.
  * @param end_ch_out Clamped end channel (excluding end).
+ * @param start_row Row (uvw index) at which to start processing data.
+ * @param end_row Row (uvw index) at which to stop processing data (exclusive).
  * @param status Error status.
  */
 void sdp_gridder_clamp_channels_uv(
@@ -82,6 +88,8 @@ void sdp_gridder_clamp_channels_uv(
         const double max_v,
         sdp_Mem* start_ch_out,
         sdp_Mem* end_ch_out,
+        int64_t start_row,
+        int64_t end_row,
         sdp_Error* status
 );
 

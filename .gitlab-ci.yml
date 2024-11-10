@@ -45,7 +45,7 @@ include:
 .install-cuda-packages-rocky: &cuda_packages_rocky
   - dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
   - dnf clean all
-  - dnf -y install cuda-nvcc-12-0 cuda-cudart-devel-12-0 libcufft-devel-12-0
+  - dnf -y install cuda-nvcc-12-4 cuda-cudart-devel-12-4 libcufft-devel-12-4
 
 .install-intel-packages-rocky: &intel_packages_rocky
   - |
@@ -67,7 +67,7 @@ include:
   - dnf -y install zip
   - export PATH=/usr/local/cuda/bin:$PATH
   - export CMAKE_BUILD_PARALLEL_LEVEL=16
-  - export CMAKE_ARGS="-DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DMKL_LINK=static -DNVCC_COMPILER_BINDIR=/usr/bin/g++ -DBUILD_INFO=ON"
+  - export CMAKE_ARGS="-DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DMKL_LINK=static -DNVCC_COMPILER_BINDIR=g++ -DBUILD_INFO=ON"
   # Build a single wheel for all Python 3 versions on Linux.
   # Since we're using ctypes, we don't need any particular Python version,
   # we just need to fix the Python/ABI tags with the "wheel tags" command.

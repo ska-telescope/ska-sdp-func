@@ -143,7 +143,7 @@ double find_gridder_accuracy(
     sdp_mem_clear_contents(vis_test, status);
     sdp_mem_clear_contents(start_chs, status);
     sdp_gridder_wtower_uvw_degrid(kernel, subgrid, 0, 0, 0, C_0, C_0,
-            uvws, start_chs, end_chs, vis_test, status
+            uvws, start_chs, end_chs, vis_test, -1, -1, status
     );
     sdp_mem_free(subgrid);
     sdp_mem_free(start_chs);
