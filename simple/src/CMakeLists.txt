@@ -1,0 +1,3 @@
+add_subdirectory(ska-sdp-func)
+set(${PROJECT_NAME}_CUDA_SRC "${${PROJECT_NAME}_CUDA_SRC}" PARENT_SCOPE)
+set(${PROJECT_NAME}_SRC "${${PROJECT_NAME}_SRC}" PARENT_SCOPE)

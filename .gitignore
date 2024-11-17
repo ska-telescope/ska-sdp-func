@@ -37,3 +37,7 @@ sdp_func_version.h
 tmp/
 .cache/
 cusrc/
+
+wtowers_benchmark.py
+
+build/
