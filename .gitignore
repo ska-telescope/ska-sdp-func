@@ -33,3 +33,7 @@ CMakeCache.txt
 
 # Version file
 sdp_func_version.h
+
+tmp/
+.cache/
+cusrc/

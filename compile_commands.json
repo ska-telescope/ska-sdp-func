@@ -1,0 +1,338 @@
+[
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/clean/sdp_hogbom_clean.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/clean/sdp_hogbom_clean.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/clean/sdp_hogbom_clean.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/clean/sdp_hogbom_clean.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/clean/sdp_ms_clean_cornwell.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/clean/sdp_ms_clean_cornwell.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/clean/sdp_ms_clean_cornwell.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/clean/sdp_ms_clean_cornwell.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/examples/sdp_function_example_a.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/examples/sdp_function_example_a.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/examples/sdp_function_example_a.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/examples/sdp_function_example_a.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/examples/sdp_vector_add.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/examples/sdp_vector_add.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/examples/sdp_vector_add.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/examples/sdp_vector_add.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_fft_padded_size.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_fft_padded_size.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_fft_padded_size.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_fft_padded_size.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_fft.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_fft.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_fft.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_fft.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_pswf.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_pswf.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_pswf.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_pswf.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_swiftly.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_swiftly.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/fourier_transforms/sdp_swiftly.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/fourier_transforms/sdp_swiftly.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_degrid_uvw_custom.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_degrid_uvw_custom.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_degrid_uvw_custom.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_degrid_uvw_custom.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_grid_wstack_wtower.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_grid_wstack_wtower.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_grid_wstack_wtower.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_grid_wstack_wtower.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_clamp_channels.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_clamp_channels.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_clamp_channels.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_clamp_channels.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_direct.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_direct.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_direct.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_direct.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_grid_correct.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_grid_correct.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_grid_correct.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_grid_correct.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_utils.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_utils.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_utils.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_utils.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_uvw_es_fft_utils.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_wtower_height.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_wtower_height.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_wtower_height.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_wtower_height.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/numeric_functions/sdp_fft_convolution.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/numeric_functions/sdp_fft_convolution.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/numeric_functions/sdp_fft_convolution.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/numeric_functions/sdp_fft_convolution.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/rfi/sdp_rfi_flagger.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/rfi/sdp_rfi_flagger.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/rfi/sdp_rfi_flagger.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/rfi/sdp_rfi_flagger.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/rfi/sdp_twosm_rfi_flagger.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/rfi/sdp_twosm_rfi_flagger.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/rfi/sdp_twosm_rfi_flagger.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/rfi/sdp_twosm_rfi_flagger.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/station_beam/sdp_element_dipole.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/station_beam/sdp_element_dipole.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/station_beam/sdp_element_dipole.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/station_beam/sdp_element_dipole.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/station_beam/sdp_element_spherical_wave_harp.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/station_beam/sdp_element_spherical_wave_harp.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/station_beam/sdp_element_spherical_wave_harp.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/station_beam/sdp_element_spherical_wave_harp.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/station_beam/sdp_station.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/station_beam/sdp_station.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/station_beam/sdp_station.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/station_beam/sdp_station.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/cc -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -std=c99 -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -Wmissing-prototypes -fdiagnostics-show-option -O3 -DNDEBUG -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_data_model_checks.c.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_data_model_checks.c",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_data_model_checks.c",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_data_model_checks.c.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_device_wrapper.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_device_wrapper.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_device_wrapper.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_device_wrapper.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/cc -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -std=c99 -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -Wmissing-prototypes -fdiagnostics-show-option -O3 -DNDEBUG -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_logging.c.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_logging.c",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_logging.c",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_logging.c.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_mem.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_mem.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_mem.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_mem.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/cc -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -std=c99 -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -Wmissing-prototypes -fdiagnostics-show-option -O3 -DNDEBUG -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_sky_coord.c.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_sky_coord.c",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_sky_coord.c",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_sky_coord.c.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_thread_support.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_thread_support.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_thread_support.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_thread_support.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_timer.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_timer.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/utility/sdp_timer.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/utility/sdp_timer.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_dft.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_dft.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_dft.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_dft.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_phase_rotate.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_phase_rotate.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_phase_rotate.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_phase_rotate.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_weighting.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_weighting.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_weighting.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_weighting.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_flagger.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_flagger.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_flagger.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_flagger.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_opt_weighting.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_opt_weighting.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_opt_weighting.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_opt_weighting.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -Dska_sdp_func_EXPORTS -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIC -o CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_tiled_functions.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_tiled_functions.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/src/ska-sdp-func/visibility/sdp_tiled_functions.cpp",
+  "output": "CMakeFiles/ska_sdp_func.dir/src/ska-sdp-func/visibility/sdp_tiled_functions.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_hogbom_clean.dir/clean/test_hogbom_clean.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/clean/test_hogbom_clean.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/clean/test_hogbom_clean.cpp",
+  "output": "tests/CMakeFiles/test_hogbom_clean.dir/clean/test_hogbom_clean.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_ms_clean_cornwell.dir/clean/test_ms_clean_cornwell.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/clean/test_ms_clean_cornwell.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/clean/test_ms_clean_cornwell.cpp",
+  "output": "tests/CMakeFiles/test_ms_clean_cornwell.dir/clean/test_ms_clean_cornwell.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_function_example_a.dir/examples/test_function_example_a.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/examples/test_function_example_a.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/examples/test_function_example_a.cpp",
+  "output": "tests/CMakeFiles/test_function_example_a.dir/examples/test_function_example_a.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_vector_add.dir/examples/test_vector_add.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/examples/test_vector_add.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/examples/test_vector_add.cpp",
+  "output": "tests/CMakeFiles/test_vector_add.dir/examples/test_vector_add.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_fft.dir/fourier_transforms/test_fft.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/fourier_transforms/test_fft.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/fourier_transforms/test_fft.cpp",
+  "output": "tests/CMakeFiles/test_fft.dir/fourier_transforms/test_fft.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_pswf.dir/fourier_transforms/test_pswf.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/fourier_transforms/test_pswf.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/fourier_transforms/test_pswf.cpp",
+  "output": "tests/CMakeFiles/test_pswf.dir/fourier_transforms/test_pswf.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_swiftly.dir/fourier_transforms/test_swiftly.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/fourier_transforms/test_swiftly.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/fourier_transforms/test_swiftly.cpp",
+  "output": "tests/CMakeFiles/test_swiftly.dir/fourier_transforms/test_swiftly.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_degrid_uvw_custom.dir/grid_data/test_degrid_uvw_custom.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/grid_data/test_degrid_uvw_custom.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/grid_data/test_degrid_uvw_custom.cpp",
+  "output": "tests/CMakeFiles/test_degrid_uvw_custom.dir/grid_data/test_degrid_uvw_custom.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_gridder_uvw_es_fft.dir/grid_data/test_gridder_uvw_es_fft.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/grid_data/test_gridder_uvw_es_fft.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/grid_data/test_gridder_uvw_es_fft.cpp",
+  "output": "tests/CMakeFiles/test_gridder_uvw_es_fft.dir/grid_data/test_gridder_uvw_es_fft.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_gridder_wtower_uvw.dir/grid_data/test_gridder_wtower_uvw.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/grid_data/test_gridder_wtower_uvw.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/grid_data/test_gridder_wtower_uvw.cpp",
+  "output": "tests/CMakeFiles/test_gridder_wtower_uvw.dir/grid_data/test_gridder_wtower_uvw.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_fft_convolution.dir/numeric_functions/test_fft_convolution.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/numeric_functions/test_fft_convolution.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/numeric_functions/test_fft_convolution.cpp",
+  "output": "tests/CMakeFiles/test_fft_convolution.dir/numeric_functions/test_fft_convolution.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_rfi_flagger.dir/rfi/test_rfi_flagger.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/rfi/test_rfi_flagger.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/rfi/test_rfi_flagger.cpp",
+  "output": "tests/CMakeFiles/test_rfi_flagger.dir/rfi/test_rfi_flagger.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_twosm_rfi_flagger.dir/rfi/test_twosm_rfi_flagger.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/rfi/test_twosm_rfi_flagger.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/rfi/test_twosm_rfi_flagger.cpp",
+  "output": "tests/CMakeFiles/test_twosm_rfi_flagger.dir/rfi/test_twosm_rfi_flagger.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_element_dipole.dir/station_beam/test_element_dipole.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/station_beam/test_element_dipole.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/station_beam/test_element_dipole.cpp",
+  "output": "tests/CMakeFiles/test_element_dipole.dir/station_beam/test_element_dipole.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_element_spherical_wave_harp.dir/station_beam/test_element_spherical_wave_harp.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/station_beam/test_element_spherical_wave_harp.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/station_beam/test_element_spherical_wave_harp.cpp",
+  "output": "tests/CMakeFiles/test_element_spherical_wave_harp.dir/station_beam/test_element_spherical_wave_harp.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_station_beam.dir/station_beam/test_station_beam.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/station_beam/test_station_beam.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/station_beam/test_station_beam.cpp",
+  "output": "tests/CMakeFiles/test_station_beam.dir/station_beam/test_station_beam.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_dft.dir/visibility/test_dft.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/visibility/test_dft.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/visibility/test_dft.cpp",
+  "output": "tests/CMakeFiles/test_dft.dir/visibility/test_dft.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_phase_rotate.dir/visibility/test_phase_rotate.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/visibility/test_phase_rotate.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/visibility/test_phase_rotate.cpp",
+  "output": "tests/CMakeFiles/test_phase_rotate.dir/visibility/test_phase_rotate.cpp.o"
+},
+{
+  "directory": "/Users/saeid.aliei/prjs/ska-sdp-func/build/tests",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDP_USE_POCKETFFT -DSOURCE_PATH_SIZE=37 -I/Users/saeid.aliei/prjs/ska-sdp-func/build -I/Users/saeid.aliei/prjs/ska-sdp-func/build/src -I/Users/saeid.aliei/prjs/ska-sdp-func -I/Users/saeid.aliei/prjs/ska-sdp-func/src  -stdlib=libc++ -Wall -Wextra -pedantic -Wcast-qual -Wcast-align -Wno-long-long -Wno-variadic-macros -fvisibility-inlines-hidden -fdiagnostics-show-option -O3 -DNDEBUG -std=c++11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -mmacosx-version-min=10.13 -fPIE -o CMakeFiles/test_weighting.dir/visibility/test_weighting.cpp.o -c /Users/saeid.aliei/prjs/ska-sdp-func/tests/visibility/test_weighting.cpp",
+  "file": "/Users/saeid.aliei/prjs/ska-sdp-func/tests/visibility/test_weighting.cpp",
+  "output": "tests/CMakeFiles/test_weighting.dir/visibility/test_weighting.cpp.o"
+}
+]
