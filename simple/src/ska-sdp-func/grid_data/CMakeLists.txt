@@ -4,4 +4,5 @@ SKA_SDP_FUNC_SRC(
     sdp_gridder_grid_correct.cpp
     sdp_gridder_utils.cpp
     sdp_gridder_wtower_uvw.cpp
+    sdp_gridder_wtower_height.cpp
 )
