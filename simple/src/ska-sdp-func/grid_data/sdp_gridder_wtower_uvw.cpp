@@ -4,6 +4,8 @@
 #include <complex>
 #include <cstdlib>
 #include <x86intrin.h>
+#include <string>
+#include <iostream>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -378,9 +380,8 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
             // Grid visibility.
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
 
-            #ifdef AVX512F
-            if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
-                printf("Using AVX512\n");
+            #ifdef AVX512
+            //if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
                 for (int iw = 0; iw < w_support; ++iw) {
                     const __m512d w_kernel_val = _mm512_set1_pd(w_kernel[w_off + iw]);
                     const __m512d local_vis_w_real = _mm512_set1_pd(local_vis.real() * w_kernel[w_off + iw]);
@@ -432,7 +433,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                         }
                     }
                 }
-            }
+            //}
             #else
             for (int iw = 0; iw < w_support; ++iw) {
                 const SUBGRID_TYPE local_vis_w = ((SUBGRID_TYPE)w_kernel[w_off + iw] * local_vis);
