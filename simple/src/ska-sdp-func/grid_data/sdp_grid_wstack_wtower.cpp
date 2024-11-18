@@ -478,6 +478,7 @@ void sdp_grid_wstack_wtower_grid_all(const sdp_Mem *vis, double freq0_hz, double
     if (verbosity > 0) {
         SDP_LOG_INFO("using %d w-planes and %d sub-grids", num_w_planes, num_subgrids_u * num_subgrids_v);
     }
+
     for (int64_t iw = min_iw; iw <= max_iw; ++iw) {
         if (*status) break;
 

@@ -5,5 +5,4 @@
 from .error_checking import CError
 from .lib import Lib
 from .mem import Mem
-from .sky_coord import SkyCoord
 from .struct_wrapper import StructWrapper
