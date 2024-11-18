@@ -4,8 +4,6 @@
 #include <complex>
 #include <cstdlib>
 #include <x86intrin.h>
-#include <string>
-#include <iostream>
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -380,7 +378,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
             // Grid visibility.
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
 
-            #ifdef AVX512
+            #ifdef __AVX512F__
             //if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
                 for (int iw = 0; iw < w_support; ++iw) {
                     const __m512d w_kernel_val = _mm512_set1_pd(w_kernel[w_off + iw]);
@@ -430,6 +428,64 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                             for (int k = 0; k < 8; ++k) {
                                 subgrids_(iw, ix_u, ix_v + k) = std::complex<double>(((double*)&subgrid_real)[k], ((double*)&subgrid_imag)[k]);
                             }
+                        }
+                    
+                        // Handle remaining elements
+                        for (int iv = (support/8)*8; iv < support; ++iv) {
+                            const int ix_v = iv0 + iv;
+                            subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)uv_kernel[v_off + iv] * local_vis_u);
+                        }
+                    }
+                }
+            //}
+            #elif __AVX2__
+            //if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
+                for (int iw = 0; iw < w_support; ++iw) {
+                    const __m256d w_kernel_val = _mm256_set1_pd(w_kernel[w_off + iw]);
+                    const __m256d local_vis_w_real = _mm256_set1_pd(local_vis.real() * w_kernel[w_off + iw]);
+                    const __m256d local_vis_w_imag = _mm256_set1_pd(local_vis.imag() * w_kernel[w_off + iw]);
+
+                    for (int iu = 0; iu < support; ++iu) {
+                        const int ix_u = iu0 + iu;
+                        const __m256d u_kernel_val = _mm256_set1_pd(uv_kernel[u_off + iu]);
+                        const __m256d local_vis_u_real = _mm256_mul_pd(u_kernel_val, local_vis_w_real);
+                        const __m256d local_vis_u_imag = _mm256_mul_pd(u_kernel_val, local_vis_w_imag);
+
+                        // Process 4 elements at a time with AVX2
+                        for (int iv = 0; iv < support; iv += 4) {
+                            const int ix_v = iv0 + iv;
+                            
+                            __m256d v_kernel_vals = _mm256_load_pd(&uv_kernel[v_off + iv]);
+                            __m256d subgrid_real = _mm256_setr_pd(
+                                subgrids_(iw, ix_u, ix_v).real(),
+                                subgrids_(iw, ix_u, ix_v + 1).real(),
+                                subgrids_(iw, ix_u, ix_v + 2).real(),
+                                subgrids_(iw, ix_u, ix_v + 3).real()
+                            );
+
+                            __m256d subgrid_imag = _mm256_setr_pd(
+                                subgrids_(iw, ix_u, ix_v).imag(),
+                                subgrids_(iw, ix_u, ix_v + 1).imag(),
+                                subgrids_(iw, ix_u, ix_v + 2).imag(),
+                                subgrids_(iw, ix_u, ix_v + 3).imag()
+                            );
+
+                            __m256d update_real = _mm256_mul_pd(v_kernel_vals, local_vis_u_real);
+                            __m256d update_imag = _mm256_mul_pd(v_kernel_vals, local_vis_u_imag);
+
+                            subgrid_real = _mm256_add_pd(subgrid_real, update_real);
+                            subgrid_imag = _mm256_add_pd(subgrid_imag, update_imag);
+
+                            // Store results back
+                            for (int k = 0; k < 4; ++k) {
+                                subgrids_(iw, ix_u, ix_v + k) = std::complex<double>(((double*)&subgrid_real)[k], ((double*)&subgrid_imag)[k]);
+                            }
+                        }
+                        
+                        // Handle remaining elements
+                        for (int iv = (support/4)*4; iv < support; ++iv) {
+                            const int ix_v = iv0 + iv;
+                            subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)uv_kernel[v_off + iv] * local_vis_u);
                         }
                     }
                 }
