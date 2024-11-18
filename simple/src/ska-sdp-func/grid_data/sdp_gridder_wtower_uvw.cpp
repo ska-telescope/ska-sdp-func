@@ -378,7 +378,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
             // Grid visibility.
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
 
-            #ifdef __AVX512F__
+            #ifdef AVX512F
             if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
                 printf("Using AVX512\n");
                 for (int iw = 0; iw < w_support; ++iw) {
