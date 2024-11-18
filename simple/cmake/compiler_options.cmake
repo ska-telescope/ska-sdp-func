@@ -24,9 +24,16 @@ if (NOT WIN32)
     endif()
 
     # This made it slower!
-    # if ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel.*")
-    #     append_flags(CMAKE_CXX_FLAGS -axCORE-AVX512,CORE-AVX2 -qopt-zmm-usage=high)
-    # endif()
+    if ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel.*")
+        if(ENABLE_AVX512)
+            if(HAS_AVX512)
+                message(STATUS "Enabling explicit AVX512 instructions.")
+                set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp PROPERTIES COMPILE_OPTIONS "-DAVX512;-xCORE-AVX512;-qopt-zmm-usage=high;-mavx512f;-mavx512cd;-mavx512bw;-mavx512dq;-mavx512vl;-qopt-report=5")
+            else()
+                message(STATUS "Enabling explicit AVX512 instructions - FAILED!")
+            endif()
+        endif()
+    endif()
 
     if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang.*"
             OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
