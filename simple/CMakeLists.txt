@@ -79,6 +79,16 @@ include(CheckCXXSourceRuns)
     HAS_AVX512
 )
 
+include(CheckCXXSourceRuns)
+    check_cxx_source_runs("
+        #include <immintrin.h>
+        int main() {
+            __m256d a = _mm256_set1_pd(1.0);
+            return 0;
+        }"
+    HAS_AVX2
+)
+
 # Set compiler options.
 include(compiler_options)
 include(sdp_func_macros)
