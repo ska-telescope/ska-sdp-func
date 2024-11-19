@@ -47,7 +47,13 @@ if (NOT WIN32)
         if(ENABLE_AVX512 AND ENABLE_AVX2)
             message(FATAL_ERROR "Enabling both AVX512 and AVX2 is not supported.")
         endif()
+
+        if(ENABLE_PREFETCH)
+            message(STATUS "Enabling explicit prefetching.")
+            set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp PROPERTIES COMPILE_OPTIONS  "-DPREFETCH")
+        endif()
     endif()
+
 
     if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang.*"
             OR "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
