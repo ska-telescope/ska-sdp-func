@@ -378,12 +378,14 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
             // Grid visibility.
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
 
-            #ifdef __AVX512F__
+            #ifdef AVX512
             //if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
                 for (int iw = 0; iw < w_support; ++iw) {
                     const __m512d w_kernel_val = _mm512_set1_pd(w_kernel[w_off + iw]);
                     const __m512d local_vis_w_real = _mm512_set1_pd(local_vis.real() * w_kernel[w_off + iw]);
                     const __m512d local_vis_w_imag = _mm512_set1_pd(local_vis.imag() * w_kernel[w_off + iw]);
+
+                    const SUBGRID_TYPE local_vis_w = ((SUBGRID_TYPE)w_kernel[w_off + iw] * local_vis);
 
                     for (int iu = 0; iu < support; ++iu) {
                         const int ix_u = iu0 + iu;
@@ -431,6 +433,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                         }
                     
                         // Handle remaining elements
+                        const SUBGRID_TYPE local_vis_u = ((SUBGRID_TYPE)uv_kernel[u_off + iu] * local_vis_w);
                         for (int iv = (support/8)*8; iv < support; ++iv) {
                             const int ix_v = iv0 + iv;
                             subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)uv_kernel[v_off + iv] * local_vis_u);
@@ -438,12 +441,14 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                     }
                 }
             //}
-            #elif __AVX2__
+            #elif AVX2
             //if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
                 for (int iw = 0; iw < w_support; ++iw) {
                     const __m256d w_kernel_val = _mm256_set1_pd(w_kernel[w_off + iw]);
                     const __m256d local_vis_w_real = _mm256_set1_pd(local_vis.real() * w_kernel[w_off + iw]);
                     const __m256d local_vis_w_imag = _mm256_set1_pd(local_vis.imag() * w_kernel[w_off + iw]);
+
+                    const SUBGRID_TYPE local_vis_w = ((SUBGRID_TYPE)w_kernel[w_off + iw] * local_vis);
 
                     for (int iu = 0; iu < support; ++iu) {
                         const int ix_u = iu0 + iu;
@@ -483,6 +488,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                         }
                         
                         // Handle remaining elements
+                        const SUBGRID_TYPE local_vis_u = ((SUBGRID_TYPE)uv_kernel[u_off + iu] * local_vis_w);
                         for (int iv = (support/4)*4; iv < support; ++iv) {
                             const int ix_v = iv0 + iv;
                             subgrids_(iw, ix_u, ix_v) += ((SUBGRID_TYPE)uv_kernel[v_off + iv] * local_vis_u);
