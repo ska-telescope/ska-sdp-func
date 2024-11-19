@@ -378,7 +378,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
             // Grid visibility.
             const SUBGRID_TYPE local_vis = (SUBGRID_TYPE)vis_(i_row, c);
 
-            #ifdef AVX512
+            #if defined(AVX512)
             //if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
                 for (int iw = 0; iw < w_support; ++iw) {
                     const __m512d w_kernel_val = _mm512_set1_pd(w_kernel[w_off + iw]);
@@ -441,7 +441,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                     }
                 }
             //}
-            #elif AVX2
+            #elif defined(AVX2)
             //if constexpr (std::is_same_v<SUBGRID_TYPE, std::complex<double>>) {
                 for (int iw = 0; iw < w_support; ++iw) {
                     const __m256d w_kernel_val = _mm256_set1_pd(w_kernel[w_off + iw]);
@@ -512,7 +512,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                     }
                 }
             }
-            #endif
+            #endif // AVX512 || AVX2
         }
     }
 }
