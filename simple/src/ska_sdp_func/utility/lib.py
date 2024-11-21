@@ -77,8 +77,8 @@ class Lib(metaclass=LibMeta):
                 if not Lib.lib:
                     try:
                         Lib.lib = ctypes.CDLL(lib_path)
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        print(e)
             if not Lib.lib:
                 raise RuntimeError(
                     f"Cannot find {Lib.name} in {Lib.search_dirs}. "
