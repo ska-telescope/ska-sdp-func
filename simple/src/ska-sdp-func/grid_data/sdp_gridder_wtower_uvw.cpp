@@ -3,7 +3,9 @@
 #include <cmath>
 #include <complex>
 #include <cstdlib>
+#if defined(AVX512) || defined(AVX2)
 #include <x86intrin.h>
+#endif // AVX512 || AVX2
 
 #include "ska-sdp-func/fourier_transforms/sdp_fft.h"
 #include "ska-sdp-func/grid_data/sdp_gridder_clamp_channels.h"
@@ -127,11 +129,23 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
             __m512d local_vis_imag = _mm512_setzero_pd();
             
             for (int iw = 0; iw < w_support; ++iw) {
+                #ifdef PREFETCH
+                if(iw + 1 < w_support) {
+                    _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
+                }
+                #endif // PREFETCH
+                
                 const __m512d w_kernel_val = _mm512_set1_pd(w_kernel[w_off + iw]);
                 __m512d local_vis_u_real = _mm512_setzero_pd();
                 __m512d local_vis_u_imag = _mm512_setzero_pd();
 
                 for (int iu = 0; iu < support; ++iu) {
+                    #ifdef PREFETCH
+                    if(iu + 1 < support) {
+                        _mm_prefetch(&uv_kernel[u_off + iu + 1], _MM_HINT_T0);
+                    }
+                    #endif // PREFETCH
+                    
                     const int ix_u = iu0 + iu;
                     const __m512d u_kernel_val = _mm512_set1_pd(uv_kernel[u_off + iu]);
                     __m512d local_vis_v_real = _mm512_setzero_pd();
@@ -139,8 +153,14 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
 
                     // Process 8 v elements at once
                     for (int iv = 0; iv < support; iv += 8) {
+                        #ifdef PREFETCH
+                        if(iv + 8 < support) {
+                            _mm_prefetch(&uv_kernel[v_off + iv + 8], _MM_HINT_T0);
+                            _mm_prefetch(&subgrids_(iw, ix_u, iv0 + iv + 8), _MM_HINT_T0);
+                        }
+                        #endif // PREFETCH
+                        
                         const int ix_v = iv0 + iv;
-
                         __m512d v_kernel_vals = _mm512_load_pd(&uv_kernel[v_off + iv]);
                         __m512d subgrid_real = _mm512_setr_pd(
                             subgrids_(iw, ix_u, ix_v).real(),
@@ -188,11 +208,23 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
             __m256d local_vis_imag = _mm256_setzero_pd();
             
             for (int iw = 0; iw < w_support; ++iw) {
+                #ifdef PREFETCH
+                if(iw + 1 < w_support) {
+                    _mm_prefetch(&w_kernel[w_off + iw + 1], _MM_HINT_T0);
+                }
+                #endif // PREFETCH
+
                 const __m256d w_kernel_val = _mm256_set1_pd(w_kernel[w_off + iw]);
                 __m256d local_vis_u_real = _mm256_setzero_pd();
                 __m256d local_vis_u_imag = _mm256_setzero_pd();
 
                 for (int iu = 0; iu < support; ++iu) {
+                    #ifdef PREFETCH
+                    if(iu + 1 < support) {
+                        _mm_prefetch(&uv_kernel[u_off + iu + 1], _MM_HINT_T0);
+                    }
+                    #endif // PREFETCH
+
                     const int ix_u = iu0 + iu;
                     const __m256d u_kernel_val = _mm256_set1_pd(uv_kernel[u_off + iu]);
                     __m256d local_vis_v_real = _mm256_setzero_pd();
@@ -200,8 +232,14 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
 
                     // Process 4 v elements at once
                     for (int iv = 0; iv < support; iv += 4) {
-                        const int ix_v = iv0 + iv;
+                        #ifdef PREFETCH
+                        if(iv + 4 < support) {
+                            _mm_prefetch(&uv_kernel[v_off + iv + 4], _MM_HINT_T0);
+                            _mm_prefetch(&subgrids_(iw, ix_u, iv0 + iv + 4), _MM_HINT_T0);
+                        }
+                        #endif // PREFETCH
 
+                        const int ix_v = iv0 + iv;
                         __m256d v_kernel_vals = _mm256_load_pd(&uv_kernel[v_off + iv]);
                         __m256d subgrid_real = _mm256_setr_pd(
                             subgrids_(iw, ix_u, ix_v).real(),
@@ -235,7 +273,7 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
             double local_vis_real_reduced = _mm256_reduce_add_pd(local_vis_real);
             double local_vis_imag_reduced = _mm256_reduce_add_pd(local_vis_imag);
             vis_(i_row, c) += VIS_TYPE(local_vis_real_reduced, local_vis_imag_reduced);
-            #else
+            #else // AVX512 || AVX2
             // Degrid visibility.
             SUBGRID_TYPE local_vis = (SUBGRID_TYPE)0;
             for (int iw = 0; iw < w_support; ++iw) {
@@ -256,7 +294,7 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
                 local_vis += (SUBGRID_TYPE)w_kernel[w_off + iw] * local_vis_u;
             }
             vis_(i_row, c) += (VIS_TYPE)local_vis;
-            #endif // AVX2 || AVX512
+            #endif // AVX512 || AVX2
         }
     }
 }
@@ -637,7 +675,7 @@ void grid(const sdp_GridderWtowerUVW *plan, sdp_Mem *subgrids, int w_plane,
                     }
                 }
             }
-            #else
+            #else // AVX512 || AVX2
             for (int iw = 0; iw < w_support; ++iw) {
                 const SUBGRID_TYPE local_vis_w = ((SUBGRID_TYPE)w_kernel[w_off + iw] * local_vis);
 #pragma GCC ivdep
