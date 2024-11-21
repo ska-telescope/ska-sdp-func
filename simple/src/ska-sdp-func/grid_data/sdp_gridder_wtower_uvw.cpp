@@ -123,16 +123,16 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
             const int w_off = (iw0_ov % w_oversample) * w_support;
 
             #if defined(AVX512)
-            __mm512d local_vis_real = _mm512_setzero_pd();
-            __mm512d local_vis_imag = _mm512_setzero_pd();
+            __m512d local_vis_real = _mm512_setzero_pd();
+            __m512d local_vis_imag = _mm512_setzero_pd();
             
             for (int iw = 0; iw < w_support; ++iw) {
-                const __m512d w_kernel_val = _m512_set1_pd(w_kernel[w_off + iw]);
-                __m512d local_vis_v_real = _m512_setzero_pd();
-                __m512d local_vis_v_imag = _m512_setzero_pd();
+                const __m512d w_kernel_val = _mm512_set1_pd(w_kernel[w_off + iw]);
+                __m512d local_vis_u_real = _mm512_setzero_pd();
+                __m512d local_vis_u_imag = _mm512_setzero_pd();
 
                 for (int iu = 0; iu < support; ++iu) {
-                    const ix_u = u0 + iu;
+                    const int ix_u = iu0 + iu;
                     const __m512d u_kernel_val = _mm512_set1_pd(uv_kernel[u_off + iu]);
                     __m512d local_vis_v_real = _mm512_setzero_pd();
                     __m512d local_vis_v_imag = _mm512_setzero_pd();
@@ -150,7 +150,7 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
                             subgrids_(iw, ix_u, ix_v + 4).real(),
                             subgrids_(iw, ix_u, ix_v + 5).real(),
                             subgrids_(iw, ix_u, ix_v + 6).real(),
-                            subgrids_(iw, ix_u, ix_v + 7).real(),
+                            subgrids_(iw, ix_u, ix_v + 7).real()
                         );
                         __m512d subgrid_imag = _mm512_setr_pd(
                             subgrids_(iw, ix_u, ix_v).imag(),
@@ -160,7 +160,7 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
                             subgrids_(iw, ix_u, ix_v + 4).imag(),
                             subgrids_(iw, ix_u, ix_v + 5).imag(),
                             subgrids_(iw, ix_u, ix_v + 6).imag(),
-                            subgrids_(iw, ix_u, ix_v + 7).imag(),
+                            subgrids_(iw, ix_u, ix_v + 7).imag()
                         );
 
                         local_vis_v_real = _mm512_fmadd_pd(v_kernel_vals, subgrid_real, local_vis_v_real);
@@ -184,16 +184,16 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
             vis_(i_row, c) += VIS_TYPE(local_vis_real_reduced, local_vis_imag_reduced);
 
             #elif defined(AVX2)
-            __mm256d local_vis_real = _mm256_setzero_pd();
-            __mm256d local_vis_imag = _mm256_setzero_pd();
+            __m256d local_vis_real = _mm256_setzero_pd();
+            __m256d local_vis_imag = _mm256_setzero_pd();
             
             for (int iw = 0; iw < w_support; ++iw) {
-                const __m256d w_kernel_val = _m256_set1_pd(w_kernel[w_off + iw]);
-                __m256d local_vis_v_real = _m256_setzero_pd();
-                __m256d local_vis_v_imag = _m256_setzero_pd();
+                const __m256d w_kernel_val = _mm256_set1_pd(w_kernel[w_off + iw]);
+                __m256d local_vis_u_real = _mm256_setzero_pd();
+                __m256d local_vis_u_imag = _mm256_setzero_pd();
 
                 for (int iu = 0; iu < support; ++iu) {
-                    const ix_u = u0 + iu;
+                    const int ix_u = iu0 + iu;
                     const __m256d u_kernel_val = _mm256_set1_pd(uv_kernel[u_off + iu]);
                     __m256d local_vis_v_real = _mm256_setzero_pd();
                     __m256d local_vis_v_imag = _mm256_setzero_pd();
@@ -207,13 +207,13 @@ void degrid(const sdp_GridderWtowerUVW *plan, const sdp_Mem *subgrids,
                             subgrids_(iw, ix_u, ix_v).real(),
                             subgrids_(iw, ix_u, ix_v + 1).real(),
                             subgrids_(iw, ix_u, ix_v + 2).real(),
-                            subgrids_(iw, ix_u, ix_v + 3).real(),
+                            subgrids_(iw, ix_u, ix_v + 3).real()
                         );
                         __m256d subgrid_imag = _mm256_setr_pd(
                             subgrids_(iw, ix_u, ix_v).imag(),
                             subgrids_(iw, ix_u, ix_v + 1).imag(),
                             subgrids_(iw, ix_u, ix_v + 2).imag(),
-                            subgrids_(iw, ix_u, ix_v + 3).imag(),
+                            subgrids_(iw, ix_u, ix_v + 3).imag()
                         );
 
                         local_vis_v_real = _mm256_fmadd_pd(v_kernel_vals, subgrid_real, local_vis_v_real);

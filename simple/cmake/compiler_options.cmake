@@ -26,32 +26,34 @@ if (NOT WIN32)
     if ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel.*")
         if(ENABLE_AVX512)
             if(HAS_AVX512)
-                message(STATUS "Enabling explicit AVX512 instructions.")
-                set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp PROPERTIES COMPILE_OPTIONS 
+                message(STATUS "Enabling explicit AVX512 instructions")
+                set(SDP_GRIDDER_WTOWER_UVW_CPP_EXTRA_COMPILE_FLAGS 
                 "-DAVX512;-xCORE-AVX512;-mavx512f;-mavx512cd;-mavx512bw;-mavx512dq;-mavx512vl;-qopt-zmm-usage=high;-qopt-report=5")
             else()
-                message(FATAL_ERROR "Enabling explicit AVX512 instructions - FAILED.")
+                message(FATAL_ERROR "Enabling explicit AVX512 instructions - FAILED")
             endif()
         endif()
 
         if(ENABLE_AVX2)
             if(HAS_AVX2)
-                message(STATUS "Enabling explicit AVX2 instructions.")
-                set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp PROPERTIES COMPILE_OPTIONS 
-                "-DAVX2;-xCORE-AVX2;-mavx2;-mfma;-qopt-zmm-usage=low;-qopt-report=5")
+                message(STATUS "Enabling explicit AVX2 instructions")
+                set(SDP_GRIDDER_WTOWER_UVW_CPP_EXTRA_COMPILE_FLAGS "-DAVX2;-xCORE-AVX2;-mavx2;-mfma;-qopt-zmm-usage=low;-qopt-report=5")
             else()
-                message(FATAL_ERROR "Enabling explicit AVX2 instructions - FAILED.")
+                message(FATAL_ERROR "Enabling explicit AVX2 instructions - FAILED")
             endif()
         endif()
 
         if(ENABLE_AVX512 AND ENABLE_AVX2)
-            message(FATAL_ERROR "Enabling both AVX512 and AVX2 is not supported.")
+            message(FATAL_ERROR "Enabling both AVX512 and AVX2 is not supported")
         endif()
 
         if(ENABLE_PREFETCH)
-            message(STATUS "Enabling explicit prefetching.")
-            set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp PROPERTIES COMPILE_OPTIONS  "-DPREFETCH")
+            message(STATUS "Enabling explicit prefetching")
+            string(APPEND SDP_GRIDDER_WTOWER_UVW_CPP_EXTRA_COMPILE_FLAGS ";-DPREFETCH")
         endif()
+
+        set_source_files_properties(${CMAKE_SOURCE_DIR}/src/ska-sdp-func/grid_data/sdp_gridder_wtower_uvw.cpp 
+        PROPERTIES COMPILE_OPTIONS "${SDP_GRIDDER_WTOWER_UVW_CPP_EXTRA_COMPILE_FLAGS}")
     endif()
 
 
