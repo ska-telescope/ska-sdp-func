@@ -42,6 +42,7 @@ struct sdp_GridderWtowerUVW {
 // Begin anonymous namespace for file-local functions.
 namespace {
 
+#ifdef AVX2
 // There is no direct equivalent AVX2 instruction to _mm512_reduce_pd, 
 // so we need to define one for ourself.
 inline double _mm256_reduce_add_pd(__m256d vec) {
@@ -77,6 +78,7 @@ inline float _mm256_reduce_add_ps(__m256d vec) {
 	// Extract the scalar sum, each element is the sum
 	return _mm_cvtsd_f64(_mm256_castpd256_ps128(sum));
 }
+#endif // AVX2
 
 // Local function to do the degridding.
 template <typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
