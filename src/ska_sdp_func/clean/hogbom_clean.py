@@ -41,24 +41,32 @@ def hogbom_clean(
 
     :param dirty_img: Input dirty image.
     :type dirty_img: numpy.ndarray or cupy.ndarray
+
     :param psf: Input Point Spread Function.
     :type psf: numpy.ndarray or cupy.ndarray
+
     :param cbeam_details: Input shape of cbeam [BMAJ, BMINN, THETA, SIZE]
-    :type cbeam_deatils: numpy.ndarray
+    :type cbeam_details: numpy.ndarray
+
     :param loop_gain: Gain to be used in the CLEAN loop (typically 0.1)
     :type loop_gain: float
+
     :param threshold: Minimum intensity of peak to search for,
-    loop terminates if peak is found under this threshold.
+        loop terminates if peak is found under this threshold.
     :type threshold: float
-    :param cycle_limit: Maximum nuber of loops to perform, if the stop
-    threshold is not reached first.
+
+    :param cycle_limit: Maximum number of loops to perform, if the stop
+        threshold is not reached first.
     :type cycle_limit: float
+
     :param clean_model: Map of CLEAN components, unconvolved pixels.
     :type clean_model: numpy.ndarray or cupy.ndarray
+
     :param residual: Residual image, flux remaining after CLEANing.
     :type residual: numpy.ndarray or cupy.ndarray
+
     :param skymodel: Output Skymodel, CLEAN components convolved with
-    CLEAN beam + residuals.
+        CLEAN beam + residuals.
     :type skymodel: numpy.ndarray or cupy.ndarray
     """
 
