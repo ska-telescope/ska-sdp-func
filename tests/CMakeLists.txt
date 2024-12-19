@@ -5,7 +5,6 @@ set(${PROJECT_NAME}_TEST_FOLDERS
     fourier_transforms
     grid_data
     numeric_functions
-    rfi
     station_beam
     utility
     visibility
