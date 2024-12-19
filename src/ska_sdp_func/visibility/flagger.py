@@ -25,7 +25,6 @@ Lib.wrap_func(
 )
 
 
-
 def flagger_dynamic_threshold(
     vis: numpy.ndarray,
     flags: numpy.ndarray,
