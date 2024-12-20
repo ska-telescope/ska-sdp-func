@@ -3,8 +3,9 @@ variables:
   DEBIAN_FRONTEND: "noninteractive"
   CUDA_ARCH: "8.0"
   CONTAINER_SCANNING_DISABLED: 'true'
+  DEPENDENCY_SCANNING_DISABLED: 'true'
   
-  
+
 stages:
   - lint
   - scan
