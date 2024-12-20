@@ -36,7 +36,6 @@ SDP Processing Function Library
   module_clean/index
   module_fourier_transforms/index
   module_grid_data/index
-  module_rfi/index
   module_station_beam/index
   module_visibility/index
   module_examples/index

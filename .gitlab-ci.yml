@@ -2,6 +2,9 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
   CUDA_ARCH: "8.0"
+  CONTAINER_SCANNING_DISABLED: 'true'
+  DEPENDENCY_SCANNING_DISABLED: 'true'
+  
 
 stages:
   - lint
@@ -182,17 +185,6 @@ build-test-release:
     reports:
       junit: build/reports/unit-tests.xml
 
-# The "python-gemnasium-scan" stage needs to be disabled, as it doesn't
-# work for projects built with "package-mode = false".
-python-gemnasium-scan:
-  rules:
-    - when: never
-
-# The "python-gemnasium-scan-legacy" stage needs to be disabled.
-# It will try to run because we have a "setup.py" file.
-python-gemnasium-scan-legacy:
-  rules:
-    - when: never
 
 # The "python-build-for-development" stage is done as part of "python-test".
 python-build-for-development:
