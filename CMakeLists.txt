@@ -69,6 +69,26 @@ if (CFITSIO_FOUND)
     add_definitions(-DSDP_HAVE_CFITSIO)
 endif()
 
+# Check for AVX2 and AVX512 support
+include(CheckCXXSourceRuns)
+    check_cxx_source_runs("
+        #include <immintrin.h>
+        int main() {
+            __m512d a = _mm512_set1_pd(1.0);
+            return 0;
+        }"
+    HAS_AVX512
+)
+include(CheckCXXSourceRuns)
+    check_cxx_source_runs("
+        #include <immintrin.h>
+        int main() {
+            __m256d a = _mm256_set1_pd(1.0);
+            return 0;
+        }"
+    HAS_AVX2
+)
+
 # Set compiler options.
 include(compiler_options)
 include(sdp_func_macros)
