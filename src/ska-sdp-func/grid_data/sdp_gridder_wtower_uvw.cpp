@@ -43,6 +43,28 @@ struct sdp_GridderWtowerUVW
 // Begin anonymous namespace for file-local functions.
 namespace {
 
+#if defined(__AVX__)
+// There is no direct equivalent AVX2 instruction to _mm512_reduce_pd,
+// so we need to define one for ourself. Note that this method won't
+// work for the single precision.
+inline double _mm256_reduce_add_pd(__m256d vec) {
+    // Shuffle the high and low halves of the vector
+    // and move high 128-bit to low
+    __m256d shuf = _mm256_permute2f128_pd(vec, vec, 1);
+    // Add high and low halves
+    __m256d sum = _mm256_add_pd(vec, shuf);
+
+    // Shuffle within the low 128 bits,
+    // and swap the adjacent pairs
+    shuf = _mm256_permute_pd(sum, 0b0101);
+    // Add adjacent pairs
+    sum = _mm256_add_pd(sum, shuf);
+
+    // Extract the scalar sum, each element is the sum
+    return _mm_cvtsd_f64(_mm256_castpd256_pd128(sum));
+}
+#endif // __AVX__
+
 // Local function to do the degridding.
 template<typename SUBGRID_TYPE, typename UVW_TYPE, typename VIS_TYPE>
 void degrid(
