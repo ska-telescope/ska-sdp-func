@@ -144,6 +144,9 @@ build-test-debug:
     - apt-get -y update
     - apt-get -y install build-essential cmake lcov python3
     - nvidia-smi
+    - nvcc --version
+    - echo $CUDA_HOME $LD_LIBRARY_PATH $PATH
+    - echo $CUDA_VISIBLE_DEVICES
     - mkdir debug && cd debug/
     - cmake ../ -DCOVERAGE_REPORT=ON -DBUILD_INFO=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCUDA_ARCH=$CUDA_ARCH
   script:
@@ -172,6 +175,9 @@ build-test-release:
     - apt-get -y install build-essential cmake
     - cmake --version
     - nvidia-smi
+    - nvcc --version
+    - echo $CUDA_HOME $LD_LIBRARY_PATH $PATH
+    - echo $CUDA_VISIBLE_DEVICES
     - mkdir release && cd release/
     - cmake ../ -DCUDA_ARCH=$CUDA_ARCH
   script:
