@@ -1,10 +1,9 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
-  # CUDA_ARCH: "8.0"
+  CUDA_ARCH: "8.0"
   CONTAINER_SCANNING_DISABLED: 'true'
   DEPENDENCY_SCANNING_DISABLED: 'true'
-  CUDA_VISIBLE_DEVICE: "0"
 
 stages:
   - lint
@@ -148,10 +147,10 @@ build-test-debug:
     - echo $CUDA_HOME $LD_LIBRARY_PATH $PATH
     - echo $CUDA_VISIBLE_DEVICES
     - mkdir debug && cd debug/
-    - cmake ../ -DCOVERAGE_REPORT=ON -DBUILD_INFO=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCUDA_ARCH=$CUDA_ARCH
+    - CUDA_VISIBLE_DEVICES=0 cmake ../ -DCOVERAGE_REPORT=ON -DBUILD_INFO=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCUDA_ARCH=$CUDA_ARCH
   script:
-    - make -j
-    - make coverage
+    - CUDA_VISIBLE_DEVICES=0 make -j
+    - CUDA_VISIBLE_DEVICES=0 make coverage
   after_script:
     - mv debug/coverage.xml build/reports/code-coverage.xml
     - mv debug/coverage/ ./
@@ -179,10 +178,10 @@ build-test-release:
     - echo $CUDA_HOME $LD_LIBRARY_PATH $PATH
     - echo $CUDA_VISIBLE_DEVICES
     - mkdir release && cd release/
-    - cmake ../ -DCUDA_ARCH=$CUDA_ARCH
+    - CUDA_VISIBLE_DEVICES=0 cmake ../ -DCUDA_ARCH=$CUDA_ARCH
   script:
-    - make -j
-    - ctest --rerun-failed --output-on-failure --output-junit unit-tests.xml
+    - CUDA_VISIBLE_DEVICES=0 make -j
+    - CUDA_VISIBLE_DEVICES=0 ctest --rerun-failed --output-on-failure --output-junit unit-tests.xml
   after_script:
     - mv release/unit-tests.xml build/reports/
   artifacts:
