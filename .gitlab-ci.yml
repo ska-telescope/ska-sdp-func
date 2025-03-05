@@ -1,10 +1,10 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   DEBIAN_FRONTEND: "noninteractive"
-  CUDA_ARCH: "8.0"
+  # CUDA_ARCH: "8.0"
   CONTAINER_SCANNING_DISABLED: 'true'
   DEPENDENCY_SCANNING_DISABLED: 'true'
-
+  CUDA_VISIBLE_DEVICE: "0"
 
 stages:
   - lint
@@ -136,7 +136,7 @@ python-lint:
 
 build-test-debug:
   stage: test
-  image: nvidia/cuda:12.8.0-devel-ubuntu22.04
+  image: nvidia/cuda:12.6.3-devel-ubuntu22.04
   tags: [ska-gpu-a100]
   before_script:
     - *ready_reports
@@ -166,7 +166,7 @@ build-test-debug:
 
 build-test-release:
   stage: test
-  image: nvidia/cuda:12.8.0-devel-ubuntu22.04
+  image: nvidia/cuda:12.6.3-devel-ubuntu22.04
   tags: [ska-gpu-a100]
   before_script:
     - *ready_reports
@@ -220,7 +220,7 @@ python-build-for-publication-legacy:
 # Need to override the template stage because we want to run this on a GPU.
 python-test:
   stage: test
-  image: nvidia/cuda:12.8.0-devel-ubuntu22.04
+  image: nvidia/cuda:12.6.3-devel-ubuntu22.04
   tags: [ska-gpu-a100]
   before_script:
     - echo "Running Python test stage"
